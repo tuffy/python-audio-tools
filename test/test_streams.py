@@ -208,6 +208,7 @@ class Silence24_Mono(Silence8_Mono):
                             bits_per_sample=24)
         self.pcm_frames = pcm_frames
         self.md5 = md5()
+
     def __repr__(self):
         return "Silence24_Mono(%s, %s)" % \
             (repr(self.pcm_frames),

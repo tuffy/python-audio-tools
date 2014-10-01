@@ -298,7 +298,7 @@ class TOCTrack(SheetTrack):
         output = [(u"TRACK %s" % (self.__mode__) if
                    (self.__sub_channel_mode__ is None) else
                    u"TRACK %s %s" % (self.__mode__,
-                                    self.__sub_channel_mode__))]
+                                     self.__sub_channel_mode__))]
         output.extend([flag.build() for flag in self.__flags__])
         output.append(u"")
         return u"\n".join(output)

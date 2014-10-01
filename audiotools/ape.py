@@ -512,10 +512,11 @@ class ApeTag(MetaData):
                 if (re.search(r'\d+.*?/.*?\d+',
                               self[b'Media'].__unicode__()) is not None):
                     # replace unslashed portion with 0
-                    self[b'Media'].data = (re.sub(r'\d+',
-                        u"0",
-                        self[b'Media'].__unicode__(),
-                        1).encode("utf-8"))
+                    self[b'Media'].data = (
+                        re.sub(r'\d+',
+                               u"0",
+                               self[b'Media'].__unicode__(),
+                               1).encode("utf-8"))
                 else:
                     # otherwise, remove "Media" field
                     del(self[b'Media'])

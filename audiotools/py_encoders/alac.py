@@ -227,10 +227,10 @@ def encode_compressed_frame(writer, pcmreader, options, channels):
     else:
         interlaced_frames = [BitstreamRecorder(0) for i in
                              range(options.min_interlacing_leftweight,
-                                    options.max_interlacing_leftweight + 1)]
+                                   options.max_interlacing_leftweight + 1)]
         for (leftweight,
              frame) in zip(range(options.min_interlacing_leftweight,
-                                  options.max_interlacing_leftweight + 1),
+                                 options.max_interlacing_leftweight + 1),
                            interlaced_frames):
             encode_interlaced_frame(frame,
                                     pcmreader,

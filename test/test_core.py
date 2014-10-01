@@ -1233,7 +1233,7 @@ class Test_pcm_frame_cmp(unittest.TestCase):
 
         self.assertEqual(reader1.closes_called, 0)
         self.assertEqual(reader2.closes_called, 0)
-        self.assertIsNone(audiotools.pcm_frame_cmp(reader1 , reader2))
+        self.assertIsNone(audiotools.pcm_frame_cmp(reader1, reader2))
         self.assertEqual(reader1.closes_called, 1)
         self.assertEqual(reader2.closes_called, 1)
 
@@ -4684,125 +4684,135 @@ class testcuesheet(unittest.TestCase):
                      track_indexes=[
                          SheetIndex(1, timestamp_to_frac(0, 0, 0))]),
                      SheetTrack(
-                     number=2,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(5, 50, 65))]),
+                         number=2,
+                         track_indexes=[
+                             SheetIndex(1, timestamp_to_frac(5, 50, 65))]),
                      SheetTrack(
-                     number=3,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(9, 47, 50))]),
+                         number=3,
+                         track_indexes=[
+                             SheetIndex(1, timestamp_to_frac(9, 47, 50))]),
                      SheetTrack(
-                     number=4,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(15, 12, 53))]),
+                         number=4,
+                         track_indexes=[
+                             SheetIndex(1, timestamp_to_frac(15, 12, 53))]),
                      SheetTrack(
-                     number=5,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(25, 2, 40))]),
+                         number=5,
+                         track_indexes=[
+                             SheetIndex(1, timestamp_to_frac(25, 2, 40))]),
                      SheetTrack(
-                     number=6,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(27, 34, 5))]),
+                         number=6,
+                         track_indexes=[
+                             SheetIndex(1, timestamp_to_frac(27, 34, 5))]),
                      SheetTrack(
-                     number=7,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(31, 58, 53))]),
+                         number=7,
+                         track_indexes=[
+                             SheetIndex(1, timestamp_to_frac(31, 58, 53))]),
                      SheetTrack(
-                     number=8,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(35, 8, 65))])])
+                         number=8,
+                         track_indexes=[
+                             SheetIndex(1, timestamp_to_frac(35, 8, 65))])])
 
         # a cuesheet spread across a couple of different files
-        yield Sheet([SheetTrack(
-                     number=1,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
-                     filename=u"TRACK1.WAV"),
-                     SheetTrack(
-                     number=2,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(5, 50, 65))],
-                     filename=u"TRACK1.WAV"),
-                     SheetTrack(
-                     number=3,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(9, 47, 50))],
-                     filename=u"TRACK1.WAV"),
-                     SheetTrack(
-                     number=4,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(15, 12, 53))],
-                     filename=u"TRACK1.WAV"),
-                     SheetTrack(
-                     number=5,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
-                     filename=u"TRACK2.WAV"),
-                     SheetTrack(
-                     number=6,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(2, 31, 40))],
-                     filename=u"TRACK2.WAV"),
-                     SheetTrack(
-                     number=7,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(6, 56, 13))],
-                     filename=u"TRACK2.WAV"),
-                     SheetTrack(
-                     number=8,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(10, 6, 25))],
-                     filename=u"TRACK2.WAV")])
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(0, 0, 0))],
+                                filename=u"TRACK1.WAV"),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(5, 50, 65))],
+                                filename=u"TRACK1.WAV"),
+                     SheetTrack(number=3,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(9, 47, 50))],
+                                filename=u"TRACK1.WAV"),
+                     SheetTrack(number=4,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(15, 12, 53))],
+                                filename=u"TRACK1.WAV"),
+                     SheetTrack(number=5,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(0, 0, 0))],
+                                filename=u"TRACK2.WAV"),
+                     SheetTrack(number=6,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(2, 31, 40))],
+                                filename=u"TRACK2.WAV"),
+                     SheetTrack(number=7,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(6, 56, 13))],
+                                filename=u"TRACK2.WAV"),
+                     SheetTrack(number=8,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(10, 6, 25))],
+                                filename=u"TRACK2.WAV")])
 
         # mix in some pre-gaps
-        yield Sheet([SheetTrack(
-                     number=1,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(0, 0, 0))]),
-                     SheetTrack(
-                     number=2,
-                     track_indexes=[
-                         SheetIndex(0, timestamp_to_frac(5, 49, 65)),
-                         SheetIndex(1, timestamp_to_frac(5, 50, 65))]),
-                     SheetTrack(
-                     number=3,
-                     track_indexes=[
-                         SheetIndex(0, timestamp_to_frac(9, 45, 50)),
-                         SheetIndex(1, timestamp_to_frac(9, 47, 50))]),
-                     SheetTrack(
-                     number=4,
-                     track_indexes=[
-                         SheetIndex(0, timestamp_to_frac(15, 9, 53)),
-                         SheetIndex(1, timestamp_to_frac(15, 12, 53))])])
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(0, 0, 0))]),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                                    SheetIndex(0,
+                                               timestamp_to_frac(5, 49, 65)),
+                                    SheetIndex(1,
+                                               timestamp_to_frac(5, 50, 65))]),
+                     SheetTrack(number=3,
+                                track_indexes=[
+                                    SheetIndex(0,
+                                               timestamp_to_frac(9, 45, 50)),
+                                    SheetIndex(1,
+                                               timestamp_to_frac(9, 47, 50))]),
+                     SheetTrack(number=4,
+                                track_indexes=[
+                                    SheetIndex(0,
+                                               timestamp_to_frac(15, 9, 53)),
+                                    SheetIndex(1,
+                                               timestamp_to_frac(15, 12, 53))])
+                     ])
 
         # add catalog numbers, ISRCs and multiple index points
-        yield Sheet([SheetTrack(
-                     number=1,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(0, 0, 0)),
-                         SheetIndex(2, timestamp_to_frac(2, 0, 0)),
-                         SheetIndex(3, timestamp_to_frac(4, 0, 0))],
-                     metadata=audiotools.MetaData(
-                         ISRC=u"ABCDE1234567"),
-                     filename=u"MYAUDIO1.WAV"),
-                     SheetTrack(
-                     number=2,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
-                     metadata=audiotools.MetaData(
-                         ISRC=u"XYZZY0000000"),
-                     filename=u"MYAUDIO2.WAV"),
-                     SheetTrack(
-                     number=3,
-                     track_indexes=[
-                         SheetIndex(0, timestamp_to_frac(3, 0, 0)),
-                         SheetIndex(1, timestamp_to_frac(3, 2, 0)),
-                         SheetIndex(2, timestamp_to_frac(5, 34, 32)),
-                         SheetIndex(3, timestamp_to_frac(8, 12, 49)),
-                         SheetIndex(4, timestamp_to_frac(10, 1, 74))],
-                    metadata=audiotools.MetaData(
-                         ISRC=u"123456789012"),
-                    filename=u"MYAUDIO2.WAV")],
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(0, 0, 0)),
+                                    SheetIndex(2,
+                                               timestamp_to_frac(2, 0, 0)),
+                                    SheetIndex(3,
+                                               timestamp_to_frac(4, 0, 0))],
+                                metadata=audiotools.MetaData(
+                                    ISRC=u"ABCDE1234567"),
+                                filename=u"MYAUDIO1.WAV"),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(0, 0, 0))],
+                                metadata=audiotools.MetaData(
+                                    ISRC=u"XYZZY0000000"),
+                                filename=u"MYAUDIO2.WAV"),
+                     SheetTrack(number=3,
+                                track_indexes=[
+                                    SheetIndex(0,
+                                               timestamp_to_frac(3, 0, 0)),
+                                    SheetIndex(1,
+                                               timestamp_to_frac(3, 2, 0)),
+                                    SheetIndex(2,
+                                               timestamp_to_frac(5, 34, 32)),
+                                    SheetIndex(3,
+                                               timestamp_to_frac(8, 12, 49)),
+                                    SheetIndex(4,
+                                               timestamp_to_frac(10, 1, 74))],
+                                metadata=audiotools.MetaData(
+                                    ISRC=u"123456789012"),
+                                filename=u"MYAUDIO2.WAV")],
                     metadata=audiotools.MetaData(catalog=u"3898347789120"))
 
     def __metadata_sheets__(self):
@@ -4813,79 +4823,82 @@ class testcuesheet(unittest.TestCase):
             return Fraction((m * 60 * 75) + (s * 75) + f, 75)
 
         # a sheet with a portable set of plain metadata
-        yield Sheet([SheetTrack(
-                     number=1,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
-                     metadata=audiotools.MetaData(
-                         track_name=u"Track 1",
-                         performer_name=u"Performer 1",
-                         artist_name=u"Artist 1"),
-                     filename=u"CDImage.wav"),
-                     SheetTrack(
-                     number=2,
-                     track_indexes=[
-                         SheetIndex(0, timestamp_to_frac(4, 36, 50)),
-                         SheetIndex(1, timestamp_to_frac(4, 41, 10))],
-                     metadata=audiotools.MetaData(
-                         track_name=u"Track 2",
-                         performer_name=u"Performer 2",
-                         artist_name=u"Artist 2"),
-                     filename=u"CDImage.wav")],
-                     metadata=audiotools.MetaData(
-                         album_name=u"Album Name",
-                         performer_name=u"Album Performer",
-                         artist_name=u"Album Artist"))
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(0, 0, 0))],
+                                metadata=audiotools.MetaData(
+                                    track_name=u"Track 1",
+                                    performer_name=u"Performer 1",
+                                    artist_name=u"Artist 1"),
+                                filename=u"CDImage.wav"),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                                    SheetIndex(0,
+                                               timestamp_to_frac(4, 36, 50)),
+                                    SheetIndex(1,
+                                               timestamp_to_frac(4, 41, 10))],
+                                metadata=audiotools.MetaData(
+                                    track_name=u"Track 2",
+                                    performer_name=u"Performer 2",
+                                    artist_name=u"Artist 2"),
+                                filename=u"CDImage.wav")],
+                    metadata=audiotools.MetaData(
+                        album_name=u"Album Name",
+                        performer_name=u"Album Performer",
+                        artist_name=u"Album Artist"))
 
         # a sheet with a lot of strings that need escaping
-        yield Sheet([SheetTrack(
-                     number=1,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
-                     metadata=audiotools.MetaData(
-                         track_name=u"Track \"1\"",
-                         performer_name=u"Performer \"1\"",
-                         artist_name=u"Artist \"1\""),
-                     filename=u"CD\"Image\".wav"),
-                     SheetTrack(
-                     number=2,
-                     track_indexes=[
-                         SheetIndex(0, timestamp_to_frac(4, 36, 50)),
-                         SheetIndex(1, timestamp_to_frac(4, 41, 10))],
-                     metadata=audiotools.MetaData(
-                         track_name=u"Track \"2\"",
-                         performer_name=u"Performer \"2\"",
-                         artist_name=u"Artist \"2\""),
-                     filename=u"CD\"Image\".wav")],
-                     metadata=audiotools.MetaData(
-                         album_name=u"Album \"Name\"",
-                         performer_name=u"Album \"Performer\"",
-                         artist_name=u"Album \"Artist\""))
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(0, 0, 0))],
+                                metadata=audiotools.MetaData(
+                                    track_name=u"Track \"1\"",
+                                    performer_name=u"Performer \"1\"",
+                                    artist_name=u"Artist \"1\""),
+                                filename=u"CD\"Image\".wav"),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                                    SheetIndex(0,
+                                               timestamp_to_frac(4, 36, 50)),
+                                    SheetIndex(1,
+                                               timestamp_to_frac(4, 41, 10))],
+                                metadata=audiotools.MetaData(
+                                    track_name=u"Track \"2\"",
+                                    performer_name=u"Performer \"2\"",
+                                    artist_name=u"Artist \"2\""),
+                                filename=u"CD\"Image\".wav")],
+                    metadata=audiotools.MetaData(
+                        album_name=u"Album \"Name\"",
+                        performer_name=u"Album \"Performer\"",
+                        artist_name=u"Album \"Artist\""))
 
         # a sheet with lots of backslashes that need escaping
-        yield Sheet([SheetTrack(
-                     number=1,
-                     track_indexes=[
-                         SheetIndex(1, timestamp_to_frac(0, 0, 0))],
-                     metadata=audiotools.MetaData(
-                         track_name=u"Track \\ 1",
-                         performer_name=u"Performer \\ 1",
-                         artist_name=u"Artist \\ 1"),
-                     filename=u"CD\\Image.wav"),
-                     SheetTrack(
-                     number=2,
-                     track_indexes=[
-                         SheetIndex(0, timestamp_to_frac(4, 36, 50)),
-                         SheetIndex(1, timestamp_to_frac(4, 41, 10))],
-                     metadata=audiotools.MetaData(
-                         track_name=u"Track \\ 2",
-                         performer_name=u"Performer \\ 2",
-                         artist_name=u"Artist \\ 2"),
-                     filename=u"CD\\Image.wav")],
-                     metadata=audiotools.MetaData(
-                         album_name=u"Album \\ Name",
-                         performer_name=u"Album \\ Performer",
-                         artist_name=u"Album \\ Artist"))
+        yield Sheet([SheetTrack(number=1,
+                                track_indexes=[
+                                    SheetIndex(1,
+                                               timestamp_to_frac(0, 0, 0))],
+                                metadata=audiotools.MetaData(
+                                    track_name=u"Track \\ 1",
+                                    performer_name=u"Performer \\ 1",
+                                    artist_name=u"Artist \\ 1"),
+                                filename=u"CD\\Image.wav"),
+                     SheetTrack(number=2,
+                                track_indexes=[
+                                    SheetIndex(0,
+                                               timestamp_to_frac(4, 36, 50)),
+                                    SheetIndex(1,
+                                               timestamp_to_frac(4, 41, 10))],
+                                metadata=audiotools.MetaData(
+                                    track_name=u"Track \\ 2",
+                                    performer_name=u"Performer \\ 2",
+                                    artist_name=u"Artist \\ 2"),
+                                filename=u"CD\\Image.wav")],
+                    metadata=audiotools.MetaData(
+                        album_name=u"Album \\ Name",
+                        performer_name=u"Album \\ Performer",
+                        artist_name=u"Album \\ Artist"))
 
     @LIB_CUESHEET
     def test_attributes(self):
@@ -4895,30 +4908,34 @@ class testcuesheet(unittest.TestCase):
             from fractions import Fraction
             return Fraction((m * 60 * 75) + (s * 75) + f, 75)
 
-        raw_sheet = Sheet([SheetTrack(
-                           number=1,
-                           track_indexes=[
-                               SheetIndex(0, timestamp_to_frac(0, 0, 0)),
-                               SheetIndex(1, timestamp_to_frac(0, 1, 0))],
-                           metadata=audiotools.MetaData(
-                               track_name=u"Track 1"),
-                           filename=u"CDImage.wav"),
-                           SheetTrack(
-                           number=2,
-                           track_indexes=[
-                               SheetIndex(1, timestamp_to_frac(0, 5, 0))],
-                           metadata=audiotools.MetaData(
-                               track_name=u"Track 2"),
-                           filename=u"CDImage.wav"),
-                           SheetTrack(
-                           number=3,
-                           track_indexes=[
-                               SheetIndex(0, timestamp_to_frac(0, 9, 0)),
-                               SheetIndex(1, timestamp_to_frac(0, 11, 0)),
-                               SheetIndex(2, timestamp_to_frac(0, 12, 0))],
-                           metadata=audiotools.MetaData(
-                               track_name=u"Track 3"),
-                           filename=u"CDImage.wav")])
+        raw_sheet = \
+            Sheet([SheetTrack(number=1,
+                              track_indexes=[
+                                  SheetIndex(0,
+                                             timestamp_to_frac(0, 0, 0)),
+                                  SheetIndex(1,
+                                             timestamp_to_frac(0, 1, 0))],
+                              metadata=audiotools.MetaData(
+                                  track_name=u"Track 1"),
+                              filename=u"CDImage.wav"),
+                   SheetTrack(number=2,
+                              track_indexes=[
+                                  SheetIndex(1,
+                                             timestamp_to_frac(0, 5, 0))],
+                              metadata=audiotools.MetaData(
+                                  track_name=u"Track 2"),
+                              filename=u"CDImage.wav"),
+                   SheetTrack(number=3,
+                              track_indexes=[
+                                  SheetIndex(0,
+                                             timestamp_to_frac(0, 9, 0)),
+                                  SheetIndex(1,
+                                             timestamp_to_frac(0, 11, 0)),
+                                  SheetIndex(2,
+                                             timestamp_to_frac(0, 12, 0))],
+                              metadata=audiotools.MetaData(
+                                  track_name=u"Track 3"),
+                              filename=u"CDImage.wav")])
 
         sheet = self.sheet_class.converted(raw_sheet)
 
@@ -4977,30 +4994,27 @@ class testcuesheet(unittest.TestCase):
         from audiotools import Sheet, SheetTrack, SheetIndex
         from fractions import Fraction
 
-        raw_sheet = Sheet([SheetTrack(
-                           number=1,
-                           track_indexes=[SheetIndex(1, Fraction(0, 1))],
-                           filename=u"track1.wav",
-                           pre_emphasis=False,
-                           copy_permitted=False),
-                           SheetTrack(
-                           number=2,
-                           track_indexes=[SheetIndex(1, Fraction(0, 1))],
-                           filename=u"track2.wav",
-                           pre_emphasis=True,
-                           copy_permitted=False),
-                           SheetTrack(
-                           number=3,
-                           track_indexes=[SheetIndex(1, Fraction(0, 1))],
-                           filename=u"track3.wav",
-                           pre_emphasis=False,
-                           copy_permitted=True),
-                           SheetTrack(
-                           number=4,
-                           track_indexes=[SheetIndex(1, Fraction(0, 1))],
-                           filename=u"track4.wav",
-                           pre_emphasis=True,
-                           copy_permitted=True)])
+        raw_sheet = \
+            Sheet([SheetTrack(number=1,
+                              track_indexes=[SheetIndex(1, Fraction(0, 1))],
+                              filename=u"track1.wav",
+                              pre_emphasis=False,
+                              copy_permitted=False),
+                   SheetTrack(number=2,
+                              track_indexes=[SheetIndex(1, Fraction(0, 1))],
+                              filename=u"track2.wav",
+                              pre_emphasis=True,
+                              copy_permitted=False),
+                   SheetTrack(number=3,
+                              track_indexes=[SheetIndex(1, Fraction(0, 1))],
+                              filename=u"track3.wav",
+                              pre_emphasis=False,
+                              copy_permitted=True),
+                   SheetTrack(number=4,
+                              track_indexes=[SheetIndex(1, Fraction(0, 1))],
+                              filename=u"track4.wav",
+                              pre_emphasis=True,
+                              copy_permitted=True)])
 
         self.assertEqual(raw_sheet.track(1).filename(), u"track1.wav")
         self.assertEqual(raw_sheet.track(1).pre_emphasis(), False)
@@ -5033,7 +5047,7 @@ class testcuesheet(unittest.TestCase):
         self.assertEqual(sheet, raw_sheet)
 
         for other_sheet in self.__sheets__():
-           self.assertNotEqual(sheet, other_sheet)
+            self.assertNotEqual(sheet, other_sheet)
 
         # round-trip sheet to disk to ensure it still works
         temp_sheet = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -5073,30 +5087,34 @@ class test_flac_cuesheet(testcuesheet):
             from fractions import Fraction
             return Fraction((m * 60 * 75) + (s * 75) + f, 75)
 
-        raw_sheet = Sheet([SheetTrack(
-                           number=1,
-                           track_indexes=[
-                               SheetIndex(0, timestamp_to_frac(0, 0, 0)),
-                               SheetIndex(1, timestamp_to_frac(0, 1, 0))],
-                           metadata=audiotools.MetaData(
-                               track_name=u"Track 1"),
-                           filename=u"CDImage.wav"),
-                           SheetTrack(
-                           number=2,
-                           track_indexes=[
-                               SheetIndex(1, timestamp_to_frac(0, 5, 0))],
-                           metadata=audiotools.MetaData(
-                               track_name=u"Track 2"),
-                           filename=u"CDImage.wav"),
-                           SheetTrack(
-                           number=3,
-                           track_indexes=[
-                               SheetIndex(0, timestamp_to_frac(0, 9, 0)),
-                               SheetIndex(1, timestamp_to_frac(0, 11, 0)),
-                               SheetIndex(2, timestamp_to_frac(0, 12, 0))],
-                           metadata=audiotools.MetaData(
-                               track_name=u"Track 3"),
-                           filename=u"CDImage.wav")])
+        raw_sheet = \
+            Sheet([SheetTrack(number=1,
+                              track_indexes=[
+                                  SheetIndex(0,
+                                             timestamp_to_frac(0, 0, 0)),
+                                  SheetIndex(1,
+                                             timestamp_to_frac(0, 1, 0))],
+                              metadata=audiotools.MetaData(
+                                  track_name=u"Track 1"),
+                              filename=u"CDImage.wav"),
+                   SheetTrack(number=2,
+                              track_indexes=[
+                                  SheetIndex(1,
+                                             timestamp_to_frac(0, 5, 0))],
+                              metadata=audiotools.MetaData(
+                                  track_name=u"Track 2"),
+                              filename=u"CDImage.wav"),
+                   SheetTrack(number=3,
+                              track_indexes=[
+                                  SheetIndex(0,
+                                             timestamp_to_frac(0, 9, 0)),
+                                  SheetIndex(1,
+                                             timestamp_to_frac(0, 11, 0)),
+                                  SheetIndex(2,
+                                             timestamp_to_frac(0, 12, 0))],
+                              metadata=audiotools.MetaData(
+                                  track_name=u"Track 3"),
+                              filename=u"CDImage.wav")])
 
         sheet = Flac_CUESHEET.converted(raw_sheet, 882000, 44100)
 
@@ -5216,7 +5234,7 @@ class TestMultiChannel(unittest.TestCase):
 
     def __test_mask_blank__(self, audio_class, channel_mask):
         with tempfile.NamedTemporaryFile(
-                 suffix="." + audio_class.SUFFIX) as temp_file:
+            suffix="." + audio_class.SUFFIX) as temp_file:
             temp_track = audio_class.from_pcm(
                 temp_file.name,
                 Join_Reader(
@@ -6865,7 +6883,7 @@ class Test_Output_Text(unittest.TestCase):
         table = output_table()
 
         row1 = table.blank_row()
-        row2 = table.divider_row([u"-",u"-", u"-"])
+        row2 = table.divider_row([u"-", u"-", u"-"])
         row3 = table.row()
         row3.add_column(u"a", "left")
         row3.add_column(u"b", "center")
@@ -6883,7 +6901,7 @@ class Test_Output_Text(unittest.TestCase):
                                     bg_color="red"), "center")
         row4.add_column(output_text(u"Blah"), "right")
 
-        row5 = table.divider_row([u"-",u"-", u"-"])
+        row5 = table.divider_row([u"-", u"-", u"-"])
         row6 = table.blank_row()
 
         self.assertEqual(len(list(table.format(False))), 6)

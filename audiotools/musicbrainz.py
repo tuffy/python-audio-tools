@@ -96,8 +96,8 @@ class DiscID(object):
         raw_id = (u"%2.2X%2.2X%s" %
                   (self.first_track_number,
                    self.last_track_number,
-                  u"".join([u"%8.8X" % (offset) for offset in
-                            [self.lead_out_offset] +
+                   u"".join([u"%8.8X" % (offset) for offset in
+                             [self.lead_out_offset] +
                             self.offsets +
                             [0] * (99 - len(self.offsets))])))
 

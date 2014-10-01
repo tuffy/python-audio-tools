@@ -521,7 +521,7 @@ if (__name__ == '__main__'):
 
     if (msg.output_isatty() and
         (len(audiotools.output_text(u" ").join(
-                 [audiotools.output_text(h) for h in wide_header])) <=
+             [audiotools.output_text(h) for h in wide_header])) <=
          msg.terminal_size(sys.stdout.fileno())[1])):
         header_list = wide_header
     else:
@@ -579,7 +579,7 @@ if (__name__ == '__main__'):
                           confidence_v2,
                           offset_v2)]:
             row.add_column(u"")
-            if ((confidence == None) or (confidence < 0)):
+            if ((confidence is None) or (confidence < 0)):
                 row.add_column(u"", "right")
             else:
                 row.add_column(u"%d" % (confidence), "right")

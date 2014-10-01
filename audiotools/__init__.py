@@ -469,6 +469,7 @@ class SilentMessenger(Messenger):
     def __init__(self):
         Messenger.__init__(self, silent=True)
 
+
 def khz(hz):
     """given an integer sample rate value in Hz,
     returns a unicode kHz value with suffix
@@ -2700,7 +2701,6 @@ class PCMCat(PCMReader):
                            channel_mask=first_reader.channel_mask,
                            bits_per_sample=first_reader.bits_per_sample)
 
-
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of frames
 
@@ -2965,9 +2965,10 @@ class ReplayGainCalculator:
         for the contents of that reader"""
 
         if (pcmreader.sample_rate != self.__replaygain__.sample_rate):
-            raise ValueError("sample rate mismatch, %d != %d" %
-                             (pcmreader.sample_rate,
-                             self.__replaygain__.sample_rate))
+            raise ValueError(
+                "sample rate mismatch, %d != %d" %
+                (pcmreader.sample_rate,
+                 self.__replaygain__.sample_rate))
         reader = ReplayGainCalculatorReader(self.__replaygain__, pcmreader)
         self.__tracks__.append(reader)
         return reader
@@ -4652,13 +4653,14 @@ class SheetTrack(object):
     def converted(cls, sheet_track):
         """Given a SheetTrack-compatible object, returns a SheetTrack"""
 
-        return cls(number=sheet_track.number(),
-                   track_indexes=[SheetIndex.converted(i) for i in sheet_track],
-                   metadata=sheet_track.get_metadata(),
-                   filename=sheet_track.filename(),
-                   is_audio=sheet_track.is_audio(),
-                   pre_emphasis=sheet_track.pre_emphasis(),
-                   copy_permitted=sheet_track.copy_permitted())
+        return cls(
+            number=sheet_track.number(),
+            track_indexes=[SheetIndex.converted(i) for i in sheet_track],
+            metadata=sheet_track.get_metadata(),
+            filename=sheet_track.filename(),
+            is_audio=sheet_track.is_audio(),
+            pre_emphasis=sheet_track.pre_emphasis(),
+            copy_permitted=sheet_track.copy_permitted())
 
     def __repr__(self):
         return "SheetTrack(%s)" % \

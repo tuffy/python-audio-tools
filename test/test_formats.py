@@ -419,9 +419,8 @@ class AudioFileTest(unittest.TestCase):
         self.assertEqual(reader.closes_called, 1)
 
         # raising IOError should still close pcmreader
-        reader = CLOSE_PCM_Reader(
-                     ERROR_PCM_Reader(IOError("I/O error!"),
-                                      failure_chance=1.0))
+        reader = CLOSE_PCM_Reader(ERROR_PCM_Reader(IOError("I/O error!"),
+                                                   failure_chance=1.0))
         self.assertEqual(reader.closes_called, 0)
         self.assertRaises(audiotools.EncodingError,
                           self.audio_class.from_pcm,
@@ -431,9 +430,8 @@ class AudioFileTest(unittest.TestCase):
         self.assertFalse(os.path.isfile("error." + self.audio_class.SUFFIX))
 
         # raising ValueError should still close pcmreader
-        reader = CLOSE_PCM_Reader(
-                     ERROR_PCM_Reader(ValueError("value error!"),
-                                      failure_chance=1.0))
+        reader = CLOSE_PCM_Reader(ERROR_PCM_Reader(ValueError("value error!"),
+                                                   failure_chance=1.0))
         self.assertEqual(reader.closes_called, 0)
         self.assertRaises(audiotools.EncodingError,
                           self.audio_class.from_pcm,
@@ -444,9 +442,8 @@ class AudioFileTest(unittest.TestCase):
 
         # raising IOError with total_pcm_frames set
         # should still close pcmreader
-        reader = CLOSE_PCM_Reader(
-                     ERROR_PCM_Reader(IOError("I/O error!"),
-                                      failure_chance=1.0))
+        reader = CLOSE_PCM_Reader(ERROR_PCM_Reader(IOError("I/O error!"),
+                                                   failure_chance=1.0))
         self.assertEqual(reader.closes_called, 0)
         self.assertRaises(audiotools.EncodingError,
                           self.audio_class.from_pcm,
@@ -458,9 +455,8 @@ class AudioFileTest(unittest.TestCase):
 
         # raising IOError with total_pcm_frames set
         # should still close pcmreader
-        reader = CLOSE_PCM_Reader(
-                     ERROR_PCM_Reader(ValueError("value error!"),
-                                      failure_chance=1.0))
+        reader = CLOSE_PCM_Reader(ERROR_PCM_Reader(ValueError("value error!"),
+                                                   failure_chance=1.0))
         self.assertEqual(reader.closes_called, 0)
         self.assertRaises(audiotools.EncodingError,
                           self.audio_class.from_pcm,
@@ -636,8 +632,8 @@ class AudioFileTest(unittest.TestCase):
                         format=format_template.encode("UTF-8", "replace"))
 
                     self.assertEqual(
-                         track_name.decode("UTF-8", "replace"),
-                         format_template % {u"basename": base})
+                        track_name.decode("UTF-8", "replace"),
+                        format_template % {u"basename": base})
                 else:
                     track_name = self.audio_class.track_name(
                         file_path=path,
@@ -645,8 +641,8 @@ class AudioFileTest(unittest.TestCase):
                         format=format_template)
 
                     self.assertEqual(
-                         track_name,
-                         format_template % {u"basename": base})
+                        track_name,
+                        format_template % {u"basename": base})
 
         # ensure %(suffix)s is set properly
         format_template = u"Fo\u00f3 %(suffix)s"
@@ -1284,7 +1280,7 @@ class LosslessFileTest(AudioFileTest):
 
         # check various round-trip options
         with tempfile.NamedTemporaryFile(
-                 suffix="." + self.audio_class.SUFFIX) as temp_input:
+            suffix="." + self.audio_class.SUFFIX) as temp_input:
             track = self.audio_class.from_pcm(
                 temp_input.name,
                 test_streams.Sine16_Stereo(441000, 44100,
@@ -1299,15 +1295,15 @@ class LosslessFileTest(AudioFileTest):
                                   audio_class)
 
                 with tempfile.NamedTemporaryFile(
-                         suffix="." + audio_class.SUFFIX) as temp_output:
+                    suffix="." + audio_class.SUFFIX) as temp_output:
                     track2 = track.convert(temp_output.name, audio_class)
                     if (track2.lossless()):
                         self.assertTrue(
-                            audiotools.pcm_cmp(
-                                track.to_pcm(), track2.to_pcm()),
-                                "error round-tripping %s to %s" %
-                                (self.audio_class.NAME,
-                                 audio_class.NAME))
+                            audiotools.pcm_cmp(track.to_pcm(),
+                                               track2.to_pcm()),
+                            "error round-tripping %s to %s" %
+                            (self.audio_class.NAME,
+                             audio_class.NAME))
                     else:
                         pcm = track2.to_pcm()
                         counter = FrameCounter(pcm.channels,
@@ -1331,8 +1327,8 @@ class LosslessFileTest(AudioFileTest):
                                                compression)
                         if (track2.lossless()):
                             self.assertTrue(
-                                audiotools.pcm_cmp(
-                                    track.to_pcm(), track2.to_pcm()),
+                                audiotools.pcm_cmp(track.to_pcm(),
+                                                   track2.to_pcm()),
                                 "error round-tripping %s to %s at %s" %
                                 (self.audio_class.NAME,
                                  audio_class.NAME,
@@ -1692,23 +1688,21 @@ class TestForeignWaveChunks:
                                    audiotools.WaveContainer))
 
         # several even-sized chunks
-        chunks1 = (decompress(
-                       b"x\x9c\x0b\xf2ts\xdbQ\xc9\xcb\x10\xee\x18" +
-                       b"\xe6\x9a\x96[\xa2 \xc0\xc0\xc0\xc0\xc8\xc0" +
-                       b"\xc4\xe0\xb2\x86\x81A`#\x13\x03\x0b\x83" +
-                       b"\x00CZ~~\x15\x07P\xbc$\xb5\xb8\xa4$\xb5" +
-                       b"\xa2$)\xb1\xa8\n\xa4\xae8?757\xbf(\x15!^U" +
-                       b"\x05\xd40\nF\xc1(\x18\xc1 %\xb1$1\xa0\x94" +
-                       b"\x97\x01\x00`\xb0\x18\xf7"),
+        chunks1 = (decompress(b"x\x9c\x0b\xf2ts\xdbQ\xc9\xcb\x10\xee\x18" +
+                              b"\xe6\x9a\x96[\xa2 \xc0\xc0\xc0\xc0\xc8\xc0" +
+                              b"\xc4\xe0\xb2\x86\x81A`#\x13\x03\x0b\x83" +
+                              b"\x00CZ~~\x15\x07P\xbc$\xb5\xb8\xa4$\xb5" +
+                              b"\xa2$)\xb1\xa8\n\xa4\xae8?757\xbf(\x15!^U" +
+                              b"\x05\xd40\nF\xc1(\x18\xc1 %\xb1$1\xa0\x94" +
+                              b"\x97\x01\x00`\xb0\x18\xf7"),
                    (220500, 44100, 2, 16, 0x3),
                    b"spam\x0c\x00\x00\x00anotherchunk")
 
         # several odd-sized chunks
-        chunks2 = (decompress(
-                       b"x\x9c\x0b\xf2ts\xcbc``\x08w\x0csM\xcb\xcf\xaf" +
-                       b"\xe2b@\x06i\xb9%\n\x02@\x9a\x11\x08]\xd60" +
-                       b"\x801#\x03\x07CRbQ\x157H\x1c\x01\x18R\x12K\x12" +
-                       b"\xf9\x81b\x00\x19\xdd\x0ba"),
+        chunks2 = (decompress(b"x\x9c\x0b\xf2ts\xcbc``\x08w\x0csM\xcb\xcf\xaf" +
+                              b"\xe2b@\x06i\xb9%\n\x02@\x9a\x11\x08]\xd60" +
+                              b"\x801#\x03\x07CRbQ\x157H\x1c\x01\x18R\x12K\x12" +
+                              b"\xf9\x81b\x00\x19\xdd\x0ba"),
                    (15, 44100, 1, 8, 0x4),
                    b"\x00barz\x0b\x00\x00\x00\x01\x01\x01\x01" +
                    b"\x01\x01\x01\x01\x01\x01\x01\x00")
@@ -1938,24 +1932,24 @@ class TestForeignAiffChunks:
                                    audiotools.AiffContainer))
 
         # several even-sized chunks
-        chunks1 = (decompress(
-                       b"x\x9cs\xf3\x0f\xf2e\xe0\xad<\xe4\xe8\xe9\xe6\xe6" +
-                       b"\xec\xef\xeb\xcb\xc0\xc0 \xc4\xc0\xc4\xc0\x1c\x1b" +
-                       b"\xc2 \xe0\xc0\xb7\xc6\x85\x01\x0c\xdc\xfc\xfd\xa3" +
-                       b"\x80\x14GIjqIIjE\x89\x93c\x10\x88/P\x9c\x9f\x9b" +
-                       b"\x9a\x9b_\x94\x8a\x10\x8f\x02\x8a\xb30\x8c" +
-                       b"\x82Q0\nF.\x08\x0e\xf6sa\xe0-\x8d\x80\xf1\x01" +
-                       b"\xcf\x8c\x17\x18"),
+        chunks1 = (decompress(b"x\x9cs\xf3\x0f\xf2e\xe0\xad<\xe4\xe8" +
+                              b"\xe9\xe6\xe6gc\xec\xef\xeb\xcb\xc0\xc0 " +
+                              b"\xc4\xc0\xc4\xc0\x1c\x1b\xc2 \xe0\xc0" +
+                              b"\xb7\xc6\x85\x01\x0c\xdc\xfc\xfd\xa3" +
+                              b"\x80\x14GIjqIIjE\x89\x93c\x10\x88/P\x9c" +
+                              b"\x9f\x9b\x9a\x9b_\x94\x8a\x10\x8f\x02" +
+                              b"\x8a\xb30\x8c\x82Q0\nF.\x08\x0e\xf6sa" +
+                              b"\xe0-\x8d\x80\xf1\x01\xcf\x8c\x17\x18"),
                    (220500, 44100, 2, 16, 0x3),
                    b"SPAM\x00\x00\x00\x0canotherchunk")
 
         # several odd-sized chunks
-        chunks2 = (decompress(
-                       b"x\x9cs\xf3\x0f\xf2e``\xa8p\xf4tss\xf3\xf7\x8f" +
-                       b"\x02\xb2\xb9\x18\xe0\xc0\xd9\xdf\x17$+\xc4\xc0" +
-                       b"\x08$\xf9\x198\x1c\xf8\xd6\xb8@d\x9c\x1c\x83@j" +
-                       b"\xb9\x19\x11\x80!8\xd8\x0f$+\x0e\xd3\r" +
-                       b"\x00\x16\xa5\t3"),
+        chunks2 = (decompress(b"x\x9cs\xf3\x0f\xf2e``\xa8p\xf4tss\xf3" +
+                              b"\xf7\x8f\x02\xb2\xb9\x18\xe0\xc0\xd9" +
+                              b"\xdf\x17$+\xc4\xc0\x08$\xf9\x198\x1c" +
+                              b"\xf8\xd6\xb8@d\x9c\x1c\x83@j\xb9\x19" +
+                              b"\x11\x80!8\xd8\x0f$+\x0e\xd3\r\x00\x16" +
+                              b"\xa5\t3"),
                    (15, 44100, 1, 8, 0x4),
                    b"\x00BAZZ\x00\x00\x00\x0b\x02\x02\x02\x02" +
                    b"\x02\x02\x02\x02\x02\x02\x02\x00")
@@ -2508,8 +2502,7 @@ class ALACFileTest(LosslessFileTest):
     @FORMAT_ALAC
     def test_too(self):
         # ensure that the 'too' meta atom isn't modified by setting metadata
-        with tempfile.NamedTemporaryFile(
-            suffix=self.suffix) as temp:
+        with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
             track = self.audio_class.from_pcm(
                 temp.name,
                 BLANK_PCM_Reader(1))

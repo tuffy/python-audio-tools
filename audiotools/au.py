@@ -127,7 +127,7 @@ def au_header(sample_rate,
     if ((channels *
          (bits_per_sample // 8) *
          total_pcm_frames) >= 2 ** 32):
-         raise ValueError("PCM data too large for Sun AU file")
+        raise ValueError("PCM data too large for Sun AU file")
     else:
         return build("4b 5*32u",
                      False,

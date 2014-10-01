@@ -452,7 +452,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
             [BIN['faad'], "-f", str(2), "-w", self.filename],
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
-                   open(os.devnull, "wb"))
+            open(os.devnull, "wb"))
         return PCMFileReader(sub.stdout,
                              sample_rate=self.sample_rate(),
                              channels=self.channels(),
@@ -515,9 +515,9 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
              "-"],
             stdin=subprocess.PIPE,
             stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
-                   open(os.devnull, "wb"),
+            open(os.devnull, "wb"),
             stdout=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
-                   open(os.devnull, "wb"),
+            open(os.devnull, "wb"),
             preexec_fn=ignore_sigint)
         # Note: faac handles SIGINT on its own,
         # so trying to ignore it doesn't work like on most other encoders.
@@ -638,7 +638,7 @@ class M4AAudio_nero(M4AAudio_faac):
              "-of", "-"],
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
-                   open(os.devnull, "wb"))
+            open(os.devnull, "wb"))
 
         return PCMFileReader(file=sub.stdout,
                              sample_rate=self.sample_rate(),
@@ -659,9 +659,9 @@ class M4AAudio_nero(M4AAudio_faac):
              "-if", wave_filename,
              "-of", filename],
             stdout=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
-                   open(os.devnull, "wb"),
+            open(os.devnull, "wb"),
             stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
-                   open(os.devnull, "wb"))
+            open(os.devnull, "wb"))
 
         if (sub.wait() != 0):
             raise EncodingError(u"neroAacEnc unable to write file")

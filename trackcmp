@@ -427,8 +427,8 @@ if (__name__ == '__main__'):
                 pcm_offset += track.total_frames()
 
             try:
-                if ({r[0] for r in queue.run(options.max_processes)} !=
-                    {None}):
+                if ({r[0] for r in
+                     queue.run(options.max_processes)} != {None}):
                     sys.exit(1)
             except KeyboardInterrupt:
                 msg.error(_.ERR_CANCELLED)
@@ -487,8 +487,8 @@ if (__name__ == '__main__'):
                 pcm_offset += track.total_frames()
 
             try:
-                if ({r[0] for r in queue.run(options.max_processes)} !=
-                    {None}):
+                if ({r[0] for r in
+                     queue.run(options.max_processes)} != {None}):
                     temp_blob.close()
                     sys.exit(1)
             except KeyboardInterrupt:

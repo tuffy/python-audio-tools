@@ -24,6 +24,7 @@ import os.path
 
 PY3 = sys.version_info[0] >= 3
 
+
 def display_defaults(config, msg):
     def display_option(table, label, value, indent=2):
         """label and value should be unicode objects"""
@@ -924,9 +925,9 @@ if (__name__ == '__main__'):
                     [("weight", 1,
                       urwid.RadioButton(
                           group=verbosity,
-                          label={"quiet":u"quiet",
-                                 "normal":u"normal",
-                                 "debug":u"debug"}[level],
+                          label={"quiet": u"quiet",
+                                 "normal": u"normal",
+                                 "debug": u"debug"}[level],
                           state=level == verbosity_level,
                           on_state_change=self.change_choice,
                           user_data=(config,

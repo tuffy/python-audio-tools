@@ -104,7 +104,7 @@ class MetaDataTest(unittest.TestCase):
 
         for audio_class in self.supported_formats:
             with tempfile.NamedTemporaryFile(
-                     suffix="." + audio_class.SUFFIX) as temp_file:
+                suffix="." + audio_class.SUFFIX) as temp_file:
                 track = audio_class.from_pcm(temp_file.name,
                                              BLANK_PCM_Reader(1))
 
@@ -1252,7 +1252,8 @@ class WavPackApeTagMetaData(MetaDataTest):
                                       b"foo 1 bar / baz 2 blah")])
         metadata.track_number = None
         self.assertEqual(metadata.tags,
-                         [ApeTagItem(0, 0, b"Track", b"foo 0 bar / baz 2 blah")])
+                         [ApeTagItem(0, 0, b"Track",
+                                     b"foo 0 bar / baz 2 blah")])
         self.assertIsNone(metadata.track_number)
         self.assertEqual(metadata.track_total, 2)
 
@@ -1402,7 +1403,7 @@ class WavPackApeTagMetaData(MetaDataTest):
 
         for audio_class in self.supported_formats:
             with tempfile.NamedTemporaryFile(
-                 suffix="." + audio_class.SUFFIX) as temp_file:
+                suffix="." + audio_class.SUFFIX) as temp_file:
                 track = audio_class.from_pcm(temp_file.name,
                                              BLANK_PCM_Reader(10))
                 temp_file_stat = os.stat(temp_file.name)[0]
@@ -1441,7 +1442,7 @@ class WavPackApeTagMetaData(MetaDataTest):
                                   b"replaygain_track_gain")
                 metadata[b"replaygain_track_gain"] = \
                     audiotools.ape.ApeTagItem.string(
-                    b"replaygain_track_gain", u"???")
+                        b"replaygain_track_gain", u"???")
                 track.set_metadata(metadata)
                 self.assertRaises(KeyError,
                                   track.get_metadata().__getitem__,
@@ -1456,7 +1457,7 @@ class WavPackApeTagMetaData(MetaDataTest):
                 # but can be updated with update_metadata()
                 metadata[b"Cuesheet"] = \
                     audiotools.ape.ApeTagItem.string(
-                    b"Cuesheet", u"???")
+                        b"Cuesheet", u"???")
                 track.set_metadata(metadata)
                 self.assertRaises(KeyError,
                                   track.get_metadata().__getitem__,
@@ -1961,9 +1962,10 @@ class WavPackApeTagMetaData(MetaDataTest):
 
                         # ensure that ReplayGain doesn't get ported
                         # via set_metadata()
-                        self.assertIsNone(track2.get_replay_gain(),
-                                     "ReplayGain present for class %s" %
-                                     (output_class.NAME))
+                        self.assertIsNone(
+                            track2.get_replay_gain(),
+                            "ReplayGain present for class %s" %
+                            (output_class.NAME))
                         track2.set_metadata(track1.get_metadata())
                         self.assertEqual(track2.get_metadata().track_name,
                                          u"Foo")
@@ -4548,16 +4550,16 @@ class FlacMetaData(MetaDataTest):
             1, 20, 1, 30, 88200, 4, 24, 5000, chr(0) * 16)
         self.assertNotEqual(streaminfo1, streaminfo2)
         metadata = audiotools.flac.FlacMetaData([streaminfo1, streaminfo2])
-        self.assertEqual(metadata.get_blocks(
-            audiotools.flac.Flac_STREAMINFO.BLOCK_ID),
-                         [streaminfo1, streaminfo2])
+        self.assertEqual(
+            metadata.get_blocks(audiotools.flac.Flac_STREAMINFO.BLOCK_ID),
+            [streaminfo1, streaminfo2])
 
         (cleaned, results) = metadata.clean()
         self.assertEqual(results,
                          [CLEAN_FLAC_MULITPLE_STREAMINFO])
-        self.assertEqual(cleaned.get_blocks(
-            audiotools.flac.Flac_STREAMINFO.BLOCK_ID),
-                         [streaminfo1])
+        self.assertEqual(
+            cleaned.get_blocks(audiotools.flac.Flac_STREAMINFO.BLOCK_ID),
+            [streaminfo1])
 
         # ensure second VORBISCOMMENT block is removed, if present
         comment1 = audiotools.flac.Flac_VORBISCOMMENT(
@@ -4578,8 +4580,8 @@ class FlacMetaData(MetaDataTest):
         (cleaned, results) = metadata.clean()
         self.assertEqual(results,
                          [CLEAN_FLAC_MULTIPLE_VORBISCOMMENT])
-        self.assertEqual(cleaned.get_blocks(
-            audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID),
+        self.assertEqual(
+            cleaned.get_blocks(audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID),
             [comment1])
 
         # ensure second SEEKTABLE block is removed, if present
@@ -4600,8 +4602,8 @@ class FlacMetaData(MetaDataTest):
         (cleaned, results) = metadata.clean()
         self.assertEqual(results,
                          [CLEAN_FLAC_MULTIPLE_SEEKTABLE])
-        self.assertEqual(cleaned.get_blocks(
-            audiotools.flac.Flac_SEEKTABLE.BLOCK_ID),
+        self.assertEqual(
+            cleaned.get_blocks(audiotools.flac.Flac_SEEKTABLE.BLOCK_ID),
             [seektable1])
 
         # ensure second CUESHEET block is removed, if present
@@ -4626,8 +4628,8 @@ class FlacMetaData(MetaDataTest):
         (cleaned, results) = metadata.clean()
         self.assertEqual(results,
                          [CLEAN_FLAC_MULTIPLE_CUESHEET])
-        self.assertEqual(cleaned.get_blocks(
-            audiotools.flac.Flac_CUESHEET.BLOCK_ID),
+        self.assertEqual(
+            cleaned.get_blocks(audiotools.flac.Flac_CUESHEET.BLOCK_ID),
             [cuesheet1])
 
     @METADATA_FLAC
@@ -4684,9 +4686,10 @@ class FlacMetaData(MetaDataTest):
 
                         # ensure that ReplayGain doesn't get ported
                         # via set_metadata()
-                        self.assertIsNone(track2.get_replay_gain(),
-                                     "ReplayGain present for class %s" %
-                                     (output_class.NAME))
+                        self.assertIsNone(
+                            track2.get_replay_gain(),
+                            "ReplayGain present for class %s" %
+                            (output_class.NAME))
                         track2.set_metadata(track1.get_metadata())
                         self.assertEqual(track2.get_metadata().track_name,
                                          u"Foo")
@@ -5500,8 +5503,14 @@ class FlacMetaData(MetaDataTest):
     def test_id3(self):
         from zlib import decompress
 
-        id3v2_tag = decompress(b'x\x9c\xf3t1ff\x00\x02\xd6\xd8\x90\x00WC C\x00\x88=]\x8c\x15BR\x8bK\x14\x1c\x8bJ2\x8bKB<C\x8c\x80\xa2|\xc82\xc1\xf9y\xe9\x0c\xa3`\x14\x0c\r\x00\x00{g\x0c\xcf')
-        id3v1_tag = decompress(b'x\x9c\x0bqt\xf7t1V\x08I-.Q\x08\xce\xcfKg@\x07pY\xc7\xa2\x92\xcc\xe2\x12\x0cy\xca\xc0\x7f\x00\x1dK\x0b*')
+        id3v2_tag = decompress(b'x\x9c\xf3t1ff\x00\x02\xd6\xd8\x90' +
+                               b'\x00WC C\x00\x88=]\x8c\x15BR\x8bK\x14' +
+                               b'\x1c\x8bJ2\x8bKB<C\x8c\x80\xa2|\xc82' +
+                               b'\xc1\xf9y\xe9\x0c\xa3`\x14\x0c\r\x00' +
+                               b'\x00{g\x0c\xcf')
+        id3v1_tag = decompress(b'x\x9c\x0bqt\xf7t1V\x08I-.Q\x08\xce' +
+                               b'\xcfKg@\x07pY\xc7\xa2\x92\xcc\xe2\x12' +
+                               b'\x0cy\xca\xc0\x7f\x00\x1dK\x0b*')
 
         dummy_flac = tempfile.NamedTemporaryFile(suffix=".flac")
         dummy_id3flac = tempfile.NamedTemporaryFile(suffix=".flac")
@@ -5685,20 +5694,20 @@ class M4AMetaDataTest(MetaDataTest):
             [M4A_HDLR_Atom(0, 0, b'\x00\x00\x00\x00',
                            b'mdir', b'appl', 0, 0, b'', 0),
              M4A_Tree_Atom(
-                b'ilst',
-                [M4A_ILST_Leaf_Atom(
-                    b'\xa9nam',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Track Name")]),
-                 M4A_ILST_Leaf_Atom(
-                    b'\xa9alb',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Album Name")]),
-                 M4A_ILST_Leaf_Atom(
-                    b'trkn', [M4A_ILST_TRKN_Data_Atom(1, 3)]),
-                 M4A_ILST_Leaf_Atom(
-                    b'disk', [M4A_ILST_DISK_Data_Atom(2, 4)]),
-                 M4A_ILST_Leaf_Atom(
-                    b'\xa9foo',
-                    [M4A_ILST_Unicode_Data_Atom(0, 1, b"Bar")])]),
+                 b'ilst',
+                 [M4A_ILST_Leaf_Atom(
+                     b'\xa9nam',
+                     [M4A_ILST_Unicode_Data_Atom(0, 1, b"Track Name")]),
+                  M4A_ILST_Leaf_Atom(
+                      b'\xa9alb',
+                      [M4A_ILST_Unicode_Data_Atom(0, 1, b"Album Name")]),
+                  M4A_ILST_Leaf_Atom(
+                      b'trkn', [M4A_ILST_TRKN_Data_Atom(1, 3)]),
+                  M4A_ILST_Leaf_Atom(
+                      b'disk', [M4A_ILST_DISK_Data_Atom(2, 4)]),
+                  M4A_ILST_Leaf_Atom(
+                      b'\xa9foo',
+                      [M4A_ILST_Unicode_Data_Atom(0, 1, b"Bar")])]),
              M4A_FREE_Atom(1024)])
 
         for format in self.supported_formats:
@@ -5906,11 +5915,11 @@ class M4AMetaDataTest(MetaDataTest):
             0, 0,
             [M4A_Tree_Atom(b'ilst',
                            [M4A_ILST_Leaf_Atom(
-                            b'trkn',
-                            [M4A_ILST_TRKN_Data_Atom(1, 2)]),
+                               b'trkn',
+                               [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                             M4A_ILST_Leaf_Atom(
-                            b'disk',
-                            [M4A_ILST_DISK_Data_Atom(3, 4)])])])
+                                b'disk',
+                                [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata.album_number, 3)
@@ -6019,7 +6028,7 @@ class M4AMetaDataTest(MetaDataTest):
                         [M4A_ILST_Unicode_Data_Atom(
                             0, 1, b"Track Name"),
                          M4A_ILST_Unicode_Data_Atom(
-                            0, 1, b"Track Name 2")])])]))
+                             0, 1, b"Track Name 2")])])]))
 
         # setting track_number/_total/album_number/_total
         # adds a new field if necessary
@@ -6125,11 +6134,11 @@ class M4AMetaDataTest(MetaDataTest):
             0, 0,
             [M4A_Tree_Atom(b'ilst',
                            [M4A_ILST_Leaf_Atom(
-                            b'trkn',
-                            [M4A_ILST_TRKN_Data_Atom(1, 2)]),
+                               b'trkn',
+                               [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                             M4A_ILST_Leaf_Atom(
-                            b'disk',
-                            [M4A_ILST_DISK_Data_Atom(3, 4)])])])
+                                b'disk',
+                                [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         metadata.track_number = 6
         self.assertEqual(metadata.track_number, 6)
         self.assertEqual(
@@ -6138,21 +6147,21 @@ class M4AMetaDataTest(MetaDataTest):
                 0, 0,
                 [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                b'trkn',
-                                [M4A_ILST_TRKN_Data_Atom(6, 2)]),
+                                   b'trkn',
+                                   [M4A_ILST_TRKN_Data_Atom(6, 2)]),
                                 M4A_ILST_Leaf_Atom(
-                                b'disk',
-                                [M4A_ILST_DISK_Data_Atom(3, 4)])])]))
+                                    b'disk',
+                                    [M4A_ILST_DISK_Data_Atom(3, 4)])])]))
 
         metadata = M4A_META_Atom(
             0, 0,
             [M4A_Tree_Atom(b'ilst',
                            [M4A_ILST_Leaf_Atom(
-                            b'trkn',
-                            [M4A_ILST_TRKN_Data_Atom(1, 2)]),
+                               b'trkn',
+                               [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                             M4A_ILST_Leaf_Atom(
-                            b'disk',
-                            [M4A_ILST_DISK_Data_Atom(3, 4)])])])
+                                b'disk',
+                                [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         metadata.track_total = 7
         self.assertEqual(metadata.track_total, 7)
         self.assertEqual(
@@ -6161,21 +6170,21 @@ class M4AMetaDataTest(MetaDataTest):
                 0, 0,
                 [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                b'trkn',
-                                [M4A_ILST_TRKN_Data_Atom(1, 7)]),
+                                   b'trkn',
+                                   [M4A_ILST_TRKN_Data_Atom(1, 7)]),
                                 M4A_ILST_Leaf_Atom(
-                                b'disk',
-                                [M4A_ILST_DISK_Data_Atom(3, 4)])])]))
+                                    b'disk',
+                                    [M4A_ILST_DISK_Data_Atom(3, 4)])])]))
 
         metadata = M4A_META_Atom(
             0, 0,
             [M4A_Tree_Atom(b'ilst',
                            [M4A_ILST_Leaf_Atom(
-                            b'trkn',
-                            [M4A_ILST_TRKN_Data_Atom(1, 2)]),
+                               b'trkn',
+                               [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                             M4A_ILST_Leaf_Atom(
-                            b'disk',
-                            [M4A_ILST_DISK_Data_Atom(3, 4)])])])
+                                b'disk',
+                                [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         metadata.album_number = 8
         self.assertEqual(metadata.album_number, 8)
         self.assertEqual(
@@ -6184,21 +6193,21 @@ class M4AMetaDataTest(MetaDataTest):
                 0, 0,
                 [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                b'trkn',
-                                [M4A_ILST_TRKN_Data_Atom(1, 2)]),
+                                   b'trkn',
+                                   [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                                 M4A_ILST_Leaf_Atom(
-                                b'disk',
-                                [M4A_ILST_DISK_Data_Atom(8, 4)])])]))
+                                    b'disk',
+                                    [M4A_ILST_DISK_Data_Atom(8, 4)])])]))
 
         metadata = M4A_META_Atom(
             0, 0,
             [M4A_Tree_Atom(b'ilst',
                            [M4A_ILST_Leaf_Atom(
-                            b'trkn',
-                            [M4A_ILST_TRKN_Data_Atom(1, 2)]),
+                               b'trkn',
+                               [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                             M4A_ILST_Leaf_Atom(
-                            b'disk',
-                            [M4A_ILST_DISK_Data_Atom(3, 4)])])])
+                                b'disk',
+                                [M4A_ILST_DISK_Data_Atom(3, 4)])])])
         metadata.album_total = 9
         self.assertEqual(metadata.album_total, 9)
         self.assertEqual(
@@ -6207,11 +6216,11 @@ class M4AMetaDataTest(MetaDataTest):
                 0, 0,
                 [M4A_Tree_Atom(b'ilst',
                                [M4A_ILST_Leaf_Atom(
-                                b'trkn',
-                                [M4A_ILST_TRKN_Data_Atom(1, 2)]),
+                                   b'trkn',
+                                   [M4A_ILST_TRKN_Data_Atom(1, 2)]),
                                 M4A_ILST_Leaf_Atom(
-                                b'disk',
-                                [M4A_ILST_DISK_Data_Atom(3, 9)])])]))
+                                    b'disk',
+                                    [M4A_ILST_DISK_Data_Atom(3, 9)])])]))
 
     @METADATA_M4A
     def test_delattr(self):
@@ -8054,7 +8063,7 @@ class TrueAudioTest(unittest.TestCase):
                                       b"replaygain_track_gain")
                     metadata[b"replaygain_track_gain"] = \
                         audiotools.ape.ApeTagItem.string(
-                        b"replaygain_track_gain", u"???")
+                            b"replaygain_track_gain", u"???")
                     track.set_metadata(metadata)
                     self.assertRaises(KeyError,
                                       track.get_metadata().__getitem__,
@@ -8069,7 +8078,7 @@ class TrueAudioTest(unittest.TestCase):
                     # but can be updated with update_metadata()
                     metadata[b"Cuesheet"] = \
                         audiotools.ape.ApeTagItem.string(
-                        b"Cuesheet", u"???")
+                            b"Cuesheet", u"???")
                     track.set_metadata(metadata)
                     self.assertRaises(KeyError,
                                       track.get_metadata().__getitem__,

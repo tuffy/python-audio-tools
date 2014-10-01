@@ -872,7 +872,8 @@ class WaveAudio(WaveContainer):
             total_size = 4
 
             # write an unfinished header with a placeholder size
-            wave_file.write(struct.pack("<4sI4s", b"RIFF", total_size, b"WAVE"))
+            wave_file.write(
+                struct.pack("<4sI4s", b"RIFF", total_size, b"WAVE"))
 
             # write the individual chunks
             for chunk in chunk_iter:
@@ -880,7 +881,8 @@ class WaveAudio(WaveContainer):
 
             # once the chunks are done, go back and re-write the header
             wave_file.seek(0, 0)
-            wave_file.write(struct.pack("<4sI4s", b"RIFF", total_size, b"WAVE"))
+            wave_file.write(
+                struct.pack("<4sI4s", b"RIFF", total_size, b"WAVE"))
         finally:
             wave_file.close()
 

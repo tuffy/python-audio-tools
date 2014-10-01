@@ -1330,7 +1330,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 if (self.album_number is None):
                     # if album_number and album_total are both 0
                     # remove disk atom
-                    ilst_atom.leaf_atoms =[
+                    ilst_atom.leaf_atoms = [
                         atom for atom in ilst_atom if
                         atom.name != b"disk"]
                 else:

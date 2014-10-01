@@ -711,7 +711,8 @@ class AiffAudio(AiffContainer):
 
         for chunk in self.chunks():
             if (chunk.id == b'ID3 '):
-                return ID3v22Comment.parse(BitstreamReader(chunk.data(), False))
+                return ID3v22Comment.parse(
+                    BitstreamReader(chunk.data(), False))
         else:
             return None
 

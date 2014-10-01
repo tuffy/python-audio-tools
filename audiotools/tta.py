@@ -560,7 +560,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         metadata = self.get_metadata()
         if ((metadata is not None) and
             (isinstance(metadata, ApeTag) and
-            (b"Cuesheet" in metadata))):
+             (b"Cuesheet" in metadata))):
             del(metadata[b"Cuesheet"])
             self.update_metadata(metadata)
 

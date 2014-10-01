@@ -62,7 +62,8 @@ class WavPackDecoder(object):
                     sub_blocks_data.rewind()
                     sub_blocks_data.unmark()
 
-            self.bits_per_sample = [8, 16, 24, 32][block_header.bits_per_sample]
+            self.bits_per_sample = \
+                [8, 16, 24, 32][block_header.bits_per_sample]
 
             if (block_header.initial_block and block_header.final_block):
                 if (((block_header.mono_output == 0) or

@@ -429,7 +429,8 @@ if (__name__ == '__main__'):
                                 options.accept_list):
             queue.execute(
                 function=verify,
-                progress_text=audiotools.Filename(track.filename).__unicode__(),
+                progress_text=
+                audiotools.Filename(track.filename).__unicode__(),
                 completion_output=(display_results_tty
                                    if msg.output_isatty() else
                                    display_results),

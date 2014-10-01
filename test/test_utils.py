@@ -706,10 +706,7 @@ class coverdump(UtilTest):
 
         for (output_directory,
              file_path,
-             prefix) in Possibilities(
-            dirs,
-            filenames,
-            prefixes):
+             prefix) in Possibilities(dirs, filenames, prefixes):
             if (os.path.isdir(output_directory)):
                 rmtree(output_directory)
             if (os.path.isfile(file_path)):
@@ -1022,13 +1019,11 @@ class covertag(UtilTest):
         for (file_path,
              option,
              image_path) in Possibilities(
-            filenames,
-            ["--front-cover",
-             "--back-cover",
-             "--leaflet",
-             "--media",
-             "--other-image"],
-            image_paths):
+            filenames, ["--front-cover",
+                        "--back-cover",
+                        "--leaflet",
+                        "--media",
+                        "--other-image"], image_paths):
             if (os.path.isfile(file_path)):
                 os.unlink(file_path)
             if (os.path.isfile(image_path)):
@@ -1458,7 +1453,8 @@ class track2cd(UtilTest):
                 self.assertEqual(self.__run_app__(["track2cd",
                                                    "--cdrom",
                                                    results_file.name,
-                                                   combined_track.filename]), 0)
+                                                   combined_track.filename]),
+                                 0)
 
                 # both tracks should match
                 with open(results_file.name, "rb") as f:
@@ -1473,7 +1469,8 @@ class track2cd(UtilTest):
                 self.assertEqual(self.__run_app__(["track2cd",
                                                    "--cdrom",
                                                    results_file.name,
-                                                   combined_track.filename]), 0)
+                                                   combined_track.filename]),
+                                 0)
 
                 # both tracks should match
                 with open(results_file.name, "rb") as f:
@@ -1488,7 +1485,8 @@ class track2cd(UtilTest):
                 self.assertEqual(self.__run_app__(["track2cd",
                                                    "--cdrom",
                                                    results_file.name,
-                                                   combined_track.filename]), 0)
+                                                   combined_track.filename]),
+                                 0)
 
                 # both tracks should match
                 with open(results_file.name, "rb") as f:
@@ -1590,7 +1588,6 @@ class track2track(UtilTest):
         else:
             self.__check_info__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
-
 
     def populate_options(self, options):
         populated = []
@@ -3616,7 +3613,8 @@ class tracklint(UtilTest):
     def test_apev2(self):
         for audio_class in [audiotools.WavPackAudio]:
             bad_apev2 = audiotools.ApeTag(
-                [audiotools.ape.ApeTagItem(0, False, b"Title", b"Track Name  "),
+                [audiotools.ape.ApeTagItem(0, False, b"Title",
+                                           b"Track Name  "),
                  audiotools.ape.ApeTagItem(0, False, b"Track", b"02"),
                  audiotools.ape.ApeTagItem(0, False, b"Artist",
                                            b"  Some Artist"),
@@ -3740,17 +3738,17 @@ class tracklint(UtilTest):
                 [audiotools.id3.ID3v22_T__Frame.converted(
                     b"TT2", u"Track Name  "),
                  audiotools.id3.ID3v22_T__Frame.converted(
-                    b"TRK", u"02"),
+                     b"TRK", u"02"),
                  audiotools.id3.ID3v22_T__Frame.converted(
-                    b"TPA", u"003"),
+                     b"TPA", u"003"),
                  audiotools.id3.ID3v22_T__Frame.converted(
-                    b"TP1", u"  Some Artist\u0000"),
+                     b"TP1", u"  Some Artist\u0000"),
                  audiotools.id3.ID3v22_T__Frame.converted(
-                    b"TRC", u""),
+                     b"TRC", u""),
                  audiotools.id3.ID3v22_T__Frame.converted(
-                    b"TYE", u""),
+                     b"TYE", u""),
                  audiotools.id3.ID3v22_COM_Frame.converted(
-                    b"COM", u"  Some Comment  ")]))
+                     b"COM", u"  Some Comment  ")]))
 
         # ID3v2.2 doesn't store most image fields internally
         # so there's little point in testing them for inaccuracies
@@ -3762,17 +3760,17 @@ class tracklint(UtilTest):
                 [audiotools.id3.ID3v23_T___Frame.converted(
                     b"TIT2", u"Track Name  "),
                  audiotools.id3.ID3v23_T___Frame.converted(
-                    b"TRCK", u"02"),
+                     b"TRCK", u"02"),
                  audiotools.id3.ID3v23_T___Frame.converted(
-                    b"TPOS", u"003"),
+                     b"TPOS", u"003"),
                  audiotools.id3.ID3v23_T___Frame.converted(
-                    b"TPE1", u"  Some Artist\u0000"),
+                     b"TPE1", u"  Some Artist\u0000"),
                  audiotools.id3.ID3v23_T___Frame.converted(
-                    b"TYER", u""),
+                     b"TYER", u""),
                  audiotools.id3.ID3v23_T___Frame.converted(
-                    b"TCOP", u""),
+                     b"TCOP", u""),
                  audiotools.id3.ID3v23_COMM_Frame.converted(
-                    b"COMM", u"  Some Comment  ")]))
+                     b"COMM", u"  Some Comment  ")]))
 
         good_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
         bad_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
@@ -3796,17 +3794,17 @@ class tracklint(UtilTest):
                 [audiotools.id3.ID3v24_T___Frame.converted(
                     b"TIT2", u"Track Name  "),
                  audiotools.id3.ID3v24_T___Frame.converted(
-                    b"TRCK", u"02"),
+                     b"TRCK", u"02"),
                  audiotools.id3.ID3v24_T___Frame.converted(
-                    b"TPOS", u"003"),
+                     b"TPOS", u"003"),
                  audiotools.id3.ID3v24_T___Frame.converted(
-                    b"TPE1", u"  Some Artist\u0000"),
+                     b"TPE1", u"  Some Artist\u0000"),
                  audiotools.id3.ID3v24_T___Frame.converted(
-                    b"TYER", u""),
+                     b"TYER", u""),
                  audiotools.id3.ID3v24_T___Frame.converted(
-                    b"TCOP", u""),
+                     b"TCOP", u""),
                  audiotools.id3.ID3v24_COMM_Frame.converted(
-                    b"COMM", u"  Some Comment  ")]))
+                     b"COMM", u"  Some Comment  ")]))
 
         good_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
         bad_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
@@ -3894,11 +3892,11 @@ class tracklint(UtilTest):
                          0, 1,
                          b'  Some Comment  ')]),
                   M4A_ILST_Leaf_Atom(
-                     b'trkn',
-                     [M4A_ILST_TRKN_Data_Atom(2, 0)]),
+                      b'trkn',
+                      [M4A_ILST_TRKN_Data_Atom(2, 0)]),
                   M4A_ILST_Leaf_Atom(
-                     b'disk',
-                     [M4A_ILST_DISK_Data_Atom(3, 0)])]),
+                      b'disk',
+                      [M4A_ILST_DISK_Data_Atom(3, 0)])]),
              M4A_FREE_Atom(1024)])
 
         fixed = audiotools.MetaData(
@@ -4786,8 +4784,8 @@ class tracksplit(UtilTest):
         self.__check_error__(
             ERR_DUPLICATE_OUTPUT_FILE %
             (audiotools.Filename(
-                    os.path.join(os.path.dirname(self.unsplit_file.name),
-                                 "foo")),))
+                os.path.join(os.path.dirname(self.unsplit_file.name),
+                             "foo")),))
 
         track1 = self.type.from_pcm(self.unsplit_file.name,
                                     BLANK_PCM_Reader(18))

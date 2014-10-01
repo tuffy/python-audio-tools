@@ -1760,7 +1760,8 @@ try:
                 self.output_quality.set_items(
                     [(u"%s" % (q,) if q not in
                       audio_class.COMPRESSION_DESCRIPTIONS else
-                      u"%s - %s" % (q, audio_class.COMPRESSION_DESCRIPTIONS[q]),
+                      u"%s - %s" % (q,
+                                    audio_class.COMPRESSION_DESCRIPTIONS[q]),
                       q)
                      for q in qualities],
                     default)
@@ -1977,7 +1978,8 @@ try:
                 self.output_quality.set_items(
                     [(u"%s" % (q,) if q not in
                       audio_class.COMPRESSION_DESCRIPTIONS else
-                      u"%s - %s" % (q, audio_class.COMPRESSION_DESCRIPTIONS[q]),
+                      u"%s - %s" % (q,
+                                    audio_class.COMPRESSION_DESCRIPTIONS[q]),
                       q)
                      for q in qualities],
                     default)
@@ -2657,7 +2659,7 @@ def select_metadata(metadata_choices, msg, use_default=False):
             try:
                 choice = int(raw_input(u"%s (1-%d) : " %
                                        (LAB_SELECT_BEST_MATCH,
-                                       len(metadata_choices)))) - 1
+                                        len(metadata_choices)))) - 1
             except ValueError:
                 choice = None
 
