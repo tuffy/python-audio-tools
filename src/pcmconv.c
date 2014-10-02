@@ -43,11 +43,8 @@ a_int_to_FrameList(PyObject* audiotools_pcm,
     if ((samples->len % channels) == 0) {
         pcm_FrameList *framelist;
 
-        if ((framelist = (pcm_FrameList*)PyObject_CallMethod(
-             audiotools_pcm,
-             "FrameList",
-             "sIIii",
-             "", channels, bits_per_sample, 0, 0)) != NULL) {
+        if ((framelist = (pcm_FrameList*)empty_FrameList(
+                 audiotools_pcm, channels, bits_per_sample)) != NULL) {
             framelist->frames = samples->len / channels;
             framelist->samples_length = framelist->frames * framelist->channels;
             framelist->samples = realloc(framelist->samples,
@@ -94,11 +91,8 @@ aa_int_to_FrameList(PyObject* audiotools_pcm,
     }
 
     /*then populate framelist*/
-    if ((framelist = (pcm_FrameList*)PyObject_CallMethod(
-            audiotools_pcm,
-            "FrameList",
-            "sIIii",
-            "", channel_count, bits_per_sample, 0, 0)) != NULL) {
+    if ((framelist = (pcm_FrameList*)empty_FrameList(
+             audiotools_pcm, channel_count, bits_per_sample)) != NULL) {
         unsigned c;
         unsigned i;
 
@@ -127,7 +121,7 @@ empty_FrameList(PyObject* audiotools_pcm,
 {
     return PyObject_CallMethod(
         audiotools_pcm,
-        "FrameList", "sIIii", "", channels, bits_per_sample, 0, 0);
+        "empty_framelist", "ii", channels, bits_per_sample);
 }
 
 struct pcmreader_s*

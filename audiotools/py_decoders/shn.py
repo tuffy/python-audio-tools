@@ -19,7 +19,7 @@
 
 from sys import version_info
 from audiotools.bitstream import BitstreamReader
-from audiotools.pcm import from_list, from_channels
+from audiotools.pcm import empty_framelist, from_list, from_channels
 from audiotools.wav import parse_fmt
 from audiotools.aiff import parse_comm
 
@@ -185,9 +185,7 @@ class SHNDecoder(object):
 
     def read(self, pcm_frames):
         if (self.stream_finished):
-            return from_channels([from_list([], 1,
-                                            self.bits_per_sample,
-                                            self.signed_samples)
+            return from_channels([empty_framelist(1, self.bits_per_sample)
                                   for channel in range(self.channels)])
 
         c = 0
@@ -243,8 +241,7 @@ class SHNDecoder(object):
                 if (command == 4):  # QUIT
                     self.stream_finished = True
                     return from_channels(
-                        [from_list([], 1, self.bits_per_sample,
-                                   self.signed_samples)
+                        [empty_framelist(1, self.bits_per_sample)
                          for channel in range(self.channels)])
                 elif (command == 5):  # BLOCKSIZE
                     self.block_length = self.long()

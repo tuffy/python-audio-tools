@@ -10,6 +10,10 @@ classes for handling blobs of raw data.
 These classes are immutable and list-like, but provide several additional
 methods and attributes to aid in processing PCM data.
 
+.. function:: empty_framelist(channels, bits_per_sample)
+
+   Returns an empty :class:`FrameList` with the given parameters.
+
 .. function:: from_list(list, channels, bits_per_sample, is_signed)
 
    Given a list of integer values, a number of channels,
@@ -49,6 +53,10 @@ methods and attributes to aid in processing PCM data.
    >>> f = from_channels(l)
    >>> list(f)
    [-1, 0, 1, 2]
+
+.. function:: empty_float_framelist(channels)
+
+   Returns an empty :class:`FloatFrameList` with the given parameters.
 
 .. function:: from_float_frames(float_frame_list)
 

@@ -506,7 +506,7 @@ class WastedBPS16:
         self.channel_mask = 0x3
         self.bits_per_sample = 16
         self.signed = True
-        self.sample_frame = audiotools.pcm.FrameList("", 2, 16, False, False)
+        self.sample_frame = audiotools.pcm.empty_framelist(2, 16)
         self.md5 = md5()
         self.read = self.read_opened
 

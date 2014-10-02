@@ -2570,8 +2570,8 @@ class ThreadedPCMReader(PCMReader):
         if (self.__finished__):
             # previous read returned empty FrameList
             # so continue to return empty FrameLists
-            from audiotools.pcm import from_list
-            return from_list([], self.channels, self.bits_per_sample, True)
+            from audiotools.pcm import empty_framelist
+            return empty_framelist(self.channels, self.bits_per_sample)
 
         (error, value) = self.__queue__.get()
         if (not error):
@@ -2754,7 +2754,7 @@ class PCMCat(PCMReader):
                 return self.read(pcm_frames)
         else:
             # all PCMReaders exhausted, so return empty FrameList
-            return pcm.from_list([], self.channels, self.bits_per_sample, True)
+            return pcm.empty_framelist(self.channels, self.bits_per_sample)
 
     def read_closed(self, pcm_frames):
         raise ValueError()
@@ -2780,10 +2780,8 @@ class BufferedPCMReader(PCMReader):
                            bits_per_sample=pcmreader.bits_per_sample)
 
         self.pcmreader = pcmreader
-        self.buffer = pcm.from_list([],
-                                    self.channels,
-                                    self.bits_per_sample,
-                                    True)
+        self.buffer = pcm.empty_framelist(self.channels,
+                                          self.bits_per_sample)
 
     def read(self, pcm_frames):
         """reads the given number of PCM frames
@@ -2887,11 +2885,7 @@ class LimitedPCMReader(PCMReader):
             self.total_pcm_frames -= frame.frames
             return frame
         else:
-            return pcm.FrameList("",
-                                 self.channels,
-                                 self.bits_per_sample,
-                                 False,
-                                 True)
+            return pcm.empty_framelist(self.channels, self.bits_per_sample)
 
     def read_closed(self, pcm_frames):
         raise ValueError()
@@ -4947,11 +4941,7 @@ class PCMReaderHead(PCMReader):
                 return frame
         else:
             # window exhausted, so return empty framelist
-            return pcm.FrameList("",
-                                 self.channels,
-                                 self.bits_per_sample,
-                                 True,
-                                 True)
+            return pcm.empty_framelist(self.channels, self.bits_per_sample)
 
     def read_closed(self, pcm_frames):
         raise ValueError()

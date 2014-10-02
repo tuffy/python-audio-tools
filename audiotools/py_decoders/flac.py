@@ -18,7 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamReader
-from audiotools.pcm import from_list
+from audiotools.pcm import empty_framelist, from_list
 from hashlib import md5
 
 
@@ -88,7 +88,7 @@ class FlacDecoder(object):
         # verify its MD5 sum and return an empty pcm.FrameList object
         if (self.total_frames < 1):
             if (self.md5sum == self.current_md5sum.digest()):
-                return from_list([], self.channels, self.bits_per_sample, True)
+                return empty_framelist(self.channels, self.bits_per_sample)
             else:
                 raise ValueError("MD5 checksum mismatch")
 

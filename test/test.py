@@ -104,8 +104,8 @@ class EXACT_RANDOM_PCM_Reader(object):
             self.total_frames -= frame.frames
             return frame
         else:
-            return audiotools.pcm.FrameList(
-                "", self.channels, self.bits_per_sample, True, True)
+            return audiotools.pcm.empty_framelist(
+                self.channels, self.bits_per_sample)
 
     def read_closed(self, pcm_frames):
         raise ValueError("unable to read closed stream")

@@ -95,11 +95,8 @@ class PCMBuffer(object):
             try:
                 return self.pcm_frames.pop(-1)
             except IndexError:
-                from audiotools.pcm import FrameList
-                return FrameList.from_list([],
-                                           self.channels,
-                                           self.bits_per_sample,
-                                           True)
+                from audiotools.pcm import empty_framelist
+                return empty_framelist(self.channels, self.bits_per_sample)
         else:
             raise ValueError()
 

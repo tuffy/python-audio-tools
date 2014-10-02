@@ -1345,17 +1345,17 @@ class TestFrameList(unittest.TestCase):
 
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
-                          "abc", 2, 16, 0, 1)
+                          b"abc", 2, 16, 0, 1)
 
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
-                          "abc", 4, 8, 0, 1)
+                          b"abc", 4, 8, 0, 1)
 
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
-                          "abcd", 1, 15, 0, 1)
+                          b"abcd", 1, 15, 0, 1)
 
-        f = audiotools.pcm.FrameList("".join(map(chr, range(16))),
+        f = audiotools.pcm.FrameList(ints_to_bytes(range(16)),
                                      2, 16, True, True)
         self.assertEqual(len(f), 8)
         self.assertEqual(f.channels, 2)

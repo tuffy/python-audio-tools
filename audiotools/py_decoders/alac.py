@@ -20,7 +20,7 @@
 from audiotools import iter_last
 from audiotools.bitstream import BitstreamReader
 from audiotools.bitstream import HuffmanTree
-from audiotools.pcm import from_list, from_channels
+from audiotools.pcm import empty_framelist, from_list, from_channels
 from operator import concat
 
 
@@ -148,7 +148,7 @@ class ALACDecoder(object):
     def read(self, pcm_frames):
         # if the stream is exhausted, return an empty pcm.FrameList object
         if (self.total_pcm_frames == 0):
-            return from_list([], self.channels, self.bits_per_sample, True)
+            return empty_framelist(self.channels, self.bits_per_sample)
 
         # otherwise, read one ALAC frameset's worth of frame data
         frameset_data = []

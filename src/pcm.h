@@ -55,6 +55,9 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds);
 pcm_FrameList*
 FrameList_create(void);
 
+PyObject*
+FrameList_empty(PyObject *dummy, PyObject *args);
+
 int
 FrameList_CheckExact(PyObject *o);
 
@@ -159,6 +162,9 @@ FloatFrameList_blank(PyObject *dummy, PyObject *args);
 
 pcm_FloatFrameList*
 FloatFrameList_create(void);
+
+PyObject*
+FloatFrameList_empty(PyObject *dummy, PyObject *args);
 
 PyObject*
 FloatFrameList_frames(pcm_FloatFrameList *self, void* closure);

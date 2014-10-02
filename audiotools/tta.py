@@ -178,7 +178,6 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         # from audiotools.py_encoders import encode_tta
         from audiotools.encoders import encode_tta
         from audiotools.bitstream import BitstreamWriter
-        import tempfile
 
         # open output file right away
         # so we can fail as soon as possible
@@ -231,6 +230,8 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 write_seektable(writer, frame_sizes)
                 writer.unmark()
             else:
+                import tempfile
+
                 frames = tempfile.TemporaryFile()
 
                 # encode TTA frames to temporary file

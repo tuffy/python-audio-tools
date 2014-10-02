@@ -18,7 +18,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamReader
-from audiotools.pcm import from_channels, from_list
+from audiotools.pcm import from_channels, empty_framelist, from_list
 from math import log
 from hashlib import md5
 
@@ -120,7 +120,7 @@ class WavPackDecoder(object):
                 finally:
                     self.reader.rewind()
                     self.reader.unmark()
-            return from_list([], self.channels, self.bits_per_sample, True)
+            return empty_framelist(self.channels, self.bits_per_sample)
 
         channels = []
 
@@ -129,7 +129,7 @@ class WavPackDecoder(object):
                 block_header = Block_Header.read(self.reader)
             except (ValueError, IOError):
                 self.pcm_finished = True
-                return from_list([], self.channels, self.bits_per_sample, True)
+                return empty_framelist(self.channels, self.bits_per_sample)
             sub_blocks_size = block_header.block_size - 24
             sub_blocks_data = self.reader.substream(sub_blocks_size)
             channels.extend(read_block(block_header,

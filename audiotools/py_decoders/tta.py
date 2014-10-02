@@ -18,7 +18,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools.bitstream import BitstreamReader
-from audiotools.pcm import FrameList, from_frames, from_list, from_channels
+from audiotools.pcm import (FrameList,
+                            empty_framelist,
+                            from_frames,
+                            from_list,
+                            from_channels)
 
 
 def div_ceil(n, d):
@@ -251,11 +255,7 @@ class TTADecoder(object):
 
     def read(self, pcm_frames):
         if (self.total_pcm_frames == 0):
-            return FrameList("",
-                             self.channels,
-                             self.bits_per_sample,
-                             True,
-                             True)
+            return empty_framelist(self.channels, self.bits_per_sample)
 
         pcm_frames = min(self.pcm_frames_per_tta_frame, self.total_pcm_frames)
 
