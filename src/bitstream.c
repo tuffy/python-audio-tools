@@ -885,41 +885,52 @@ br_parse(struct BitstreamReader_s* stream, const char* format, ...)
         unsigned size;
 
         format = bs_parse_format(format, &times, &size, &inst);
-        if (inst == BS_INST_UNSIGNED) {
+        switch (inst) {
+        case BS_INST_UNSIGNED:
             for (; times; times--) {
                 unsigned *value = va_arg(ap, unsigned*);
                 *value = stream->read(stream, size);
             }
-        } else if (inst == BS_INST_SIGNED) {
+            break;
+        case BS_INST_SIGNED:
             for (; times; times--) {
                 int *value = va_arg(ap, int*);
                 *value = stream->read_signed(stream, size);
             }
-        } else if (inst == BS_INST_UNSIGNED64) {
+            break;
+        case BS_INST_UNSIGNED64:
             for (; times; times--) {
                 uint64_t *value = va_arg(ap, uint64_t*);
                 *value = stream->read_64(stream, size);
             }
-        } else if (inst == BS_INST_SIGNED64) {
+            break;
+        case BS_INST_SIGNED64:
             for (; times; times--) {
                 int64_t *value = va_arg(ap, int64_t*);
                 *value = stream->read_signed_64(stream, size);
             }
-        } else if (inst == BS_INST_SKIP) {
+            break;
+        case BS_INST_SKIP:
             for (; times; times--) {
                 stream->skip(stream, size);
             }
-        } else if (inst == BS_INST_SKIP_BYTES) {
+            break;
+        case BS_INST_SKIP_BYTES:
             for (; times; times--) {
                 stream->skip_bytes(stream, size);
             }
-        } else if (inst == BS_INST_BYTES) {
+            break;
+        case BS_INST_BYTES:
             for (; times; times--) {
                 uint8_t *value = va_arg(ap, uint8_t*);
                 stream->read_bytes(stream, value, size);
             }
-        } else if (inst == BS_INST_ALIGN) {
+            break;
+        case BS_INST_ALIGN:
             stream->byte_align(stream);
+            break;
+        case BS_INST_EOF:
+            break;
         }
     } while (inst != BS_INST_EOF);
     va_end(ap);
@@ -2237,31 +2248,37 @@ bw_build(struct BitstreamWriter_s* stream, const char* format, ...)
         unsigned size;
 
         format = bs_parse_format(format, &times, &size, &inst);
-        if (inst == BS_INST_UNSIGNED) {
+        switch (inst) {
+        case BS_INST_UNSIGNED:
             for (; times; times--) {
                 const unsigned value = va_arg(ap, unsigned);
                 stream->write(stream, size, value);
             }
-        } else if (inst == BS_INST_SIGNED) {
+            break;
+        case BS_INST_SIGNED:
             for (; times; times--) {
                 const int value = va_arg(ap, int);
                 stream->write_signed(stream, size, value);
             }
-        } else if (inst == BS_INST_UNSIGNED64) {
+            break;
+        case BS_INST_UNSIGNED64:
             for (; times; times--) {
                 const uint64_t value = va_arg(ap, uint64_t);
                 stream->write_64(stream, size, value);
             }
-        } else if (inst == BS_INST_SIGNED64) {
+            break;
+        case BS_INST_SIGNED64:
             for (; times; times--) {
                 const int64_t value = va_arg(ap, int64_t);
                 stream->write_signed_64(stream, size, value);
             }
-        } else if (inst == BS_INST_SKIP) {
+            break;
+        case BS_INST_SKIP:
             for (; times; times--) {
                 stream->write(stream, size, 0);
             }
-        } else if (inst == BS_INST_SKIP_BYTES) {
+            break;
+        case BS_INST_SKIP_BYTES:
             for (; times; times--) {
                 /*somewhat inefficient,
                   but byte skipping is rare for BitstreamWriters anyway*/
@@ -2274,13 +2291,18 @@ bw_build(struct BitstreamWriter_s* stream, const char* format, ...)
                 stream->write(stream, size, 0);
                 stream->write(stream, size, 0);
             }
-        } else if (inst == BS_INST_BYTES) {
+            break;
+        case BS_INST_BYTES:
             for (; times; times--) {
                 const uint8_t *value = va_arg(ap, uint8_t*);
                 stream->write_bytes(stream, value, size);
             }
-        } else if (inst == BS_INST_ALIGN) {
+            break;
+        case BS_INST_ALIGN:
             stream->byte_align(stream);
+            break;
+        case BS_INST_EOF:
+            break;
         }
     } while (inst != BS_INST_EOF);
     va_end(ap);

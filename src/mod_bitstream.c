@@ -3379,8 +3379,9 @@ bitstream_parse(BitstreamReader* stream,
         unsigned size;
 
         format = bs_parse_format(format, &times, &size, &inst);
-        if ((inst == BS_INST_UNSIGNED) ||
-            (inst == BS_INST_UNSIGNED64)) {
+        switch (inst) {
+        case BS_INST_UNSIGNED:
+        case BS_INST_UNSIGNED64:
             for (; times; times--) {
                 PyObject *py_value = read_unsigned(stream, size);
                 if (py_value != NULL) {
@@ -3396,8 +3397,9 @@ bitstream_parse(BitstreamReader* stream,
                     return 1;
                 }
             }
-        } else if ((inst == BS_INST_SIGNED) ||
-                   (inst == BS_INST_SIGNED64)) {
+            break;
+        case BS_INST_SIGNED:
+        case BS_INST_SIGNED64:
             if (size == 0) {
                 PyErr_SetString(PyExc_ValueError, "count must be > 0");
                 return 1;
@@ -3417,7 +3419,8 @@ bitstream_parse(BitstreamReader* stream,
                     return 1;
                 }
             }
-        } else if (inst == BS_INST_SKIP) {
+            break;
+        case BS_INST_SKIP:
             if (!setjmp(*br_try(stream))) {
                 for (; times; times--) {
                     stream->skip(stream, size);
@@ -3428,7 +3431,8 @@ bitstream_parse(BitstreamReader* stream,
                 PyErr_SetString(PyExc_IOError, "I/O error reading stream");
                 return 1;
             }
-        } else if (inst == BS_INST_SKIP_BYTES) {
+            break;
+        case BS_INST_SKIP_BYTES:
             if (!setjmp(*br_try(stream))) {
                 for (; times; times--) {
                     stream->skip_bytes(stream, size);
@@ -3439,7 +3443,8 @@ bitstream_parse(BitstreamReader* stream,
                 PyErr_SetString(PyExc_IOError, "I/O error reading stream");
                 return 1;
             }
-        } else if (inst == BS_INST_BYTES) {
+            break;
+        case BS_INST_BYTES:
             for (; times; times--) {
                 PyObject *py_value = brpy_read_bytes(stream, size);
                 if (py_value != NULL) {
@@ -3454,8 +3459,12 @@ bitstream_parse(BitstreamReader* stream,
                     return 1;
                 }
             }
-        } else if (inst == BS_INST_ALIGN) {
+            break;
+        case BS_INST_ALIGN:
             stream->byte_align(stream);
+            break;
+        case BS_INST_EOF:
+            break;
         }
     } while (inst != BS_INST_EOF);
 
@@ -3478,18 +3487,29 @@ bitstream_build(BitstreamWriter* stream,
         unsigned size;
 
         format = bs_parse_format(format, &times, &size, &inst);
-
-        if ((inst == BS_INST_UNSIGNED) ||
-            (inst == BS_INST_UNSIGNED64)) {
-            PyObject *min_value = bwpy_min_unsigned(size);
-            PyObject *max_value = bwpy_max_unsigned(size);
-            for (; times; times--) {
-                PyObject *py_value = PyIter_Next(iterator);
-                if (py_value != NULL) {
-                    /*ensure value is numeric and in the right range*/
-
+        switch (inst) {
+        case BS_INST_UNSIGNED:
+        case BS_INST_UNSIGNED64:
+            {
+                PyObject *min_value = bwpy_min_unsigned(size);
+                PyObject *max_value = bwpy_max_unsigned(size);
+                for (; times; times--) {
+                    PyObject *py_value = PyIter_Next(iterator);
                     int result;
 
+                    if (py_value == NULL) {
+                        /*either iterator exhausted or error*/
+
+                        if (!PyErr_Occurred()) {
+                            /*iterator exhausted before values are consumed*/
+                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
+                        }
+                        Py_DECREF(min_value);
+                        Py_DECREF(max_value);
+                        return 1;
+                    }
+
+                    /*ensure value is numeric*/
                     if (!PyNumber_Check(py_value)) {
                         PyErr_SetString(PyExc_TypeError,
                                         "value is not a number");
@@ -3499,6 +3519,7 @@ bitstream_build(BitstreamWriter* stream,
                         return 1;
                     }
 
+                    /*ensure value is in the proper range*/
                     if (!bwpy_in_range(min_value, py_value, max_value)) {
                         PyErr_Format(PyExc_ValueError,
                                      "value does not fit in %u unsigned %s",
@@ -3510,6 +3531,7 @@ bitstream_build(BitstreamWriter* stream,
                         return 1;
                     }
 
+                    /*perform actual write*/
                     result = write_unsigned(stream, size, py_value);
                     Py_DECREF(py_value);
                     if (result) {
@@ -3517,36 +3539,41 @@ bitstream_build(BitstreamWriter* stream,
                         Py_DECREF(max_value);
                         return 1;
                     }
-                } else {
-                    if (!PyErr_Occurred()) {
-                        /*iterator exhausted before values are consumed*/
-                        PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
-                    }
-                    Py_DECREF(min_value);
-                    Py_DECREF(max_value);
-                    return 1;
                 }
-            }
-            Py_DECREF(min_value);
-            Py_DECREF(max_value);
-        } else if ((inst == BS_INST_SIGNED) ||
-                   (inst == BS_INST_SIGNED64)) {
-            PyObject *min_value = bwpy_min_signed(size);
-            PyObject *max_value = bwpy_max_signed(size);
-
-            if (size == 0) {
-                PyErr_SetString(PyExc_ValueError, "size must be > 0");
                 Py_DECREF(min_value);
                 Py_DECREF(max_value);
-                return 1;
             }
-            for (; times; times--) {
-                PyObject *py_value = PyIter_Next(iterator);
-                if (py_value != NULL) {
-                    /*ensure value is numeric and in the right range*/
+            break;
+        case BS_INST_SIGNED:
+        case BS_INST_SIGNED64:
+            {
+                PyObject *min_value;
+                PyObject *max_value;
 
+                if (size > 0) {
+                    min_value = bwpy_min_signed(size);
+                    max_value = bwpy_max_signed(size);
+                } else {
+                    PyErr_SetString(PyExc_ValueError, "size must be > 0");
+                    return 1;
+                }
+                for (; times; times--) {
+                    PyObject *py_value = PyIter_Next(iterator);
                     int result;
 
+                    if (py_value == NULL) {
+                        /*either iterator exhausted or error*/
+
+                        if (!PyErr_Occurred()) {
+                            /*iterator exhausted before values are consumed*/
+                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
+                        }
+                        Py_DECREF(min_value);
+                        Py_DECREF(max_value);
+                        return 1;
+                    }
+
+                    /*ensure value is numeric*/
                     if (!PyNumber_Check(py_value)) {
                         PyErr_SetString(PyExc_TypeError,
                                         "value is not a number");
@@ -3556,6 +3583,7 @@ bitstream_build(BitstreamWriter* stream,
                         return 1;
                     }
 
+                    /*ensure value is in the proper range*/
                     if (!bwpy_in_range(min_value, py_value, max_value)) {
                         PyErr_Format(PyExc_ValueError,
                                      "value does not fit in %u signed bits",
@@ -3566,6 +3594,7 @@ bitstream_build(BitstreamWriter* stream,
                         return 1;
                     }
 
+                    /*perform actual write*/
                     result = write_signed(stream, size, py_value);
                     Py_DECREF(py_value);
                     if (result) {
@@ -3573,100 +3602,94 @@ bitstream_build(BitstreamWriter* stream,
                         Py_DECREF(max_value);
                         return 1;
                     }
-                } else {
+                }
+                Py_DECREF(min_value);
+                Py_DECREF(max_value);
+            }
+            break;
+        case BS_INST_SKIP:
+            if (!setjmp(*bw_try(stream))) {
+                for (; times; times--) {
+                    stream->write(stream, size, 0);
+                }
+                bw_etry(stream);
+            } else {
+                bw_etry(stream);
+                PyErr_SetString(PyExc_IOError, "I/O error writing to stream");
+                return 1;
+            }
+            break;
+        case BS_INST_SKIP_BYTES:
+            if (!setjmp(*bw_try(stream))) {
+                for (; times; times--) {
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                    stream->write(stream, size, 0);
+                }
+                bw_etry(stream);
+            } else {
+                bw_etry(stream);
+                PyErr_SetString(PyExc_IOError, "I/O error writing to stream");
+                return 1;
+            }
+            break;
+        case BS_INST_BYTES:
+            for (; times; times--) {
+                PyObject *py_value = PyIter_Next(iterator);
+                char *bytes;
+                Py_ssize_t bytes_len;
+
+                if (py_value == NULL) {
+                    /*either iterator exhausted or error*/
+
                     if (!PyErr_Occurred()) {
                         /*iterator exhausted before values are consumed*/
                         PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
                     }
-                    Py_DECREF(min_value);
-                    Py_DECREF(max_value);
+                    bw_etry(stream);
+                    return 1;
+                }
+
+                if (PyBytes_AsStringAndSize(py_value,
+                                            &bytes,
+                                            &bytes_len) == -1) {
+                    /*some error converting object to bytes*/
+                    Py_DECREF(py_value);
+                    return 1;
+                }
+
+                if (bytes_len < size) {
+                    /*bytes from iterator are too short
+                      compared to size in format string*/
+                    PyErr_SetString(PyExc_ValueError,
+                                    "string length too short");
+                    Py_DECREF(py_value);
+                    return 1;
+                }
+
+                /*ensure py_value gets DECREFed
+                  especially if a write error occurs*/
+                if (!setjmp(*bw_try(stream))) {
+                    stream->write_bytes(stream,
+                                        (uint8_t*)bytes,
+                                        (unsigned)size);
+                    Py_DECREF(py_value);
+                    bw_etry(stream);
+                } else {
+                    Py_DECREF(py_value);
+                    bw_etry(stream);
+                    PyErr_SetString(PyExc_ValueError,
+                                    "I/O error writing to stream");
                     return 1;
                 }
             }
-            Py_DECREF(min_value);
-            Py_DECREF(max_value);
-        } else if (inst == BS_INST_SKIP) {
-            if (!setjmp(*bw_try(stream))) {
-                for (; times; times--) {
-                    stream->write(stream, size, 0);
-                }
-                bw_etry(stream);
-            } else {
-                bw_etry(stream);
-                PyErr_SetString(PyExc_IOError, "I/O error writing to stream");
-                return 1;
-            }
-        } else if (inst == BS_INST_SKIP_BYTES) {
-            if (!setjmp(*bw_try(stream))) {
-                for (; times; times--) {
-                    stream->write(stream, size, 0);
-                    stream->write(stream, size, 0);
-                    stream->write(stream, size, 0);
-                    stream->write(stream, size, 0);
-                    stream->write(stream, size, 0);
-                    stream->write(stream, size, 0);
-                    stream->write(stream, size, 0);
-                    stream->write(stream, size, 0);
-                }
-                bw_etry(stream);
-            } else {
-                bw_etry(stream);
-                PyErr_SetString(PyExc_IOError, "I/O error writing to stream");
-                return 1;
-            }
-        } else if (inst == BS_INST_BYTES) {
-            if (!setjmp(*bw_try(stream))) {
-                for (; times; times--) {
-                    PyObject *py_value = PyIter_Next(iterator);
-                    if (py_value != NULL) {
-                        char *bytes;
-                        Py_ssize_t bytes_len;
-
-                        if (PyBytes_AsStringAndSize(py_value,
-                                                    &bytes,
-                                                    &bytes_len) != -1) {
-                            if (size <= bytes_len) {
-                                /*ensure py_value gets DECREFed
-                                  especially if a write error occurs*/
-
-                                if (!setjmp(*bw_try(stream))) {
-                                    stream->write_bytes(stream,
-                                                        (uint8_t*)bytes,
-                                                        (unsigned)size);
-                                    Py_DECREF(py_value);
-                                    bw_etry(stream);
-                                } else {
-                                    Py_DECREF(py_value);
-                                    bw_etry(stream);
-                                    bw_abort(stream);
-                                }
-                            } else {
-                                PyErr_SetString(PyExc_ValueError,
-                                                "string length too short");
-                                Py_DECREF(py_value);
-                                bw_etry(stream);
-                                return 1;
-                            }
-                        } else {
-                            Py_DECREF(py_value);
-                            bw_etry(stream);
-                            return 1;
-                        }
-                    } else {
-                        if (!PyErr_Occurred()) {
-                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
-                        }
-                        bw_etry(stream);
-                        return 1;
-                    }
-                }
-                bw_etry(stream);
-            } else {
-                bw_etry(stream);
-                PyErr_SetString(PyExc_IOError, "I/O error writing to stream");
-                return 1;
-            }
-        } else if (inst == BS_INST_ALIGN) {
+            break;
+        case BS_INST_ALIGN:
             if (!setjmp(*bw_try(stream))) {
                 stream->byte_align(stream);
                 bw_etry(stream);
@@ -3675,7 +3698,9 @@ bitstream_build(BitstreamWriter* stream,
                 PyErr_SetString(PyExc_IOError, "I/O error writing to stream");
                 return 1;
             }
-
+            break;
+        case BS_INST_EOF:
+            break;
         }
     } while (inst != BS_INST_EOF);
 

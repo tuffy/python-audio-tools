@@ -453,7 +453,9 @@ class CDAudioPlayer(AudioPlayer):
         """if track has been selected,
         changes current state of player to PLAYER_PLAYING"""
 
-        from audiotools import BufferedPCMReader, PCMReaderHead
+        from audiotools import (BufferedPCMReader,
+                                ThreadedPCMReader,
+                                PCMReaderHead)
 
         if (self.__state__ == PLAYER_PLAYING):
             # already playing, so nothing to do
@@ -493,83 +495,6 @@ class CDAudioPlayer(AudioPlayer):
 
             # update state so audio begins playing
             self.__state__ = PLAYER_PLAYING
-
-
-class ThreadedPCMReader(object):
-    """a PCMReader which decodes all output in the background
-
-    It will queue *all* output from its contained PCMReader
-    as fast as possible in a separate thread.
-    This may be a problem if PCMReader's total output is very large
-    or has no upper bound.
-    """
-
-    def __init__(self, pcmreader):
-        try:
-            from queue import Queue
-        except ImportError:
-            from Queue import Queue
-        from threading import (Thread, Event)
-
-        def transfer_data(read, queue, stop_event):
-            try:
-                frame = read(4096)
-            except ValueError:
-                return
-
-            while (not stop_event.is_set()):
-                # want to be sure to put 0 length frame in queue
-                # if reading is intended to continue
-                queue.put(frame)
-                if (len(frame) > 0):
-                    try:
-                        frame = read(4096)
-                    except ValueError:
-                        break
-                else:
-                    break
-
-        self.__pcmreader_close__ = pcmreader.close
-        self.sample_rate = pcmreader.sample_rate
-        self.channels = pcmreader.channels
-        self.channel_mask = pcmreader.channel_mask
-        self.bits_per_sample = pcmreader.bits_per_sample
-
-        self.__queue__ = Queue()
-        self.__stop_event__ = Event()
-        self.__thread__ = Thread(target=transfer_data,
-                                 args=(pcmreader.read,
-                                       self.__queue__,
-                                       self.__stop_event__))
-        self.__thread__.daemon = True
-        self.__thread__.start()
-        self.__last_frame__ = None
-        self.__finished__ = False
-
-    def read(self, pcm_frames):
-        if (not self.__finished__):
-            frame = self.__queue__.get()
-            if (len(frame) > 0):
-                return frame
-            else:
-                self.__last_frame__ = frame
-                self.__finished__ = True
-                return frame
-        else:
-            return self.__last_frame__
-
-    def __del__(self):
-        self.__stop_event__.set()
-        self.__thread__.join()
-
-    def close(self):
-        self.__pcmreader_close__()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
 
 
 class AudioOutput(object):

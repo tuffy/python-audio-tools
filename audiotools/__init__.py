@@ -1081,9 +1081,8 @@ class output_table(object):
                 yield row.format(None, is_tty)
         elif (len(row_columns) == 1):
             column_widths = [
-                max([row.column_width(col) for row in self.__rows__])
-                for col in
-                range(len([r for r in self.__rows__ if not r.blank()][0]))]
+                max(row.column_width(col) for row in self.__rows__)
+                for col in range(row_columns.pop())]
 
             for row in self.__rows__:
                 yield row.format(column_widths, is_tty)
@@ -1270,9 +1269,11 @@ class ProgressDisplay(object):
     def __init__(self, messenger):
         """takes a Messenger object for displaying output"""
 
+        from collections import deque
+
         self.messenger = messenger
         self.progress_rows = []
-        self.empty_slots = []
+        self.empty_slots = deque()
         self.displayed_rows = 0
 
     def add_row(self, output_line):
@@ -1288,7 +1289,7 @@ class ProgressDisplay(object):
             return row
         else:
             # reuse first available slot
-            index = self.empty_slots.pop(0)
+            index = self.empty_slots.popleft()
             row = ProgressRow(self, index, output_line)
             self.progress_rows[index] = row
             return row
@@ -1914,20 +1915,18 @@ def open_files(filename_list, sorted=True, messenger=None,
     to_return = []
 
     for filename in map(Filename, filename_list):
-        if (filename in opened_files):
+        if (filename not in opened_files):
+            opened_files.add(filename)
+        else:
             if (no_duplicates):
                 raise DuplicateFile(filename)
             elif (warn_duplicates and (messenger is not None)):
                 messenger.warning(ERR_DUPLICATE_FILE % (filename,))
-        else:
-            opened_files.add(filename)
 
         try:
-            f = __open__(str(filename), "rb")
-            try:
+            with __open__(str(filename), "rb") as f:
                 audio_class = file_type(f)
-            finally:
-                f.close()
+
             if (audio_class is not None):
                 if (audio_class.available(BIN)):
                     # is a supported audio type with needed binaries
@@ -2179,10 +2178,10 @@ class ChannelMask(object):
                          if mask & current_mask)
 
     def __int__(self):
-        import operator
+        from operator import or_
         from functools import reduce
 
-        return reduce(operator.or_,
+        return reduce(or_,
                       [self.SPEAKER_TO_MASK[field] for field in
                        self.SPEAKER_TO_MASK.keys()
                        if getattr(self, field)],
@@ -2433,12 +2432,12 @@ class PCMReaderError(PCMReader):
 
 
 def to_pcm_progress(audiofile, progress):
-    if (progress is None):
-        return audiofile.to_pcm()
-    else:
+    if (callable(progress)):
         return PCMReaderProgress(audiofile.to_pcm(),
                                  audiofile.total_frames(),
                                  progress)
+    else:
+        return audiofile.to_pcm()
 
 
 class PCMReaderProgress(PCMReader):
@@ -2518,6 +2517,82 @@ class ReorderedPCMReader(PCMReader):
         self.pcmreader.close()
 
 
+class ThreadedPCMReader(PCMReader):
+    """a PCMReader which decodes all output in the background
+
+    It will queue *all* output from its contained PCMReader
+    as fast as possible in a separate thread.
+    This may be a problem if PCMReader's total output is very large
+    or has no upper bound.
+    """
+
+    def __init__(self, pcmreader):
+        try:
+            from queue import Queue
+        except ImportError:
+            from Queue import Queue
+        from threading import (Thread, Event)
+
+        PCMReader.__init__(self,
+                           sample_rate=pcmreader.sample_rate,
+                           channels=pcmreader.channels,
+                           channel_mask=pcmreader.channel_mask,
+                           bits_per_sample=pcmreader.bits_per_sample)
+
+        def transfer_data(pcmreader, queue, stop_event):
+            """transfers everything from pcmreader to queue
+            until stop_event is set or the data is exhausted"""
+
+            try:
+                framelist = pcmreader.read(4096)
+                while ((len(framelist) > 0) and
+                       (not stop_event.is_set())):
+                    queue.put((False, framelist))
+                    framelist = pcmreader.read(4096)
+            except (IOError, ValueError) as err:
+                queue.put((True, err))
+
+        self.__pcmreader__ = pcmreader
+        self.__queue__ = Queue()
+        self.__stop_event__ = Event()
+        self.__thread__ = Thread(target=transfer_data,
+                                 args=(pcmreader,
+                                       self.__queue__,
+                                       self.__stop_event__))
+        self.__thread__.daemon = True
+        self.__thread__.start()
+        self.__closed__ = False
+        self.__finished__ = False
+
+    def read(self, pcm_frames):
+        if (self.__closed__):
+            raise ValueError("stream is closed")
+        if (self.__finished__):
+            # previous read returned empty FrameList
+            # so continue to return empty FrameLists
+            from audiotools.pcm import from_list
+            return from_list([], self.channels, self.bits_per_sample, True)
+
+        (error, value) = self.__queue__.get()
+        if (not error):
+            if (len(value) == 0):
+                self.__finished__ = True
+            return value
+        else:
+            # some exception raised during transfer_data
+            raise value
+
+    def close(self):
+        # tell decoder to finish if it is still operating
+        self.__stop_event__.set()
+        # collect finished thread
+        self.__thread__.join()
+        # close our contained PCMReader
+        self.__pcmreader__.close()
+        # mark stream as closed
+        self.__closed__ = True
+
+
 def transfer_data(from_function, to_function):
     """sends BUFFER_SIZE strings from from_function to to_function
 
@@ -2539,13 +2614,12 @@ def transfer_framelist_data(pcmreader, to_function,
     """sends pcm.FrameLists from pcmreader to to_function
 
     frameLists are converted to strings using the signed and big_endian
-    arguments.  This continues until an empty FrameLists is returned
+    arguments.  This continues until an empty FrameList is returned
     from pcmreader
 
-    the pcmreader is closed when decoding is complete
+    the pcmreader is closed when decoding is complete or fails with an error
 
-    may raise IOError or ValueError if a problem occurs
-    during decoding
+    may raise IOError or ValueError if a problem occurs during decoding
     """
 
     try:
@@ -2555,44 +2629,6 @@ def transfer_framelist_data(pcmreader, to_function,
             f = pcmreader.read(FRAMELIST_SIZE)
     finally:
         pcmreader.close()
-
-
-def threaded_transfer_framelist_data(pcmreader, to_function,
-                                     signed=True, big_endian=False):
-    """sends pcm.FrameLists from pcmreader to to_function via threads
-
-    FrameLists are converted to strings using the signed and big_endian
-    arguments.  This continues until an empty FrameList is returned
-    from pcmreader.  It operates by splitting reading and writing
-    into threads in the hopes that an intermittant reader
-    will not disrupt the writer
-    """
-
-    import threading
-    try:
-        from queue import Queue
-    except ImportError:
-        from Queue import Queue
-
-    def send_data(pcmreader, queue):
-        try:
-            s = pcmreader.read(FRAMELIST_SIZE)
-            while (len(s) > 0):
-                queue.put(s)
-                s = pcmreader.read(FRAMELIST_SIZE)
-            queue.put(None)
-        except (IOError, ValueError):
-            queue.put(None)
-
-    data_queue = Queue(10)
-    thread = threading.Thread(target=send_data,
-                              args=(pcmreader, data_queue))
-    thread.setDaemon(True)
-    thread.start()
-    s = data_queue.get()
-    while (s is not None):
-        to_function(s)
-        s = data_queue.get()
 
 
 def pcm_cmp(pcmreader1, pcmreader2):

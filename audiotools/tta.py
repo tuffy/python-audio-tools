@@ -696,7 +696,7 @@ def write_seektable(writer, frame_sizes):
 
     crc = CRC32()
     writer.add_callback(crc.update)
-    writer.build("32U" * len(frame_sizes), frame_sizes)
+    writer.build("%d* 32U" % (len(frame_sizes)), frame_sizes)
     writer.pop_callback()
     writer.write(32, int(crc))
 
