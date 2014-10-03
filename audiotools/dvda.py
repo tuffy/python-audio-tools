@@ -131,17 +131,18 @@ class DVDAudio(object):
         except (KeyError, IOError):
             from audiotools.text import ERR_DVDA_IOERROR_ATS
             raise InvalidDVDA(ERR_DVDA_IOERROR_ATS % (titleset))
-        try:
+
+        with BitstreamReader(f, False) as ats_reader:
             # ensure the file's identifier is correct
             # which is all we care about from the first sector
-            if (f.read(12) != b'DVDAUDIO-ATS'):
+            if (ats_reader.read_bytes(12) != b'DVDAUDIO-ATS'):
                 from audiotools.text import ERR_DVDA_INVALID_ATS
                 raise InvalidDVDA(ERR_DVDA_INVALID_ATS % (titleset))
 
             # seek to the second sector and read the title count
             # and list of title table offset values
-            f.seek(DVDAudio.SECTOR_SIZE, os.SEEK_SET)
-            ats_reader = BitstreamReader(f, False)
+            ats_reader.seek(DVDAudio.SECTOR_SIZE,
+                            os.SEEK_SET)
             (title_count, last_byte_address) = ats_reader.parse("16u 16p 32u")
             title_offsets = [ats_reader.parse("8u 24p 32u")[1] for title in
                              range(title_count)]
@@ -151,8 +152,8 @@ class DVDAudio(object):
             for (title_number, title_offset) in enumerate(title_offsets):
                 # for each title, seek to its title table
                 # and read the title's values and its track timestamps
-                f.seek(DVDAudio.SECTOR_SIZE + title_offset, os.SEEK_SET)
-                ats_reader = BitstreamReader(f, False)
+                ats_reader.seek(DVDAudio.SECTOR_SIZE + title_offset,
+                                os.SEEK_SET)
                 (tracks,
                  indexes,
                  track_length,
@@ -163,11 +164,10 @@ class DVDAudio(object):
 
                 # seek to the title's sector pointers table
                 # and read the first and last sector values for title's tracks
-                f.seek(DVDAudio.SECTOR_SIZE +
-                       title_offset +
-                       sector_pointers_table,
-                       os.SEEK_SET)
-                ats_reader = BitstreamReader(f, False)
+                ats_reader.seek(DVDAudio.SECTOR_SIZE +
+                                title_offset +
+                                sector_pointers_table,
+                                os.SEEK_SET)
                 sector_pointers = [ats_reader.parse("32u 32u 32u")
                                    for i in range(indexes)]
                 if ((len(sector_pointers) > 1) and
@@ -226,8 +226,6 @@ class DVDAudio(object):
                 titles.append(dvda_title)
 
             return titles
-        finally:
-            f.close()
 
 
 class InvalidDVDA(Exception):

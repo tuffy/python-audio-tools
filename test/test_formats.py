@@ -1932,14 +1932,14 @@ class TestForeignAiffChunks:
                                    audiotools.AiffContainer))
 
         # several even-sized chunks
-        chunks1 = (decompress(b"x\x9cs\xf3\x0f\xf2e\xe0\xad<\xe4\xe8" +
-                              b"\xe9\xe6\xe6gc\xec\xef\xeb\xcb\xc0\xc0 " +
-                              b"\xc4\xc0\xc4\xc0\x1c\x1b\xc2 \xe0\xc0" +
-                              b"\xb7\xc6\x85\x01\x0c\xdc\xfc\xfd\xa3" +
-                              b"\x80\x14GIjqIIjE\x89\x93c\x10\x88/P\x9c" +
-                              b"\x9f\x9b\x9a\x9b_\x94\x8a\x10\x8f\x02" +
-                              b"\x8a\xb30\x8c\x82Q0\nF.\x08\x0e\xf6sa" +
-                              b"\xe0-\x8d\x80\xf1\x01\xcf\x8c\x17\x18"),
+        chunks1 = (decompress(b"x\x9cs\xf3\x0f\xf2e\xe0\xad<\xe4\xe8\xe9" +
+                              b"\xe6\xe6\xec\xef\xeb\xcb\xc0\xc0 \xc4\xc0" +
+                              b"\xc4\xc0\x1c\x1b\xc2 \xe0\xc0\xb7\xc6\x85" +
+                              b"\x01\x0c\xdc\xfc\xfd\xa3\x80\x14GIjqIIjE" +
+                              b"\x89\x93c\x10\x88/P\x9c\x9f\x9b\x9a\x9b_" +
+                              b"\x94\x8a\x10\x8f\x02\x8a\xb30\x8c\x82Q0" +
+                              b"\nF.\x08\x0e\xf6sa\xe0-\x8d\x80\xf1\x01" +
+                              b"\xcf\x8c\x17\x18"),
                    (220500, 44100, 2, 16, 0x3),
                    b"SPAM\x00\x00\x00\x0canotherchunk")
 

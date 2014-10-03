@@ -2308,6 +2308,9 @@ class ID3v22MetaData(MetaDataTest):
 
     @METADATA_ID3V2
     def test_field_mapping(self):
+        from audiotools.id3 import __padded__ as padded
+        from audiotools.id3 import __number_pair__ as number_pair
+
         id3_class = self.metadata_class
 
         INTEGER_ATTRIBS = ('track_number',
@@ -2368,24 +2371,24 @@ class ID3v22MetaData(MetaDataTest):
         id3.track_number = 3
         id3.track_total = None
         self.assertEqual(
-            u"%s" % (id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0],),
-            u"3")
+            id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0].__unicode__(),
+            padded(3))
 
         id3.track_total = 8
         self.assertEqual(
-            u"%s" % (id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0],),
-            u"3/8")
+            id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]][0].__unicode__(),
+            number_pair(3, 8))
 
         id3.album_number = 2
         id3.album_total = None
         self.assertEqual(
-            u"%s" % (id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0],),
-            u"2")
+            id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0].__unicode__(),
+            padded(2))
 
         id3.album_total = 4
         self.assertEqual(
-            u"%s" % (id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0],),
-            u"2/4")
+            id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0].__unicode__(),
+            number_pair(2, 4))
 
         # reset and re-check everything for the next round
         id3 = id3_class.converted(audiotools.MetaData(**attribs1))
@@ -2396,7 +2399,7 @@ class ID3v22MetaData(MetaDataTest):
 
         for (key, value) in attribs2.items():
             if (key not in id3_class.TEXT_FRAME.NUMERICAL_IDS):
-                self.assertEqual(u"%s" % (id3[key][0],), value)
+                self.assertEqual(id3[key][0].__unicode__(), value)
             else:
                 self.assertEqual(int(id3[key][0]), value)
 
@@ -2703,12 +2706,16 @@ class ID3v22MetaData(MetaDataTest):
 
     @METADATA_ID3V2
     def test_setattr(self):
+        from audiotools.id3 import __padded__ as padded
+        from audiotools.id3 import __number_pair__ as number_pair
+
         # track_number adds new field if necessary
         metadata = self.metadata_class([])
         metadata.track_number = 1
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("track_number", u"1")])
+                         [self.text_tag("track_number",
+                                        number_pair(1, None))])
 
         # track_number updates the first integer field
         # and leaves other junk in that field alone
@@ -2717,7 +2724,8 @@ class ID3v22MetaData(MetaDataTest):
         metadata.track_number = 1
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("track_number", u"1")])
+                         [self.text_tag("track_number",
+                                        number_pair(1, None))])
 
         metadata = self.metadata_class([
             self.text_tag("track_number", u"6"),
@@ -2725,7 +2733,8 @@ class ID3v22MetaData(MetaDataTest):
         metadata.track_number = 1
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("track_number", u"1"),
+                         [self.text_tag("track_number",
+                                        number_pair(1, None)),
                           self.text_tag("track_number", u"10")])
 
         metadata = self.metadata_class([
@@ -2733,29 +2742,33 @@ class ID3v22MetaData(MetaDataTest):
         metadata.track_number = 1
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("track_number", u"1/2")])
+                         [self.text_tag("track_number",
+                                        u"%s/2" % (padded(1)))])
 
         metadata = self.metadata_class([
             self.text_tag("track_number", u"foo 6 bar")])
         metadata.track_number = 1
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("track_number", u"foo 1 bar")])
+                         [self.text_tag("track_number",
+                                        u"foo %s bar" % (padded(1)))])
 
         metadata = self.metadata_class([
             self.text_tag("track_number", u"foo 6 bar / blah 7 baz")])
         metadata.track_number = 1
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("track_number",
-                                        u"foo 1 bar / blah 7 baz")])
+                         [self.text_tag(
+                             "track_number",
+                             u"foo %s bar / blah 7 baz" % (padded(1)))])
 
         # album_number adds new field if necessary
         metadata = self.metadata_class([])
         metadata.album_number = 3
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_number", u"3")])
+                         [self.text_tag("album_number",
+                                        padded(3))])
 
         # album_number updates the first integer field
         # and leaves other junk in that field alone
@@ -2764,7 +2777,8 @@ class ID3v22MetaData(MetaDataTest):
         metadata.album_number = 3
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_number", u"3")])
+                         [self.text_tag("album_number",
+                                        padded(3))])
 
         metadata = self.metadata_class([
             self.text_tag("album_number", u"7"),
@@ -2772,7 +2786,8 @@ class ID3v22MetaData(MetaDataTest):
         metadata.album_number = 3
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_number", u"3"),
+                         [self.text_tag("album_number",
+                                        padded(3)),
                           self.text_tag("album_number", u"10")])
 
         metadata = self.metadata_class([
@@ -2780,29 +2795,33 @@ class ID3v22MetaData(MetaDataTest):
         metadata.album_number = 3
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_number", u"3/4")])
+                         [self.text_tag("album_number",
+                                        u"%s/4" % (padded(3)))])
 
         metadata = self.metadata_class([
             self.text_tag("album_number", u"foo 7 bar")])
         metadata.album_number = 3
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_number", u"foo 3 bar")])
+                         [self.text_tag("album_number",
+                                        u"foo %s bar" % (padded(3)))])
 
         metadata = self.metadata_class([
             self.text_tag("album_number", u"foo 7 bar / blah 8 baz")])
         metadata.album_number = 3
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_number",
-                                        u"foo 3 bar / blah 8 baz")])
+                         [self.text_tag(
+                             "album_number",
+                             u"foo %s bar / blah 8 baz" % (padded(3)))])
 
         # track_total adds new field if necessary
         metadata = self.metadata_class([])
         metadata.track_total = 2
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("track_number", u"0/2")])
+                         [self.text_tag("track_number",
+                                        number_pair(0, 2))])
 
         # track_total updates the second integer field
         # and leaves other junk in that field alone
@@ -2811,7 +2830,8 @@ class ID3v22MetaData(MetaDataTest):
         metadata.track_total = 2
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("track_number", u"6/2")])
+                         [self.text_tag("track_number",
+                                        u"6/%s" % (padded(2)))])
 
         metadata = self.metadata_class([
             self.text_tag("track_number", u"6"),
@@ -2819,7 +2839,8 @@ class ID3v22MetaData(MetaDataTest):
         metadata.track_total = 2
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("track_number", u"6/2"),
+                         [self.text_tag("track_number",
+                                         u"6/%s" % (padded(2))),
                           self.text_tag("track_number", u"10")])
 
         metadata = self.metadata_class([
@@ -2827,22 +2848,25 @@ class ID3v22MetaData(MetaDataTest):
         metadata.track_total = 2
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("track_number", u"6/2")])
+                         [self.text_tag("track_number",
+                                        u"6/%s" % (padded(2)))])
 
         metadata = self.metadata_class([
             self.text_tag("track_number", u"foo 6 bar / blah 7 baz")])
         metadata.track_total = 2
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("track_number",
-                                        u"foo 6 bar / blah 2 baz")])
+                         [self.text_tag(
+                             "track_number",
+                             u"foo 6 bar / blah %s baz" % (padded(2)))])
 
         # album_total adds new field if necessary
         metadata = self.metadata_class([])
         metadata.album_total = 4
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_number", u"0/4")])
+                         [self.text_tag("album_number",
+                                        number_pair(0, 4))])
 
         # album_total updates the second integer field
         # and leaves other junk in that field alone
@@ -2851,7 +2875,8 @@ class ID3v22MetaData(MetaDataTest):
         metadata.album_total = 4
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_total", u"9/4")])
+                         [self.text_tag("album_total",
+                                        u"9/%s" % (padded(4)))])
 
         metadata = self.metadata_class([
             self.text_tag("album_number", u"9"),
@@ -2859,7 +2884,8 @@ class ID3v22MetaData(MetaDataTest):
         metadata.album_total = 4
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_number", u"9/4"),
+                         [self.text_tag("album_number", u"9/%s" %
+                                        (padded(4))),
                           self.text_tag("album_number", u"10")])
 
         metadata = self.metadata_class([
@@ -2867,15 +2893,17 @@ class ID3v22MetaData(MetaDataTest):
         metadata.album_total = 4
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_number", u"9/4")])
+                         [self.text_tag("album_number",
+                                        u"9/%s" % (padded(4)))])
 
         metadata = self.metadata_class([
             self.text_tag("album_total", u"foo 9 bar / blah 10 baz")])
         metadata.album_total = 4
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_number",
-                                        u"foo 9 bar / blah 4 baz")])
+                         [self.text_tag(
+                             "album_number",
+                             u"foo 9 bar / blah %s baz" % (padded(4)))])
 
         # other fields update the first match
         # while leaving the rest alone

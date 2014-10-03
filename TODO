@@ -7099,16 +7099,15 @@
     - [X] audiotools.output
 *** TODO Update Python modules
 **** TODO audiotools
-     - [ ] __init__
-     - [ ] accuraterip
-     - [ ] aiff
-     - [ ] ape
-     - [ ] au
-     - [ ] delta
-     - [ ] dvda
-     - [ ] flac
-     - [ ] freedb
-     - [ ] id3
+     - [X] __init__
+     - [X] accuraterip
+     - [X] aiff
+     - [X] ape
+     - [X] au
+     - [X] dvda
+     - [X] flac
+     - [X] freedb
+     - [X] id3
      - [ ] id3v1
      - [ ] image
      - [ ] m4a_atoms

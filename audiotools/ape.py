@@ -44,8 +44,7 @@ def __number_pair__(current, total):
         return slashed_format % (current, total)
 
 
-def limited_transfer_data(from_function, to_function,
-                          max_bytes):
+def limited_transfer_data(from_function, to_function, max_bytes):
     """transfers up to max_bytes from from_function to to_function
     or as many bytes as from_function generates as strings"""
 
@@ -76,9 +75,9 @@ class ApeTagItem(object):
         self.type = item_type
         self.read_only = read_only
 
-        # assert(isinstance(key, bytes))
+        assert(isinstance(key, bytes))
         self.key = key
-        # assert(isinstance(data, bytes))
+        assert(isinstance(data, bytes))
         self.data = data
 
     def __eq__(self, item):
@@ -189,9 +188,9 @@ class ApeTagItem(object):
 
         key is a bytes object, data is a unicode string"""
 
-        # assert(isinstance(key, bytes))
-        # assert(isinstance(data,
-        #                   str if (sys.version_info[0] >= 3) else unicode))
+        assert(isinstance(key, bytes))
+        assert(isinstance(data,
+                          str if (sys.version_info[0] >= 3) else unicode))
 
         return cls(0, 0, key, data.encode('utf-8', 'replace'))
 
@@ -229,8 +228,7 @@ class ApeTag(MetaData):
         """constructs an ApeTag from a list of ApeTagItem objects"""
 
         for tag in tags:
-            if (not isinstance(tag, ApeTagItem)):
-                raise ValueError("%s is not ApeTag" % (repr(tag)))
+            assert(isinstance(tag, ApeTagItem))
         MetaData.__setattr__(self, "tags", list(tags))
         MetaData.__setattr__(self, "contains_header", contains_header)
         MetaData.__setattr__(self, "contains_footer", contains_footer)
@@ -281,7 +279,7 @@ class ApeTag(MetaData):
             return False
 
     def __getitem__(self, key):
-        # assert(isinstance(key, bytes))
+        assert(isinstance(key, bytes))
 
         for tag in self.tags:
             if (tag.key == key):
@@ -290,12 +288,16 @@ class ApeTag(MetaData):
             raise KeyError(key)
 
     def get(self, key, default):
+        assert(isinstance(key, bytes))
+
         try:
             return self[key]
         except KeyError:
             return default
 
     def __setitem__(self, key, value):
+        assert(isinstance(key, bytes))
+
         for i in range(len(self.tags)):
             if (self.tags[i].key == key):
                 self.tags[i] = value
@@ -304,6 +306,8 @@ class ApeTag(MetaData):
             self.tags.append(value)
 
     def index(self, key):
+        assert(isinstance(key, bytes))
+
         for (i, tag) in enumerate(self.tags):
             if (tag.key == key):
                 return i
@@ -311,9 +315,12 @@ class ApeTag(MetaData):
             raise ValueError(key)
 
     def __delitem__(self, key):
-        old_tag_count = len(self.tags)
-        self.tags = [tag for tag in self.tags if tag.key != key]
-        if (len(self.tags) == old_tag_count):
+        assert(isinstance(key, bytes))
+
+        new_tags = [tag for tag in self.tags if tag.key != key]
+        if (len(new_tags) < len(self.tags)):
+            self.tags = new_tags
+        else:
             raise KeyError(key)
 
     def __getattr__(self, attr):
@@ -565,23 +572,10 @@ class ApeTag(MetaData):
                           contains_footer=metadata.contains_footer)
         else:
             tags = cls([])
-            for (field, key) in cls.ATTRIBUTE_MAP.items():
-                if (((field not in cls.INTEGER_FIELDS) and
-                     (getattr(metadata, field) is not None))):
-                    tags[key] = cls.ITEM.string(
-                        key, getattr(metadata, field))
 
-            if (((metadata.track_number is not None) or
-                 (metadata.track_total is not None))):
-                tags[b"Track"] = cls.ITEM.string(
-                    b"Track", __number_pair__(metadata.track_number,
-                                              metadata.track_total))
-
-            if (((metadata.album_number is not None) or
-                 (metadata.album_total is not None))):
-                tags[b"Media"] = cls.ITEM.string(
-                    b"Media", __number_pair__(metadata.album_number,
-                                              metadata.album_total))
+            for (field, value) in metadata.filled_fields():
+                if (field in cls.ATTRIBUTE_MAP.keys()):
+                    setattr(tags, field, value)
 
             for image in metadata.images():
                 tags.add_image(image)
@@ -675,10 +669,14 @@ class ApeTag(MetaData):
 
         may return None if the file object has no tag"""
 
-        from audiotools.bitstream import BitstreamReader
+        from audiotools.bitstream import BitstreamReader, parse
 
         apefile.seek(-32, 2)
-        reader = BitstreamReader(apefile, True)
+        tag_footer = apefile.read(32)
+
+        if (len(tag_footer) < 32):
+            # not enough bytes for an ApeV2 tag
+            return None
 
         (preamble,
          version,
@@ -688,32 +686,28 @@ class ApeTag(MetaData):
          item_encoding,
          is_header,
          no_footer,
-         has_header) = reader.parse(cls.HEADER_FORMAT)
+         has_header) = parse(cls.HEADER_FORMAT, True, tag_footer)
 
         if ((preamble != b"APETAGEX") or (version != 2000)):
             return None
 
         apefile.seek(-tag_size, 2)
+        reader = BitstreamReader(apefile, True)
 
         return cls([ApeTagItem.parse(reader) for i in range(item_count)],
                    contains_header=has_header,
                    contains_footer=True)
 
     def build(self, writer):
-        """outputs an APEv2 tag to writer"""
+        """outputs an APEv2 tag to BitstreamWriter"""
 
-        from audiotools.bitstream import BitstreamRecorder
-
-        tags = BitstreamRecorder(1)
-
-        for tag in self.tags:
-            tag.build(tags)
+        tag_size = sum(tag.total_size() for tag in self.tags) + 32
 
         if (self.contains_header):
             writer.build(ApeTag.HEADER_FORMAT,
                          (b"APETAGEX",               # preamble
                           2000,                      # version
-                          tags.bytes() + 32,         # tag size
+                          tag_size,                  # tag size
                           len(self.tags),            # item count
                           0,                         # read only
                           0,                         # encoding
@@ -721,12 +715,14 @@ class ApeTag(MetaData):
                           not self.contains_footer,  # no footer
                           self.contains_header))     # has header
 
-        tags.copy(writer)
+        for tag in self.tags:
+            tag.build(writer)
+
         if (self.contains_footer):
             writer.build(ApeTag.HEADER_FORMAT,
                          (b"APETAGEX",               # preamble
                           2000,                      # version
-                          tags.bytes() + 32,         # tag size
+                          tag_size,                  # tag size
                           len(self.tags),            # item count
                           0,                         # read only
                           0,                         # encoding
@@ -858,11 +854,19 @@ class ApeTaggedAudio(object):
             from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
 
-        from audiotools.bitstream import BitstreamReader, BitstreamWriter
+        from audiotools.bitstream import parse, BitstreamWriter
         from audiotools import transfer_data
 
         f = open(self.filename, "r+b")
         f.seek(-32, 2)
+        tag_footer = f.read(32)
+
+        if (len(tag_footer) < 32):
+            # no existing ApeTag can fit, so append fresh tag
+            f.close()
+            with BitstreamWriter(open(self.filename, "ab"), True) as writer:
+                metadata.build(writer)
+            return
 
         (preamble,
          version,
@@ -872,7 +876,7 @@ class ApeTaggedAudio(object):
          item_encoding,
          is_header,
          no_footer,
-         has_header) = BitstreamReader(f, True).parse(ApeTag.HEADER_FORMAT)
+         has_header) = parse(ApeTag.HEADER_FORMAT, True, tag_footer)
 
         if ((preamble == b'APETAGEX') and (version == 2000)):
             if (has_header):
@@ -898,18 +902,17 @@ class ApeTaggedAudio(object):
                 # copy everything but the last "old_tag_size" bytes
                 # from existing file to rewritten file
                 new_apev2 = TemporaryFile(self.filename)
-                old_apev2 = open(self.filename, "rb")
 
-                limited_transfer_data(
-                    old_apev2.read,
-                    new_apev2.write,
-                    getsize(self.filename) - old_tag_size)
+                with open(self.filename, "rb") as old_apev2:
+                    limited_transfer_data(
+                        old_apev2.read,
+                        new_apev2.write,
+                        getsize(self.filename) - old_tag_size)
 
                 # append new tag to rewritten file
-                metadata.build(BitstreamWriter(new_apev2, True))
-
-                old_apev2.close()
-                new_apev2.close()
+                with BitstreamWriter(new_apev2, True) as writer:
+                    metadata.build(writer)
+                    # closing writer closes new_apev2 also
         else:
             # no existing metadata, so simply append a fresh tag
             f.close()

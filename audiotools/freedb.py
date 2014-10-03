@@ -176,9 +176,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
                                    disc_id)
 
             response = RESPONSE.match(next(query))
-            if (response is None):
-                raise ValueError("invalid response from server")
-            else:
+            if (response is not None):
                 # FIXME - check response code here
                 freedb = {}
                 line = next(query)
@@ -192,6 +190,8 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
                                 freedb[entry.group(1)] = entry.group(2)
                     line = next(query)
                 yield list(xmcd_metadata(freedb))
+            else:
+                raise ValueError("invalid response from server")
 
 
 def freedb_command(freedb_server, freedb_port, cmd, *args):

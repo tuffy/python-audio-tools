@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import (MetaData, Image, InvalidImage)
+from audiotools import (MetaData, Image, InvalidImage, config)
 import sys
 import codecs
 
@@ -238,30 +238,31 @@ def __attrib_equals__(attributes, o1, o2):
         return True
 
 
+def __padded__(value):
+    """given an integer value, returns it as a unicode string
+    with the proper padding"""
+
+    if (config.getboolean_default("ID3", "pad", False)):
+        return u"%2.2d" % (value)
+    else:
+        return u"%d" % (value)
+
+
 # takes a pair of integers (or None) for the current and total values
 # returns a unicode string of their combined pair
 # for example, __number_pair__(2,3) returns u"2/3"
 # whereas      __number_pair__(4,0) returns u"4"
 def __number_pair__(current, total):
-    from audiotools import config
-
-    if (config.getboolean_default("ID3", "pad", False)):
-        unslashed_format = u"%2.2d"
-        slashed_format = u"%2.2d/%2.2d"
-    else:
-        unslashed_format = u"%d"
-        slashed_format = u"%d/%d"
-
     if (current is None):
         if (total is None):
-            return unslashed_format % (0,)
+            return __padded__(0)
         else:
-            return slashed_format % (0, total)
+            return __padded__(0) + u"/" + __padded__(total)
     else:  # current is not None
         if (total is None):
-            return unslashed_format % (current,)
+            return __padded__(current)
         else:
-            return slashed_format % (current, total)
+            return __padded__(current) + u"/" + __padded__(total)
 
 
 def read_id3v2_comment(filename):
@@ -440,9 +441,8 @@ class ID3v22_Frame(object):
         raise NotImplementedError()
 
     def clean(self):
-        """returns a cleaned ID3v22_Frame,
-        or None if the frame should be removed entirely
-        any fixes are appended to fixes_applied as unicode string"""
+        """returns a cleaned ID3v22_Frame and list of fixes,
+        or None if the frame should be removed entirely"""
 
         return (self.__class__(self.id, self.data), [])
 
@@ -547,7 +547,8 @@ class ID3v22_T__Frame(object):
         """writes the frame's data to the BitstreamWriter
         not including its frame header"""
 
-        writer.build("8u %db" % (len(self.data)), (self.encoding, self.data))
+        writer.write(8, self.encoding)
+        writer.write_bytes(self.data)
 
     def size(self):
         """returns the frame's total size
@@ -1346,67 +1347,92 @@ class ID3v22Comment(MetaData):
                 import re
 
                 frame_id = self.ATTRIBUTE_MAP[attr]
+
                 if (attr == 'track_number'):
                     try:
+                        # substitute the first set of digits
+                        # with our padded value
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             re.sub(r'\d+',
-                                   u"%d" % (int(value),),
+                                   __padded__(value),
                                    self[frame_id][0].__unicode__(),
                                    1))
                     except KeyError:
+                        # no frame found with track_number's ID,
+                        # so create a new frame for it
+                        # with the value padded appropriately
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             __number_pair__(value, self.track_total))
                 elif (attr == 'track_total'):
                     try:
+                        # if the value has a u"/" followed by some digits
                         if (re.search(
                                 r'/\D*\d+',
                                 self[frame_id][0].__unicode__()) is not None):
+                            # substitute second set of digits after u"/"
+                            # with our padded value
                             new_frame = self.TEXT_FRAME.converted(
                                 frame_id,
                                 re.sub(r'(/\D*)(\d+)',
-                                       u"\\g<1>" + u"%d" % (int(value),),
+                                       u"\\g<1>" + __padded__(value),
                                        self[frame_id][0].__unicode__(),
                                        1))
                         else:
+                            # otherwise, just append our padded value
                             new_frame = self.TEXT_FRAME.converted(
                                 frame_id,
-                                u"%s/%d" % (self[frame_id][0].__unicode__(),
-                                            int(value)))
+                                u"%s/%s" % (self[frame_id][0].__unicode__(),
+                                            __padded__(value)))
                     except KeyError:
+                        # no frame found with track_total's ID
+                        # so create a new frame for it
+                        # with the value padded appropriately
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             __number_pair__(self.track_number, value))
                 elif (attr == 'album_number'):
                     try:
+                        # substitute the first set of digits
+                        # with our padded value
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             re.sub(r'\d+',
-                                   u"%d" % (int(value),),
+                                   __padded__(value),
                                    self[frame_id][0].__unicode__(),
                                    1))
                     except KeyError:
+                        # no frame found with track_number's ID,
+                        # so create a new frame for it
+                        # with the value padded appropriately
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             __number_pair__(value, self.album_total))
                 elif (attr == 'album_total'):
                     try:
+                        # if the value has a u"/" followed by some digits
                         if (re.search(
                                 r'/\D*\d+',
                                 self[frame_id][0].__unicode__()) is not None):
+                            # substitute second set of digits after u"/"
+                            # with our padded value
                             new_frame = self.TEXT_FRAME.converted(
                                 frame_id,
                                 re.sub(r'(/\D*)(\d+)',
-                                       u"\\g<1>" + u"%d" % (int(value),),
+                                       u"\\g<1>" + __padded__(value),
                                        self[frame_id][0].__unicode__(),
                                        1))
                         else:
+                            # otherwise, just append our padded value
                             new_frame = self.TEXT_FRAME.converted(
                                 frame_id,
-                                u"%s/%d" % (self[frame_id][0].__unicode__(),
-                                            int(value)))
+                                u"%s/%s" % (self[frame_id][0].__unicode__(),
+                                            __padded__(value)))
                     except KeyError:
+                        # no frame found with album_total's ID
+                        # so create a new frame for it
+                        # with the value padded appropriately
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             __number_pair__(self.album_number, value))
@@ -1966,13 +1992,6 @@ class ID3v24_T___Frame(ID3v23_T___Frame):
         return "ID3v24_T___Frame(%s, %s, %s)" % \
             (repr(self.id), repr(self.encoding), repr(self.data))
 
-    if (sys.version_info[0] >= 3):
-        def __str__(self):
-            return self.__unicode__()
-    else:
-        def __str__(self):
-            return self.__unicode__().encode('utf-8')
-
     def __unicode__(self):
         return self.data.decode(
             {0: u"latin-1",
@@ -2016,13 +2035,6 @@ class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
               3: u"UTF-8"}[self.encoding],
              self.description,
              self.__unicode__())
-
-    if (sys.version_info[0] >= 3):
-        def __str__(self):
-            return self.__unicode__()
-    else:
-        def __str__(self):
-            return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
         return self.data.decode(
@@ -2190,13 +2202,6 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
         return "ID3v24_COMM_Frame(%s, %s, %s, %s)" % \
             (repr(self.encoding), repr(self.language),
              repr(self.short_description), repr(self.data))
-
-    if (sys.version_info[0] >= 3):
-        def __str__(self):
-            return self.__unicode__()
-    else:
-        def __str__(self):
-            return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
         return self.data.decode({0: 'latin-1',

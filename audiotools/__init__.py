@@ -525,14 +525,16 @@ class output_text(tuple):
 
         import unicodedata
 
+        assert(isinstance(unicode_string, str if PY3 else unicode))
+
+        string = unicodedata.normalize("NFC", unicode_string)
+
         CHAR_WIDTHS = {"Na": 1,
                        "A": 1,
                        "W": 2,
                        "F": 2,
                        "N": 1,
                        "H": 1}
-
-        string = unicodedata.normalize("NFC", u"%s" % (unicode_string,))
 
         return cls.__construct__(
             unicode_string=string,
@@ -3443,7 +3445,7 @@ class MetaData(object):
             row = table.row()
             row.add_column(LAB_PICTURE, "right")
             row.add_column(SEPARATOR)
-            row.add_column(image)
+            row.add_column(image.__unicode__())
 
         return os.linesep.join(table.format())
 
