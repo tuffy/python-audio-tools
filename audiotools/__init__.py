@@ -3685,14 +3685,10 @@ class Image(object):
 
     def __eq__(self, image):
         if (image is not None):
-            for attr in ["data", "mime_type", "width", "height",
-                         "color_depth", "color_count", "description",
-                         "type"]:
-                if ((not hasattr(image, attr)) or (getattr(self, attr) !=
-                                                   getattr(image, attr))):
-                    return False
+            if hasattr(image, "data"):
+                return self.data == image.data
             else:
-                return True
+                return False
         else:
             return False
 

@@ -441,7 +441,7 @@ if (__name__ == '__main__'):
                     wave_files.append(f[1])
                     queue.execute(
                         function=convert_to_wave,
-                        progress_text=filename,
+                        progress_text=filename.__unicode__(),
                         completion_output=_.LAB_TRACK2CD_CONVERTED % {
                             "filename": filename},
                         audiofile=audiofile,
@@ -469,7 +469,8 @@ if (__name__ == '__main__'):
                 for audiofile in audiofiles:
                     filename = audiotools.Filename(audiofile.filename)
 
-                    progress = audiotools.SingleProgressDisplay(msg, filename)
+                    progress = audiotools.SingleProgressDisplay(
+                        msg, filename.__unicode__())
 
                     f = tempfile.mkstemp(suffix=".wav")
                     temp_pool.append(f)

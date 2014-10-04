@@ -3553,7 +3553,7 @@ class tracklint(UtilTest):
             # tag flac with bogus fields image
             metadata = tempflac.get_metadata()
             metadata.add_image(image)
-            tempflac.set_metadata(metadata)
+            tempflac.update_metadata(metadata)
 
             # ensure bogus fields stick
             image = tempflac.get_metadata().images()[0]

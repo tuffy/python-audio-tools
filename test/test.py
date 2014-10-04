@@ -57,7 +57,7 @@ def BLANK_PCM_Reader(length, sample_rate=44100, channels=2,
     from audiotools.decoders import SameSample
 
     if (channel_mask is None):
-        channel_mask = audiotools.ChannelMask.from_channels(channels)
+        channel_mask = int(audiotools.ChannelMask.from_channels(channels))
 
     return SameSample(sample=1,
                       total_pcm_frames=length * sample_rate,
@@ -74,7 +74,8 @@ class EXACT_RANDOM_PCM_Reader(object):
         self.sample_rate = sample_rate
         self.channels = channels
         if (channel_mask is None):
-            self.channel_mask = audiotools.ChannelMask.from_channels(channels)
+            self.channel_mask = \
+                int(audiotools.ChannelMask.from_channels(channels))
         else:
             self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample
@@ -136,7 +137,7 @@ def EXACT_BLANK_PCM_Reader(pcm_frames, sample_rate=44100, channels=2,
     from audiotools.decoders import SameSample
 
     if (channel_mask is None):
-        channel_mask = audiotools.ChannelMask.from_channels(channels)
+        channel_mask = int(audiotools.ChannelMask.from_channels(channels))
 
     return SameSample(sample=1,
                       total_pcm_frames=pcm_frames,
@@ -151,7 +152,7 @@ def EXACT_SILENCE_PCM_Reader(pcm_frames, sample_rate=44100, channels=2,
     from audiotools.decoders import SameSample
 
     if (channel_mask is None):
-        channel_mask = audiotools.ChannelMask.from_channels(channels)
+        channel_mask = int(audiotools.ChannelMask.from_channels(channels))
 
     return SameSample(sample=0,
                       total_pcm_frames=pcm_frames,
@@ -228,6 +229,7 @@ class Join_Reader(audiotools.PCMReader):
             raise ValueError("all readers must have the same bits per sample")
         if ({r.channels for r in pcm_readers} != {1}):
             raise ValueError("all readers must be 1 channel")
+        assert(isinstance(channel_mask, int))
 
         audiotools.PCMReader.__init__(
             self,

@@ -5240,7 +5240,7 @@ class TestMultiChannel(unittest.TestCase):
                 Join_Reader(
                     [BLANK_PCM_Reader(2, channels=1)
                      for i in range(len(channel_mask))],
-                    channel_mask))
+                    int(channel_mask)))
             self.assertEqual(temp_track.channel_mask(), channel_mask,
                              "%s != %s for format %s" %
                              (temp_track.channel_mask(),
@@ -5261,7 +5261,7 @@ class TestMultiChannel(unittest.TestCase):
                 Join_Reader(
                     [BLANK_PCM_Reader(2, channels=1)
                      for i in range(channels)],
-                    audiotools.ChannelMask(0)))
+                    int(audiotools.ChannelMask(0))))
             self.assertEqual(temp_track.channels(), channels)
             if (should_be_blank):
                 self.assertEqual(int(temp_track.channel_mask()), 0)
@@ -5292,7 +5292,7 @@ class TestMultiChannel(unittest.TestCase):
                 temp_file.name,
                 Join_Reader([BLANK_PCM_Reader(2, channels=1)
                              for i in range(channels)],
-                            channel_mask))
+                            int(channel_mask)))
         finally:
             temp_file.close()
 
@@ -5307,7 +5307,7 @@ class TestMultiChannel(unittest.TestCase):
                 temp_file.name,
                 Join_Reader([BLANK_PCM_Reader(2, channels=1)
                              for i in range(channels)],
-                            channel_mask))
+                            int(channel_mask)))
         finally:
             temp_file.close()
 
@@ -5326,7 +5326,7 @@ class TestMultiChannel(unittest.TestCase):
                 Join_Reader(
                     [BLANK_PCM_Reader(2, channels=1)
                      for i in range(len(channel_mask))],
-                    channel_mask))
+                    int(channel_mask)))
             self.assertEqual(source_track.channel_mask(), channel_mask)
 
             source_pcm = source_track.to_pcm()
@@ -5550,7 +5550,7 @@ class TestMultiChannel(unittest.TestCase):
                         Join_Reader(
                             [BLANK_PCM_Reader(2, channels=1)
                              for i in range(channels)],
-                            audiotools.ChannelMask(0)))
+                            int(audiotools.ChannelMask(0))))
                     self.assertEqual(temp_track.channels(), 2)
                     self.assertEqual(
                         int(temp_track.channel_mask()),

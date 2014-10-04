@@ -81,7 +81,7 @@ class ERROR_PCM_Reader(audiotools.PCMReader):
                  sample_rate=44100, channels=2, bits_per_sample=16,
                  channel_mask=None, failure_chance=.2, minimum_successes=0):
         if (channel_mask is None):
-            channel_mask = audiotools.ChannelMask.from_channels(channels)
+            channel_mask = int(audiotools.ChannelMask.from_channels(channels))
         audiotools.PCMReader.__init__(
             self,
             sample_rate=sample_rate,

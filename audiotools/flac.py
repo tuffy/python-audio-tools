@@ -1330,8 +1330,8 @@ class Flac_PICTURE(Image):
         writer.write_bytes(description)
         writer.write(32, self.width)
         writer.write(32, self.height)
-        writer.write(32, self.color_count)
         writer.write(32, self.color_depth)
+        writer.write(32, self.color_count)
         writer.write(32, len(self.data))
         writer.write_bytes(self.data)
 
@@ -2719,8 +2719,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                     fixes_performed.append(CLEAN_FLAC_POPULATE_MD5)
 
                 metadata = self.get_metadata()
-                if (metadata is None):
-                    return
+                metadata_size = metadata.size()
 
                 # fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
                 if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
@@ -2737,7 +2736,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 try:
                     if (not seektable_valid(
                             metadata.get_block(Flac_SEEKTABLE.BLOCK_ID),
-                            stream_offset + 4 + metadata.size(),
+                            stream_offset + 4 + metadata_size,
                             input_f)):
                         from audiotools.text import CLEAN_FLAC_FIX_SEEKTABLE
                         fixes_performed.append(CLEAN_FLAC_FIX_SEEKTABLE)
@@ -2784,68 +2783,69 @@ class FlacAudio(WaveContainer, AiffContainer):
                 output_track = self.__class__(output_filename)
 
                 metadata = self.get_metadata()
-                if (metadata is not None):
-                    # fix empty MD5SUM
-                    if (self.__md5__ == b"\x00" * 16):
-                        from hashlib import md5
-                        from audiotools import transfer_framelist_data
+                metadata_size = metadata.size()
 
-                        md5sum = md5()
-                        transfer_framelist_data(
-                            self.to_pcm(),
-                            md5sum.update,
-                            signed=True,
-                            big_endian=False)
-                        metadata.get_block(
-                            Flac_STREAMINFO.BLOCK_ID).md5sum = md5sum.digest()
-                        from audiotools.text import CLEAN_FLAC_POPULATE_MD5
-                        fixes_performed.append(CLEAN_FLAC_POPULATE_MD5)
+                # fix empty MD5SUM
+                if (self.__md5__ == b"\x00" * 16):
+                    from hashlib import md5
+                    from audiotools import transfer_framelist_data
 
-                    # fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
-                    if (((self.channels() > 2) or
-                         (self.bits_per_sample() > 16))):
-                        from audiotools.text import CLEAN_FLAC_ADD_CHANNELMASK
+                    md5sum = md5()
+                    transfer_framelist_data(
+                        self.to_pcm(),
+                        md5sum.update,
+                        signed=True,
+                        big_endian=False)
+                    metadata.get_block(
+                        Flac_STREAMINFO.BLOCK_ID).md5sum = md5sum.digest()
+                    from audiotools.text import CLEAN_FLAC_POPULATE_MD5
+                    fixes_performed.append(CLEAN_FLAC_POPULATE_MD5)
 
-                        try:
-                            vorbis_comment = metadata.get_block(
-                                Flac_VORBISCOMMENT.BLOCK_ID)
-                        except IndexError:
-                            from audiotools import VERSION
+                # fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
+                if (((self.channels() > 2) or
+                     (self.bits_per_sample() > 16))):
+                    from audiotools.text import CLEAN_FLAC_ADD_CHANNELMASK
 
-                            vorbis_comment = Flac_VORBISCOMMENT(
-                                [], u"Python Audio Tools %s" % (VERSION))
-
-                        if ((u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
-                             vorbis_comment.keys())):
-                            fixes_performed.append(CLEAN_FLAC_ADD_CHANNELMASK)
-                            vorbis_comment[
-                                u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
-                                [u"0x%.4X" % (int(self.channel_mask()))]
-
-                            metadata.replace_blocks(
-                                Flac_VORBISCOMMENT.BLOCK_ID,
-                                [vorbis_comment])
-
-                    # fix an invalid SEEKTABLE, if present
                     try:
-                        from audiotools.text import CLEAN_FLAC_FIX_SEEKTABLE
-
-                        if (not seektable_valid(
-                                metadata.get_block(Flac_SEEKTABLE.BLOCK_ID),
-                                stream_offset + 4 + metadata.size(),
-                                input_f)):
-                            fixes_performed.append(CLEAN_FLAC_FIX_SEEKTABLE)
-
-                            metadata.replace_blocks(Flac_SEEKTABLE.BLOCK_ID,
-                                                    [self.seektable()])
+                        vorbis_comment = metadata.get_block(
+                            Flac_VORBISCOMMENT.BLOCK_ID)
                     except IndexError:
-                        pass
+                        from audiotools import VERSION
 
-                    # fix remaining metadata problems
-                    # which automatically shifts STREAMINFO to the right place
-                    # (the message indicating the fix has already been output)
-                    (metadata, metadata_fixes) = metadata.clean()
-                    output_track.update_metadata(metadata)
+                        vorbis_comment = Flac_VORBISCOMMENT(
+                            [], u"Python Audio Tools %s" % (VERSION))
+
+                    if ((u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
+                         vorbis_comment.keys())):
+                        fixes_performed.append(CLEAN_FLAC_ADD_CHANNELMASK)
+                        vorbis_comment[
+                            u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
+                            [u"0x%.4X" % (int(self.channel_mask()))]
+
+                        metadata.replace_blocks(
+                            Flac_VORBISCOMMENT.BLOCK_ID,
+                            [vorbis_comment])
+
+                # fix an invalid SEEKTABLE, if present
+                try:
+                    from audiotools.text import CLEAN_FLAC_FIX_SEEKTABLE
+
+                    if (not seektable_valid(
+                            metadata.get_block(Flac_SEEKTABLE.BLOCK_ID),
+                            stream_offset + 4 + metadata_size,
+                            input_f)):
+                        fixes_performed.append(CLEAN_FLAC_FIX_SEEKTABLE)
+
+                        metadata.replace_blocks(Flac_SEEKTABLE.BLOCK_ID,
+                                                [self.seektable()])
+                except IndexError:
+                    pass
+
+                # fix remaining metadata problems
+                # which automatically shifts STREAMINFO to the right place
+                # (the message indicating the fix has already been output)
+                (metadata, metadata_fixes) = metadata.clean()
+                output_track.update_metadata(metadata)
 
                 return fixes_performed + metadata_fixes
 

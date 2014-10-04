@@ -1654,12 +1654,12 @@ FloatFrameList_from_channels(PyObject *dummy, PyObject *args)
     }
 
     /*we're done with initial frame*/
-    Py_DECREF((PyObject*)initial_frame);
+    Py_DECREF(initial_frame_obj);
 
     /*process remaining FloatFrameLists in list*/
     for (i = 1; i < list_len; i++) {
         PyObject *list_frame_obj;
-        pcm_FrameList *list_frame;
+        pcm_FloatFrameList *list_frame;
 
         if ((list_frame_obj = PySequence_GetItem(list, i)) == NULL) {
             Py_DECREF((PyObject*)output_frame);
@@ -1667,7 +1667,7 @@ FloatFrameList_from_channels(PyObject *dummy, PyObject *args)
         }
 
         if (FloatFrameList_CheckExact(list_frame_obj)) {
-            list_frame = (pcm_FrameList*)list_frame_obj;
+            list_frame = (pcm_FloatFrameList*)list_frame_obj;
         } else {
             Py_DECREF((PyObject*)output_frame);
             Py_DECREF(list_frame_obj);
