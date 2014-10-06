@@ -41,6 +41,7 @@ Page_init(ogg_Page *self, PyObject *args, PyObject *keywds)
     PyObject *segments;
     PyObject *segments_iter;
     PyObject *item;
+    PyObject *err_occurred;
 
     if (!PyArg_ParseTupleAndKeywords(
         args, keywds, "iiiLIIO", kwlist,
@@ -112,9 +113,10 @@ Page_init(ogg_Page *self, PyObject *args, PyObject *keywds)
         Py_DECREF(item);
     }
 
+    err_occurred = PyErr_Occurred();
     Py_DECREF(segments_iter);
 
-    return PyErr_Occurred() ? -1 : 0;
+    return err_occurred ? -1 : 0;
 }
 
 void
@@ -437,6 +439,22 @@ PageReader_close(ogg_PageReader *self, PyObject *args)
     return Py_None;
 }
 
+static PyObject*
+PageReader_enter(ogg_PageReader *self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject*)self;
+}
+
+static PyObject*
+PageReader_exit(ogg_PageReader *self, PyObject *args)
+{
+    self->reader->close_internal_stream(self->reader);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 
 static PyObject*
 PageWriter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -524,7 +542,21 @@ PageWriter_close(ogg_PageWriter *self, PyObject *args)
     return Py_None;
 }
 
+static PyObject*
+PageWriter_enter(ogg_PageWriter *self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject*)self;
+}
 
+static PyObject*
+PageWriter_exit(ogg_PageWriter *self, PyObject *args)
+{
+    self->writer->close_internal_stream(self->writer);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
 
 MOD_INIT(_ogg)
 {

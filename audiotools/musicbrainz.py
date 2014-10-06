@@ -287,7 +287,7 @@ def parse_release(release, disc_id):
     tracks = get_nodes(get_node(medium, u"track-list"), u"track")
     track_total = len(tracks)
     # and <track-list> contains 0 or more <track>s
-    for (i, track) in enumerate(tracks):
+    for (i, track) in enumerate(tracks, 1):
         # if <track> contains title use that for track_name
         try:
             track_name = text(get_node(track, u"title"))
@@ -329,7 +329,7 @@ def parse_release(release, disc_id):
         try:
             track_number = int(text(get_node(track, u"position")))
         except KeyError:
-            track_number = i + 1
+            track_number = i
 
         # yield complete MetaData object
         from audiotools import MetaData

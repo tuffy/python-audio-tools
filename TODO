@@ -7108,21 +7108,21 @@
      - [X] flac
      - [X] freedb
      - [X] id3
-     - [ ] id3v1
-     - [ ] image
-     - [ ] m4a_atoms
-     - [ ] m4a
-     - [ ] mp3
-     - [ ] musicbrainz
-     - [ ] ogg
-     - [ ] opus
+     - [X] id3v1
+     - [X] image
+     - [X] m4a_atoms
+     - [X] m4a
+     - [X] mp3
+     - [X] musicbrainz
+     - [X] ogg
+     - [X] opus
      - [ ] player
      - [ ] shn
      - [ ] text
      - [ ] tta
      - [ ] ui
-     - [ ] vorbiscomment
-     - [ ] vorbis
+     - [X] vorbiscomment
+     - [X] vorbis
      - [ ] wavpack
      - [ ] wav
 **** TODO audiotools.cue
@@ -7179,7 +7179,7 @@
      - [ ] error.py
      - [ ] test_cdrdao
      - [ ] test_cdrecord
-*** TODO Ensure unit tests pass
+*** DONE Ensure unit tests pass
 **** DONE Python 2.7
 ***** DONE Lib
       - [X] core
@@ -7851,7 +7851,7 @@
 ** TODO Support building cue sheets from discs
    Find some way of grabbing the index points from a disc
    so cuesheets can be populated.
-** TODO Convert AAC support to use libfdk-aac
-   This will eliminate use of faac/faad/neroAac* tools
-   and leave only Ogg FLAC as the only format still using
-   an external program.
+** TODO Cleanup AAC support
+   Although the fdk-aac library doesn't have a compatible license,
+   there must be *some* way to support AAC without the nasty
+   hacks in place now.

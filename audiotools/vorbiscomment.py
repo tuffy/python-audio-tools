@@ -56,6 +56,13 @@ class VorbisComment(MetaData):
 
         vendor_string is a unicode string"""
 
+        from audiotools import PY3
+
+        # some debug type checking
+        for s in comment_strings:
+            assert(isinstance(s, str if PY3 else unicode))
+        assert(isinstance(vendor_string, str if PY3 else unicode))
+
         MetaData.__setattr__(self, "comment_strings", comment_strings)
         MetaData.__setattr__(self, "vendor_string", vendor_string)
 
@@ -71,6 +78,9 @@ class VorbisComment(MetaData):
         return [(key, self[key]) for key in self.keys()]
 
     def __contains__(self, key):
+        from audiotools import PY3
+        assert(isinstance(key, str if PY3 else unicode))
+
         matching_keys = self.ALIASES.get(key.upper(), frozenset([key.upper()]))
 
         return len([item_value for (item_key, item_value) in
@@ -79,6 +89,9 @@ class VorbisComment(MetaData):
                     if (item_key.upper() in matching_keys)]) > 0
 
     def __getitem__(self, key):
+        from audiotools import PY3
+        assert(isinstance(key, str if PY3 else unicode))
+
         matching_keys = self.ALIASES.get(key.upper(), frozenset([key.upper()]))
 
         values = [item_value for (item_key, item_value) in
@@ -92,6 +105,11 @@ class VorbisComment(MetaData):
             raise KeyError(key)
 
     def __setitem__(self, key, values):
+        from audiotools import PY3
+        assert(isinstance(key, str if PY3 else unicode))
+        for v in values:
+            assert(isinstance(v, str if PY3 else unicode))
+
         new_values = values[:]
         new_comment_strings = []
         matching_keys = self.ALIASES.get(key.upper(), frozenset([key.upper()]))
@@ -121,6 +139,9 @@ class VorbisComment(MetaData):
         MetaData.__setattr__(self, "comment_strings", new_comment_strings)
 
     def __delitem__(self, key):
+        from audiotools import PY3
+        assert(isinstance(key, str if PY3 else unicode))
+
         new_comment_strings = []
         matching_keys = self.ALIASES.get(key.upper(), frozenset([key.upper()]))
 

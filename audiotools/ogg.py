@@ -34,6 +34,12 @@ class PacketReader(object):
                              segments=[])
         self.__current_segment__ = 1
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def read_segment(self):
         if (self.__current_segment__ >= len(self.__page__)):
             self.read_page()

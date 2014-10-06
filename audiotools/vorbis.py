@@ -161,24 +161,17 @@ class VorbisAudio(AudioFile):
         from audiotools._ogg import PageReader
 
         try:
-            f = open(self.filename, "rb")
-        except IOError:
-            return 0
-
-        reader = PageReader(f)
-        try:
-            page = reader.read()
-            pcm_samples = page.granule_position
-
-            while (not page.stream_end):
+            with PageReader(open(self.filename, "rb")) as reader:
                 page = reader.read()
-                pcm_samples = max(pcm_samples, page.granule_position)
+                pcm_samples = page.granule_position
 
-            return pcm_samples
+                while (not page.stream_end):
+                    page = reader.read()
+                    pcm_samples = max(pcm_samples, page.granule_position)
+
+                return pcm_samples
         except (IOError, ValueError):
             return 0
-        finally:
-            reader.close()
 
     def sample_rate(self):
         """returns the rate of the track's audio as an integer number of Hz"""
@@ -385,9 +378,7 @@ class VorbisAudio(AudioFile):
         from audiotools.ogg import PacketReader, PageReader
         from audiotools.vorbiscomment import VorbisComment
 
-        with open(self.filename, "rb") as f:
-            reader = PacketReader(PageReader(f))
-
+        with PacketReader(PageReader(open(self.filename, "rb"))) as reader:
             identification = reader.read_packet()
             comment = BitstreamReader(BytesIO(reader.read_packet()), True)
 
@@ -433,17 +424,17 @@ class VorbisAudio(AudioFile):
         vorbis_metadata = self.get_metadata()
 
         if ((vorbis_metadata is not None) and
-            ({'REPLAYGAIN_TRACK_PEAK',
-              'REPLAYGAIN_TRACK_GAIN',
-              'REPLAYGAIN_ALBUM_PEAK',
-              'REPLAYGAIN_ALBUM_GAIN'}.issubset(vorbis_metadata.keys()))):
+            ({u'REPLAYGAIN_TRACK_PEAK',
+              u'REPLAYGAIN_TRACK_GAIN',
+              u'REPLAYGAIN_ALBUM_PEAK',
+              u'REPLAYGAIN_ALBUM_GAIN'}.issubset(vorbis_metadata.keys()))):
             # we have ReplayGain data
             try:
                 return ReplayGain(
-                    vorbis_metadata['REPLAYGAIN_TRACK_GAIN'][0][0:-len(" dB")],
-                    vorbis_metadata['REPLAYGAIN_TRACK_PEAK'][0],
-                    vorbis_metadata['REPLAYGAIN_ALBUM_GAIN'][0][0:-len(" dB")],
-                    vorbis_metadata['REPLAYGAIN_ALBUM_PEAK'][0])
+                    vorbis_metadata[u'REPLAYGAIN_TRACK_GAIN'][0][0:-len(u" dB")],
+                    vorbis_metadata[u'REPLAYGAIN_TRACK_PEAK'][0],
+                    vorbis_metadata[u'REPLAYGAIN_ALBUM_GAIN'][0][0:-len(u" dB")],
+                    vorbis_metadata[u'REPLAYGAIN_ALBUM_PEAK'][0])
             except (IndexError, ValueError):
                 return None
         else:
@@ -465,15 +456,15 @@ class VorbisAudio(AudioFile):
             vorbis_comment = VorbisComment(
                 [], u"Python Audio Tools %s" % (VERSION))
 
-        vorbis_comment["REPLAYGAIN_TRACK_GAIN"] = [
-            "%1.2f dB" % (replaygain.track_gain)]
-        vorbis_comment["REPLAYGAIN_TRACK_PEAK"] = [
-            "%1.8f" % (replaygain.track_peak)]
-        vorbis_comment["REPLAYGAIN_ALBUM_GAIN"] = [
-            "%1.2f dB" % (replaygain.album_gain)]
-        vorbis_comment["REPLAYGAIN_ALBUM_PEAK"] = [
-            "%1.8f" % (replaygain.album_peak)]
-        vorbis_comment["REPLAYGAIN_REFERENCE_LOUDNESS"] = [u"89.0 dB"]
+        vorbis_comment[u"REPLAYGAIN_TRACK_GAIN"] = [
+            u"%1.2f dB" % (replaygain.track_gain)]
+        vorbis_comment[u"REPLAYGAIN_TRACK_PEAK"] = [
+            u"%1.8f" % (replaygain.track_peak)]
+        vorbis_comment[u"REPLAYGAIN_ALBUM_GAIN"] = [
+            u"%1.2f dB" % (replaygain.album_gain)]
+        vorbis_comment[u"REPLAYGAIN_ALBUM_PEAK"] = [
+            u"%1.8f" % (replaygain.album_peak)]
+        vorbis_comment[u"REPLAYGAIN_REFERENCE_LOUDNESS"] = [u"89.0 dB"]
 
         self.update_metadata(vorbis_comment)
 
@@ -484,11 +475,11 @@ class VorbisAudio(AudioFile):
 
         vorbis_comment = self.get_metadata()
         if (vorbis_comment is not None):
-            for field in ["REPLAYGAIN_TRACK_GAIN",
-                          "REPLAYGAIN_TRACK_PEAK",
-                          "REPLAYGAIN_ALBUM_GAIN",
-                          "REPLAYGAIN_ALBUM_PEAK",
-                          "REPLAYGAIN_REFERENCE_LOUDNESS"]:
+            for field in [u"REPLAYGAIN_TRACK_GAIN",
+                          u"REPLAYGAIN_TRACK_PEAK",
+                          u"REPLAYGAIN_ALBUM_GAIN",
+                          u"REPLAYGAIN_ALBUM_PEAK",
+                          u"REPLAYGAIN_REFERENCE_LOUDNESS"]:
                 try:
                     del(vorbis_comment[field])
                 except KeyError:

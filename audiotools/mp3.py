@@ -288,15 +288,13 @@ class MP3Audio(AudioFile):
         from audiotools.id3 import read_id3v2_comment
         from audiotools.id3v1 import ID3v1Comment
 
-        f = open(self.filename, "rb")
-        try:
+        with open(self.filename, "rb") as f:
             if (f.read(3) == b"ID3"):
                 id3v2 = read_id3v2_comment(self.filename)
 
                 try:
                     # yes IDv2, yes ID3v1
-                    return ID3CommentPair(id3v2,
-                                          ID3v1Comment.parse(f))
+                    return ID3CommentPair(id3v2, ID3v1Comment.parse(f))
                 except ValueError:
                     # yes ID3v2, no ID3v1
                     return id3v2
@@ -307,8 +305,6 @@ class MP3Audio(AudioFile):
                 except ValueError:
                     # no ID3v2, no ID3v1
                     return None
-        finally:
-            f.close()
 
     def update_metadata(self, metadata):
         """takes this track's current MetaData object

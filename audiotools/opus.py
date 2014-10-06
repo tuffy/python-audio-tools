@@ -146,16 +146,15 @@ class OpusAudio(VorbisAudio):
         from audiotools._ogg import PageReader
 
         try:
-            reader = PageReader(open(self.filename, "rb"))
-            page = reader.read()
-            pcm_samples = page.granule_position
-
-            while (not page.stream_end):
+            with PageReader(open(self.filename, "rb")) as reader:
                 page = reader.read()
-                pcm_samples = max(pcm_samples, page.granule_position)
+                pcm_samples = page.granule_position
 
-            reader.close()
-            return pcm_samples
+                while (not page.stream_end):
+                    page = reader.read()
+                    pcm_samples = max(pcm_samples, page.granule_position)
+
+                return pcm_samples
         except (IOError, ValueError):
             return 0
 
@@ -172,7 +171,15 @@ class OpusAudio(VorbisAudio):
 
         from audiotools.decoders import OpusDecoder
 
-        return OpusDecoder(self.filename)
+        try:
+            return OpusDecoder(self.filename)
+        except ValueError as err:
+            from audiotools import PCMReaderError
+            return PCMReaderError(error_message=str(err),
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -205,15 +212,14 @@ class OpusAudio(VorbisAudio):
             compression = __default_quality__(cls.NAME)
 
         if ((pcmreader.channels > 2) and (pcmreader.channels <= 8)):
-            channel_mask = int(pcmreader.channel_mask)
-            if ((channel_mask != 0) and
-                (channel_mask not in
-                 (0x7,      # FR, FC, FL
+            if ((pcmreader.channel_mask != 0) and
+                (pcmreader.channel_mask not in
+                 {0x7,      # FR, FC, FL
                   0x33,     # FR, FL, BR, BL
                   0x37,     # FR, FC, FL, BL, BR
                   0x3f,     # FR, FC, FL, BL, BR, LFE
                   0x70f,    # FL, FC, FR, SL, SR, BC, LFE
-                  0x63f))):  # FL, FC, FR, SL, SR, BL, BR, LFE
+                  0x63f})):  # FL, FC, FR, SL, SR, BL, BR, LFE
                 from audiotools import UnsupportedChannelMask
                 pcmreader.close()
                 raise UnsupportedChannelMask(filename, channel_mask)
@@ -368,9 +374,7 @@ class OpusAudio(VorbisAudio):
         from audiotools.bitstream import BitstreamReader
         from audiotools.ogg import PacketReader, PageReader
 
-        with open(self.filename, "rb") as f:
-            reader = PacketReader(PageReader(f))
-
+        with PacketReader(PageReader(open(self.filename, "rb"))) as reader:
             identification = reader.read_packet()
             comment = BitstreamReader(BytesIO(reader.read_packet()), True)
 

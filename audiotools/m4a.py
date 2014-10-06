@@ -196,9 +196,9 @@ class M4ATaggedAudio(object):
             (meta_size, meta_offset) = get_m4a_atom_offset(
                 BitstreamReader(f, False), b"moov", b"udta", b"meta")
             f.seek(meta_offset + 8, 0)
-            metadata.build(BitstreamWriter(f, False))
-            f.close()
-            return
+            with BitstreamWriter(f, False) as writer:
+                metadata.build(writer)
+            # writer will close "f" when finished
         else:
             from audiotools import TemporaryFile
 
@@ -920,14 +920,14 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         at the given filename with the specified compression level
         and returns a new ALACAudio object"""
 
-        if (pcmreader.bits_per_sample not in (16, 24)):
+        if (pcmreader.bits_per_sample not in {16, 24}):
             from audiotools import UnsupportedBitsPerSample
 
             pcmreader.close()
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
-        if (int(pcmreader.channel_mask) not in
-            (0x0001,    # 1ch - mono
+        if (pcmreader.channel_mask not in
+            {0x0001,    # 1ch - mono
              0x0004,    # 1ch - mono
              0x0003,    # 2ch - left, right
              0x0007,    # 3ch - center, left, right
@@ -936,7 +936,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
              0x003F,    # 6ch - C, L, R, back left, back right, LFE
              0x013F,    # 7ch - C, L, R, bL, bR, back center, LFE
              0x00FF,    # 8ch - C, cL, cR, L, R, bL, bR, LFE
-             0x0000)):  # undefined
+             0x0000}):  # undefined
             from audiotools import UnsupportedChannelMask
 
             pcmreader.close()

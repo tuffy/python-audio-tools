@@ -208,11 +208,21 @@ PageReader_read(ogg_PageReader *self, PyObject *args);
 static PyObject*
 PageReader_close(ogg_PageReader *self, PyObject *args);
 
+static PyObject*
+PageReader_enter(ogg_PageReader *self, PyObject *args);
+
+static PyObject*
+PageReader_exit(ogg_PageReader *self, PyObject *args);
+
 PyMethodDef PageReader_methods[] = {
     {"read", (PyCFunction)PageReader_read,
      METH_NOARGS, "read() -> Page"},
     {"close", (PyCFunction)PageReader_close,
      METH_NOARGS, "close()"},
+    {"__enter__", (PyCFunction)PageReader_enter,
+     METH_NOARGS, "__enter__() -> self"},
+    {"__exit__", (PyCFunction)PageReader_exit,
+     METH_VARARGS, "__exit__(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 
@@ -282,6 +292,12 @@ PageWriter_flush(ogg_PageWriter *self, PyObject *args);
 static PyObject*
 PageWriter_close(ogg_PageWriter *self, PyObject *args);
 
+static PyObject*
+PageWriter_enter(ogg_PageWriter *self, PyObject *args);
+
+static PyObject*
+PageWriter_exit(ogg_PageWriter *self, PyObject *args);
+
 PyMethodDef PageWriter_methods[] = {
     {"write", (PyCFunction)PageWriter_write,
      METH_VARARGS, "write(Page)"},
@@ -289,6 +305,10 @@ PyMethodDef PageWriter_methods[] = {
      METH_NOARGS, "flush()"},
     {"close", (PyCFunction)PageWriter_close,
      METH_NOARGS, "close()"},
+    {"__enter__", (PyCFunction)PageWriter_enter,
+     METH_NOARGS, "__enter__() -> self"},
+    {"__exit__", (PyCFunction)PageWriter_exit,
+     METH_VARARGS, "__exit__(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

@@ -87,11 +87,6 @@ class M4A_Tree_Atom(object):
         # assert((name is None) or isinstance(name, bytes))
 
         self.name = name
-        try:
-            iter(leaf_atoms)
-        except TypeError:
-            from audiotools.text import ERR_M4A_INVALID_LEAF_ATOMS
-            raise TypeError(ERR_M4A_INVALID_LEAF_ATOMS)
         self.leaf_atoms = leaf_atoms
 
     def copy(self):

@@ -17,19 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-import imghdr
 from audiotools.bitstream import BitstreamReader, format_size
 from audiotools import InvalidImage
-
-
-def __jpeg__(h, f):
-    if (h[0:3] == "FFD8FF".decode('hex')):
-        return 'jpeg'
-    else:
-        return None
-
-
-imghdr.tests.append(__jpeg__)
 
 
 def image_metrics(file_data):
@@ -38,17 +27,15 @@ def image_metrics(file_data):
     raises InvalidImage if there is an error parsing the file
     or its type is unknown"""
 
-    header = imghdr.what(None, file_data)
-
-    if (header == 'jpeg'):
+    if (header[0:3] == b"\xff\xd8\xff"):
         return __JPEG__.parse(file_data)
-    elif (header == 'png'):
+    elif (header[0:8] == b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
         return __PNG__.parse(file_data)
-    elif (header == 'gif'):
+    elif (header[0:3] == b'GIF'):
         return __GIF__.parse(file_data)
-    elif (header == 'bmp'):
+    elif (header[0:2] == b'BM'):
         return __BMP__.parse(file_data)
-    elif (header == 'tiff'):
+    elif ((header[0:2] == b'II') or (header[0:2] == b'MM')):
         return __TIFF__.parse(file_data)
     else:
         from audiotools.text import ERR_IMAGE_UNKNOWN_TYPE
@@ -117,7 +104,7 @@ class __JPEG__(ImageMetrics):
             segment_type = reader.read(8)
 
             while (segment_type != 0xDA):
-                if (segment_type not in (0xD8, 0xD9)):
+                if (segment_type not in {0xD8, 0xD9}):
                     yield (segment_type, reader.substream(reader.read(16) - 2))
                 else:
                     yield (segment_type, None)
@@ -130,10 +117,10 @@ class __JPEG__(ImageMetrics):
         try:
             for (segment_type,
                  segment_data) in segments(BitstreamReader(file_data, False)):
-                if (segment_type in (0xC0, 0xC1, 0xC2, 0xC3,
+                if (segment_type in {0xC0, 0xC1, 0xC2, 0xC3,
                                      0xC5, 0XC5, 0xC6, 0xC7,
                                      0xC9, 0xCA, 0xCB, 0xCD,
-                                     0xCE, 0xCF)):  # start of frame
+                                     0xCE, 0xCF}):  # start of frame
                     (data_precision,
                      image_height,
                      image_width,
