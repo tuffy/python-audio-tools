@@ -245,24 +245,14 @@ ReplayGain_next_title(replaygain_ReplayGain *self)
 PyObject*
 ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
 {
-    PyObject *framelist_obj;
     pcm_FrameList* framelist;
     aa_int* channels;
     aa_double* channels_f;
     unsigned channel;
     int32_t peak_shift;
 
-    if (!PyArg_ParseTuple(args, "O", &framelist_obj))
+    if (!PyArg_ParseTuple(args, "O!", self->framelist_type, &framelist))
         return NULL;
-
-    /*ensure object is a FrameList*/
-    if (Py_TYPE(framelist_obj) == (PyTypeObject*)self->framelist_type) {
-        framelist = (pcm_FrameList*)framelist_obj;
-    } else {
-        PyErr_SetString(PyExc_TypeError,
-                        "update requires a FrameList object");
-        return NULL;
-    }
 
     /*if FrameList contains no samples, do nothing*/
     if (framelist->samples_length == 0) {

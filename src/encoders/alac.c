@@ -1207,23 +1207,14 @@ ALACEncoder_dealloc(encoders_ALACEncoder *self)
 static PyObject*
 ALACEncoder_encode(encoders_ALACEncoder *self, PyObject *args)
 {
-    PyObject *framelist_obj;
     pcm_FrameList* framelist;
     unsigned channel;
     aa_int* channels = self->channels;
     unsigned bytes_written;
     PyObject *string;
 
-    if (!PyArg_ParseTuple(args, "O", &framelist_obj))
+    if (!PyArg_ParseTuple(args, "O!", self->framelist_type, &framelist))
         return NULL;
-
-    /*ensure argument is FrameList object*/
-    if (Py_TYPE(framelist_obj) != (PyTypeObject*)self->framelist_type) {
-        PyErr_SetString(PyExc_TypeError, "argument must be a FrameList");
-        return NULL;
-    } else {
-        framelist = (pcm_FrameList*)framelist_obj;
-    }
 
     /*convert FrameList object to multidimensional int array*/
     channels->reset(channels);

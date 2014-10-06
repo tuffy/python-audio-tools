@@ -920,7 +920,7 @@ FrameList_from_channels(PyObject *dummy, PyObject *args)
     }
 
     /*we're done with initial frame*/
-    Py_DECREF((PyObject*)initial_frame);
+    Py_DECREF(initial_frame_obj);
 
     /*process remaining FrameLists in list*/
     for (i = 1; i < list_len; i++) {

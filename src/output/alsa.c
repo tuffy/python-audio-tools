@@ -192,24 +192,14 @@ void ALSAAudio_dealloc(output_ALSAAudio *self)
 
 static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args)
 {
-    PyObject *framelist_obj;
     pcm_FrameList *framelist;
     unsigned i;
     snd_pcm_uframes_t to_write;
     snd_pcm_sframes_t frames_written;
     PyThreadState *state;
 
-    if (!PyArg_ParseTuple(args, "O", &framelist_obj))
+    if (!PyArg_ParseTuple(args, "O!", self->framelist_type, &framelist))
         return NULL;
-
-    /*ensure object is a FrameList*/
-    if (Py_TYPE(framelist_obj) != (PyTypeObject*)self->framelist_type) {
-        PyErr_SetString(PyExc_TypeError,
-                        "argument must be FrameList object");
-        return NULL;
-    } else {
-        framelist = (pcm_FrameList*)framelist_obj;
-    }
 
     if (framelist->bits_per_sample != self->bits_per_sample) {
         PyErr_SetString(PyExc_ValueError,

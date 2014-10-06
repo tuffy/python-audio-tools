@@ -191,21 +191,12 @@ value(int l, int r)
 static PyObject*
 Checksum_update(accuraterip_Checksum* self, PyObject *args)
 {
-    PyObject *framelist_obj;
     pcm_FrameList *framelist;
     const unsigned channels = 2;
     unsigned i;
 
-    if (!PyArg_ParseTuple(args, "O", &framelist_obj))
+    if (!PyArg_ParseTuple(args, "O!", self->framelist_class, &framelist))
         return NULL;
-
-    /*ensure framelist_obj is a FrameList object*/
-    if (PyObject_IsInstance(framelist_obj, self->framelist_class)) {
-        framelist = (pcm_FrameList*)framelist_obj;
-    } else {
-        PyErr_SetString(PyExc_TypeError, "objects must be of type FrameList");
-        return NULL;
-    }
 
     /*ensure FrameList is CD-formatted*/
     if (framelist->channels != 2) {

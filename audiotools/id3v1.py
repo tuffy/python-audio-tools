@@ -23,10 +23,6 @@ from audiotools import MetaData
 class ID3v1Comment(MetaData):
     """a complete ID3v1.1 tag"""
 
-    # All ID3v1 tags are treated as ID3v1.1
-    # because plain ID3v1 tags don't support track number
-    # which means it'll be impossible to "promote" a tag later on.
-
     ID3v1_FIELDS = {"track_name": "__track_name__",
                     "artist_name": "__artist_name__",
                     "album_name": "__album_name__",
@@ -60,8 +56,8 @@ class ID3v1Comment(MetaData):
         | genre        |      1 |
         |--------------+--------|
 
-        track_name, artist_name, album_name, year and comment
-        are unicode strings to a maximum of 30 characters
+        track_name, artist_name, album_name, year and
+        comment are unicode strings
 
         track_number and genre are integers
         """
