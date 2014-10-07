@@ -304,27 +304,29 @@ from_channels = audiotools.ChannelMask.from_channels
 
 # these are combinations that tend to occur in nature
 SHORT_PCM_COMBINATIONS = \
-    ((11025,  1, from_channels(1), 8),
-     (22050,  1, from_channels(1), 8),
-     (22050,  1, from_channels(1), 16),
-     (32000,  2, from_channels(2), 16),
-     (44100,  1, from_channels(1), 16),
-     (44100,  2, from_channels(2), 16),
-     (48000,  1, from_channels(1), 16),
-     (48000,  2, from_channels(2), 16),
-     (48000,  6, audiotools.ChannelMask.from_fields(front_left=True,
-                                                    front_right=True,
-                                                    front_center=True,
-                                                    low_frequency=True,
-                                                    back_left=True,
-                                                    back_right=True), 16),
-     (192000, 2, from_channels(2), 24),
-     (96000,  6, audiotools.ChannelMask.from_fields(front_left=True,
-                                                    front_right=True,
-                                                    front_center=True,
-                                                    low_frequency=True,
-                                                    back_left=True,
-                                                    back_right=True), 24))
+    ((11025,  1, int(from_channels(1)), 8),
+     (22050,  1, int(from_channels(1)), 8),
+     (22050,  1, int(from_channels(1)), 16),
+     (32000,  2, int(from_channels(2)), 16),
+     (44100,  1, int(from_channels(1)), 16),
+     (44100,  2, int(from_channels(2)), 16),
+     (48000,  1, int(from_channels(1)), 16),
+     (48000,  2, int(from_channels(2)), 16),
+     (48000,  6, int(audiotools.ChannelMask.from_fields(
+                         front_left=True,
+                         front_right=True,
+                         front_center=True,
+                         low_frequency=True,
+                         back_left=True,
+                         back_right=True)), 16),
+     (192000, 2, int(from_channels(2)), 24),
+     (96000,  6, int(audiotools.ChannelMask.from_fields(
+                         front_left=True,
+                         front_right=True,
+                         front_center=True,
+                         low_frequency=True,
+                         back_left=True,
+                         back_right=True)), 24))
 
 
 TEST_COVER1 = open("test_cover1.jpg", "rb").read()

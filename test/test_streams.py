@@ -45,7 +45,8 @@ class FrameListReader:
         self.sample_rate = sample_rate
         self.channels = channels
         if (channel_mask is None):
-            self.channel_mask = audiotools.ChannelMask.from_channels(channels)
+            self.channel_mask = \
+                int(audiotools.ChannelMask.from_channels(channels))
         else:
             self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample

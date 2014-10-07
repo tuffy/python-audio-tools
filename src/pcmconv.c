@@ -47,9 +47,10 @@ a_int_to_FrameList(PyObject* audiotools_pcm,
                  audiotools_pcm, channels, bits_per_sample)) != NULL) {
             framelist->frames = samples->len / channels;
             framelist->samples_length = framelist->frames * framelist->channels;
-            framelist->samples = realloc(framelist->samples,
-                                         framelist->samples_length *
-                                         sizeof(int));
+            framelist->samples = PyMem_Realloc(
+                framelist->samples,
+                framelist->samples_length *
+                sizeof(int));
 
             memcpy(framelist->samples,
                    samples->_,
@@ -98,9 +99,10 @@ aa_int_to_FrameList(PyObject* audiotools_pcm,
 
         framelist->frames = pcm_frames;
         framelist->samples_length = pcm_frames * channel_count;
-        framelist->samples = realloc(framelist->samples,
-                                     framelist->samples_length *
-                                     sizeof(int));
+        framelist->samples = PyMem_Realloc(
+            framelist->samples,
+            framelist->samples_length *
+            sizeof(int));
         for (c = 0; c < channel_count; c++) {
             const a_int* channel = channels->_[c];
             for (i = 0; i < pcm_frames; i++) {

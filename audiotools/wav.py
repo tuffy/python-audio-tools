@@ -366,6 +366,12 @@ def wave_header(sample_rate,
 
     from audiotools.bitstream import (BitstreamRecorder, format_size)
 
+    assert(isinstance(sample_rate, int))
+    assert(isinstance(channels, int))
+    assert(isinstance(channel_mask, int))
+    assert(isinstance(bits_per_sample, int))
+    assert(isinstance(total_pcm_frames, int))
+
     header = BitstreamRecorder(True)
 
     avg_bytes_per_second = sample_rate * channels * (bits_per_sample // 8)
@@ -398,7 +404,7 @@ def wave_header(sample_rate,
                       bits_per_sample,
                       22,       # CB size
                       bits_per_sample,
-                      int(channel_mask),
+                      channel_mask,
                       b'\x01\x00\x00\x00\x00\x00\x10\x00' +
                       b'\x80\x00\x00\xaa\x00\x38\x9b\x71'  # sub format
                       )

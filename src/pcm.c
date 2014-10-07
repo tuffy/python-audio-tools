@@ -171,7 +171,7 @@ PyTypeObject pcm_FrameListType = {
 void
 FrameList_dealloc(pcm_FrameList* self)
 {
-    free(self->samples);
+    PyMem_Free(self->samples);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -224,7 +224,7 @@ FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds)
     } else {
         self->samples_length = data_size / (self->bits_per_sample / 8);
         self->frames = self->samples_length / self->channels;
-        self->samples = malloc(sizeof(int) * self->samples_length);
+        self->samples = PyMem_Malloc(sizeof(int) * self->samples_length);
         converter = FrameList_get_char_to_int_converter(self->bits_per_sample,
                                                         is_big_endian,
                                                         is_signed);
@@ -381,7 +381,7 @@ FrameList_frame(pcm_FrameList *self, PyObject *args)
     frame->frames = 1;
     frame->channels = self->channels;
     frame->bits_per_sample = self->bits_per_sample;
-    frame->samples = malloc(sizeof(int) * self->channels);
+    frame->samples = PyMem_Malloc(sizeof(int) * self->channels);
     frame->samples_length = self->channels;
     memcpy(frame->samples,
            self->samples + (frame_number * self->channels),
@@ -407,7 +407,7 @@ FrameList_channel(pcm_FrameList *self, PyObject *args)
     channel->frames = self->frames;
     channel->channels = 1;
     channel->bits_per_sample = self->bits_per_sample;
-    channel->samples = malloc(sizeof(int) * self->frames);
+    channel->samples = PyMem_Malloc(sizeof(int) * self->frames);
     channel->samples_length = self->frames;
 
     for (i = 0; i < self->frames; i++) {
@@ -483,7 +483,7 @@ FrameList_split(pcm_FrameList *self, PyObject *args)
         head = FrameList_create();
         head->frames = split_point;
         head->samples_length = (head->frames * self->channels);
-        head->samples = malloc(head->samples_length * sizeof(int));
+        head->samples = PyMem_Malloc(head->samples_length * sizeof(int));
         memcpy(head->samples,
                self->samples,
                head->samples_length * sizeof(int));
@@ -491,7 +491,7 @@ FrameList_split(pcm_FrameList *self, PyObject *args)
         tail = FrameList_create();
         tail->frames = (self->frames - split_point);
         tail->samples_length = (tail->frames * self->channels);
-        tail->samples = malloc(tail->samples_length * sizeof(int));
+        tail->samples = PyMem_Malloc(tail->samples_length * sizeof(int));
         memcpy(tail->samples,
                self->samples + head->samples_length,
                tail->samples_length * sizeof(int));
@@ -539,7 +539,7 @@ FrameList_concat(pcm_FrameList *a, PyObject *bb)
     concat->channels = a->channels;
     concat->bits_per_sample = a->bits_per_sample;
     concat->samples_length = a->samples_length + b->samples_length;
-    concat->samples = malloc(concat->samples_length * sizeof(int));
+    concat->samples = PyMem_Malloc(concat->samples_length * sizeof(int));
     memcpy(concat->samples, a->samples, a->samples_length * sizeof(int));
     memcpy(concat->samples + a->samples_length,
            b->samples,
@@ -558,7 +558,7 @@ FrameList_repeat(pcm_FrameList *a, Py_ssize_t i)
     repeat->channels = a->channels;
     repeat->bits_per_sample = a->bits_per_sample;
     repeat->samples_length = (unsigned int)(a->samples_length * i);
-    repeat->samples = malloc(sizeof(int) * repeat->samples_length);
+    repeat->samples = PyMem_Malloc(sizeof(int) * repeat->samples_length);
 
     for (j = 0; j < i; j++) {
         memcpy(repeat->samples + (j * a->samples_length),
@@ -599,7 +599,7 @@ FrameList_inplace_concat(pcm_FrameList *a, PyObject *bb)
 
     a->frames += b->frames;
     a->samples_length += b->samples_length;
-    a->samples = realloc(a->samples, a->samples_length * sizeof(int));
+    a->samples = PyMem_Realloc(a->samples, a->samples_length * sizeof(int));
     memcpy(a->samples + old_samples_length,
            b->samples,
            b->samples_length * sizeof(int));
@@ -616,7 +616,7 @@ FrameList_inplace_repeat(pcm_FrameList *a, Py_ssize_t i)
 
     a->frames = (unsigned int)(a->frames * i);
     a->samples_length = (unsigned int)(a->samples_length * i);
-    a->samples = realloc(a->samples, a->samples_length * sizeof(int));
+    a->samples = PyMem_Realloc(a->samples, a->samples_length * sizeof(int));
 
     for (j = 1; j < i; j++) {
         memcpy(a->samples + (j * original_length),
@@ -637,7 +637,7 @@ FrameList_to_float(pcm_FrameList *self, PyObject *args)
     framelist->frames = self->frames;
     framelist->channels = self->channels;
     framelist->samples_length = self->samples_length;
-    framelist->samples = malloc(sizeof(double) * framelist->samples_length);
+    framelist->samples = PyMem_Malloc(sizeof(double) * framelist->samples_length);
 
     for (i = 0; i < self->samples_length; i++) {
         framelist->samples[i] = ((double)self->samples[i]) / adjustment;
@@ -732,7 +732,7 @@ FrameList_from_list(PyObject *dummy, PyObject *args)
     framelist = FrameList_create();
     framelist->channels = channels;
     framelist->bits_per_sample = bits_per_sample;
-    framelist->samples = malloc(sizeof(int) * list_len);
+    framelist->samples = PyMem_Malloc(sizeof(int) * list_len);
     framelist->samples_length = (unsigned int)list_len;
     framelist->frames = (unsigned int)list_len / framelist->channels;
     for (i = 0; i < list_len; i++) {
@@ -800,7 +800,7 @@ FrameList_from_frames(PyObject *dummy, PyObject *args)
     output_frame->samples_length =
         output_frame->frames * output_frame->channels;
     output_frame->samples =
-        malloc(sizeof(int) * output_frame->samples_length);
+        PyMem_Malloc(sizeof(int) * output_frame->samples_length);
 
     memcpy(output_frame->samples,
            initial_frame->samples,
@@ -913,7 +913,7 @@ FrameList_from_channels(PyObject *dummy, PyObject *args)
     output_frame->samples_length =
         output_frame->frames * output_frame->channels;
     output_frame->samples =
-        malloc(sizeof(int) * output_frame->samples_length);
+        PyMem_Malloc(sizeof(int) * output_frame->samples_length);
 
     for (j = 0; j < initial_frame->samples_length; j++) {
         output_frame->samples[j * list_len] = initial_frame->samples[j];
@@ -1080,7 +1080,7 @@ PyTypeObject pcm_FloatFrameListType = {
 void
 FloatFrameList_dealloc(pcm_FloatFrameList* self)
 {
-    free(self->samples);
+    PyMem_Free(self->samples);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -1120,7 +1120,7 @@ FloatFrameList_init(pcm_FloatFrameList *self, PyObject *args, PyObject *kwds)
     } else {
         self->samples_length = (unsigned int)data_size;
         self->frames = (self->samples_length / self->channels);
-        self->samples = malloc(sizeof(double) * self->samples_length);
+        self->samples = PyMem_Malloc(sizeof(double) * self->samples_length);
     }
 
     for (i = 0; i < data_size; i++) {
@@ -1263,7 +1263,7 @@ FloatFrameList_frame(pcm_FloatFrameList *self, PyObject *args)
     frame = FloatFrameList_create();
     frame->frames = 1;
     frame->channels = self->channels;
-    frame->samples = malloc(sizeof(double) * self->channels);
+    frame->samples = PyMem_Malloc(sizeof(double) * self->channels);
     frame->samples_length = self->channels;
     memcpy(frame->samples,
            self->samples + (frame_number * self->channels),
@@ -1290,7 +1290,7 @@ FloatFrameList_channel(pcm_FloatFrameList *self, PyObject *args)
     channel = FloatFrameList_create();
     channel->frames = self->frames;
     channel->channels = 1;
-    channel->samples = malloc(sizeof(double) * self->frames);
+    channel->samples = PyMem_Malloc(sizeof(double) * self->frames);
     channel->samples_length = self->frames;
 
     samples_length = self->samples_length;
@@ -1322,7 +1322,7 @@ FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args)
     framelist->channels = self->channels;
     framelist->bits_per_sample = bits_per_sample;
     framelist->samples_length = self->samples_length;
-    framelist->samples = malloc(sizeof(int) * framelist->samples_length);
+    framelist->samples = PyMem_Malloc(sizeof(int) * framelist->samples_length);
 
     adjustment = 1 << (bits_per_sample - 1);
     sample_min = -adjustment;
@@ -1370,7 +1370,7 @@ FloatFrameList_split(pcm_FloatFrameList *self, PyObject *args)
         head = FloatFrameList_create();
         head->frames = split_point;
         head->samples_length = (head->frames * self->channels);
-        head->samples = malloc(head->samples_length * sizeof(double));
+        head->samples = PyMem_Malloc(head->samples_length * sizeof(double));
         memcpy(head->samples,
                self->samples,
                head->samples_length * sizeof(double));
@@ -1378,7 +1378,7 @@ FloatFrameList_split(pcm_FloatFrameList *self, PyObject *args)
         tail = FloatFrameList_create();
         tail->frames = (self->frames - split_point);
         tail->samples_length = (tail->frames * self->channels);
-        tail->samples = malloc(tail->samples_length * sizeof(double));
+        tail->samples = PyMem_Malloc(tail->samples_length * sizeof(double));
         memcpy(tail->samples,
                self->samples + head->samples_length,
                tail->samples_length * sizeof(double));
@@ -1418,7 +1418,7 @@ FloatFrameList_concat(pcm_FloatFrameList *a, PyObject *bb)
     concat->frames = a->frames + b->frames;
     concat->channels = a->channels;
     concat->samples_length = a->samples_length + b->samples_length;
-    concat->samples = malloc(concat->samples_length * sizeof(double));
+    concat->samples = PyMem_Malloc(concat->samples_length * sizeof(double));
     memcpy(concat->samples, a->samples, a->samples_length * sizeof(double));
     memcpy(concat->samples + a->samples_length,
            b->samples,
@@ -1437,7 +1437,7 @@ FloatFrameList_repeat(pcm_FloatFrameList *a, Py_ssize_t i)
     repeat->frames = (unsigned int)(a->frames * i);
     repeat->channels = a->channels;
     repeat->samples_length = (unsigned int)(a->samples_length * i);
-    repeat->samples = malloc(sizeof(double) * repeat->samples_length);
+    repeat->samples = PyMem_Malloc(sizeof(double) * repeat->samples_length);
 
     for (j = 0; j < i; j++) {
         memcpy(repeat->samples + (j * a->samples_length),
@@ -1472,7 +1472,7 @@ FloatFrameList_inplace_concat(pcm_FloatFrameList *a, PyObject *bb)
 
     a->frames += b->frames;
     a->samples_length += b->samples_length;
-    a->samples = realloc(a->samples, a->samples_length * sizeof(double));
+    a->samples = PyMem_Realloc(a->samples, a->samples_length * sizeof(double));
     memcpy(a->samples + old_samples_length,
            b->samples,
            b->samples_length * sizeof(double));
@@ -1489,7 +1489,7 @@ FloatFrameList_inplace_repeat(pcm_FloatFrameList *a, Py_ssize_t i)
 
     a->frames = (unsigned int)(a->frames * i);
     a->samples_length = (unsigned int)(a->samples_length * i);
-    a->samples = realloc(a->samples, a->samples_length * sizeof(double));
+    a->samples = PyMem_Realloc(a->samples, a->samples_length * sizeof(double));
 
     for (j = 1; j < i; j++) {
         memcpy(a->samples + (j * original_length),
@@ -1546,7 +1546,7 @@ FloatFrameList_from_frames(PyObject *dummy, PyObject *args)
     output_frame->samples_length =
         output_frame->frames * output_frame->channels;
     output_frame->samples =
-        malloc(sizeof(double) * output_frame->samples_length);
+        PyMem_Malloc(sizeof(double) * output_frame->samples_length);
 
     memcpy(output_frame->samples,
            initial_frame->samples,
@@ -1647,7 +1647,7 @@ FloatFrameList_from_channels(PyObject *dummy, PyObject *args)
     output_frame->samples_length =
         output_frame->frames * output_frame->channels;
     output_frame->samples =
-        malloc(sizeof(double) * output_frame->samples_length);
+        PyMem_Malloc(sizeof(double) * output_frame->samples_length);
 
     for (j = 0; j < initial_frame->samples_length; j++) {
         output_frame->samples[j * list_len] = initial_frame->samples[j];

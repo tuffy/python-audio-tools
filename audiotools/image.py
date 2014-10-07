@@ -27,15 +27,15 @@ def image_metrics(file_data):
     raises InvalidImage if there is an error parsing the file
     or its type is unknown"""
 
-    if (header[0:3] == b"\xff\xd8\xff"):
+    if (file_data[0:3] == b"\xff\xd8\xff"):
         return __JPEG__.parse(file_data)
-    elif (header[0:8] == b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
+    elif (file_data[0:8] == b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
         return __PNG__.parse(file_data)
-    elif (header[0:3] == b'GIF'):
+    elif (file_data[0:3] == b'GIF'):
         return __GIF__.parse(file_data)
-    elif (header[0:2] == b'BM'):
+    elif (file_data[0:2] == b'BM'):
         return __BMP__.parse(file_data)
-    elif ((header[0:2] == b'II') or (header[0:2] == b'MM')):
+    elif ((file_data[0:2] == b'II') or (file_data[0:2] == b'MM')):
         return __TIFF__.parse(file_data)
     else:
         from audiotools.text import ERR_IMAGE_UNKNOWN_TYPE

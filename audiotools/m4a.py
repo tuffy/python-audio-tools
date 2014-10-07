@@ -940,8 +940,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             from audiotools import UnsupportedChannelMask
 
             pcmreader.close()
-            raise UnsupportedChannelMask(filename,
-                                         int(pcmreader.channel_mask))
+            raise UnsupportedChannelMask(filename, pcmreader.channel_mask)
 
         import time
         import tempfile

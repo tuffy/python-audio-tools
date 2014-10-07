@@ -2842,8 +2842,8 @@ class ALACFileTest(LosslessFileTest):
     @FORMAT_ALAC
     def test_noise(self):
         for (channels, mask) in [
-            (1, audiotools.ChannelMask.from_channels(1)),
-            (2, audiotools.ChannelMask.from_channels(2))]:
+            (1, int(audiotools.ChannelMask.from_channels(1))),
+            (2, int(audiotools.ChannelMask.from_channels(2)))]:
             for bps in [16, 24]:
                 # the reference decoder can't handle very large block sizes
                 for blocksize in [32, 4096, 8192]:
@@ -3117,8 +3117,8 @@ class ALACFileTest(LosslessFileTest):
 
         # test noise
         for (channels, mask) in [
-            (1, audiotools.ChannelMask.from_channels(1)),
-            (2, audiotools.ChannelMask.from_channels(2))]:
+            (1, int(audiotools.ChannelMask.from_channels(1))),
+            (2, int(audiotools.ChannelMask.from_channels(2)))]:
             for bps in [16, 24]:
                 # the reference decoder can't handle very large block sizes
                 for blocksize in [32, 4096, 8192]:
@@ -5332,13 +5332,13 @@ class ShortenFileTest(TestForeignWaveChunks,
         for opts in self.encode_opts:
             encode_opts = opts.copy()
             for (channels, mask) in [
-                (1, audiotools.ChannelMask.from_channels(1)),
-                (2, audiotools.ChannelMask.from_channels(2)),
-                (4, audiotools.ChannelMask.from_fields(front_left=True,
-                                                       front_right=True,
-                                                       back_left=True,
-                                                       back_right=True)),
-                (8, audiotools.ChannelMask(0))]:
+                (1, int(audiotools.ChannelMask.from_channels(1))),
+                (2, int(audiotools.ChannelMask.from_channels(2))),
+                (4, int(audiotools.ChannelMask.from_fields(front_left=True,
+                                                           front_right=True,
+                                                           back_left=True,
+                                                           back_right=True))),
+                (8, int(audiotools.ChannelMask(0)))]:
                 for bps in [8, 16]:
                     self.__test_reader__(
                         MD5_Reader(
@@ -5482,13 +5482,13 @@ class ShortenFileTest(TestForeignWaveChunks,
         # test noise
         for block_size in [4, 256, 1024]:
             for (channels, mask) in [
-                (1, audiotools.ChannelMask.from_channels(1)),
-                (2, audiotools.ChannelMask.from_channels(2)),
-                (4, audiotools.ChannelMask.from_fields(front_left=True,
-                                                       front_right=True,
-                                                       back_left=True,
-                                                       back_right=True)),
-                (8, audiotools.ChannelMask(0))]:
+                (1, int(audiotools.ChannelMask.from_channels(1))),
+                (2, int(audiotools.ChannelMask.from_channels(2))),
+                (4, int(audiotools.ChannelMask.from_fields(front_left=True,
+                                                           front_right=True,
+                                                           back_left=True,
+                                                           back_right=True))),
+                (8, int(audiotools.ChannelMask(0)))]:
                 for bps in [8, 16]:
                     test_python_reader(
                         EXACT_RANDOM_PCM_Reader(
