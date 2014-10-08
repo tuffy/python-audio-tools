@@ -1658,7 +1658,7 @@ class WavPackApeTagMetaData(MetaDataTest):
                                             date=u"m",
                                             album_number=3,
                                             album_total=4,
-                                            comment="n",
+                                            comment=u"n",
                                             images=[image1, image2])
 
         # ensure converted() builds something with our class
@@ -4003,29 +4003,29 @@ class FlacMetaData(MetaDataTest):
                 self.assertEqual(metadata, metadata2)
                 self.assertIsInstance(metadata, audiotools.FlacMetaData)
                 self.assertEqual(track.get_metadata().get_block(
-                    audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)["FOO"],
+                    audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)[u"FOO"],
                     [u"Bar"])
             finally:
                 temp_file.close()
 
     @METADATA_FLAC
     def test_field_mapping(self):
-        mapping = [('track_name', 'TITLE', u'a'),
-                   ('track_number', 'TRACKNUMBER', 1),
-                   ('track_total', 'TRACKTOTAL', 2),
-                   ('album_name', 'ALBUM', u'b'),
-                   ('artist_name', 'ARTIST', u'c'),
-                   ('performer_name', 'PERFORMER', u'd'),
-                   ('composer_name', 'COMPOSER', u'e'),
-                   ('conductor_name', 'CONDUCTOR', u'f'),
-                   ('media', 'SOURCE MEDIUM', u'g'),
-                   ('ISRC', 'ISRC', u'h'),
-                   ('catalog', 'CATALOG', u'i'),
-                   ('copyright', 'COPYRIGHT', u'j'),
-                   ('year', 'DATE', u'k'),
-                   ('album_number', 'DISCNUMBER', 3),
-                   ('album_total', 'DISCTOTAL', 4),
-                   ('comment', 'COMMENT', u'l')]
+        mapping = [('track_name', u'TITLE', u'a'),
+                   ('track_number', u'TRACKNUMBER', 1),
+                   ('track_total', u'TRACKTOTAL', 2),
+                   ('album_name', u'ALBUM', u'b'),
+                   ('artist_name', u'ARTIST', u'c'),
+                   ('performer_name', u'PERFORMER', u'd'),
+                   ('composer_name', u'COMPOSER', u'e'),
+                   ('conductor_name', u'CONDUCTOR', u'f'),
+                   ('media', u'SOURCE MEDIUM', u'g'),
+                   ('ISRC', u'ISRC', u'h'),
+                   ('catalog', u'CATALOG', u'i'),
+                   ('copyright', u'COPYRIGHT', u'j'),
+                   ('year', u'DATE', u'k'),
+                   ('album_number', u'DISCNUMBER', 3),
+                   ('album_total', u'DISCTOTAL', 4),
+                   ('comment', u'COMMENT', u'l')]
 
         for format in self.supported_formats:
             temp_file = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
@@ -4141,14 +4141,14 @@ class FlacMetaData(MetaDataTest):
         metadata = self.empty_metadata()
         metadata.get_block(
             audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID
-            )["TRACKNUMBER"] = [u"2/4"]
+            )[u"TRACKNUMBER"] = [u"2/4"]
         self.assertEqual(metadata.track_number, 2)
         self.assertEqual(metadata.track_total, 4)
 
         metadata = self.empty_metadata()
         metadata.get_block(
             audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID
-            )["DISCNUMBER"] = [u"1/3"]
+            )[u"DISCNUMBER"] = [u"1/3"]
         self.assertEqual(metadata.album_number, 1)
         self.assertEqual(metadata.album_total, 3)
 
@@ -4196,12 +4196,12 @@ class FlacMetaData(MetaDataTest):
             audiotools.flac.Flac_VORBISCOMMENT([u"TRACKNUMBER=01"], u"")])
         self.assertEqual(
             metadata.get_block(
-                audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)["TRACKNUMBER"],
+                audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)[u"TRACKNUMBER"],
             [u"01"])
         (cleaned, results) = metadata.clean()
         self.assertEqual(
             cleaned.get_block(
-                audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)["TRACKNUMBER"],
+                audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)[u"TRACKNUMBER"],
             [u"1"])
         self.assertEqual(results,
                          [CLEAN_REMOVE_LEADING_ZEROES %
@@ -4209,10 +4209,10 @@ class FlacMetaData(MetaDataTest):
 
         # check empty fields
         metadata = audiotools.FlacMetaData([
-            audiotools.flac.Flac_VORBISCOMMENT(["TITLE=  "], u"")])
+            audiotools.flac.Flac_VORBISCOMMENT([u"TITLE=  "], u"")])
         self.assertEqual(
             metadata.get_block(
-                audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)["TITLE"], [u'  '])
+                audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)[u"TITLE"], [u'  '])
         (cleaned, results) = metadata.clean()
         self.assertEqual(cleaned,
                          audiotools.FlacMetaData([
@@ -4226,12 +4226,12 @@ class FlacMetaData(MetaDataTest):
         with open("metadata_flac_clean.jpg", "rb") as jpg:
             metadata = audiotools.FlacMetaData(
                 [audiotools.flac.Flac_PICTURE(
-                 0, "image/jpeg", u"", 20, 20, 24, 10,
+                 0, u"image/jpeg", u"", 20, 20, 24, 10,
                  jpg.read())])
         self.assertEqual(
             len(metadata.get_blocks(audiotools.flac.Flac_PICTURE.BLOCK_ID)), 1)
         image = metadata.images()[0]
-        self.assertEqual(image.mime_type, "image/jpeg")
+        self.assertEqual(image.mime_type, u"image/jpeg")
         self.assertEqual(image.width, 20)
         self.assertEqual(image.height, 20)
         self.assertEqual(image.color_depth, 24)
@@ -4243,7 +4243,7 @@ class FlacMetaData(MetaDataTest):
         self.assertEqual(
             len(cleaned.get_blocks(audiotools.flac.Flac_PICTURE.BLOCK_ID)), 1)
         image = cleaned.images()[0]
-        self.assertEqual(image.mime_type, "image/png")
+        self.assertEqual(image.mime_type, u"image/png")
         self.assertEqual(image.width, 10)
         self.assertEqual(image.height, 10)
         self.assertEqual(image.color_depth, 8)
@@ -4310,10 +4310,10 @@ class FlacMetaData(MetaDataTest):
                 channels=2,
                 bits_per_sample=16,
                 total_samples=149606016,
-                md5sum='\xae\x87\x1c\x8e\xe1\xfc\x16\xde' +
-                '\x86\x81&\x8e\xc8\xd52\xff'),
-            audiotools.flac.Flac_APPLICATION(application_id="FOOZ",
-                                             data="KELP"),
+                md5sum=(b'\xae\x87\x1c\x8e\xe1\xfc\x16\xde' +
+                        b'\x86\x81&\x8e\xc8\xd52\xff')),
+            audiotools.flac.Flac_APPLICATION(application_id=b"FOOZ",
+                                             data=b"KELP"),
             audiotools.flac.Flac_SEEKTABLE([
                 (0, 0, 4096),
                 (8335360, 30397, 4096),
@@ -4340,7 +4340,7 @@ class FlacMetaData(MetaDataTest):
                 (125526016, 488160, 4096),
                 (138788864, 539968, 4096),
                 (138903552, 540416, 4096)]),
-            audiotools.flac.Flac_VORBISCOMMENT(["TITLE=Foo "], u""),
+            audiotools.flac.Flac_VORBISCOMMENT([u"TITLE=Foo "], u""),
             audiotools.flac.Flac_CUESHEET(
                 catalog_number=b'4560248013904' + b"\x00" * (128 - 13),
                 lead_in_samples=88200,
@@ -4544,7 +4544,7 @@ class FlacMetaData(MetaDataTest):
                         track_type=0,
                         pre_emphasis=0,
                         index_points=[])]),
-            audiotools.flac.Flac_PICTURE(0, "image/jpeg", u"",
+            audiotools.flac.Flac_PICTURE(0, u"image/jpeg", u"",
                                          500, 500, 24, 0, TEST_COVER1)])
 
         self.assertEqual([b.BLOCK_ID for b in metadata.block_list],
@@ -6744,22 +6744,22 @@ class VorbisCommentTest(MetaDataTest):
 
     @METADATA_VORBIS
     def test_field_mapping(self):
-        mapping = [('track_name', 'TITLE', u'a'),
-                   ('track_number', 'TRACKNUMBER', 1),
-                   ('track_total', 'TRACKTOTAL', 2),
-                   ('album_name', 'ALBUM', u'b'),
-                   ('artist_name', 'ARTIST', u'c'),
-                   ('performer_name', 'PERFORMER', u'd'),
-                   ('composer_name', 'COMPOSER', u'e'),
-                   ('conductor_name', 'CONDUCTOR', u'f'),
-                   ('media', 'SOURCE MEDIUM', u'g'),
-                   ('ISRC', 'ISRC', u'h'),
-                   ('catalog', 'CATALOG', u'i'),
-                   ('copyright', 'COPYRIGHT', u'j'),
-                   ('year', 'DATE', u'k'),
-                   ('album_number', 'DISCNUMBER', 3),
-                   ('album_total', 'DISCTOTAL', 4),
-                   ('comment', 'COMMENT', u'l')]
+        mapping = [('track_name', u'TITLE', u'a'),
+                   ('track_number', u'TRACKNUMBER', 1),
+                   ('track_total', u'TRACKTOTAL', 2),
+                   ('album_name', u'ALBUM', u'b'),
+                   ('artist_name', u'ARTIST', u'c'),
+                   ('performer_name', u'PERFORMER', u'd'),
+                   ('composer_name', u'COMPOSER', u'e'),
+                   ('conductor_name', u'CONDUCTOR', u'f'),
+                   ('media', u'SOURCE MEDIUM', u'g'),
+                   ('ISRC', u'ISRC', u'h'),
+                   ('catalog', u'CATALOG', u'i'),
+                   ('copyright', u'COPYRIGHT', u'j'),
+                   ('year', u'DATE', u'k'),
+                   ('album_number', u'DISCNUMBER', 3),
+                   ('album_total', u'DISCTOTAL', 4),
+                   ('comment', u'COMMENT', u'l')]
 
         for format in self.supported_formats:
             temp_file = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
@@ -7575,17 +7575,17 @@ class VorbisCommentTest(MetaDataTest):
                     track_name=u"Track Name",
                     track_number=1))
                 metadata = track.get_metadata()
-                self.assertEqual(metadata["TITLE"], [u"Track Name"])
-                self.assertEqual(metadata["TRACKNUMBER"], [u"1"])
+                self.assertEqual(metadata[u"TITLE"], [u"Track Name"])
+                self.assertEqual(metadata[u"TRACKNUMBER"], [u"1"])
                 self.assertEqual(metadata.track_name, u"Track Name")
                 self.assertEqual(metadata.track_number, 1)
 
-                metadata["title"] = [u"New Track Name"]
-                metadata["tracknumber"] = [u"2"]
+                metadata[u"title"] = [u"New Track Name"]
+                metadata[u"tracknumber"] = [u"2"]
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata["TITLE"], [u"New Track Name"])
-                self.assertEqual(metadata["TRACKNUMBER"], [u"2"])
+                self.assertEqual(metadata[u"TITLE"], [u"New Track Name"])
+                self.assertEqual(metadata[u"TRACKNUMBER"], [u"2"])
                 self.assertEqual(metadata.track_name, u"New Track Name")
                 self.assertEqual(metadata.track_number, 2)
 
@@ -7593,8 +7593,8 @@ class VorbisCommentTest(MetaDataTest):
                 metadata.track_number = 3
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()
-                self.assertEqual(metadata["TITLE"], [u"New Track Name 2"])
-                self.assertEqual(metadata["TRACKNUMBER"], [u"3"])
+                self.assertEqual(metadata[u"TITLE"], [u"New Track Name 2"])
+                self.assertEqual(metadata[u"TRACKNUMBER"], [u"3"])
                 self.assertEqual(metadata.track_name, u"New Track Name 2")
                 self.assertEqual(metadata.track_number, 3)
             finally:
@@ -7684,7 +7684,7 @@ class VorbisCommentTest(MetaDataTest):
         metadata = audiotools.VorbisComment([u"TITLE=Foo "], u"vendor")
         (cleaned, results) = metadata.clean()
         self.assertEqual(cleaned,
-                         audiotools.VorbisComment(["TITLE=Foo"], u"vendor"))
+                         audiotools.VorbisComment([u"TITLE=Foo"], u"vendor"))
         self.assertEqual(results,
                          [CLEAN_REMOVE_TRAILING_WHITESPACE %
                           {"field": u"TITLE"}])
@@ -7964,22 +7964,22 @@ class OpusTagsTest(MetaDataTest):
 
     @METADATA_OPUS
     def test_field_mapping(self):
-        mapping = [('track_name', 'TITLE', u'a'),
-                   ('track_number', 'TRACKNUMBER', 1),
-                   ('track_total', 'TRACKTOTAL', 2),
-                   ('album_name', 'ALBUM', u'b'),
-                   ('artist_name', 'ARTIST', u'c'),
-                   ('performer_name', 'PERFORMER', u'd'),
-                   ('composer_name', 'COMPOSER', u'e'),
-                   ('conductor_name', 'CONDUCTOR', u'f'),
-                   ('media', 'SOURCE MEDIUM', u'g'),
-                   ('ISRC', 'ISRC', u'h'),
-                   ('catalog', 'CATALOG', u'i'),
-                   ('copyright', 'COPYRIGHT', u'j'),
-                   ('year', 'DATE', u'k'),
-                   ('album_number', 'DISCNUMBER', 3),
-                   ('album_total', 'DISCTOTAL', 4),
-                   ('comment', 'COMMENT', u'l')]
+        mapping = [('track_name', u'TITLE', u'a'),
+                   ('track_number', u'TRACKNUMBER', 1),
+                   ('track_total', u'TRACKTOTAL', 2),
+                   ('album_name', u'ALBUM', u'b'),
+                   ('artist_name', u'ARTIST', u'c'),
+                   ('performer_name', u'PERFORMER', u'd'),
+                   ('composer_name', u'COMPOSER', u'e'),
+                   ('conductor_name', u'CONDUCTOR', u'f'),
+                   ('media', u'SOURCE MEDIUM', u'g'),
+                   ('ISRC', u'ISRC', u'h'),
+                   ('catalog', u'CATALOG', u'i'),
+                   ('copyright', u'COPYRIGHT', u'j'),
+                   ('year', u'DATE', u'k'),
+                   ('album_number', u'DISCNUMBER', 3),
+                   ('album_total', u'DISCTOTAL', 4),
+                   ('comment', u'COMMENT', u'l')]
 
         for format in self.supported_formats:
             temp_file = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)

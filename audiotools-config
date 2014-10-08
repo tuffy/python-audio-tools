@@ -26,8 +26,17 @@ PY3 = sys.version_info[0] >= 3
 
 
 def display_defaults(config, msg):
-    def display_option(table, label, value, indent=2):
-        """label and value should be unicode objects"""
+    def label_string(s):
+        """turns a string into a unicode string, if need be"""
+
+        assert(isinstance(s, str))
+        return s if PY3 else s.decode("UTF-8")
+
+    def display_unicode_option(table, label, value, indent=2):
+        """label and value should be unicode"""
+
+        assert(isinstance(label, str if PY3 else unicode))
+        assert(isinstance(value, str if PY3 else unicode))
 
         row = table.row()
 
@@ -36,10 +45,28 @@ def display_defaults(config, msg):
         row.add_column(u" : ")
         row.add_column(value)
 
+    def display_option(table, label, value, indent=2):
+        """label should be a unicode object, value should be a string"""
+
+        assert(isinstance(label, str if PY3 else unicode))
+        assert(isinstance(value, str))
+
+        display_unicode_option(table, label, label_string(value), indent)
+
     def display_boolean_option(table, label, value, indent=2):
         """value should be a boolean"""
 
-        display_option(table, label, u"yes" if value else u"no", indent)
+        assert(isinstance(label, str if PY3 else unicode))
+
+        display_unicode_option(table, label,
+                               u"yes" if value else u"no", indent)
+
+    def display_int_option(table, label, value, indent=2):
+        """value should be an integer"""
+
+        assert(isinstance(value, int))
+
+        display_unicode_option(table, label, u"%d" % (value), indent)
 
     table = audiotools.output_table()
     display_option(table,
@@ -73,7 +100,7 @@ def display_defaults(config, msg):
 
         row.add_column(
             audiotools.output_text(
-                audio_type.NAME,
+                label_string(audio_type.NAME),
                 fg_color=("green" if audio_type.available(audiotools.BIN)
                           else "red"),
                 style=("underline" if
@@ -89,7 +116,7 @@ def display_defaults(config, msg):
             row.add_column(u"")
         elif (len(audio_type.BINARIES) < 2):
             row.add_column(audiotools.output_text(
-                audio_type.BINARIES[0],
+                label_string(audio_type.BINARIES[0]),
                 fg_color=("green" if
                           audiotools.BIN.can_execute(
                               audiotools.BIN[audio_type.BINARIES[0]])
@@ -99,7 +126,7 @@ def display_defaults(config, msg):
             row.add_column(
                 audiotools.output_text(u", ").join(
                     [audiotools.output_text(
-                        b,
+                        label_string(b),
                         fg_color=("green" if
                                   audiotools.BIN.can_execute(
                                       audiotools.BIN[b]) else "red"))
@@ -111,9 +138,10 @@ def display_defaults(config, msg):
         if (len(audio_type.COMPRESSION_MODES) < 2):
             row.add_column(u" ")
         else:
-            quality = config.get_default("Quality",
-                                         audio_type.NAME,
-                                         audio_type.DEFAULT_COMPRESSION)
+            quality = label_string(
+                config.get_default("Quality",
+                                   audio_type.NAME,
+                                   audio_type.DEFAULT_COMPRESSION))
             if (quality in audio_type.COMPRESSION_DESCRIPTIONS):
                 row.add_column(
                     u"%s - %s" %
@@ -140,12 +168,10 @@ def display_defaults(config, msg):
 
     table = audiotools.output_table()
 
-    display_option(
+    display_int_option(
         table,
         _.LAB_AT_CONFIG_JOBS,
-        u"%d" % (config.getint_default("System",
-                                       "maximum_jobs",
-                                       audiotools.MAX_JOBS)))
+        config.getint_default("System", "maximum_jobs", audiotools.MAX_JOBS))
 
     display_boolean_option(
         table,
@@ -162,7 +188,7 @@ def display_defaults(config, msg):
 
     table = audiotools.output_table()
 
-    display_option(
+    display_unicode_option(
         table,
         _.LAB_AT_CONFIG_ID3V2_VERSION,
         {"id3v2.2": _.LAB_AT_CONFIG_ID3V2_ID3V22,
@@ -171,14 +197,14 @@ def display_defaults(config, msg):
          "none": _.LAB_AT_CONFIG_ID3V2_NONE}.get(
             config.get_default("ID3", "id3v2", "id3v2.3")))
 
-    display_option(
+    display_unicode_option(
         table,
         _.LAB_AT_CONFIG_ID3V2_PADDING,
         {True: _.LAB_AT_CONFIG_ID3V2_PADDING_YES,
          False: _.LAB_AT_CONFIG_ID3V2_PADDING_NO}.get(
             config.getboolean_default("ID3", "pad", False)))
 
-    display_option(
+    display_unicode_option(
         table,
         _.LAB_AT_CONFIG_ID3V1_VERSION,
         {"id3v1.1": _.LAB_AT_CONFIG_ID3V1_ID3V11,
@@ -206,11 +232,9 @@ def display_defaults(config, msg):
                                       "server",
                                       "musicbrainz.org"))
 
-    display_option(table,
-                   _.LAB_AT_CONFIG_MUSICBRAINZ_PORT,
-                   u"%d" % (config.getint_default("MusicBrainz",
-                                                  "port",
-                                                  80)))
+    display_int_option(table,
+                       _.LAB_AT_CONFIG_MUSICBRAINZ_PORT,
+                       config.getint_default("MusicBrainz", "port", 80))
 
     table.blank_row()
 
@@ -225,11 +249,9 @@ def display_defaults(config, msg):
                                       "server",
                                       "us.freedb.org"))
 
-    display_option(table,
-                   _.LAB_AT_CONFIG_FREEDB_PORT,
-                   u"%d" % (config.getint_default("FreeDB",
-                                                  "port",
-                                                  80)))
+    display_int_option(table,
+                       _.LAB_AT_CONFIG_FREEDB_PORT,
+                       config.getint_default("FreeDB", "port", 80))
 
     for row in table.format(msg.output_isatty()):
         msg.output(row)
@@ -246,19 +268,15 @@ def display_defaults(config, msg):
                            "cdrom",
                            "/dev/cdrom"))
 
-    display_option(
+    display_int_option(
         table,
         _.LAB_AT_CONFIG_CDROM_READ_OFFSET,
-        u"%d" % (config.getint_default("System",
-                                       "cdrom_read_offset",
-                                       0)))
+        config.getint_default("System", "cdrom_read_offset", 0))
 
-    display_option(
+    display_int_option(
         table,
         _.LAB_AT_CONFIG_CDROM_WRITE_OFFSET,
-        u"%d" % (config.getint_default("System",
-                                       "cdrom_write_offset",
-                                       0)))
+        config.getint_default("System", "cdrom_write_offset", 0))
 
     display_option(
         table,
@@ -267,10 +285,10 @@ def display_defaults(config, msg):
                            "fs_encoding",
                            sys.getfilesystemencoding()))
 
-    display_option(
+    display_unicode_option(
         table,
         _.LAB_AT_CONFIG_AUDIO_OUTPUT,
-        u", ".join([player.NAME
+        u", ".join([label_string(player.NAME)
                     for player in audiotools.player.available_outputs()]))
 
     for row in table.format(msg.output_isatty()):

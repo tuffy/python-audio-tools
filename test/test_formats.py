@@ -246,12 +246,14 @@ class AudioFileTest(unittest.TestCase):
     @FORMAT_AUDIOFILE
     def test_metadata(self):
         import string
+        from audiotools import PY3
 
         if (self.audio_class is audiotools.AudioFile):
             return
 
         dummy_metadata = audiotools.MetaData(
-            **dict([(field, char) for (field, char) in zip(
+            **dict([(field, char if PY3 else char.decode("UTF-8")) for
+                    (field, char) in zip(
                     audiotools.MetaData.FIELDS,
                     string.ascii_letters)
                     if field not in audiotools.MetaData.INTEGER_FIELDS] +

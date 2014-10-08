@@ -873,8 +873,7 @@ class WaveAudio(WaveContainer):
         chunk_iter should yield RIFF_Chunk-compatible objects
         """
 
-        wave_file = open(filename, 'wb')
-        try:
+        with open(filename, 'wb') as wave_file:
             total_size = 4
 
             # write an unfinished header with a placeholder size
@@ -889,8 +888,6 @@ class WaveAudio(WaveContainer):
             wave_file.seek(0, 0)
             wave_file.write(
                 struct.pack("<4sI4s", b"RIFF", total_size, b"WAVE"))
-        finally:
-            wave_file.close()
 
     def wave_header_footer(self):
         """returns a pair of data strings before and after PCM data

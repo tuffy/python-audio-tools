@@ -83,7 +83,7 @@ class TOCFile(Sheet):
     def build(self):
         """returns the TOCFile as a string"""
 
-        output = [self.__type__, ""]
+        output = [self.__type__, u""]
         if (self.__catalog__ is not None):
             output.extend([u"CATALOG %s" % (format_string(self.__catalog__)),
                            u""])

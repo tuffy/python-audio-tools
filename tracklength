@@ -135,7 +135,8 @@ if (__name__ == '__main__'):
         table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
         for name in sorted(format_summaries.keys()):
-            format_summaries[name].to_row(name, table)
+            format_summaries[name].to_row(
+                name if audiotools.PY3 else name.decode("UTF-8"), table)
 
         if (len(format_summaries.keys()) > 1):
             table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])

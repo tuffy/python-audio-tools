@@ -3600,6 +3600,15 @@ class Image(object):
                OTHER
         """
 
+        assert(isinstance(data, bytes))
+        assert(isinstance(mime_type, str if PY3 else unicode))
+        assert(isinstance(width, int))
+        assert(isinstance(height, int))
+        assert(isinstance(color_depth, int))
+        assert(isinstance(color_count, int))
+        assert(isinstance(description, str if PY3 else unicode))
+        assert(isinstance(type, int))
+
         self.data = data
         self.mime_type = mime_type
         self.width = width

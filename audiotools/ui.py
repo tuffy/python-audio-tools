@@ -823,7 +823,7 @@ try:
                 self.checkbox_groups[field] = []
 
     class TrackMetaData(object):
-        NEVER_LINK = frozenset(["track_name", "track_number", "ISRC"])
+        NEVER_LINK = {"track_name", "track_number", "ISRC"}
 
         def __init__(self, metadata, base_metadata, on_change=None):
             """metadata is a MetaData object

@@ -3938,7 +3938,7 @@ class tracklint(UtilTest):
                 track = audio_class.from_pcm(track_file.name,
                                              BLANK_PCM_Reader(5))
                 metadata = audiotools.MetaData(
-                    track_name="Track Name",
+                    track_name=u"Track Name",
                     track_number=1,
                     track_total=2)
                 track.set_metadata(metadata)
@@ -3977,7 +3977,7 @@ class tracklint(UtilTest):
                 track = audio_class.from_pcm(track_file.name,
                                              BLANK_PCM_Reader(5))
                 metadata = audiotools.MetaData(
-                    track_name="Track Name",
+                    track_name=u"Track Name",
                     track_number=1,
                     track_total=2)
                 track.set_metadata(metadata)

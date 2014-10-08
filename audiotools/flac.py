@@ -1195,6 +1195,29 @@ class Flac_PICTURE(Image):
 
     def __init__(self, picture_type, mime_type, description,
                  width, height, color_depth, color_count, data):
+        """
+        picture_type - int of FLAC picture ID
+        mime_type    - unicode string of MIME type
+        description  - unicode string of description
+        width        - int width value
+        height       - int height value
+        color_depth  - int bits-per-pixel value
+        color_count  - int color count value
+        data         - binary string of image data
+        """
+
+        from audiotools import PY3
+
+        assert(isinstance(picture_type, int))
+        assert(isinstance(mime_type, str if PY3 else unicode))
+        assert(isinstance(description, str if PY3 else unicode))
+        assert(isinstance(width, int))
+        assert(isinstance(height, int))
+        assert(isinstance(color_depth, int))
+        assert(isinstance(color_count, int))
+        assert(isinstance(data, bytes))
+
+        # bypass Image's constructor and set block fields directly
         Image.__setattr__(self, "data", data)
         Image.__setattr__(self, "mime_type", mime_type)
         Image.__setattr__(self, "width", width)

@@ -211,23 +211,20 @@ class ShortenAudio(WaveContainer, AiffContainer):
             f = open(self.filename, "rb")
         except IOError as msg:
             return PCMReaderError(error_message=str(msg),
-                                  sample_rate=self.__samplerate__,
-                                  channels=self.__channels__,
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
                                   channel_mask=int(self.channel_mask()),
-                                  bits_per_sample=self.__bitspersample__)
+                                  bits_per_sample=self.bits_per_sample())
 
         try:
             return SHNDecoder(f)
         except (IOError, ValueError) as msg:
-            # these may not be accurate if the Shorten file is broken
-            # but if it is broken, there'll be no way to
-            # cross-check the results anyway
             f.close()
             return PCMReaderError(error_message=str(msg),
-                                  sample_rate=44100,
-                                  channels=2,
-                                  channel_mask=0x3,
-                                  bits_per_sample=16)
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -252,7 +249,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
         from audiotools import UnsupportedBitsPerSample
 
-        if (pcmreader.bits_per_sample not in (8, 16)):
+        if (pcmreader.bits_per_sample not in {8, 16}):
             pcmreader.close()
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
@@ -386,7 +383,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         else:
             encode_shn = encoding_function
 
-        if (pcmreader.bits_per_sample not in (8, 16)):
+        if (pcmreader.bits_per_sample not in {8, 16}):
             pcmreader.close()
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
@@ -539,7 +536,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
         else:
             encode_shn = encoding_function
 
-        if (pcmreader.bits_per_sample not in (8, 16)):
+        if (pcmreader.bits_per_sample not in {8, 16}):
             pcmreader.close()
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 

@@ -7098,7 +7098,7 @@
     - [X] audiotools._accuraterip
     - [X] audiotools.output
 *** TODO Update Python modules
-**** TODO audiotools
+**** DONE audiotools
      - [X] __init__
      - [X] accuraterip
      - [X] aiff
@@ -7116,25 +7116,25 @@
      - [X] musicbrainz
      - [X] ogg
      - [X] opus
-     - [ ] player
-     - [ ] shn
-     - [ ] text
-     - [ ] tta
-     - [ ] ui
+     - [X] player
+     - [X] shn
+     - [X] text
+     - [X] tta
+     - [X] ui
      - [X] vorbiscomment
      - [X] vorbis
-     - [ ] wavpack
-     - [ ] wav
-**** TODO audiotools.cue
-     - [ ] __init__
-     - [ ] tokrules
-     - [ ] yaccrules
-**** TODO audiotools.toc
-     - [ ] __init__
-     - [ ] tokrules
-     - [ ] yaccrules
+     - [X] wavpack
+     - [X] wav
+**** DONE audiotools.cue
+     - [X] __init__
+     - [X] tokrules
+     - [X] yaccrules
+**** DONE audiotools.toc
+     - [X] __init__
+     - [X] tokrules
+     - [X] yaccrules
 *** TODO Update utilities
-    - [ ] audiotools-config
+    - [X] audiotools-config
     - [ ] cd2track
     - [ ] cdinfo
     - [ ] cdplay
@@ -7316,6 +7316,12 @@
       - [X] tracksplit
       - [X] tracktag
       - [X] trackverify
+** TODO Cleanup chunk-based interface (again)
+   There needs to be a single-pass approach to encoding chunked files
+   that doesn't involve pulling out the chunk data ahead of time.
+
+   Perhaps some sort of chunk iterator which indicates the appropriate
+   place where the PCM data will go.
 ** DONE Add context manager support
    Having file-like objects work with "with" context managers
    should hopefully make file handle management a bit simpler.
