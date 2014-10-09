@@ -538,9 +538,9 @@ class output_text(tuple):
 
         return cls.__construct__(
             unicode_string=string,
-            char_widths=tuple([CHAR_WIDTHS.get(
-                               unicodedata.east_asian_width(char), 1)
-                               for char in string]),
+            char_widths=[CHAR_WIDTHS.get(
+                         unicodedata.east_asian_width(char), 1)
+                         for char in string],
             fg_color=fg_color,
             bg_color=bg_color,
             style=style,
@@ -556,29 +556,37 @@ class output_text(tuple):
                       style,
                       open_codes,
                       close_codes):
-        # 0 - original Unicode string
-        # 1 - tuple of widths for each character in string
-        # 2 - foreground color string
-        # 3 - background color string
-        # 4 - style string
-        # 5 - open escape codes for TTY output
-        # 6 - close escape codes for TTY output
+        """
+        | unicode_string | unicode | output string                     |
+        | char_widths    | [int]   | width of each unicode_string char |
+        | fg_color       | str     | foreground color, or None         |
+        | bg_color       | str     | background color, or None         |
+        | style          | str     | text style, or None               |
+        | open_codes     | unicode | ANSI escape codes                 |
+        | close_codes    | unicode | ANSI escape codes                 |
+        """
+
+        assert(len(unicode_string) == len(char_widths))
 
         return tuple.__new__(cls,
-                             [unicode_string,
-                              tuple(char_widths),
-                              fg_color,
-                              bg_color,
-                              style,
-                              open_codes,
-                              close_codes])
+                             [unicode_string,      # 0
+                              tuple(char_widths),  # 1
+                              sum(char_widths),    # 2
+                              fg_color,            # 3
+                              bg_color,            # 4
+                              style,               # 5
+                              open_codes,          # 6
+                              close_codes          # 7
+                              ])
 
     def __repr__(self):
-        return "output_text(%s, %s, %s, %s)" % \
-            (repr(self[0]),
-             repr(self[2]),
-             repr(self[3]),
-             repr(self[4]))
+        # the other fields can be derived
+        return "%s(%s, %s, %s, %s)" % \
+            (self.__class__.__name__,
+             repr(self[0]),
+             repr(self.fg_color()),
+             repr(self.bg_color()),
+             repr(self.style()))
 
     @classmethod
     def __open_codes__(cls, fg_color, bg_color, style):
@@ -664,23 +672,42 @@ class output_text(tuple):
     def __unicode__(self):
         return self[0]
 
+    def char_widths(self):
+        """yields a (char, width) for each character in string"""
+
+        for pair in zip(self[0], self[1]):
+            yield pair
+
     def __len__(self):
-        return sum(self[1])
+        return self[2]
 
     def fg_color(self):
         """returns the foreground color as a string, or None"""
 
-        return self[2]
+        return self[3]
 
     def bg_color(self):
         """returns the background color as a string, or None"""
 
-        return self[3]
+        return self[4]
 
     def style(self):
         """returns the style as a string, or None"""
 
-        return self[4]
+        return self[5]
+
+    def set_string(self, unicode_string, char_widths):
+        """returns a new output_text with the given string"""
+
+        assert(len(unicode_string) == len(char_widths))
+        return output_text.__construct__(
+            unicode_string=unicode_string,
+            char_widths=char_widths,
+            fg_color=self[3],
+            bg_color=self[4],
+            style=self[5],
+            open_codes=self[6],
+            close_codes=self[7])
 
     def set_format(self, fg_color=None, bg_color=None, style=None):
         """returns a new output_text with the given format"""
@@ -701,15 +728,15 @@ class output_text(tuple):
     def has_formatting(self):
         """returns True if the text has formatting set"""
 
-        return ((self[2] is not None) or
-                (self[3] is not None) or
-                (self[4] is not None))
+        return ((self[3] is not None) or
+                (self[4] is not None) or
+                (self[5] is not None))
 
     def format(self, is_tty=False):
         """returns unicode text formatted depending on is_tty"""
 
         if (is_tty and self.has_formatting()):
-            return u"%s%s%s" % (self[5], self[0], self[6])
+            return u"%s%s%s" % (self[6], self[0], self[7])
         else:
             return self[0]
 
@@ -727,7 +754,7 @@ class output_text(tuple):
         output_chars = []
         output_widths = []
 
-        for (char, width) in zip(self[0], self[1]):
+        for (char, width) in self.char_widths():
             if (width <= display_characters):
                 output_chars.append(char)
                 output_widths.append(width)
@@ -735,14 +762,9 @@ class output_text(tuple):
             else:
                 break
 
-        return output_text.__construct__(
+        return self.set_string(
             unicode_string=u"".join(output_chars),
-            char_widths=output_widths,
-            fg_color=self[2],
-            bg_color=self[3],
-            style=self[4],
-            open_codes=self[5],
-            close_codes=self[6])
+            char_widths=output_widths)
 
     def tail(self, display_characters):
         """returns a text object truncated to the given length
@@ -758,8 +780,7 @@ class output_text(tuple):
         output_chars = []
         output_widths = []
 
-        for (char, width) in zip(reversed(self[0]),
-                                 reversed(self[1])):
+        for (char, width) in reversed(list(self.char_widths())):
             if (width <= display_characters):
                 output_chars.append(char)
                 output_widths.append(width)
@@ -767,14 +788,12 @@ class output_text(tuple):
             else:
                 break
 
-        return output_text.__construct__(
-            unicode_string=u"".join(reversed(output_chars)),
-            char_widths=reversed(output_widths),
-            fg_color=self[2],
-            bg_color=self[3],
-            style=self[4],
-            open_codes=self[5],
-            close_codes=self[6])
+        output_chars.reverse()
+        output_widths.reverse()
+
+        return self.set_string(
+            unicode_string=u"".join(output_chars),
+            char_widths=output_widths)
 
     def split(self, display_characters):
         """returns a tuple of text objects
@@ -792,7 +811,7 @@ class output_text(tuple):
         head_widths = []
         tail_chars = []
         tail_widths = []
-        for (char, width) in zip(self[0], self[1]):
+        for (char, width) in self.char_widths():
             if (width <= display_characters):
                 head_chars.append(char)
                 head_widths.append(width)
@@ -802,33 +821,19 @@ class output_text(tuple):
                 tail_widths.append(width)
                 display_characters = -1
 
-        return (output_text.__construct__(unicode_string=u"".join(head_chars),
-                                          char_widths=head_widths,
-                                          fg_color=self[2],
-                                          bg_color=self[3],
-                                          style=self[4],
-                                          open_codes=self[5],
-                                          close_codes=self[6]),
-                output_text.__construct__(unicode_string=u"".join(tail_chars),
-                                          char_widths=tail_widths,
-                                          fg_color=self[2],
-                                          bg_color=self[3],
-                                          style=self[4],
-                                          open_codes=self[5],
-                                          close_codes=self[6]))
+        return (self.set_string(unicode_string=u"".join(head_chars),
+                                char_widths=head_widths),
+                self.set_string(unicode_string=u"".join(tail_chars),
+                                char_widths=tail_widths))
 
     def join(self, output_texts):
         """returns output_list joined by our formatted text"""
 
         def join_iter(texts):
-            first_sent = False
-            for text in texts:
-                if (not first_sent):
-                    yield text
-                    first_sent = True
-                else:
+            for (i, text) in enumerate(texts):
+                if (i > 0):
                     yield self
-                    yield text
+                yield text
 
         return output_list(join_iter(output_texts))
 
@@ -844,7 +849,15 @@ class output_list(output_text):
     or style the list, but not both."""
 
     def __new__(cls, output_texts, fg_color=None, bg_color=None, style=None):
-        """output_texts is an iterable of output_text objects or unicode"""
+        """output_texts is an iterable of output_text objects or unicode
+
+        fg_color and bg_color may be one of:
+        'black', 'red', 'green', 'yellow',
+        'blue', 'magenta', 'cyan', 'white'
+
+        style may be one of:
+        'bold', 'underline', 'blink', 'inverse'
+        """
 
         return cls.__construct__(
             output_texts=[t if isinstance(t, output_text) else
@@ -863,47 +876,68 @@ class output_list(output_text):
                       style,
                       open_codes,
                       close_codes):
-        # 0 - list of output_text objects
-        # 1 - foreground color string
-        # 2 - background color string
-        # 3 - style string
-        # 4 - open escape codes for TTY output
-        # 5 - close escape code for TTY output
-        return tuple.__new__(cls,
-                             [tuple(output_texts),
-                              fg_color,
-                              bg_color,
-                              style,
-                              open_codes,
-                              close_codes])
+        """
+        | output_texts | [output_text] | output texts              |
+        | fg_color     | str           | foreground color, or None |
+        | bg_color     | str           | background color, or None |
+        | style        | str           | text style, or None       |
+        | open_codes   | unicode       | ANSI escape codes         |
+        | close_codes  | unicode       | ANSI escape codes         |
+        """
 
-    def __repr__(self):
-        return "output_list(%s, %s, %s, %s)" % \
-            (repr(self[0]),
-             repr(self[1]),
-             repr(self[2]),
-             repr(self[3]))
+        return tuple.__new__(cls,
+                             [tuple(output_texts),          # 0
+                              sum(map(len, output_texts)),  # 1
+                              fg_color,                     # 2
+                              bg_color,                     # 3
+                              style,                        # 4
+                              open_codes,                   # 5
+                              close_codes                   # 6
+                              ])
+
+    # use __repr__ from parent
+
+    # use __str__ from parent
 
     def __unicode__(self):
         return u"".join(s[0] for s in self[0])
 
+    def char_widths(self):
+        """yields a (char, width) for each character in list"""
+
+        for output_text in self[0]:
+            for pair in output_text.char_widths():
+                yield pair
+
     def __len__(self):
-        return sum(map(len, self[0]))
+        return self[1]
 
     def fg_color(self):
         """returns the foreground color as a string"""
 
-        return self[1]
+        return self[2]
 
     def bg_color(self):
         """returns the background color as a string"""
 
-        return self[2]
+        return self[3]
 
     def style(self):
         """returns the style as a string"""
 
-        return self[3]
+        return self[4]
+
+    def set_string(self, output_texts):
+        """returns a new output_list with the given texts"""
+
+        return output_list.__construct__(
+            output_texts=[t if isinstance(t, output_text) else
+                          output_text(t) for t in output_texts],
+            fg_color=self[2],
+            bg_color=self[3],
+            style=self[4],
+            open_codes=self[5],
+            close_codes=self[6])
 
     def set_format(self, fg_color=None, bg_color=None, style=None):
         """returns a new output_list with the given format"""
@@ -923,9 +957,9 @@ class output_list(output_text):
     def has_formatting(self):
         """returns True if the output_list itself has formatting set"""
 
-        return ((self[1] is not None) or
-                (self[2] is not None) or
-                (self[3] is not None))
+        return ((self[2] is not None) or
+                (self[3] is not None) or
+                (self[4] is not None))
 
     def format(self, is_tty=False):
         """returns unicode text formatted depending on is_tty"""
@@ -936,11 +970,11 @@ class output_list(output_text):
 
         if (is_tty and self.has_formatting()):
             return u"%s%s%s" % (
-                self[4],
-                u"".join([t.format(False) for t in self[0]]),
-                self[5])
+                self[5],
+                u"".join(t.format(False) for t in self[0]),
+                self[6])
         else:
-            return u"".join([t.format(is_tty) for t in self[0]])
+            return u"".join(t.format(is_tty) for t in self[0])
 
     def head(self, display_characters):
         """returns a text object truncated to the given length
@@ -963,13 +997,7 @@ class output_list(output_text):
                 output_texts.append(text.head(display_characters))
                 break
 
-        return output_list.__construct__(
-            output_texts=output_texts,
-            fg_color=self[1],
-            bg_color=self[2],
-            style=self[3],
-            open_codes=self[4],
-            close_codes=self[5])
+        return self.set_string(output_texts=output_texts)
 
     def tail(self, display_characters):
         """returns a text object truncated to the given length
@@ -992,13 +1020,7 @@ class output_list(output_text):
                 output_texts.append(text.tail(display_characters))
                 break
 
-        return output_list.__construct__(
-            output_texts=reversed(output_texts),
-            fg_color=self[1],
-            bg_color=self[2],
-            style=self[3],
-            open_codes=self[4],
-            close_codes=self[5])
+        return self.set_string(output_texts=reversed(output_texts))
 
     def split(self, display_characters):
         """returns a tuple of text objects
@@ -1028,18 +1050,8 @@ class output_list(output_text):
             else:
                 tail_texts.append(text)
 
-        return (output_list.__construct__(output_texts=head_texts,
-                                          fg_color=self[1],
-                                          bg_color=self[2],
-                                          style=self[3],
-                                          open_codes=self[4],
-                                          close_codes=self[5]),
-                output_list.__construct__(output_texts=tail_texts,
-                                          fg_color=self[1],
-                                          bg_color=self[2],
-                                          style=self[3],
-                                          open_codes=self[4],
-                                          close_codes=self[5]))
+        return (self.set_string(output_texts=head_texts),
+                self.set_string(output_texts=tail_texts))
 
 
 class output_table(object):
