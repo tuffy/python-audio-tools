@@ -10,13 +10,13 @@ shndec \
 wvdec \
 alacenc \
 flacenc \
-oggflacdec \
 shnenc \
 wvenc \
 huffman \
 bitstream \
 ttaenc \
-ttadec
+ttadec \
+aobdec
 
 all: $(BINARIES)
 
@@ -57,7 +57,7 @@ ttaenc: $(OBJS) encoders/tta.c encoders/tta.h
 	$(CC) $(FLAGS) -o ttaenc encoders/tta.c $(OBJS) -DSTANDALONE
 
 aobdec: decoders/aob.c decoders/aob.h $(OBJS) mlp.o aobpcm.o
-	$(CC) $(FLAGS) -o aobdec decoders/aob.c $(OBJS) mlp.o aobpcm.o -DSTANDALONE
+	$(CC) $(FLAGS) -o aobdec decoders/aob.c $(OBJS) mlp.o aobpcm.o -DSTANDALONE -lm
 
 # mlpdec: decoders/mlp.c decoders/mlp.h array.o bitstream.o
 # 	$(CC) $(FLAGS) -o mlpdec decoders/mlp.c array.o bitstream.o -DSTANDALONE

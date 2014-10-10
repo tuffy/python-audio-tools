@@ -9,12 +9,6 @@ binary data.
 Unlike Python's built-in struct module, these routines are specialized
 to handle data that's not strictly byte-aligned.
 
-.. function:: Substream(is_little_endian)
-
-   Returns an empty :class:`BitstreamReader` substream.
-   This is meant as a container for new data to be appended to it
-   via :meth:`BitstreamReader.substream_append`.
-
 .. function:: format_size(format_string)
 
    Given a format string as used by :meth:`BitstreamReader.parse`
@@ -241,16 +235,6 @@ out of a larger binary file stream.
    :class:`BitstreamReader`.
    However, attempting to have the substream read beyond its
    defined byte count will trigger :exc:`IOError` exceptions.
-
-.. method:: BitstreamReader.substream_append(substream, bytes)
-
-   Append an additional ``bytes`` amount of data
-   from the current :class:`BitstreamReader` object
-   to the given :class:`BitstreamReader` substream object.
-   May raise an :exc:`IOError` if the current stream has
-   insufficient bytes.
-   Any callbacks defined in the current stream are applied
-   to the bytes read for the substream when this method is called.
 
 .. method:: BitstreamReader.close()
 

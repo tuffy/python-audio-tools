@@ -22,15 +22,12 @@
 enum {FRAME_DATA};
 
 MLPDecoder*
-open_mlp_decoder(struct bs_buffer* frame_data)
+open_mlp_decoder(void)
 {
     MLPDecoder* decoder = malloc(sizeof(MLPDecoder));
     unsigned c;
     unsigned s;
 
-    decoder->reader = br_open_buffer(frame_data, BS_BIG_ENDIAN);
-    decoder->frame_reader = br_substream_new(BS_BIG_ENDIAN);
-    decoder->substream_reader = br_substream_new(BS_BIG_ENDIAN);
     decoder->major_sync_read = 0;
 
     decoder->framelist = aa_int_new();
@@ -71,9 +68,6 @@ close_mlp_decoder(MLPDecoder* decoder)
 {
     unsigned s;
 
-    decoder->reader->close(decoder->reader);
-    decoder->frame_reader->close(decoder->frame_reader);
-    decoder->substream_reader->close(decoder->substream_reader);
     aa_int_del(decoder->framelist);
 
     for (s = 0; s < MAX_MLP_SUBSTREAMS; s++) {
@@ -101,20 +95,28 @@ close_mlp_decoder(MLPDecoder* decoder)
     free(decoder);
 }
 
-int
-mlp_packet_empty(MLPDecoder* decoder)
+unsigned
+mlp_total_frame_size(const struct bs_buffer *packet)
 {
-    BitstreamReader* reader = decoder->reader;
-    struct bs_buffer* packet = reader->input.substream;
+    if (buf_window_size(packet) >= 4) {
+        const uint8_t hi = packet->data[packet->window_start];
+        const uint8_t lo = packet->data[packet->window_start + 1];
+
+        return ((hi & 0x0F) << 8) | lo;
+    } else {
+        return 0;
+    }
+}
+
+int
+mlp_packet_empty(const struct bs_buffer *packet)
+{
     const unsigned remaining_bytes = buf_window_size(packet);
 
     if (remaining_bytes >= 4) {
-        unsigned total_frame_size;
+        const unsigned total_frame_size = mlp_total_frame_size(packet);
 
-        reader->mark(reader, FRAME_DATA);
-        reader->parse(reader, "4p 12u 16p", &total_frame_size);
-        reader->rewind(reader, FRAME_DATA);
-        reader->unmark(reader, FRAME_DATA);
+        /*reader->parse(reader, "4p 12u 16p", &total_frame_size);*/
 
         return (remaining_bytes < (total_frame_size * 2));
     } else {
@@ -125,33 +127,39 @@ mlp_packet_empty(MLPDecoder* decoder)
 
 mlp_status
 read_mlp_frames(MLPDecoder* decoder,
+                struct bs_buffer *packet,
                 aa_int* framelist)
 {
-    BitstreamReader* reader = decoder->reader;
-    struct bs_buffer* packet = reader->input.substream;
-
     while (buf_window_size(packet) >= 4) {
-        unsigned total_frame_size;
-        unsigned frame_bytes;
+        unsigned total_frame_size = mlp_total_frame_size(packet);
+        unsigned frame_bytes = (total_frame_size * 2) - 4;
 
-        reader->mark(reader, FRAME_DATA);
-        reader->parse(reader, "4p 12u 16p", &total_frame_size);
-        frame_bytes = (total_frame_size * 2) - 4;
+        /*use low-level buffer reads to avoid building a whole reader
+          it's a "4p 12u 16p" field when parsed by BitstreamReader*/
+
         if (buf_window_size(packet) >= frame_bytes) {
-            BitstreamReader* frame_reader = decoder->frame_reader;
+            BitstreamReader* frame_reader =
+                br_open_buffer(buf_window_start(packet),
+                               frame_bytes,
+                               BS_BIG_ENDIAN);
             mlp_status status;
 
-            reader->unmark(reader, FRAME_DATA);
-            br_substream_reset(frame_reader);
-            reader->substream_append(reader, frame_reader, frame_bytes);
+            /*consume 4 bytes of header along with frame from packet*/
+            buf_skip(packet, 4);
+            buf_skip(packet, frame_bytes);
 
-            if ((status =
-                 read_mlp_frame(decoder, frame_reader, framelist)) != OK)
+            status = read_mlp_frame(decoder, frame_reader, framelist);
+
+            frame_reader->close(frame_reader);
+
+            if (status == OK) {
+                continue;
+            } else {
                 return status;
+            }
         } else {
-            /*not enough of a frame left to read*/
-            reader->rewind(reader, FRAME_DATA);
-            reader->unmark(reader, FRAME_DATA);
+            /*not enough of a frame left to read,
+              so prepare for more to arrive*/
             return OK;
         }
     }
@@ -234,6 +242,7 @@ read_mlp_frame(MLPDecoder* decoder,
     }
 
     if (!setjmp(*br_try(bs))) {
+        BitstreamReader *substream_reader;
         unsigned s;
         unsigned c;
         unsigned m;
@@ -251,7 +260,6 @@ read_mlp_frame(MLPDecoder* decoder,
             }
         }
 
-        br_substream_reset(decoder->substream_reader);
         if (decoder->substream[0].info.checkdata_present) {
             /*checkdata present, so last 2 bytes are CRC-8/parity*/
             struct checkdata checkdata = {0, 0x3C, 0};
@@ -259,24 +267,26 @@ read_mlp_frame(MLPDecoder* decoder,
             uint8_t CRC8;
 
             bs->add_callback(bs, mlp_checkdata_callback, &checkdata);
-            bs->substream_append(bs, decoder->substream_reader,
-                                 substream0->info.substream_end - 2);
+            substream_reader =
+                bs->substream(bs, substream0->info.substream_end - 2);
             bs->pop_callback(bs, NULL);
 
             parity = (uint8_t)bs->read(bs, 8);
             if ((parity ^ checkdata.parity) != 0xA9) {
                 br_etry(bs);
+                substream_reader->close(substream_reader);
                 return PARITY_MISMATCH;
             }
 
             CRC8 = (uint8_t)bs->read(bs, 8);
             if (checkdata.final_crc != CRC8) {
                 br_etry(bs);
+                substream_reader->close(substream_reader);
                 return CRC8_MISMATCH;
             }
         } else {
-            bs->substream_append(bs, decoder->substream_reader,
-                                 decoder->substream[0].info.substream_end);
+            substream_reader =
+                bs->substream(bs, decoder->substream[0].info.substream_end);
         }
 
         /*clear the bypassed LSB values in substream 0's matrix data*/
@@ -285,9 +295,13 @@ read_mlp_frame(MLPDecoder* decoder,
                decoder->substream[0].parameters.matrix[m].bypassed_LSB);
 
         /*decode substream 0 bytes to channel data*/
-        if ((status = read_mlp_substream(substream0,
-                                         decoder->substream_reader,
-                                         decoder->framelist)) != OK) {
+        status = read_mlp_substream(substream0,
+                                    substream_reader,
+                                    decoder->framelist);
+
+        substream_reader->close(substream_reader);
+
+        if (status != OK) {
             br_etry(bs);
             return status;
         }
@@ -327,7 +341,6 @@ read_mlp_frame(MLPDecoder* decoder,
                 decoder->framelist->_[c]->reset(decoder->framelist->_[c]);
             }
         } else {
-            br_substream_reset(decoder->substream_reader);
             if (decoder->substream[0].info.checkdata_present) {
                 /*checkdata present, so last 2 bytes are CRC-8/parity*/
                 struct checkdata checkdata  = {0, 0x3C, 0};
@@ -335,27 +348,31 @@ read_mlp_frame(MLPDecoder* decoder,
                 unsigned parity;
 
                 bs->add_callback(bs, mlp_checkdata_callback, &checkdata);
-                bs->substream_append(bs, decoder->substream_reader,
-                                     substream1->info.substream_end -
-                                     substream0->info.substream_end -
-                                     2);
+                substream_reader =
+                    bs->substream(bs,
+                                  substream1->info.substream_end -
+                                  substream0->info.substream_end -
+                                  2);
                 bs->pop_callback(bs, NULL);
 
                 parity = (uint8_t)bs->read(bs, 8);
                 if ((parity ^ checkdata.parity) != 0xA9) {
+                    substream_reader->close(substream_reader);
                     br_etry(bs);
                     return PARITY_MISMATCH;
                 }
 
                 CRC8 = (uint8_t)bs->read(bs, 8);
                 if (checkdata.final_crc != CRC8) {
+                    substream_reader->close(substream_reader);
                     br_etry(bs);
                     return CRC8_MISMATCH;
                 }
             } else {
-                bs->substream_append(bs, decoder->substream_reader,
-                                     substream1->info.substream_end -
-                                     substream0->info.substream_end);
+                substream_reader =
+                    bs->substream(bs,
+                                  substream1->info.substream_end -
+                                  substream0->info.substream_end);
             }
 
             /*clear the bypassed LSB values in substream 1's matrix data*/
@@ -363,10 +380,14 @@ read_mlp_frame(MLPDecoder* decoder,
                 a_int_reset(
                     decoder->substream[1].parameters.matrix[m].bypassed_LSB);
 
+            status = read_mlp_substream(substream1,
+                                        substream_reader,
+                                        decoder->framelist);
+
+            substream_reader->close(substream_reader);
+
             /*decode substream 1 bytes to channel data*/
-            if ((status = read_mlp_substream(substream1,
-                                             decoder->substream_reader,
-                                             decoder->framelist)) != OK) {
+            if (status != OK) {
                 br_etry(bs);
                 return status;
             }

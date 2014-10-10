@@ -38,7 +38,6 @@ typedef struct {
 
     FILE* ogg_file;
     OggPacketIterator* ogg_packets;
-    BitstreamReader* packet;
     int channel_mask;
 
     struct flac_STREAMINFO streaminfo;
@@ -165,6 +164,10 @@ int
 OggFlacDecoder_verify_okay(decoders_OggFlacDecoder *self);
 #endif
 
+/*given a STREAMINFO packet, reads the data into "streaminfo"
+  and the total number of header packets into "header_packets"
+
+  returns 1 of processed successfully, 0 if not*/
 int
 oggflac_read_streaminfo(BitstreamReader *bitstream,
                         struct flac_STREAMINFO *streaminfo,

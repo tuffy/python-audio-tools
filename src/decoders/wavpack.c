@@ -53,8 +53,6 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->correlated = aa_int_new();
     self->left_right = aa_int_new();
     self->un_shifted = aa_int_new();
-    self->block_data = br_substream_new(BS_LITTLE_ENDIAN);
-    self->sub_block_data = br_substream_new(BS_LITTLE_ENDIAN);
 
 #ifndef STANDALONE
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
@@ -208,8 +206,6 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
     self->correlated->del(self->correlated);
     self->left_right->del(self->left_right);
     self->un_shifted->del(self->un_shifted);
-    self->block_data->close(self->block_data);
-    self->sub_block_data->close(self->sub_block_data);
 
 #ifndef STANDALONE
     Py_XDECREF(self->audiotools_pcm);
@@ -290,7 +286,7 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     aa_int* channels_data = self->channels_data;
     status error;
     struct block_header block_header;
-    BitstreamReader* block_data = self->block_data;
+    BitstreamReader* block_data;
     PyObject* framelist;
 
     if (self->closed) {
@@ -312,12 +308,9 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
             /*FIXME - ensure block header is consistent
               with the starting block header*/
 
-            br_substream_reset(block_data);
-
             /*read block data*/
             if (!setjmp(*br_try(bs))) {
-                bs->substream_append(bs, block_data,
-                                     block_header.block_size - 24);
+                block_data = bs->substream(bs, block_header.block_size - 24);
                 br_etry(bs);
             } else {
                 br_etry(bs);
@@ -326,11 +319,15 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
             }
 
             /*decode block to 1 or 2 channels of PCM data*/
-            if ((error = decode_block(self,
-                                      &block_header,
-                                      block_data,
-                                      block_header.block_size - 24,
-                                      channels_data)) != OK) {
+            error = decode_block(self,
+                                 &block_header,
+                                 block_data,
+                                 block_header.block_size - 24,
+                                 channels_data);
+
+            block_data->close(block_data);
+
+            if (error != OK) {
                 PyErr_SetString(wavpack_exception(error),
                                 wavpack_strerror(error));
                 return NULL;
@@ -353,30 +350,38 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
             return NULL;
         }
     } else {
+        /*no more samples in stream*/
+
         if (!self->md5sum_checked) {
-            struct sub_block md5_sub_block;
-            unsigned char sub_block_md5sum[16];
-            unsigned char stream_md5sum[16];
-
-            md5_sub_block.data = self->sub_block_data;
-
             /*check for final MD5 block, which may not be present*/
-            if ((read_block_header(bs, &block_header) == OK) &&
-                (find_sub_block(&block_header,
-                                bs,
-                                6, 1, &md5_sub_block) == OK) &&
-                (sub_block_data_size(&md5_sub_block) == 16)) {
-                /*have valid MD5 block, so check it*/
-                md5_sub_block.data->read_bytes(md5_sub_block.data,
-                                               (uint8_t*)sub_block_md5sum,
-                                               16);
-                audiotools__MD5Final(stream_md5sum, &(self->md5));
-                self->md5sum_checked = 1;
+            if (read_block_header(bs, &block_header) == OK) {
+                struct sub_block *md5_sub_block = find_sub_block(&block_header,
+                                                                 bs,
+                                                                 6, 1);
+                unsigned char sub_block_md5sum[16];
+                unsigned char stream_md5sum[16];
 
-                if (memcmp(sub_block_md5sum, stream_md5sum, 16)) {
-                    PyErr_SetString(PyExc_ValueError,
-                                    "MD5 mismatch at end of stream");
-                    return NULL;
+                if (md5_sub_block &&
+                        (sub_block_data_size(md5_sub_block) == 16)) {
+                    /*have valid MD5 block and it's the correct size*/
+                    md5_sub_block->data->read_bytes(md5_sub_block->data,
+                                                    (uint8_t*)sub_block_md5sum,
+                                                    16);
+
+                    free_sub_block(md5_sub_block);
+
+                    /*so verify it against running sum*/
+
+                    audiotools__MD5Final(stream_md5sum, &(self->md5));
+                    self->md5sum_checked = 1;
+
+                    if (memcmp(sub_block_md5sum, stream_md5sum, 16)) {
+                        PyErr_SetString(PyExc_ValueError,
+                                        "MD5 mismatch at end of stream");
+                        return NULL;
+                    }
+                } else if (md5_sub_block) {
+                    free_sub_block(md5_sub_block);
                 }
             }
         }
@@ -635,8 +640,6 @@ decode_block(decoders_WavPackDecoder* decoder,
              unsigned block_data_size,
              aa_int* channels)
 {
-    struct sub_block sub_block;
-    int sub_block_size;
     status status = OK;
 
     int decorrelation_terms_read = 0;
@@ -655,22 +658,23 @@ decode_block(decoders_WavPackDecoder* decoder,
     aa_int* entropies = decoder->entropies;
     aa_int* residuals = decoder->residuals;
 
-    sub_block.data = decoder->sub_block_data;
-
     /*parse all decoding parameter sub blocks*/
     while (block_data_size > 0) {
-        if ((sub_block_size = read_sub_block(block_data,
-                                             &sub_block)) == -1) {
-            return IO_ERROR;
-        } else {
+        struct sub_block *sub_block;
+        unsigned sub_block_size;
+
+        if ((sub_block = read_sub_block(block_data)) != NULL) {
+            sub_block_size = sub_block_total_size(sub_block);
             block_data_size -= sub_block_size;
+        } else {
+            return IO_ERROR;
         }
 
-        if (!sub_block.nondecoder_data) {
-            switch (sub_block.metadata_function) {
+        if (!sub_block->nondecoder_data) {
+            switch (sub_block->metadata_function) {
             case 2:
                 if ((status = read_decorrelation_terms(
-                         &sub_block,
+                         sub_block,
                          decorrelation_terms,
                          decorrelation_deltas)) != OK) {
                     return status;
@@ -683,7 +687,7 @@ decode_block(decoders_WavPackDecoder* decoder,
                 }
                 if ((status = read_decorrelation_weights(
                          block_header,
-                         &sub_block,
+                         sub_block,
                          decorrelation_terms->len,
                          decorrelation_weights)) != OK) {
                     return status;
@@ -696,7 +700,7 @@ decode_block(decoders_WavPackDecoder* decoder,
                 }
                 if ((status = read_decorrelation_samples(
                          block_header,
-                         &sub_block,
+                         sub_block,
                          decorrelation_terms,
                          decorrelation_samples)) != OK) {
                     return status;
@@ -706,7 +710,7 @@ decode_block(decoders_WavPackDecoder* decoder,
             case 5:
                 if ((status = read_entropy_variables(
                          block_header,
-                         &sub_block,
+                         sub_block,
                          entropies)) != OK) {
                     return status;
                 }
@@ -714,7 +718,7 @@ decode_block(decoders_WavPackDecoder* decoder,
                 break;
             case 9:
                 if ((status = read_extended_integers(
-                         &sub_block,
+                         sub_block,
                          &extended_integers)) != OK) {
                     return status;
                 }
@@ -725,7 +729,7 @@ decode_block(decoders_WavPackDecoder* decoder,
                     return ENTROPY_VARIABLES_MISSING;
                 }
                 if ((status = read_bitstream(block_header,
-                                             sub_block.data,
+                                             sub_block->data,
                                              entropies,
                                              residuals)) != OK) {
                     return status;
@@ -734,6 +738,8 @@ decode_block(decoders_WavPackDecoder* decoder,
                 break;
             }
         }
+
+        free_sub_block(sub_block);
     }
 
     /*ensure the required decoding parameters have been read*/
@@ -1705,10 +1711,13 @@ unencode_bits_per_sample(unsigned encoded_bits_per_sample)
     }
 }
 
-static int
-read_sub_block(BitstreamReader* bitstream,
-               struct sub_block* sub_block) {
+static struct sub_block*
+read_sub_block(BitstreamReader* bitstream) {
+    struct sub_block *sub_block = malloc(sizeof(struct sub_block));
+    sub_block->data = NULL;
+
     if (!setjmp(*br_try(bitstream))) {
+        /*read sub block header*/
         bitstream->parse(bitstream, "5u 1u 1u 1u",
                          &(sub_block->metadata_function),
                          &(sub_block->nondecoder_data),
@@ -1721,28 +1730,50 @@ read_sub_block(BitstreamReader* bitstream,
             sub_block->size = bitstream->read(bitstream, 24);
         }
 
-        br_substream_reset(sub_block->data);
-
+        /*read sub block data as BitstreamReader*/
         if (!sub_block->actual_size_1_less) {
-            bitstream->substream_append(bitstream,
-                                        sub_block->data,
-                                        sub_block->size * 2);
+            sub_block->data = bitstream->substream(bitstream,
+                                                   sub_block->size * 2);
         } else {
-            bitstream->substream_append(bitstream,
-                                        sub_block->data,
-                                        sub_block->size * 2 - 1);
+            sub_block->data = bitstream->substream(bitstream,
+                                                   sub_block->size * 2 - 1);
             bitstream->skip(bitstream, 8);
         }
 
         br_etry(bitstream);
-        if (sub_block->large_sub_block) {
-            return 4 + sub_block->size * 2;
-        } else {
-            return 2 + sub_block->size * 2;
-        }
+
+        /*return new sub block*/
+        return sub_block;
     } else {
         br_etry(bitstream);
-        return -1;
+        /*ensure sub block data BitstreamReader is closed
+          if an I/O error occurs during that final 8 bit skip*/
+        if (sub_block->data != NULL) {
+            sub_block->data->close(sub_block->data);
+        }
+
+        free(sub_block);
+
+        return NULL;
+    }
+}
+
+static void
+free_sub_block(struct sub_block *sub_block)
+{
+    if (sub_block) {
+        sub_block->data->close(sub_block->data);
+        free(sub_block);
+    }
+}
+
+static unsigned
+sub_block_total_size(const struct sub_block* sub_block)
+{
+    if (sub_block->large_sub_block) {
+        return 4 + sub_block->size * 2;
+    } else {
+        return 2 + sub_block->size * 2;
     }
 }
 
@@ -1756,44 +1787,46 @@ sub_block_data_size(const struct sub_block* sub_block)
     }
 }
 
-static status
+static struct sub_block*
 find_sub_block(const struct block_header* block_header,
                BitstreamReader* bitstream,
                unsigned metadata_function,
-               unsigned nondecoder_data,
-               struct sub_block* sub_block)
+               unsigned nondecoder_data)
 {
     unsigned sub_blocks_size = block_header->block_size - 24;
-    int sub_block_size;
-    BitstreamReader* sub_blocks = br_substream_new(BS_LITTLE_ENDIAN);
+    BitstreamReader* sub_blocks;
 
+    /*grab all the sub blocks data upfront
+      which keeps us from overreading into the next block*/
     if (!setjmp(*br_try(bitstream))) {
-        bitstream->substream_append(bitstream, sub_blocks, sub_blocks_size);
+        sub_blocks = bitstream->substream(bitstream, sub_blocks_size);
         br_etry(bitstream);
     } else {
         br_etry(bitstream);
-        sub_blocks->close(sub_blocks);
-        return IO_ERROR;
+        return NULL;
     }
 
     while (sub_blocks_size > 0) {
-        if ((sub_block_size = read_sub_block(sub_blocks,
-                                             sub_block)) == -1) {
+        struct sub_block *sub_block = read_sub_block(sub_blocks);
+        if (sub_block == NULL) {
+            /*I/O error occurred trying to read sub block*/
             sub_blocks->close(sub_blocks);
-            return IO_ERROR;
+            return NULL;
+        } else if ((sub_block->metadata_function == metadata_function) &&
+                   (sub_block->nondecoder_data == nondecoder_data)) {
+            /*found correct sub block*/
+            sub_blocks->close(sub_blocks);
+            return sub_block;
         } else {
-            sub_blocks_size -= sub_block_size;
-        }
-
-        if ((sub_block->metadata_function == metadata_function) &&
-            (sub_block->nondecoder_data == nondecoder_data)) {
-            sub_blocks->close(sub_blocks);
-            return OK;
+            /*incorrect sub block, so free it and check the next one*/
+            sub_blocks_size -= sub_block_total_size(sub_block);
+            free_sub_block(sub_block);
         }
     }
 
+    /*sub block not found in the block at all*/
     sub_blocks->close(sub_blocks);
-    return SUB_BLOCK_NOT_FOUND;
+    return NULL;
 }
 
 static status
@@ -1801,23 +1834,19 @@ read_sample_rate_sub_block(const struct block_header* block_header,
                            BitstreamReader* bitstream,
                            int* sample_rate)
 {
-    status status;
-    struct sub_block sub_block;
-    sub_block.data = br_substream_new(BS_LITTLE_ENDIAN);
+    struct sub_block *sub_block = find_sub_block(block_header,
+                                                 bitstream,
+                                                 7, 1);
+    if (sub_block != NULL) {
+        *sample_rate =
+            (int)(sub_block->data->read(sub_block->data,
+                                        sub_block_data_size(sub_block) * 8));
 
-    switch (status = find_sub_block(block_header,
-                                    bitstream,
-                                    7, 1,
-                                    &sub_block)) {
-    case OK:
-        *sample_rate = (int)(sub_block.data->read(
-                                 sub_block.data,
-                                 sub_block_data_size(&sub_block) * 8));
-        sub_block.data->close(sub_block.data);
+        free_sub_block(sub_block);
+
         return OK;
-    default:
-        sub_block.data->close(sub_block.data);
-        return status;
+    } else {
+        return SUB_BLOCK_NOT_FOUND;
     }
 }
 
@@ -1827,34 +1856,31 @@ read_channel_count_sub_block(const struct block_header* block_header,
                              int* channel_count,
                              int* channel_mask)
 {
-    status status;
-    struct sub_block sub_block;
-    sub_block.data = br_substream_new(BS_LITTLE_ENDIAN);
+    struct sub_block *sub_block = find_sub_block(block_header,
+                                                 bitstream,
+                                                 13, 0);
+    if (sub_block != NULL) {
+        const unsigned size = sub_block_data_size(sub_block);
 
-    switch (status = find_sub_block(block_header,
-                                    bitstream,
-                                    13, 0,
-                                    &sub_block)) {
-    case OK:
-        if (sub_block_data_size(&sub_block) >= 2) {
-            *channel_count = sub_block.data->read(sub_block.data, 8);
-            *channel_mask =
-                sub_block.data->read(sub_block.data,
-                                     (sub_block_data_size(&sub_block) - 1) * 8);
-            sub_block.data->close(sub_block.data);
-            return OK;
+        if (size >= 2) {
+             *channel_count =
+                 sub_block->data->read(sub_block->data, 8);
+             *channel_mask =
+                 sub_block->data->read(sub_block->data, (size - 1) * 8);
+             free_sub_block(sub_block);
+             return OK;
         } else {
-            sub_block.data->close(sub_block.data);
+            /*sub block isn't large enough to hold the two fields we need*/
+            free_sub_block(sub_block);
             return IO_ERROR;
         }
-    default:
-        sub_block.data->close(sub_block.data);
-        return status;
+    } else {
+        return SUB_BLOCK_NOT_FOUND;
     }
 }
 
 static status
-read_extended_integers(const struct sub_block* sub_block,
+read_extended_integers(struct sub_block* sub_block,
                        struct extended_integers* extended_integers)
 {
     if (sub_block_data_size(sub_block) == 4) {
@@ -1920,9 +1946,6 @@ int main(int argc, char* argv[]) {
     FrameList_int_to_char_converter converter;
 
     struct block_header block_header;
-    struct sub_block md5_sub_block;
-    unsigned char sub_block_md5sum[16];
-    unsigned char stream_md5sum[16];
 
     if (argc < 2) {
         fprintf(stderr, "*** Usage: %s <file.wv>\n", argv[0]);
@@ -1945,7 +1968,7 @@ int main(int argc, char* argv[]) {
         BitstreamReader* bs = decoder.bitstream;
         aa_int* channels_data = decoder.channels_data;
         status error;
-        BitstreamReader* block_data = decoder.block_data;
+        BitstreamReader* block_data;
         unsigned pcm_size;
         unsigned channel;
         unsigned frame;
@@ -1963,12 +1986,9 @@ int main(int argc, char* argv[]) {
             /*FIXME - ensure block header is consistent
               with the starting block header*/
 
-            br_substream_reset(block_data);
-
             /*read block data*/
             if (!setjmp(*br_try(bs))) {
-                bs->substream_append(bs, block_data,
-                                     block_header.block_size - 24);
+                block_data = bs->substream(bs, block_header.block_size - 24);
                 br_etry(bs);
             } else {
                 br_etry(bs);
@@ -1982,9 +2002,12 @@ int main(int argc, char* argv[]) {
                                       block_data,
                                       block_header.block_size - 24,
                                       channels_data)) != OK) {
+                block_data->close(block_data);
                 fprintf(stderr, "*** Error: %s\n",
                         wavpack_strerror(error));
                 goto error;
+            } else {
+                block_data->close(block_data);
             }
         } while (block_header.final_block == 0);
 
@@ -2017,26 +2040,33 @@ int main(int argc, char* argv[]) {
         fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
     }
 
-    /*check for final MD5 sub block, if present*/
-    md5_sub_block.data = decoder.sub_block_data;
-
     /*check for final MD5 block, which may not be present*/
-    if ((read_block_header(decoder.bitstream, &block_header) == OK) &&
-        (find_sub_block(&block_header,
-                        decoder.bitstream,
-                        6, 1, &md5_sub_block) == OK) &&
-        (sub_block_data_size(&md5_sub_block) == 16)) {
+    if (read_block_header(decoder.bitstream, &block_header) == OK) {
+        struct sub_block *md5_sub_block = find_sub_block(&block_header,
+                                                         decoder.bitstream,
+                                                         6, 1);
 
-        /*have valid MD5 block, so check it*/
-        md5_sub_block.data->read_bytes(md5_sub_block.data,
-                                       (uint8_t*)sub_block_md5sum,
-                                       16);
+        unsigned char sub_block_md5sum[16];
+        unsigned char stream_md5sum[16];
 
-        audiotools__MD5Final(stream_md5sum, &(decoder.md5));
+        if (md5_sub_block && (sub_block_data_size(md5_sub_block) == 16)) {
+            /*have MD5 sub block and it's the correct size*/
+            md5_sub_block->data->read_bytes(md5_sub_block->data,
+                                            (uint8_t*)sub_block_md5sum,
+                                            16);
 
-        if (memcmp(sub_block_md5sum, stream_md5sum, 16)) {
-            fprintf(stderr, "*** MD5 mismatch at end of stream\n");
-            goto error;
+            free_sub_block(md5_sub_block);
+
+            /*so verify it against running sum*/
+            audiotools__MD5Final(stream_md5sum, &(decoder.md5));
+
+            if (memcmp(sub_block_md5sum, stream_md5sum, 16)) {
+                fprintf(stderr, "*** MD5 mismatch at end of stream\n");
+                goto error;
+            }
+        } else if (md5_sub_block) {
+            /*have MD5 sub block but it's too short for some reason*/
+            free_sub_block(md5_sub_block);
         }
     }
 

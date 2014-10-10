@@ -1133,11 +1133,10 @@ BitstreamReader_callback(uint8_t byte, PyObject *callback)
 }
 
 static PyObject*
-BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args)
+BitstreamReader_substream(bitstream_BitstreamReader *self, PyObject *args)
 {
     PyTypeObject *type = Py_TYPE(self);
     long int bytes;
-    bitstream_BitstreamReader *obj;
 
     if (!PyArg_ParseTuple(args, "l", &bytes)) {
         return NULL;
@@ -1150,77 +1149,30 @@ BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args)
                             UINT_MAX);
     }
 
-    obj = (bitstream_BitstreamReader *)type->tp_alloc(type, 0);
-    obj->little_endian = self->little_endian;
-    obj->bitstream = br_substream_new(obj->little_endian ?
-                                      BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-    if (self->little_endian) {
-        obj->read_unsigned = brpy_read_unsigned_le;
-        obj->read_signed = brpy_read_signed_le;
-    } else {
-        obj->read_unsigned = brpy_read_unsigned_be;
-        obj->read_signed = brpy_read_signed_be;
-    }
-
     if (!setjmp(*br_try(self->bitstream))) {
-        self->bitstream->substream_append(self->bitstream,
-                                          obj->bitstream,
-                                          (unsigned)bytes);
+        bitstream_BitstreamReader *obj;
+        BitstreamReader *substream =
+            self->bitstream->substream(self->bitstream, (unsigned)bytes);
+
         br_etry(self->bitstream);
+
+        obj = (bitstream_BitstreamReader *)type->tp_alloc(type, 0);
+        obj->little_endian = self->little_endian;
+        obj->bitstream = substream;
+
+        if (self->little_endian) {
+            obj->read_unsigned = brpy_read_unsigned_le;
+            obj->read_signed = brpy_read_signed_le;
+        } else {
+            obj->read_unsigned = brpy_read_unsigned_be;
+            obj->read_signed = brpy_read_signed_be;
+        }
+
         return (PyObject *)obj;
     } else {
         br_etry(self->bitstream);
         /*read error occurred during substream_append*/
-        Py_DECREF((PyObject *)obj);
         PyErr_SetString(PyExc_IOError, "I/O error creating substream");
-        return NULL;
-    }
-}
-
-static PyObject*
-BitstreamReader_substream_append(bitstream_BitstreamReader *self,
-                                 PyObject *args)
-{
-    PyObject *substream_obj;
-    bitstream_BitstreamReader *substream;
-    long int bytes;
-
-    if (!PyArg_ParseTuple(args, "Ol", &substream_obj, &bytes)) {
-        return NULL;
-    } else if (bytes < 0) {
-        PyErr_SetString(PyExc_ValueError, "byte count must be >= 0");
-        return NULL;
-    } else if (bytes > UINT_MAX) {
-        return PyErr_Format(PyExc_ValueError,
-                            "byte count must be < %u",
-                            UINT_MAX);
-    }
-
-    if (Py_TYPE(self) != Py_TYPE(substream_obj)) {
-        PyErr_SetString(PyExc_TypeError,
-                        "first argument must be a BitstreamReader");
-        return NULL;
-    } else
-        substream = (bitstream_BitstreamReader*)substream_obj;
-
-    if (substream->bitstream->type != BR_SUBSTREAM) {
-        PyErr_SetString(PyExc_TypeError,
-                        "first argument must be a substream");
-        return NULL;
-    }
-
-    if (!setjmp(*br_try(self->bitstream))) {
-        self->bitstream->substream_append(self->bitstream,
-                                          substream->bitstream,
-                                          (unsigned)bytes);
-
-        br_etry(self->bitstream);
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else {
-        br_etry(self->bitstream);
-        /*read error occured during substream_append*/
-        PyErr_SetString(PyExc_IOError, "I/O error appending substream");
         return NULL;
     }
 }
@@ -1267,7 +1219,6 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
     int buffer_size = 4096;
 
     self->bitstream = NULL;
-    self->string_buffer = NULL;
 
     if (!PyArg_ParseTuple(args, "Oi|i",
                           &file_obj,
@@ -1289,18 +1240,10 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
             return -1;
         }
 
-        self->string_buffer = buf_new();
-
         /*FIXME - this presumes buffer can holder more bytes than
           an unsigned int, which isn't the case yet*/
-        while (length > 0) {
-            const unsigned to_write = (unsigned)MIN(length, UINT_MAX);
-            buf_write(self->string_buffer, (uint8_t*)buffer, to_write);
-            buffer += to_write;
-            length -= to_write;
-        }
-
-        self->bitstream = br_open_buffer(self->string_buffer,
+        self->bitstream = br_open_buffer((uint8_t*)buffer,
+                                         (unsigned)length,
                                          self->little_endian ?
                                          BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
     } else {
@@ -1356,30 +1299,7 @@ BitstreamReader_dealloc(bitstream_BitstreamReader *self)
         self->bitstream->free(self->bitstream);
     }
 
-    if (self->string_buffer != NULL) {
-        buf_close(self->string_buffer);
-    }
-
     Py_TYPE(self)->tp_free((PyObject*)self);
-}
-
-static PyObject*
-BitstreamReader_Substream(PyObject *dummy, PyObject *args)
-{
-    int endianness;
-    PyTypeObject *type = &bitstream_BitstreamReaderType;
-    bitstream_BitstreamReader *reader;
-
-    if (!PyArg_ParseTuple(args, "i", &endianness))
-        return NULL;
-
-    reader = (bitstream_BitstreamReader *)type->tp_alloc(type, 0);
-
-    reader->bitstream = br_substream_new(endianness ?
-                                         BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-    reader->little_endian = endianness;
-
-    return (PyObject *)reader;
 }
 
 static PyObject*
@@ -3296,12 +3216,12 @@ bitstream_parse_func(PyObject *dummy, PyObject *args)
                           &format, &is_little_endian, &data, &data_length)) {
         return NULL;
     } else {
-        struct bs_buffer* buf = buf_new();
         BitstreamReader* stream =
-            br_open_buffer(buf,
+            br_open_buffer(
+                (uint8_t*)data,
+                (unsigned)data_length,
                 is_little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
         PyObject* values = PyList_New(0);
-        buf_write(buf, (uint8_t*)data, (unsigned)data_length);
         if (!bitstream_parse(stream,
                              is_little_endian ?
                              brpy_read_unsigned_le : brpy_read_unsigned_be,
@@ -3310,11 +3230,9 @@ bitstream_parse_func(PyObject *dummy, PyObject *args)
                              format,
                              values)) {
             stream->close(stream);
-            buf_close(buf);
             return values;
         } else {
             stream->close(stream);
-            buf_close(buf);
             Py_DECREF(values);
             return NULL;
         }

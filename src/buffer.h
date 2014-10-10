@@ -41,7 +41,6 @@ struct bs_buffer {
     unsigned data_size;
     unsigned window_start;
     unsigned window_end;
-    int rewindable;
 };
 
 typedef unsigned buf_size_t;
@@ -96,14 +95,11 @@ void
 buf_resize(struct bs_buffer *stream, unsigned additional_bytes);
 
 
-/*clears out the buffer for possible reuse
-
-  resets window_start, window_end and sets stream to be non-rewindable*/
+/*clears out the buffer for possible reuse*/
 static inline void
 buf_reset(struct bs_buffer *stream)
 {
     stream->window_start = stream->window_end = 0;
-    stream->rewindable = 0;
 }
 
 
@@ -179,15 +175,6 @@ buf_setpos(struct bs_buffer *stream, buf_pos_t pos)
   returns 0 on success, nonzero on failure*/
 int
 buf_fseek(struct bs_buffer *stream, long position, int whence);
-
-/*if rewindable is true, the buffer's window can't be moved down
-  to fit more data and can only be appended to
-  if false, old data can be discarded as space is needed*/
-static inline void
-buf_set_rewindable(struct bs_buffer *stream, int rewindable)
-{
-    stream->rewindable = rewindable;
-}
 
 /*appends unconsumed data in "source" to "target"*/
 static inline void

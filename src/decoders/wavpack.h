@@ -59,8 +59,6 @@ typedef struct {
 #endif
 
     BitstreamReader* bitstream;
-    BitstreamReader* block_data;
-    BitstreamReader* sub_block_data;
 
     audiotools__MD5Context md5;
     int md5sum_checked;
@@ -366,24 +364,37 @@ calculate_crc(const aa_int* channels);
 static int
 read_wv_exp2(BitstreamReader* sub_block_data);
 
-/*read a sub block header and data to the given struct
-  which *must* have a valid bitstream recorder ->data field
+/*read a sub block header and data and returns a new
+  sub_block struct which must be freed with free_sub_block()
 
-  returns the total sub block size on success
-  returns -1 if an IO error occurs reading the sub block*/
-static int
-read_sub_block(BitstreamReader* bitstream,
-               struct sub_block* sub_block);
+  returns NULL if an I/O error occurs*/
+static struct sub_block*
+read_sub_block(BitstreamReader* bitstream);
 
+/*deallocates sub block and contained bitstream
+  if "sub_block" is NULL, does nothing*/
+static void
+free_sub_block(struct sub_block *sub_block);
+
+/*returns the total size of the sub block, including the header*/
+static unsigned
+sub_block_total_size(const struct sub_block* sub_block);
+
+/*returns the size of the sub block data,
+  not including the header or "one byte less" padding byte*/
 static unsigned
 sub_block_data_size(const struct sub_block* sub_block);
 
-static status
+/*walks through all the sub blocks and returns a new sub_block struct
+  which matches the given metadata function and nondecoder data flag
+
+  returns NULL if the sub block cannot be found
+  or an I/O error occurs*/
+static struct sub_block*
 find_sub_block(const struct block_header* block_header,
                BitstreamReader* bitstream,
                unsigned metadata_function,
-               unsigned nondecoder_data,
-               struct sub_block* sub_block);
+               unsigned nondecoder_data);
 
 static status
 read_sample_rate_sub_block(const struct block_header* block_header,
@@ -397,7 +408,7 @@ read_channel_count_sub_block(const struct block_header* block_header,
                              int* channel_mask);
 
 static status
-read_extended_integers(const struct sub_block* sub_block,
+read_extended_integers(struct sub_block* sub_block,
                        struct extended_integers* extended_integers);
 
 static void

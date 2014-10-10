@@ -159,7 +159,7 @@ if (__name__ == '__main__'):
                     for t in sorted(indexes.keys()):
                         row = table.row()
                         row.add_column(u"")
-                        row.add_column(t, "right")
+                        row.add_column(u"%d" % (t), "right")
                         track_indexes = indexes[t]
                         for i in index_numbers:
                             row.add_column(u"")

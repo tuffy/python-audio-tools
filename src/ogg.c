@@ -234,23 +234,29 @@ oggiterator_next_segment(OggPacketIterator *iterator,
     }
 }
 
-ogg_status
+BitstreamReader*
 oggiterator_next_packet(OggPacketIterator *iterator,
-                        struct bs_buffer *packet)
+                        bs_endianness endianness,
+                        ogg_status *result)
 {
-    ogg_status result;
+    BitstreamReader *packet = br_open_buffer(NULL, 0, endianness);
     uint8_t *segment_data;
     uint8_t segment_length;
 
     do {
-        if ((result = oggiterator_next_segment(iterator,
-                                               &segment_data,
-                                               &segment_length)) == OGG_OK) {
-            buf_write(packet, segment_data, segment_length);
+        if ((*result = oggiterator_next_segment(iterator,
+                                                &segment_data,
+                                                &segment_length)) == OGG_OK) {
+            br_buf_extend(packet->input.buffer, segment_data, segment_length);
         }
-    } while ((result == OGG_OK) && (segment_length == 255));
+    } while ((*result == OGG_OK) && (segment_length == 255));
 
-    return result;
+    if (*result == OGG_OK) {
+        return packet;
+    } else {
+        packet->close(packet);
+        return NULL;
+    }
 }
 
 

@@ -60,6 +60,7 @@ BitstreamReader*
 br_open(FILE *f, bs_endianness endianness)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
+    bs->endianness = endianness;
     bs->type = BR_FILE;
     bs->input.file = f;
     bs->state = 0;
@@ -99,7 +100,7 @@ br_open(FILE *f, bs_endianness endianness)
     bs->read_huffman_code = br_read_huffman_code_f;
     bs->read_bytes = br_read_bytes_f;
     bs->parse = br_parse;
-    bs->substream_append = br_substream_append;
+    bs->substream = br_substream;
     bs->close_internal_stream = br_close_internal_stream_f;
     bs->free = br_free_f;
     bs->close = br_close;
@@ -110,18 +111,23 @@ br_open(FILE *f, bs_endianness endianness)
     bs->mark = br_mark_f;
     bs->has_mark = br_has_mark;
     bs->rewind = br_rewind_f;
-    bs->unmark = br_unmark_f;
+    bs->unmark = br_unmark_f_b;
     bs->seek = br_seek_f;
 
     return bs;
 }
 
+
 BitstreamReader*
-br_substream_new(bs_endianness endianness)
+br_open_buffer(const uint8_t *buffer,
+               unsigned buffer_size,
+               bs_endianness endianness)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
-    bs->type = BR_SUBSTREAM;
-    bs->input.substream = buf_new();
+    bs->endianness = endianness;
+    bs->type = BR_BUFFER;
+    bs->input.buffer = br_buf_new();
+    br_buf_extend(bs->input.buffer, buffer, buffer_size);
     bs->state = 0;
     bs->callbacks = NULL;
     bs->exceptions = NULL;
@@ -130,108 +136,48 @@ br_substream_new(bs_endianness endianness)
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        bs->read = br_read_bits_s_be;
+        bs->read = br_read_bits_b_be;
         bs->read_signed = br_read_signed_bits_be;
-        bs->read_64 = br_read_bits64_s_be;
+        bs->read_64 = br_read_bits64_b_be;
         bs->read_signed_64 = br_read_signed_bits64_be;
-        bs->skip = br_skip_bits_s_be;
+        bs->skip = br_skip_bits_b_be;
         bs->unread = br_unread_bit_be;
-        bs->read_unary = br_read_unary_s_be;
-        bs->skip_unary = br_skip_unary_s_be;
-        bs->set_endianness = br_set_endianness_s_be;
+        bs->read_unary = br_read_unary_b_be;
+        bs->skip_unary = br_skip_unary_b_be;
+        bs->set_endianness = br_set_endianness_b_be;
         break;
     case BS_LITTLE_ENDIAN:
-        bs->read = br_read_bits_s_le;
+        bs->read = br_read_bits_b_le;
         bs->read_signed = br_read_signed_bits_le;
-        bs->read_64 = br_read_bits64_s_le;
+        bs->read_64 = br_read_bits64_b_le;
         bs->read_signed_64 = br_read_signed_bits64_le;
-        bs->skip = br_skip_bits_s_le;
+        bs->skip = br_skip_bits_b_le;
         bs->unread = br_unread_bit_le;
-        bs->read_unary = br_read_unary_s_le;
-        bs->skip_unary = br_skip_unary_s_le;
-        bs->set_endianness = br_set_endianness_s_le;
+        bs->read_unary = br_read_unary_b_le;
+        bs->skip_unary = br_skip_unary_b_le;
+        bs->set_endianness = br_set_endianness_b_le;
         break;
     }
 
     bs->skip_bytes = br_skip_bytes;
     bs->byte_aligned = br_byte_aligned;
     bs->byte_align = br_byte_align;
-    bs->read_huffman_code = br_read_huffman_code_s;
-    bs->read_bytes = br_read_bytes_s;
+    bs->read_huffman_code = br_read_huffman_code_b;
+    bs->read_bytes = br_read_bytes_b;
     bs->parse = br_parse;
-    bs->substream_append = br_substream_append;
-    bs->close_internal_stream = br_close_internal_stream_s;
-    bs->free = br_free_s;
+    bs->substream = br_substream;
+    bs->close_internal_stream = br_close_internal_stream_b;
+    bs->free = br_free_b;
     bs->close = br_close;
     bs->add_callback = br_add_callback;
     bs->push_callback = br_push_callback;
     bs->pop_callback = br_pop_callback;
     bs->call_callbacks = br_call_callbacks;
-    bs->mark = br_mark_s;
+    bs->mark = br_mark_b;
     bs->has_mark = br_has_mark;
-    bs->rewind = br_rewind_s;
-    bs->unmark = br_unmark_s;
-    bs->seek = br_seek_s;
-
-    return bs;
-}
-
-BitstreamReader*
-br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness)
-{
-    BitstreamReader *bs = malloc(sizeof(BitstreamReader));
-    bs->type = BR_SUBSTREAM;
-    bs->input.substream = buffer;
-    bs->state = 0;
-    bs->callbacks = NULL;
-    bs->exceptions = NULL;
-    bs->mark_stacks = NULL;
-    bs->exceptions_used = NULL;
-
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->read = br_read_bits_s_be;
-        bs->read_signed = br_read_signed_bits_be;
-        bs->read_64 = br_read_bits64_s_be;
-        bs->read_signed_64 = br_read_signed_bits64_be;
-        bs->skip = br_skip_bits_s_be;
-        bs->unread = br_unread_bit_be;
-        bs->read_unary = br_read_unary_s_be;
-        bs->skip_unary = br_skip_unary_s_be;
-        bs->set_endianness = br_set_endianness_s_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->read = br_read_bits_s_le;
-        bs->read_signed = br_read_signed_bits_le;
-        bs->read_64 = br_read_bits64_s_le;
-        bs->read_signed_64 = br_read_signed_bits64_le;
-        bs->skip = br_skip_bits_s_le;
-        bs->unread = br_unread_bit_le;
-        bs->read_unary = br_read_unary_s_le;
-        bs->skip_unary = br_skip_unary_s_le;
-        bs->set_endianness = br_set_endianness_s_le;
-        break;
-    }
-
-    bs->skip_bytes = br_skip_bytes;
-    bs->byte_aligned = br_byte_aligned;
-    bs->byte_align = br_byte_align;
-    bs->read_huffman_code = br_read_huffman_code_s;
-    bs->read_bytes = br_read_bytes_s;
-    bs->parse = br_parse;
-    bs->substream_append = br_substream_append;
-    bs->close_internal_stream = br_close_internal_stream_s;
-    bs->free = br_free_f;
-    bs->close = br_close;
-    bs->add_callback = br_add_callback;
-    bs->push_callback = br_push_callback;
-    bs->pop_callback = br_pop_callback;
-    bs->call_callbacks = br_call_callbacks;
-    bs->mark = br_mark_s;
-    bs->has_mark = br_has_mark;
-    bs->rewind = br_rewind_s;
-    bs->unmark = br_unmark_s;
-    bs->seek = br_seek_s;
+    bs->rewind = br_rewind_b;
+    bs->unmark = br_unmark_f_b;
+    bs->seek = br_seek_b;
 
     return bs;
 }
@@ -249,6 +195,7 @@ br_open_external(void* user_data,
                  ext_free_f free)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
+    bs->endianness = endianness;
     bs->type = BR_EXTERNAL;
     bs->input.external = ext_open_r(user_data,
                                     buffer_size,
@@ -308,7 +255,7 @@ br_open_external(void* user_data,
     bs->rewind = br_rewind_e;
     bs->unmark = br_unmark_e;
     bs->seek = br_seek_e;
-    bs->substream_append = br_substream_append;
+    bs->substream = br_substream;
 
     return bs;
 }
@@ -395,10 +342,10 @@ FUNC_READ_BITS_BE(br_read_bits_f_be,
                   unsigned int, fgetc, bs->input.file)
 FUNC_READ_BITS_LE(br_read_bits_f_le,
                   unsigned int, fgetc, bs->input.file)
-FUNC_READ_BITS_BE(br_read_bits_s_be,
-                  unsigned int, buf_getc, bs->input.substream)
-FUNC_READ_BITS_LE(br_read_bits_s_le,
-                  unsigned int, buf_getc, bs->input.substream)
+FUNC_READ_BITS_BE(br_read_bits_b_be,
+                  unsigned int, br_buf_getc, bs->input.buffer)
+FUNC_READ_BITS_LE(br_read_bits_b_le,
+                  unsigned int, br_buf_getc, bs->input.buffer)
 FUNC_READ_BITS_BE(br_read_bits_e_be,
                   unsigned int, ext_getc, bs->input.external)
 FUNC_READ_BITS_LE(br_read_bits_e_le,
@@ -438,10 +385,10 @@ FUNC_READ_BITS_BE(br_read_bits64_f_be,
                   uint64_t, fgetc, bs->input.file)
 FUNC_READ_BITS_LE(br_read_bits64_f_le,
                   uint64_t, fgetc, bs->input.file)
-FUNC_READ_BITS_BE(br_read_bits64_s_be,
-                  uint64_t, buf_getc, bs->input.substream)
-FUNC_READ_BITS_LE(br_read_bits64_s_le,
-                  uint64_t, buf_getc, bs->input.substream)
+FUNC_READ_BITS_BE(br_read_bits64_b_be,
+                  uint64_t, br_buf_getc, bs->input.buffer)
+FUNC_READ_BITS_LE(br_read_bits64_b_le,
+                  uint64_t, br_buf_getc, bs->input.buffer)
 FUNC_READ_BITS_BE(br_read_bits64_e_be,
                   uint64_t, ext_getc, bs->input.external)
 FUNC_READ_BITS_LE(br_read_bits64_e_le,
@@ -521,7 +468,7 @@ br_read_signed_bits64_le(BitstreamReader* bs, unsigned int count)
       }                                                         \
   }
 FUNC_SKIP_BITS_BE(br_skip_bits_f_be, fgetc, bs->input.file)
-FUNC_SKIP_BITS_BE(br_skip_bits_s_be, buf_getc, bs->input.substream)
+FUNC_SKIP_BITS_BE(br_skip_bits_b_be, br_buf_getc, bs->input.buffer)
 FUNC_SKIP_BITS_BE(br_skip_bits_e_be, ext_getc, bs->input.external)
 
 #define FUNC_SKIP_BITS_LE(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG) \
@@ -564,7 +511,7 @@ FUNC_SKIP_BITS_BE(br_skip_bits_e_be, ext_getc, bs->input.external)
       }                                                        \
   }
 FUNC_SKIP_BITS_LE(br_skip_bits_f_le, fgetc, bs->input.file)
-FUNC_SKIP_BITS_LE(br_skip_bits_s_le, buf_getc, bs->input.substream)
+FUNC_SKIP_BITS_LE(br_skip_bits_b_le, br_buf_getc, bs->input.buffer)
 FUNC_SKIP_BITS_LE(br_skip_bits_e_le, ext_getc, bs->input.external)
 
 void
@@ -653,10 +600,10 @@ FUNC_READ_UNARY(br_read_unary_f_be,
                 fgetc, bs->input.file, read_unary_table_be)
 FUNC_READ_UNARY(br_read_unary_f_le,
                 fgetc, bs->input.file, read_unary_table_le)
-FUNC_READ_UNARY(br_read_unary_s_be,
-                buf_getc, bs->input.substream, read_unary_table_be)
-FUNC_READ_UNARY(br_read_unary_s_le,
-                buf_getc, bs->input.substream, read_unary_table_le)
+FUNC_READ_UNARY(br_read_unary_b_be,
+                br_buf_getc, bs->input.buffer, read_unary_table_be)
+FUNC_READ_UNARY(br_read_unary_b_le,
+                br_buf_getc, bs->input.buffer, read_unary_table_le)
 FUNC_READ_UNARY(br_read_unary_e_be,
                 ext_getc, bs->input.external, read_unary_table_be)
 FUNC_READ_UNARY(br_read_unary_e_le,
@@ -698,10 +645,10 @@ FUNC_SKIP_UNARY(br_skip_unary_f_be,
                 fgetc, bs->input.file, read_unary_table_be)
 FUNC_SKIP_UNARY(br_skip_unary_f_le,
                 fgetc, bs->input.file, read_unary_table_le)
-FUNC_SKIP_UNARY(br_skip_unary_s_be,
-                buf_getc, bs->input.substream, read_unary_table_be)
-FUNC_SKIP_UNARY(br_skip_unary_s_le,
-                buf_getc, bs->input.substream, read_unary_table_le)
+FUNC_SKIP_UNARY(br_skip_unary_b_be,
+                br_buf_getc, bs->input.buffer, read_unary_table_be)
+FUNC_SKIP_UNARY(br_skip_unary_b_le,
+                br_buf_getc, bs->input.buffer, read_unary_table_le)
 FUNC_SKIP_UNARY(br_skip_unary_e_be,
                 ext_getc, bs->input.external, read_unary_table_be)
 FUNC_SKIP_UNARY(br_skip_unary_e_le,
@@ -743,7 +690,7 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit)
         return entry.value;                                         \
     }
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_f, fgetc, bs->input.file)
-FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_s, buf_getc, bs->input.substream)
+FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_b, br_buf_getc, bs->input.buffer)
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_e, ext_getc, bs->input.external)
 
 int
@@ -800,7 +747,7 @@ br_read_bytes_f(struct BitstreamReader_s* bs,
 }
 
 void
-br_read_bytes_s(struct BitstreamReader_s* bs,
+br_read_bytes_b(struct BitstreamReader_s* bs,
                 uint8_t* bytes,
                 unsigned int byte_count)
 {
@@ -808,9 +755,9 @@ br_read_bytes_s(struct BitstreamReader_s* bs,
         /*stream is byte-aligned, so perform optimized read*/
 
         /*buf_read bytes from buffer to output*/
-        if ((unsigned int)buf_read(bs->input.substream,
-                                   bytes,
-                                   byte_count) == byte_count) {
+        if (br_buf_read(bs->input.buffer,
+                        bytes,
+                        byte_count) == byte_count) {
             struct bs_callback* callback;
             /*if sufficient bytes were read
               perform callbacks on the read bytes*/
@@ -940,6 +887,7 @@ br_parse(struct BitstreamReader_s* stream, const char* format, ...)
 void
 br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->state = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->read = br_read_bits_f_le;
@@ -957,6 +905,7 @@ br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
 void
 br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->state = 0;
     if (endianness == BS_BIG_ENDIAN) {
         bs->read = br_read_bits_f_be;
@@ -972,42 +921,45 @@ br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness)
 }
 
 void
-br_set_endianness_s_be(BitstreamReader *bs, bs_endianness endianness)
+br_set_endianness_b_be(BitstreamReader *bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->state = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
-        bs->read = br_read_bits_s_le;
+        bs->read = br_read_bits_b_le;
         bs->read_signed = br_read_signed_bits_le;
-        bs->read_64 = br_read_bits64_s_le;
+        bs->read_64 = br_read_bits64_b_le;
         bs->read_signed_64 = br_read_signed_bits64_le;
-        bs->skip = br_skip_bits_s_le;
+        bs->skip = br_skip_bits_b_le;
         bs->unread = br_unread_bit_le;
-        bs->read_unary = br_read_unary_s_le;
-        bs->skip_unary = br_skip_unary_s_le;
-        bs->set_endianness = br_set_endianness_s_le;
+        bs->read_unary = br_read_unary_b_le;
+        bs->skip_unary = br_skip_unary_b_le;
+        bs->set_endianness = br_set_endianness_b_le;
     }
 }
 
 void
-br_set_endianness_s_le(BitstreamReader *bs, bs_endianness endianness)
+br_set_endianness_b_le(BitstreamReader *bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->state = 0;
     if (endianness == BS_BIG_ENDIAN) {
-        bs->read = br_read_bits_s_be;
+        bs->read = br_read_bits_b_be;
         bs->read_signed = br_read_signed_bits_be;
-        bs->read_64 = br_read_bits64_s_be;
+        bs->read_64 = br_read_bits64_b_be;
         bs->read_signed_64 = br_read_signed_bits64_be;
-        bs->skip = br_skip_bits_s_be;
+        bs->skip = br_skip_bits_b_be;
         bs->unread = br_unread_bit_be;
-        bs->read_unary = br_read_unary_s_be;
-        bs->skip_unary = br_skip_unary_s_be;
-        bs->set_endianness = br_set_endianness_s_be;
+        bs->read_unary = br_read_unary_b_be;
+        bs->skip_unary = br_skip_unary_b_be;
+        bs->set_endianness = br_set_endianness_b_be;
     }
 }
 
 void
 br_set_endianness_e_be(BitstreamReader *bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->state = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->read = br_read_bits_e_le;
@@ -1025,6 +977,7 @@ br_set_endianness_e_be(BitstreamReader *bs, bs_endianness endianness)
 void
 br_set_endianness_e_le(BitstreamReader *bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->state = 0;
     if (endianness == BS_BIG_ENDIAN) {
         bs->read = br_read_bits_e_be;
@@ -1043,7 +996,7 @@ br_set_endianness_e_le(BitstreamReader *bs, bs_endianness endianness)
 void
 br_set_endianness_c(BitstreamReader *bs, bs_endianness endianness)
 {
-    return;
+    bs->endianness = endianness;
 }
 
 
@@ -1077,7 +1030,7 @@ br_close_internal_stream_f(BitstreamReader* bs)
 }
 
 void
-br_close_internal_stream_s(BitstreamReader* bs)
+br_close_internal_stream_b(BitstreamReader* bs)
 {
     /*swap read methods with closed methods*/
     br_close_methods(bs);
@@ -1139,10 +1092,10 @@ br_free_f(BitstreamReader* bs)
 }
 
 void
-br_free_s(BitstreamReader* bs)
+br_free_b(BitstreamReader* bs)
 {
     /*deallocate buffer*/
-    buf_close(bs->input.substream);
+    br_buf_free(bs->input.buffer);
 
     /*perform additional deallocations on rest of struct*/
     br_free_f(bs);
@@ -1193,14 +1146,12 @@ br_mark_f(BitstreamReader* bs, int mark_id)
 }
 
 void
-br_mark_s(BitstreamReader* bs, int mark_id)
+br_mark_b(BitstreamReader* bs, int mark_id)
 {
     struct br_mark* mark = malloc(sizeof(struct br_mark));
-    buf_getpos(bs->input.substream, &(mark->position.substream));
+    br_buf_getpos(bs->input.buffer, &(mark->position.buffer));
     mark->state = bs->state;
     bs->mark_stacks = br_add_mark(bs->mark_stacks, mark_id, mark);
-
-    buf_set_rewindable(bs->input.substream, 1);
 }
 
 void
@@ -1247,12 +1198,12 @@ br_rewind_f(BitstreamReader* bs, int mark_id)
 }
 
 void
-br_rewind_s(BitstreamReader* bs, int mark_id)
+br_rewind_b(BitstreamReader* bs, int mark_id)
 {
     const struct br_mark* mark = br_get_mark(bs->mark_stacks, mark_id);
 
     if (mark != NULL) {
-        buf_setpos(bs->input.substream, mark->position.substream);
+        br_buf_setpos(bs->input.buffer, mark->position.buffer);
         bs->state = mark->state;
     } else {
         fprintf(stderr,
@@ -1290,29 +1241,13 @@ br_rewind_c(BitstreamReader* bs, int mark_id)
 }
 
 void
-br_unmark_f(BitstreamReader* bs, int mark_id)
+br_unmark_f_b(BitstreamReader* bs, int mark_id)
 {
     struct br_mark* mark;
 
     bs->mark_stacks = br_pop_mark(bs->mark_stacks, mark_id, &mark);
     if (mark != NULL) {
         free(mark);
-    } else {
-        fprintf(stderr,
-                "*** Warning: no marks on stack %d to remove\n",
-                mark_id);
-    }
-}
-
-void
-br_unmark_s(BitstreamReader* bs, int mark_id)
-{
-    struct br_mark* mark;
-
-    bs->mark_stacks = br_pop_mark(bs->mark_stacks, mark_id, &mark);
-    if (mark != NULL) {
-        free(mark);
-        buf_set_rewindable(bs->input.substream, bs->mark_stacks != NULL);
     } else {
         fprintf(stderr,
                 "*** Warning: no marks on stack %d to remove\n",
@@ -1347,10 +1282,10 @@ br_seek_f(BitstreamReader* bs, long position, bs_whence whence)
 }
 
 void
-br_seek_s(BitstreamReader* bs, long position, bs_whence whence)
+br_seek_b(BitstreamReader* bs, long position, bs_whence whence)
 {
     bs->state = 0;
-    if (buf_fseek(bs->input.substream, position, whence)) {
+    if (br_buf_fseek(bs->input.buffer, position, whence)) {
         br_abort(bs);
     }
 }
@@ -1371,28 +1306,33 @@ br_seek_c(BitstreamReader* bs, long position, bs_whence whence)
 }
 
 
-void
-br_substream_append(struct BitstreamReader_s *stream,
-                    struct BitstreamReader_s *substream,
-                    unsigned bytes)
+#define BUF_SIZE 4096
+
+struct BitstreamReader_s*
+br_substream(struct BitstreamReader_s *stream,
+             unsigned bytes)
 {
-    struct bs_buffer *output;
-    assert(substream->type == BR_SUBSTREAM);
-    output = substream->input.substream;
+    uint8_t buffer[BUF_SIZE];
+    BitstreamReader *substream = br_open_buffer(buffer, 0, stream->endianness);
 
-    while (bytes) {
-        static uint8_t output_buffer[BUFFER_SIZE];
-        const unsigned to_read = MIN(bytes, BUFFER_SIZE);
-
-        /*read data to temporary buffer
-          (this will trigger br_abort if insufficient bytes are read)*/
-        stream->read_bytes(stream, output_buffer, to_read);
-
-        /*dump bytes from temporary buffer to output buffer*/
-        buf_write(output, output_buffer, to_read);
-
-        /*decrement remaining bytes to read*/
-        bytes -= to_read;
+    if (!setjmp(*br_try(stream))) {
+        /*read input stream in chunks to avoid allocating
+          a whole lot of data upfront
+          in case "bytes" is much larger than the input stream*/
+        while (bytes) {
+            const unsigned to_read = MIN(BUF_SIZE, bytes);
+            stream->read_bytes(stream, buffer, to_read);
+            br_buf_extend(substream->input.buffer, buffer, to_read);
+            bytes -= to_read;
+        }
+        br_etry(stream);
+        return substream;
+    } else {
+        /*be sure to close partial substream before re-raising abort*/
+        substream->close(substream);
+        br_etry(stream);
+        br_abort(stream);
+        return NULL;  /*won't get here*/
     }
 }
 
@@ -1437,26 +1377,6 @@ __br_etry(BitstreamReader *bs, const char *file, int lineno)
                 "*** Warning: %s %d: trying to pop from empty etry stack\n",
                 file, lineno);
     }
-}
-
-void
-br_substream_reset(struct BitstreamReader_s *substream)
-{
-    struct br_mark *mark;
-
-    assert(substream->type == BR_SUBSTREAM);
-
-    substream->state = 0;
-    /*transfer all marks to recycle stack*/
-    for (substream->mark_stacks =
-         br_pop_mark_stack(substream->mark_stacks, &mark);
-         mark != NULL;
-         substream->mark_stacks=
-         br_pop_mark_stack(substream->mark_stacks, &mark)) {
-        free(mark);
-    }
-
-    buf_reset(substream->input.substream);
 }
 
 
@@ -3064,6 +2984,116 @@ FUNC_POP_MARK(bw_pop_mark, bw_pop_mark_stack, bw_mark_stack, bw_mark)
 FUNC_POP_MARK_STACK(br_pop_mark_stack, br_mark_stack, br_mark)
 FUNC_POP_MARK_STACK(bw_pop_mark_stack, bw_mark_stack, bw_mark)
 
+
+/*******************************************************************
+ *                       read buffer-specific                      *
+ *******************************************************************/
+
+struct br_buffer*
+br_buf_new(void)
+{
+    struct br_buffer *buf = malloc(sizeof(struct br_buffer));
+    buf->data = NULL;
+    buf->pos = 0;
+    buf->size = 0;
+    return buf;
+}
+
+void
+br_buf_free(struct br_buffer *buf)
+{
+    free(buf->data);
+    free(buf);
+}
+
+void
+br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size)
+{
+    const unsigned new_size = buf->size + size;
+    buf->data = realloc(buf->data, new_size);
+    memcpy(buf->data + buf->size, data, size);
+    buf->size = new_size;
+}
+
+
+int
+br_buf_getc(struct br_buffer *buf)
+{
+    if (buf->pos < buf->size) {
+        return buf->data[buf->pos++];
+    } else {
+        return EOF;
+    }
+}
+
+
+unsigned
+br_buf_read(struct br_buffer *buf, uint8_t *data, unsigned size)
+{
+    const unsigned remaining_space = buf->size - buf->pos;
+    const unsigned to_read = MIN(size, remaining_space);
+    memcpy(data, buf->data + buf->pos, to_read);
+    buf->pos += to_read;
+    return to_read;
+}
+
+
+void
+br_buf_getpos(const struct br_buffer *buf, unsigned *pos)
+{
+    *pos = buf->pos;
+}
+
+void
+br_buf_setpos(struct br_buffer *buf, unsigned pos)
+{
+    buf->pos = pos;
+}
+
+int
+br_buf_fseek(struct br_buffer *buf, long position, int whence)
+{
+    switch (whence) {
+    case 0:  /*SEEK_SET*/
+        if (position < 0) {
+            /*can't seek before the beginning of the buffer*/
+            return -1;
+        } else if (position > buf->size) {
+            /*can't seek past the end of the buffer*/
+            return -1;
+        } else {
+            buf->pos = (unsigned)position;
+            return 0;
+        }
+    case 1:  /*SEEK_CUR*/
+        if ((position < 0) && (-position > buf->pos)) {
+            /*can't seek past the beginning of the buffer*/
+            return -1;
+        } else if ((position > 0) && (position > (buf->size - buf->pos))) {
+            /*can't seek past the end of the buffer*/
+            return -1;
+        } else {
+            buf->pos += position;
+            return 0;
+        }
+    case 2:  /*SEEK_END*/
+        if (position > 0) {
+            /*can't seek past the end of the buffer*/
+            return -1;
+        } else if (-position > buf->size) {
+            /*can't seek past the beginning of the buffer*/
+            return -1;
+        } else {
+            buf->pos = buf->size + (unsigned)position;
+            return 0;
+        }
+    default:
+        /*unknown "whence"*/
+        return -1;
+    }
+}
+
+
 #ifndef STANDALONE
 
 int br_read_python(PyObject *reader,
@@ -3605,30 +3635,26 @@ int main(int argc, char* argv[]) {
     reader->mark(reader, M_MAIN1);
 
     /*check a big-endian substream built from a file*/
-    subreader = br_substream_new(BS_BIG_ENDIAN);
     reader->skip(reader, 16);
-    reader->substream_append(reader, subreader, 4);
+    subreader = reader->substream(reader, 4);
     test_big_endian_reader(subreader, be_table);
     test_big_endian_parse(subreader);
     test_try(subreader, be_table);
     test_callbacks_reader(subreader, 14, 18, be_table, 14);
-    br_substream_reset(subreader);
+    subreader->close(subreader);
 
     reader->rewind(reader, M_MAIN1);
     reader->skip(reader, 16);
-    reader->substream_append(reader, subreader, 4);
+    subreader = reader->substream(reader, 4);
     test_close_errors(subreader, be_table);
-    br_substream_reset(subreader);
-    subreader->free(subreader);
-    subreader = br_substream_new(BS_BIG_ENDIAN);
+    subreader->close(subreader);
 
     /*check a big-endian substream built from another substream*/
     reader->rewind(reader, M_MAIN1);
     reader->skip(reader, 8);
-    reader->substream_append(reader, subreader, 6);
+    subreader = reader->substream(reader, 6);
     subreader->skip(subreader, 8);
-    subsubreader = br_substream_new(BS_BIG_ENDIAN);
-    subreader->substream_append(subreader, subsubreader, 4);
+    subsubreader = subreader->substream(subreader, 4);
     test_big_endian_reader(subsubreader, be_table);
     test_big_endian_parse(subsubreader);
     test_try(subsubreader, be_table);
@@ -3643,30 +3669,26 @@ int main(int argc, char* argv[]) {
     reader->mark(reader, M_MAIN2);
 
     /*check a little-endian substream built from a file*/
-    subreader = br_substream_new(BS_LITTLE_ENDIAN);
     reader->skip(reader, 16);
-    reader->substream_append(reader, subreader, 4);
+    subreader = reader->substream(reader, 4);
     test_little_endian_reader(subreader, le_table);
     test_little_endian_parse(subreader);
     test_try(subreader, le_table);
     test_callbacks_reader(subreader, 14, 18, le_table, 13);
-    br_substream_reset(subreader);
+    subreader->close(subreader);
 
     reader->rewind(reader, M_MAIN2);
     reader->skip(reader, 16);
-    reader->substream_append(reader, subreader, 4);
+    subreader = reader->substream(reader, 4);
     test_close_errors(subreader, le_table);
-    br_substream_reset(subreader);
-    subreader->free(subreader);
-    subreader = br_substream_new(BS_LITTLE_ENDIAN);
+    subreader->close(subreader);
 
     /*check a little-endian substream built from another substream*/
     reader->rewind(reader, M_MAIN2);
     reader->skip(reader, 8);
-    reader->substream_append(reader, subreader, 6);
+    subreader = reader->substream(reader, 6);
     subreader->skip(subreader, 8);
-    subsubreader = br_substream_new(BS_LITTLE_ENDIAN);
-    subreader->substream_append(subreader, subsubreader, 4);
+    subsubreader = subreader->substream(subreader, 4);
     test_little_endian_reader(subsubreader, le_table);
     test_little_endian_parse(subsubreader);
     test_try(subsubreader, le_table);
@@ -3689,14 +3711,8 @@ int main(int argc, char* argv[]) {
 
     fclose(temp_file);
 
-    /*test buffer that's not rewindable*/
+    /*test buffer*/
     buf = buf_new();
-    test_buffer(buf);
-    buf_close(buf);
-
-    /*then test buffer that is rewindable*/
-    buf = buf_new();
-    buf_set_rewindable(buf, 1);
     test_buffer(buf);
     buf_close(buf);
 
@@ -4580,14 +4596,13 @@ test_close_errors(BitstreamReader* reader,
 
     reader->rewind(reader, M_CLOSE);  /*should also do nothing*/
 
-    subreader = br_substream_new(BS_BIG_ENDIAN); /*doesn't really matter*/
     if (!setjmp(*br_try(reader))) {
-        reader->substream_append(reader, subreader, 1);
+        subreader = reader->substream(reader, 1);
+        subreader->close(subreader);
         assert(0);
     } else {
         br_etry(reader);
     }
-    subreader->close(subreader);
 }
 
 void test_try(BitstreamReader* reader,
@@ -4679,9 +4694,9 @@ void test_try(BitstreamReader* reader,
         br_etry(reader);
         reader->rewind(reader, M_TRY2);
     }
-    substream = br_substream_new(BS_BIG_ENDIAN); /*doesn't really matter*/
     if (!setjmp(*br_try(reader))) {
-        reader->substream_append(reader, substream, 2);
+        substream = reader->substream(reader, 2);
+        substream->close(substream);
         assert(0);
     } else {
         br_etry(reader);
@@ -4691,14 +4706,13 @@ void test_try(BitstreamReader* reader,
     /*ensure substream_append doesn't use all the RAM in the world
       on a failed read which is very large*/
     if (!setjmp(*br_try(reader))) {
-        reader->substream_append(reader, substream, 4294967295);
+        substream = reader->substream(reader, 4294967295);
+        substream->close(substream);
         assert(0);
     } else {
         br_etry(reader);
         reader->rewind(reader, M_TRY2);
     }
-
-    substream->close(substream);
 
     reader->unmark(reader, M_TRY2);
 
@@ -5827,8 +5841,7 @@ void test_edge_cases(void) {
 
     /*ensure a big-endian sub-reader reads the values correctly*/
     reader = br_open(fopen(temp_filename, "rb"), BS_BIG_ENDIAN);
-    sub_reader = br_substream_new(BS_BIG_ENDIAN);
-    reader->substream_append(reader, sub_reader, 48);
+    sub_reader = reader->substream(reader, 48);
     test_edge_reader_be(sub_reader);
     sub_reader->close(sub_reader);
     reader->close(reader);
@@ -5845,8 +5858,7 @@ void test_edge_cases(void) {
 
     /*ensure a little-endian sub-reader reads the values correctly*/
     reader = br_open(fopen(temp_filename, "rb"), BS_LITTLE_ENDIAN);
-    sub_reader = br_substream_new(BS_LITTLE_ENDIAN);
-    reader->substream_append(reader, sub_reader, 48);
+    sub_reader = reader->substream(reader, 48);
     test_edge_reader_le(sub_reader);
     sub_reader->close(sub_reader);
     reader->close(reader);
@@ -6422,6 +6434,7 @@ void test_buffer(struct bs_buffer *buf)
     uint8_t temp1[4] = {1, 2, 3, 4};
     uint8_t temp2[4];
     unsigned i;
+    unsigned data_size;
 
     /*ensure reads from an empty buffer return nothing*/
     assert(buf_window_size(buf) == 0);
@@ -6475,46 +6488,14 @@ void test_buffer(struct bs_buffer *buf)
 
     /*toggle rewindability and test buf_getpos/buf_setpos*/
     buf_reset(buf);
-    if (!buf->rewindable) {
-        buf_pos_t pos;
+    data_size = buf->data_size;
 
-        buf_set_rewindable(buf, 1);
-
-        buf_getpos(buf, &pos);
-        /*new calls to putc must always append to buffer*/
-        for (i = 0; i < 10; i++) {
-            buf_putc(i, buf);
-        }
-        for (i = 0; i < 10; i++) {
-            assert(buf_getc(buf) == i);
-        }
-        for (i = 10; i < 20; i++) {
-            buf_putc(i, buf);
-        }
-        for (i = 10; i < 20; i++) {
-            assert(buf_getc(buf) == i);
-        }
-        /*rewinding should always be possible*/
-        buf_setpos(buf, pos);
-        for (i = 0; i < 20; i++) {
-            assert(buf_getc(buf) == i);
-        }
-
-        buf_set_rewindable(buf, 0);
-    } else {
-        const unsigned data_size = buf->data_size;
-
-        buf_set_rewindable(buf, 0);
-
-        /*no matter how many new bytes are added,
-          the window size shouldn't get any larger*/
-        for (i = 0; i < 10000; i++) {
-            buf_putc(i % 256, buf);
-            assert(buf_getc(buf) == (i % 256));
-            assert(buf->data_size == data_size);
-        }
-
-        buf_set_rewindable(buf, 1);
+    /*no matter how many new bytes are added,
+      the window size shouldn't get any larger*/
+    for (i = 0; i < 10000; i++) {
+        buf_putc(i % 256, buf);
+        assert(buf_getc(buf) == (i % 256));
+        assert(buf->data_size == data_size);
     }
 
     buf_close(buf2);

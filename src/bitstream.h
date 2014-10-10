@@ -43,7 +43,7 @@
 typedef int state_t;
 
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
-typedef enum {BR_FILE, BR_SUBSTREAM, BR_EXTERNAL} br_type;
+typedef enum {BR_FILE, BR_BUFFER, BR_EXTERNAL} br_type;
 typedef enum {BW_FILE, BW_EXTERNAL, BW_RECORDER, BW_ACCUMULATOR} bw_type;
 typedef enum {BS_INST_UNSIGNED,
               BS_INST_SIGNED,
@@ -75,11 +75,18 @@ struct bs_exception {
     struct bs_exception *next;
 };
 
+/*an internal buffer for buffer BitstreamReaders*/
+struct br_buffer {
+    uint8_t *data;
+    unsigned pos;
+    unsigned size;
+};
+
 /*a mark on the BitstreamReader's stream which can be rewound to*/
 struct br_mark {
     union {
         fpos_t file;
-        buf_pos_t substream;
+        unsigned buffer;
         struct {
             void* pos;
             unsigned buffer_size;
@@ -121,11 +128,12 @@ typedef br_huffman_entry_t br_huffman_table_t[0x200];
 
 
 typedef struct BitstreamReader_s {
+    bs_endianness endianness;
     br_type type;
 
     union {
         FILE* file;
-        struct bs_buffer* substream;
+        struct br_buffer* buffer;
         struct br_external_input* external;
     } input;
 
@@ -339,15 +347,16 @@ typedef struct BitstreamReader_s {
     void
     (*seek)(struct BitstreamReader_s* bs, long position, bs_whence whence);
 
-    /*this appends the given length of bytes from the current stream
-      to the given substream
+    /*creates a substream from the current stream
+      containing the given number of bytes
+      and with the input stream's endianness
+
+      the substream must be freed when finished
 
       br_abort() is called if insufficient bytes
       are available on the input stream*/
-    void
-    (*substream_append)(struct BitstreamReader_s* bs,
-                        struct BitstreamReader_s* substream,
-                        unsigned bytes);
+    struct BitstreamReader_s*
+    (*substream)(struct BitstreamReader_s* bs, unsigned bytes);
 } BitstreamReader;
 
 
@@ -367,8 +376,8 @@ typedef struct BitstreamReader_s {
    |-------------------+-----------+---------------|
    | br_read_bits_f_be | raw file  | big endian    |
    | br_read_bits_f_le | raw file  | little endian |
-   | br_read_bits_s_be | substream | big endian    |
-   | br_read_bits_s_le | substream | little endian |
+   | br_read_bits_b_be | substream | big endian    |
+   | br_read_bits_b_le | substream | little endian |
    | br_read_bits_e_be | function  | big endian    |
    | br_read_bits_e_le | function  | little endian |
 
@@ -379,8 +388,12 @@ typedef struct BitstreamReader_s {
 BitstreamReader*
 br_open(FILE *f, bs_endianness endianness);
 
+/*creates a BitstreamReader from the given raw data
+  with the given endianness*/
 BitstreamReader*
-br_substream_new(bs_endianness endianness);
+br_open_buffer(const uint8_t *buffer,
+               unsigned buffer_size,
+               bs_endianness endianness);
 
 /*int read(void* user_data, struct bs_buffer* buffer)
   where "buffer" is where read output will be placed
@@ -414,12 +427,6 @@ br_open_external(void* user_data,
                  ext_close_f close,
                  ext_free_f free);
 
-/*this is much like br_substream_new
-  except that the buffer is passed in externally
-  and *not* freed when the stream is*/
-BitstreamReader*
-br_open_buffer(struct bs_buffer* buffer, bs_endianness endianness);
-
 
 /*bs->read(bs, count)  methods*/
 unsigned int
@@ -427,9 +434,9 @@ br_read_bits_f_be(BitstreamReader* bs, unsigned int count);
 unsigned int
 br_read_bits_f_le(BitstreamReader* bs, unsigned int count);
 unsigned int
-br_read_bits_s_be(BitstreamReader* bs, unsigned int count);
+br_read_bits_b_be(BitstreamReader* bs, unsigned int count);
 unsigned int
-br_read_bits_s_le(BitstreamReader* bs, unsigned int count);
+br_read_bits_b_le(BitstreamReader* bs, unsigned int count);
 unsigned int
 br_read_bits_e_be(BitstreamReader* bs, unsigned int count);
 unsigned int
@@ -450,9 +457,9 @@ br_read_bits64_f_be(BitstreamReader* bs, unsigned int count);
 uint64_t
 br_read_bits64_f_le(BitstreamReader* bs, unsigned int count);
 uint64_t
-br_read_bits64_s_be(BitstreamReader* bs, unsigned int count);
+br_read_bits64_b_be(BitstreamReader* bs, unsigned int count);
 uint64_t
-br_read_bits64_s_le(BitstreamReader* bs, unsigned int count);
+br_read_bits64_b_le(BitstreamReader* bs, unsigned int count);
 uint64_t
 br_read_bits64_e_be(BitstreamReader* bs, unsigned int count);
 uint64_t
@@ -474,9 +481,9 @@ br_skip_bits_f_be(BitstreamReader* bs, unsigned int count);
 void
 br_skip_bits_f_le(BitstreamReader* bs, unsigned int count);
 void
-br_skip_bits_s_be(BitstreamReader* bs, unsigned int count);
+br_skip_bits_b_be(BitstreamReader* bs, unsigned int count);
 void
-br_skip_bits_s_le(BitstreamReader* bs, unsigned int count);
+br_skip_bits_b_le(BitstreamReader* bs, unsigned int count);
 void
 br_skip_bits_e_be(BitstreamReader* bs, unsigned int count);
 void
@@ -504,9 +511,9 @@ br_read_unary_f_be(BitstreamReader* bs, int stop_bit);
 unsigned int
 br_read_unary_f_le(BitstreamReader* bs, int stop_bit);
 unsigned int
-br_read_unary_s_be(BitstreamReader* bs, int stop_bit);
+br_read_unary_b_be(BitstreamReader* bs, int stop_bit);
 unsigned int
-br_read_unary_s_le(BitstreamReader* bs, int stop_bit);
+br_read_unary_b_le(BitstreamReader* bs, int stop_bit);
 unsigned int
 br_read_unary_e_be(BitstreamReader* bs, int stop_bit);
 unsigned int
@@ -521,9 +528,9 @@ br_skip_unary_f_be(BitstreamReader* bs, int stop_bit);
 void
 br_skip_unary_f_le(BitstreamReader* bs, int stop_bit);
 void
-br_skip_unary_s_be(BitstreamReader* bs, int stop_bit);
+br_skip_unary_b_be(BitstreamReader* bs, int stop_bit);
 void
-br_skip_unary_s_le(BitstreamReader* bs, int stop_bit);
+br_skip_unary_b_le(BitstreamReader* bs, int stop_bit);
 void
 br_skip_unary_e_be(BitstreamReader* bs, int stop_bit);
 void
@@ -537,7 +544,7 @@ int
 br_read_huffman_code_f(BitstreamReader *bs,
                        br_huffman_table_t table[]);
 int
-br_read_huffman_code_s(BitstreamReader *bs,
+br_read_huffman_code_b(BitstreamReader *bs,
                        br_huffman_table_t table[]);
 int
 br_read_huffman_code_e(BitstreamReader *bs,
@@ -563,7 +570,7 @@ br_read_bytes_f(struct BitstreamReader_s* bs,
                 uint8_t* bytes,
                 unsigned int byte_count);
 void
-br_read_bytes_s(struct BitstreamReader_s* bs,
+br_read_bytes_b(struct BitstreamReader_s* bs,
                 uint8_t* bytes,
                 unsigned int byte_count);
 void
@@ -586,9 +593,9 @@ br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness);
 void
 br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness);
 void
-br_set_endianness_s_be(BitstreamReader *bs, bs_endianness endianness);
+br_set_endianness_b_be(BitstreamReader *bs, bs_endianness endianness);
 void
-br_set_endianness_s_le(BitstreamReader *bs, bs_endianness endianness);
+br_set_endianness_b_le(BitstreamReader *bs, bs_endianness endianness);
 void
 br_set_endianness_e_be(BitstreamReader *bs, bs_endianness endianness);
 void
@@ -608,7 +615,7 @@ br_close_methods(BitstreamReader* bs);
 void
 br_close_internal_stream_f(BitstreamReader* bs);
 void
-br_close_internal_stream_s(BitstreamReader* bs);
+br_close_internal_stream_b(BitstreamReader* bs);
 void
 br_close_internal_stream_e(BitstreamReader* bs);
 void
@@ -619,7 +626,7 @@ br_close_internal_stream_c(BitstreamReader* bs);
 void
 br_free_f(BitstreamReader* bs);
 void
-br_free_s(BitstreamReader* bs);
+br_free_b(BitstreamReader* bs);
 void
 br_free_e(BitstreamReader* bs);
 
@@ -638,7 +645,7 @@ br_has_mark(const BitstreamReader* bs, int mark_id);
 void
 br_mark_f(BitstreamReader* bs, int mark_id);
 void
-br_mark_s(BitstreamReader* bs, int mark_id);
+br_mark_b(BitstreamReader* bs, int mark_id);
 void
 br_mark_e(BitstreamReader* bs, int mark_id);
 void
@@ -648,7 +655,7 @@ br_mark_c(BitstreamReader* bs, int mark_id);
 void
 br_rewind_f(BitstreamReader* bs, int mark_id);
 void
-br_rewind_s(BitstreamReader* bs, int mark_id);
+br_rewind_b(BitstreamReader* bs, int mark_id);
 void
 br_rewind_e(BitstreamReader* bs, int mark_id);
 void
@@ -656,9 +663,7 @@ br_rewind_c(BitstreamReader* bs, int mark_id);
 
 /*bs->unmark(bs, id)  methods*/
 void
-br_unmark_f(BitstreamReader* bs, int mark_id);
-void
-br_unmark_s(BitstreamReader* bs, int mark_id);
+br_unmark_f_b(BitstreamReader* bs, int mark_id);
 void
 br_unmark_e(BitstreamReader* bs, int mark_id);
 
@@ -667,18 +672,16 @@ br_unmark_e(BitstreamReader* bs, int mark_id);
 void
 br_seek_f(BitstreamReader* bs, long position, bs_whence whence);
 void
-br_seek_s(BitstreamReader* bs, long position, bs_whence whence);
+br_seek_b(BitstreamReader* bs, long position, bs_whence whence);
 void
 br_seek_e(BitstreamReader* bs, long position, bs_whence whence);
 void
 br_seek_c(BitstreamReader* bs, long position, bs_whence whence);
 
 
-/*bs->substream_append(bs, substream, bytes)  method*/
-void
-br_substream_append(struct BitstreamReader_s *stream,
-                    struct BitstreamReader_s *substream,
-                    unsigned bytes);
+/*bs->substream(bs, bytes)  method*/
+struct BitstreamReader_s*
+br_substream(struct BitstreamReader_s *stream, unsigned bytes);
 
 
 /*bs->add_callback(bs, callback, data)  method*/
@@ -741,13 +744,6 @@ br_ftell(BitstreamReader *bs) {
     assert(bs->type == BR_FILE);
     return ftell(bs->input.file);
 }
-
-/*clears out the substream for possible reuse
-
-  any marks are deleted and the stream is reset
-  so that it can be appended to with fresh data*/
-void
-br_substream_reset(struct BitstreamReader_s *substream);
 
 
 /*******************************************************************
@@ -1501,6 +1497,40 @@ struct bw_mark_stack*
 bw_pop_mark_stack(struct bw_mark_stack* stack,
                   struct bw_mark** mark);
 
+
+/*******************************************************************
+ *                       read buffer-specific                      *
+ *******************************************************************/
+
+struct br_buffer*
+br_buf_new(void);
+
+void
+br_buf_free(struct br_buffer *buf);
+
+static inline int
+br_buf_empty(const struct br_buffer *buf)
+{
+    return buf->pos == buf->size;
+}
+
+void
+br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size);
+
+int
+br_buf_getc(struct br_buffer *buf);
+
+unsigned
+br_buf_read(struct br_buffer *buf, uint8_t *data, unsigned size);
+
+void
+br_buf_getpos(const struct br_buffer *buf, unsigned *pos);
+
+void
+br_buf_setpos(struct br_buffer *buf, unsigned pos);
+
+int
+br_buf_fseek(struct br_buffer *buf, long position, int whence);
 
 
 #ifndef STANDALONE

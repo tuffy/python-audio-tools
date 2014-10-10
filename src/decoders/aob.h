@@ -253,7 +253,7 @@ close_sector_reader(DVDA_Sector_Reader* reader);
   an EOF condition appends no data to "sector" but returns 0*/
 static int
 read_sector(DVDA_Sector_Reader* reader,
-            struct bs_buffer* sector);
+            struct br_buffer* sector);
 
 static void
 seek_sector(DVDA_Sector_Reader* reader,
@@ -301,7 +301,8 @@ open_packet_reader(DVDA_Sector_Reader* sectors,
   an EOF condition writes no data to "packet" but returns 0*/
 static int
 read_audio_packet(DVDA_Packet_Reader* packets,
-                  DVDA_Packet* packet, struct bs_buffer* packet_data);
+                  DVDA_Packet* packet,
+                  struct bs_buffer* packet_data);
 
 /*closes the DVDA_Packet_Reader
   but does *not* close the enclosed DVDA_Sector_Reader object*/

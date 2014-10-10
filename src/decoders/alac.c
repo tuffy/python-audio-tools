@@ -457,8 +457,8 @@ static status
 parse_decoding_parameters(decoders_ALACDecoder *self)
 {
     enum {MDIA_START};
-    BitstreamReader* mdia_atom = br_substream_new(BS_BIG_ENDIAN);
-    BitstreamReader* atom = br_substream_new(BS_BIG_ENDIAN);
+    BitstreamReader* mdia_atom = NULL;
+    BitstreamReader* atom = NULL;
     a_obj* block_sizes = a_obj_new((ARRAY_COPY_FUNC)alac_stts_copy,
                                    free,
                                    (ARRAY_PRINT_FUNC)alac_stts_print);
@@ -474,21 +474,28 @@ parse_decoding_parameters(decoders_ALACDecoder *self)
     status status = OK;
 
     /*find the mdia atom, which is the parent to stsd and mdhd*/
-    if (find_sub_atom(self->bitstream, mdia_atom, &mdia_atom_size,
-                      "moov", "trak", "mdia", NULL)) {
+    if ((mdia_atom = find_sub_atom(self->bitstream,
+                                   &mdia_atom_size,
+                                   "moov",
+                                   "trak",
+                                   "mdia",
+                                   NULL)) == NULL) {
         status = MDIA_NOT_FOUND;
         goto error;
-    } else {
-        /*mark the mdia atom so we can parse
-          several different trees from it*/
-        mdia_atom->mark(mdia_atom, MDIA_START);
     }
+
+    /*mark the mdia atom so we can parse
+      several different trees from it*/
+    mdia_atom->mark(mdia_atom, MDIA_START);
 
     /*find and parse the alac atom,
       which contains lots of crucial decoder details*/
-    br_substream_reset(atom);
-    if (find_sub_atom(mdia_atom, atom, &atom_size,
-                      "minf", "stbl", "stsd", NULL)) {
+    if ((atom = find_sub_atom(mdia_atom,
+                              &atom_size,
+                              "minf",
+                              "stbl",
+                              "stsd",
+                              NULL)) == NULL) {
         status = STSD_NOT_FOUND;
         goto error;
     } else if ((status = read_alac_atom(atom,
@@ -504,9 +511,12 @@ parse_decoding_parameters(decoders_ALACDecoder *self)
 
     /*find and parse the mdhd atom, which contains our total frame count*/
     mdia_atom->rewind(mdia_atom, MDIA_START);
-    br_substream_reset(atom);
-    if (find_sub_atom(mdia_atom, atom, &atom_size,
-                      "mdhd", NULL)) {
+    atom->close(atom);
+
+    if ((atom = find_sub_atom(mdia_atom,
+                              &atom_size,
+                              "mdhd",
+                              NULL)) == NULL) {
         status = MDHD_NOT_FOUND;
         goto error;
     } else if ((status = read_mdhd_atom(atom,
@@ -523,24 +533,36 @@ parse_decoding_parameters(decoders_ALACDecoder *self)
 
     /*find and parse the stts atom, which contains our block sizes*/
     mdia_atom->rewind(mdia_atom, MDIA_START);
-    br_substream_reset(atom);
-    stts_found = (!find_sub_atom(mdia_atom, atom, &atom_size,
-                                 "minf", "stbl", "stts", NULL) &&
-                  (read_stts_atom(atom, block_sizes) == OK));
+    atom->close(atom);
+    stts_found = ((atom = find_sub_atom(mdia_atom,
+                                        &atom_size,
+                                        "minf",
+                                        "stbl",
+                                        "stts",
+                                        NULL)) != NULL) &&
+                 (read_stts_atom(atom, block_sizes) == OK);
 
     /*find and parse the stsc atom, which contains our chunk sizes*/
     mdia_atom->rewind(mdia_atom, MDIA_START);
-    br_substream_reset(atom);
-    stsc_found = (!find_sub_atom(mdia_atom, atom, &atom_size,
-                                 "minf", "stbl", "stsc", NULL) &&
-                  (read_stsc_atom(atom, chunk_sizes) == OK));
+    atom->close(atom);
+    stsc_found = ((atom = find_sub_atom(mdia_atom,
+                                        &atom_size,
+                                        "minf",
+                                        "stbl",
+                                        "stsc",
+                                        NULL)) != NULL) &&
+                 (read_stsc_atom(atom, chunk_sizes) == OK);
 
     /*parse the stco atom, which contains our chunk offsets*/
     mdia_atom->rewind(mdia_atom, MDIA_START);
-    br_substream_reset(atom);
-    stco_found = (!find_sub_atom(mdia_atom, atom, &atom_size,
-                                 "minf", "stbl", "stco", NULL) &&
-                  (read_stco_atom(atom, chunk_offsets) == OK));
+    atom->close(atom);
+    stco_found = ((atom = find_sub_atom(mdia_atom,
+                                        &atom_size,
+                                        "minf",
+                                        "stbl",
+                                        "stco",
+                                        NULL)) != NULL) &&
+                 (read_stco_atom(atom, chunk_offsets) == OK);
 
     if (stts_found && stsc_found && stco_found) {
         /*ensure total number of PCM frames in stts
@@ -571,10 +593,14 @@ parse_decoding_parameters(decoders_ALACDecoder *self)
 
 error:
     /*perform cleanup of temporary buffers and arrays*/
-    if (mdia_atom->has_mark(mdia_atom, MDIA_START))
-        mdia_atom->unmark(mdia_atom, MDIA_START);
-    mdia_atom->close(mdia_atom);
-    atom->close(atom);
+    if (mdia_atom != NULL) {
+        if (mdia_atom->has_mark(mdia_atom, MDIA_START))
+            mdia_atom->unmark(mdia_atom, MDIA_START);
+        mdia_atom->close(mdia_atom);
+    }
+    if (atom != NULL) {
+        atom->close(atom);
+    }
     block_sizes->del(block_sizes);
     chunk_sizes->del(chunk_sizes);
     chunk_offsets->del(chunk_offsets);
@@ -1278,88 +1304,82 @@ decorrelate_channels(a_int* left,
     }
 }
 
-int
+BitstreamReader*
 find_atom(BitstreamReader* parent,
-          BitstreamReader* sub_atom, unsigned* sub_atom_size,
+          unsigned* sub_atom_size,
           const char* sub_atom_name)
 {
     if (!setjmp(*br_try(parent))) {
-        unsigned atom_size = parent->read(parent, 32);
+        unsigned atom_size;
         uint8_t atom_name[4];
+        BitstreamReader *sub_atom;
+
+        atom_size = parent->read(parent, 32) - 8;
         parent->read_bytes(parent, atom_name, 4);
+
         while (memcmp(atom_name, sub_atom_name, 4)) {
-            parent->skip_bytes(parent, atom_size - 8);
-            atom_size = parent->read(parent, 32);
+            parent->skip_bytes(parent, atom_size);
+            atom_size = parent->read(parent, 32) - 8;
             parent->read_bytes(parent, atom_name, 4);
         }
 
-        parent->substream_append(parent, sub_atom, atom_size - 8);
-        *sub_atom_size = atom_size - 8;
+        *sub_atom_size = atom_size;
+        sub_atom = parent->substream(parent, atom_size);
 
         br_etry(parent);
-        return 0;
+        return sub_atom;
     } else {
         br_etry(parent);
-        return 1;
+        return NULL;
     }
 }
 
-int
+BitstreamReader*
 find_sub_atom(BitstreamReader* parent,
-              BitstreamReader* sub_atom, unsigned* sub_atom_size,
+              unsigned* sub_atom_size,
               ...)
 {
+    char *sub_atom_name;
     va_list ap;
-    char* sub_atom_name;
+    unsigned level = 0;
 
     va_start(ap, sub_atom_size);
 
-    sub_atom_name = va_arg(ap, char*);
-    if (sub_atom_name == NULL) {
-        /*no sub-atoms at all, so return 1 rather than 0*/
-        va_end(ap);
-        return 1;
-    } else {
-        /*at least 1 sub-atom*/
-        BitstreamReader* parent_atom = br_substream_new(BS_BIG_ENDIAN);
-        BitstreamReader* child_atom = br_substream_new(BS_BIG_ENDIAN);
-        unsigned child_atom_size;
+    for (sub_atom_name = va_arg(ap, char*);
+         sub_atom_name != NULL;
+         sub_atom_name = va_arg(ap, char*)) {
+        unsigned child_size;
+        BitstreamReader *child;
 
-        /*first, try to find the sub-atom from our original parent*/
-        if (find_atom(parent, child_atom, &child_atom_size, sub_atom_name)) {
-            child_atom->close(child_atom);
-            parent_atom->close(parent_atom);
+        child = find_atom(parent, &child_size, sub_atom_name);
 
+        if (level > 0) {
+            /*we're not the first sub-atom, so close the parent
+              now that it's no longer needed*/
+            parent->close(parent);
+        }
+
+        if (child != NULL) {
+            /*swap parent and child to keep searching recursively*/
+            parent = child;
+            *sub_atom_size = child_size;
+            level++;
+        } else {
+            /*unable to find child in path*/
             va_end(ap);
-            return 1;
+            return NULL;
         }
 
-        /*then, so long as there's still sub-atom names*/
-        for (sub_atom_name = va_arg(ap, char*);
-             sub_atom_name != NULL;
-             sub_atom_name = va_arg(ap, char*)) {
-            swap_readers(&parent_atom, &child_atom);
-            br_substream_reset(child_atom);
+    }
 
-            /*recursively find sub-atoms*/
-            if (find_atom(parent_atom, child_atom, &child_atom_size,
-                           sub_atom_name)) {
-                /*unless one of the sub-atoms is not found*/
-                child_atom->close(child_atom);
-                parent_atom->close(parent_atom);
+    va_end(ap);
 
-                va_end(ap);
-                return 1;
-            }
-        }
-
-        /*otherwise, return the found atom*/
-        child_atom->substream_append(child_atom, sub_atom, child_atom_size);
-        *sub_atom_size = child_atom_size;
-        child_atom->close(child_atom);
-        parent_atom->close(parent_atom);
-        va_end(ap);
-        return 0;
+    if (level > 0) {
+        /*no more names to find, so return latest match*/
+        return parent;
+    } else {
+        /*no atoms to find*/
+        return NULL;
     }
 }
 

@@ -805,19 +805,33 @@ process_iff_header(BitstreamReader* bs,
 static BitstreamReader*
 read_verbatim(BitstreamReader* bs, unsigned* verbatim_size)
 {
-    BitstreamReader* verbatim = br_substream_new(BS_BIG_ENDIAN);
+    struct bs_buffer *verbatim = buf_new();
     if (!setjmp(*br_try(bs))) {
-        *verbatim_size = read_unsigned(bs, VERBATIM_CHUNK_SIZE);
         unsigned i;
+        BitstreamReader *verbatim_reader;
+
+        /*read block of verbatim bytes to buffer*/
+        *verbatim_size = read_unsigned(bs, VERBATIM_CHUNK_SIZE);
+
         for (i = 0; i < *verbatim_size; i++) {
             const unsigned byte = read_unsigned(bs, VERBATIM_BYTE_SIZE) & 0xFF;
-            buf_putc((int)byte, verbatim->input.substream);
+            buf_putc((int)byte, verbatim);
         }
         br_etry(bs);
-        return verbatim;
+
+        /*convert buffer to BitstreamReader*/
+        verbatim_reader = br_open_buffer(buf_window_start(verbatim),
+                                         buf_window_size(verbatim),
+                                         BS_BIG_ENDIAN);
+
+        /*cleanup temporary buffer before returning reader*/
+        buf_close(verbatim);
+
+        return verbatim_reader;
     } else {
-        /*I/O error reading from main bitstream*/
-        verbatim->close(verbatim);
+        /*I/O error reading from main bitstream
+          so cleanup buffer before re-raising error*/
+        buf_close(verbatim);
         br_etry(bs);
         br_abort(bs);
         return NULL; /*shouldn't get here*/

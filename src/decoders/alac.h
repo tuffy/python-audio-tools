@@ -271,22 +271,22 @@ decorrelate_channels(a_int* left,
                      unsigned interlacing_shift,
                      unsigned interlacing_leftweight);
 
-/*returns 0 if the given sub atom name is found in the parent
-  and sets "sub_atom" to that atom data and "sub_atom_size" to its size
-  (not including the 64 bit header)
-  returns 1 if the sub atom is not found in the parent*/
-int
+/*returns new substream if the given sub atom name is found in the parent
+  and sets "sub_atom_size" to its size (not including the 64 bit header)
+
+  returns NULL if the sub atom is not found in the parent*/
+BitstreamReader*
 find_atom(BitstreamReader* parent,
-          BitstreamReader* sub_atom, unsigned* sub_atom_size,
+          unsigned* sub_atom_size,
           const char* sub_atom_name);
 
-/*returns 0 if the given sub atom path is found in the parent
-  and sets "sub_atom" to that atom data and "sub_atom_size" to its size
-  (not including the 64 bit header)
-  returns 1 if the sub atom path is not found in the parent*/
-int
+/*returns new substream if the given sub atom path is found in the parent
+  and sets "sub_atom_size" to its size (not including the 64 bit header)
+
+  returns NULL if the sub atom path is not found in the parent*/
+BitstreamReader*
 find_sub_atom(BitstreamReader* parent,
-              BitstreamReader* sub_atom, unsigned* sub_atom_size,
+              unsigned* sub_atom_size,
               ...);
 
 void

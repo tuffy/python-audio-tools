@@ -27,9 +27,6 @@ typedef int Py_ssize_t;
 #define IS_PY3K
 #endif
 
-static PyObject*
-BitstreamReader_Substream(PyObject *dummy, PyObject *args);
-
 PyObject*
 bitstream_format_size(PyObject *dummy, PyObject *args);
 
@@ -43,8 +40,6 @@ PyObject*
 bitstream_build_func(PyObject *dummy, PyObject *args);
 
 PyMethodDef module_methods[] = {
-    {"Substream", (PyCFunction)BitstreamReader_Substream,
-     METH_VARARGS, "build a fresh Substream BitstreamReader"}, /*FIXME*/
     {"format_size", (PyCFunction)bitstream_format_size,
      METH_VARARGS, "Calculate size of format string in bits"}, /*FIXME*/
     {"format_byte_size", (PyCFunction)bitstream_format_byte_size,
@@ -67,7 +62,6 @@ typedef struct {
 
     BitstreamReader* bitstream;
     int little_endian;
-    struct bs_buffer *string_buffer;
     read_object_f read_unsigned;
     read_object_f read_signed;
 } bitstream_BitstreamReader;
@@ -186,11 +180,7 @@ static PyObject*
 BitstreamReader_call_callbacks(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
-BitstreamReader_substream_meth(bitstream_BitstreamReader *self, PyObject *args);
-
-static PyObject*
-BitstreamReader_substream_append(bitstream_BitstreamReader *self,
-                                 PyObject *args);
+BitstreamReader_substream(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
 BitstreamReader_parse(bitstream_BitstreamReader *self, PyObject *args);
@@ -284,13 +274,9 @@ PyMethodDef BitstreamReader_methods[] = {
      METH_VARARGS,
      "call_callbacks(byte)\n"
      "calls the attached callbacks as if the byte had been read"},
-    {"substream", (PyCFunction)BitstreamReader_substream_meth, METH_VARARGS,
+    {"substream", (PyCFunction)BitstreamReader_substream, METH_VARARGS,
      "substream(bytes) -> BitstreamReader\n"
      "returns a sub-reader containing the given number of input bytes"},
-    {"substream_append", (PyCFunction)BitstreamReader_substream_append,
-     METH_VARARGS,
-     "substream_append(BitstreamReader, bytes)\n"
-     "appends an additional number of bytes to the given substream"},
     {"__enter__", (PyCFunction)BitstreamReader_enter,
      METH_NOARGS, "enter() -> self"},
     {"__exit__", (PyCFunction)BitstreamReader_exit,

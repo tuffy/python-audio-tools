@@ -1,7 +1,6 @@
 #ifndef STANDALONE
 #include <Python.h>
 #endif
-#include "buffer.h"
 #include "bitstream.h"
 
 /********************************************************
@@ -78,14 +77,27 @@ oggiterator_open(FILE *stream);
 void
 oggiterator_close(OggPacketIterator *iterator);
 
+/*places a pointer to the next segment in "segment_data"
+  and its size in "segment_size"
+  the segment is pulled directly from an internal Ogg page
+  and should *not* be freed when finished*/
 ogg_status
 oggiterator_next_segment(OggPacketIterator *iterator,
                          uint8_t **segment_data,
                          uint8_t *segment_size);
 
-ogg_status
+/*builds an entire Ogg packet from segments
+  and returns a BitsreamReader of its data for further parsing
+  the reader must be closed when finished with it
+
+  endianness is applied to the newly created packet reader
+
+  may return NULL and set "status" to something other than OGG_OK
+  if an error occurs reading segments from the stream*/
+BitstreamReader*
 oggiterator_next_packet(OggPacketIterator *iterator,
-                        struct bs_buffer *packet);
+                        bs_endianness endianness,
+                        ogg_status *status);
 
 
 char *

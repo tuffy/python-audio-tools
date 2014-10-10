@@ -539,6 +539,8 @@ flacdec_read_vorbis_comment(BitstreamReader *comment,
     const char mask_prefix[] =
         "WAVEFORMATEXTENSIBLE_CHANNEL_MASK=";
 
+    comment->set_endianness(comment, BS_LITTLE_ENDIAN);
+
     if (!setjmp(*br_try(comment))) {
         /*skip over vendor string*/
         line_len = comment->read(comment, 32);
@@ -594,8 +596,6 @@ flacdec_read_metadata(BitstreamReader *bitstream,
                       a_obj *seektable,
                       int *channel_mask)
 {
-    BitstreamReader *comment = br_substream_new(BS_LITTLE_ENDIAN);
-
     enum {
         fL =  0x1,
         fR =  0x2,
@@ -616,7 +616,6 @@ flacdec_read_metadata(BitstreamReader *bitstream,
             PyErr_SetString(PyExc_ValueError, "not a FLAC file");
 #endif
             br_etry(bitstream);
-            comment->close(comment);
             return 1;
         }
 
@@ -699,15 +698,14 @@ flacdec_read_metadata(BitstreamReader *bitstream,
                 {
                     /*Vorbis comment's channel mask - if any -
                       overrides default one from channel count */
-
-                    br_substream_reset(comment);
-                    bitstream->substream_append(bitstream,
-                                                comment,
-                                                block_length);
+                    BitstreamReader *comment =
+                        bitstream->substream(bitstream, block_length);
 
                     flacdec_read_vorbis_comment(comment,
                                                 streaminfo->channels,
                                                 channel_mask);
+
+                    comment->close(comment);
                 }
                 break;
             default:  /*all other blocks*/
@@ -717,14 +715,12 @@ flacdec_read_metadata(BitstreamReader *bitstream,
         } while (!last_block);
 
         br_etry(bitstream);
-        comment->close(comment);
         return 0;
     } else {
 #ifndef STANDALONE
         PyErr_SetString(PyExc_IOError, "EOF while reading metadata");
 #endif
         br_etry(bitstream);
-        comment->close(comment);
         return 1;
     }
 }

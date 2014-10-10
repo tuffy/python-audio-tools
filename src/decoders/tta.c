@@ -54,7 +54,6 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
     self->closed = 1;
 
     self->bitstream = NULL;
-    self->frame = br_substream_new(BS_LITTLE_ENDIAN);
     self->framelist = aa_int_new();
 
     self->audiotools_pcm = NULL;
@@ -158,7 +157,6 @@ TTADecoder_dealloc(decoders_TTADecoder *self) {
         self->bitstream->free(self->bitstream);
     }
 
-    self->frame->close(self->frame);
     self->framelist->del(self->framelist);
 
     Py_XDECREF(self->audiotools_pcm);
@@ -211,6 +209,7 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
         const unsigned frame_size = self->seektable[self->current_tta_frame++];
         const unsigned block_size = MIN(self->remaining_pcm_frames,
                                         self->block_size);
+        BitstreamReader *frame;
         status status;
         uint32_t frame_crc = 0xFFFFFFFF;
 
@@ -218,13 +217,10 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
         self->bitstream->add_callback(self->bitstream,
                                       (bs_callback_f)tta_crc32,
                                       &frame_crc);
-        br_substream_reset(self->frame);
 
         if (!setjmp(*br_try(self->bitstream))) {
-            self->bitstream->substream_append(self->bitstream,
-                                              self->frame,
-                                              frame_size - 4);
-
+            frame = self->bitstream->substream(self->bitstream,
+                                               frame_size - 4);
             br_etry(self->bitstream);
             self->bitstream->pop_callback(self->bitstream, NULL);
         } else {
@@ -243,28 +239,35 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
 
             if ((frame_crc ^ 0xFFFFFFFF) != crc32) {
                 /*CRC32 mismatch*/
+                frame->close(frame);
                 PyErr_SetString(PyExc_ValueError, "CRC mismatch reading frame");
                 return NULL;
             }
         } else {
+            /*I/O error reading CRC32*/
+            frame->close(frame);
             br_etry(self->bitstream);
             PyErr_SetString(PyExc_IOError, "I/O error reading frame");
             return NULL;
         }
 
-        if ((status = read_frame(self->frame,
-                                 &(self->cache),
-                                 block_size,
-                                 self->header.channels,
-                                 self->header.bits_per_sample,
-                                 self->framelist)) == IOERROR) {
-            PyErr_SetString(PyExc_ValueError, "I/O error during frame read");
-            return NULL;
-        } else {
+        status = read_frame(frame,
+                            &(self->cache),
+                            block_size,
+                            self->header.channels,
+                            self->header.bits_per_sample,
+                            self->framelist);
+
+        frame->close(frame);
+
+        if (status != IOERROR) {
             self->remaining_pcm_frames -= block_size;
             return aa_int_to_FrameList(self->audiotools_pcm,
                                        self->framelist,
                                        self->header.bits_per_sample);
+        } else {
+            PyErr_SetString(PyExc_ValueError, "I/O error during frame read");
+            return NULL;
         }
     }
 }
@@ -741,7 +744,6 @@ int main(int argc, char* argv[]) {
     } else {
         /*open bitstream and setup cache*/
         bitstream = br_open(file, BS_LITTLE_ENDIAN);
-        frame = br_substream_new(BS_LITTLE_ENDIAN);
         init_cache(&cache);
         framelist = aa_int_new();
         output_data_size = 1;
@@ -804,12 +806,11 @@ int main(int argc, char* argv[]) {
         unsigned pcm_size;
         unsigned c;
         unsigned f;
+        status status;
 
-        br_substream_reset(frame);
         if (!setjmp(*br_try(bitstream))) {
-            bitstream->substream_append(bitstream,
-                                        frame,
-                                        seektable[current_tta_frame++]);
+            frame = bitstream->substream(bitstream,
+                                         seektable[current_tta_frame++]);
             br_etry(bitstream);
         } else {
             br_etry(bitstream);
@@ -817,12 +818,16 @@ int main(int argc, char* argv[]) {
             goto error;
         }
 
-        switch (read_frame(frame,
-                           &cache,
-                           frame_block_size,
-                           channels,
-                           bits_per_sample,
-                           framelist)) {
+        status = read_frame(frame,
+                            &cache,
+                            frame_block_size,
+                            channels,
+                            bits_per_sample,
+                            framelist);
+
+        frame->close(frame);
+
+        switch (status) {
         default:
             /*convert framelist to string*/
             pcm_size = (bits_per_sample / 8) * frame_block_size * channels;
@@ -857,7 +862,6 @@ int main(int argc, char* argv[]) {
 
     /*close bitstream and free cache*/
     bitstream->close(bitstream);
-    frame->close(frame);
     free(output_data);
     free_cache(&cache);
     framelist->del(framelist);
@@ -867,7 +871,6 @@ int main(int argc, char* argv[]) {
     return 0;
 error:
     bitstream->close(bitstream);
-    frame->close(frame);
     free(output_data);
     free_cache(&cache);
     framelist->del(framelist);

@@ -37,7 +37,6 @@ buf_new(void)
     stream->data_size = 1;
     stream->window_start = 0;
     stream->window_end = 0;
-    stream->rewindable = 0;
     return stream;
 }
 
@@ -53,9 +52,8 @@ buf_resize(struct bs_buffer *stream, unsigned additional_bytes)
 {
     /*only perform resize if space actually needed*/
     if (additional_bytes > buf_unused_size(stream)) {
-        if ((stream->window_start > 0) && !(stream->rewindable)) {
-            /*we don't need to rewind the buffer
-              so shift window down before extending buffer to add more space*/
+        if (stream->window_start > 0) {
+            /*shift window down before extending buffer to add more space*/
             if (buf_window_size(stream)) {
                 memmove(stream->data,
                         buf_window_start(stream),

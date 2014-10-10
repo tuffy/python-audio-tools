@@ -81,7 +81,7 @@ int
     self->channel_count = 0;
     self->channel_mask = 0;
 
-    self->mlp_decoder = open_mlp_decoder(self->frames);
+    self->mlp_decoder = open_mlp_decoder();
 
     self->codec_framelist = aa_int_new();
     self->output_framelist = aa_int_new();
@@ -248,9 +248,10 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
     } else if (next_packet.codec_ID == MLP_CODEC_ID) {
         /*if the packet is MLP,
           check if the first frame starts with a major sync*/
-        enum {PACKET_DATA};
-        BitstreamReader* r = br_open_buffer(packet_data, BS_BIG_ENDIAN);
-        r->mark(r, PACKET_DATA);
+        BitstreamReader* r = br_open_buffer(buf_window_start(packet_data),
+                                            buf_window_size(packet_data),
+                                            BS_BIG_ENDIAN);
+
         if (!setjmp(*br_try(r))) {
             unsigned sync_words;
             unsigned stream_type;
@@ -271,6 +272,9 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
                          &group_1_rate, &group_2_rate,
                          &(self->channel_assignment));
 
+                br_etry(r);
+                r->close(r);
+
                 self->bits_per_sample =
                     dvda_bits_per_sample(group_1_bps);
                 self->sample_rate =
@@ -282,19 +286,12 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
                 self->frame_codec = MLP;
                 self->mlp_decoder->major_sync_read = 0;
 
-                r->rewind(r, PACKET_DATA);
-                r->unmark(r, PACKET_DATA);
-                br_etry(r);
-                r->close(r);
-
                 buf_reset(self->frames);
                 buf_extend(packet_data, self->frames);
             } else {
                 /*if not, append packet data to any unconsumed data
                   and leave Title's stream attributes as they were*/
 
-                r->rewind(r, PACKET_DATA);
-                r->unmark(r, PACKET_DATA);
                 br_etry(r);
                 r->close(r);
 
@@ -305,8 +302,6 @@ DVDA_Title_next_track(decoders_DVDA_Title *self, unsigned PTS_ticks)
               append packet data to any unconsumed data
               and leave Title's stream attributes as they were*/
 
-            r->rewind(r, PACKET_DATA);
-            r->unmark(r, PACKET_DATA);
             br_etry(r);
             r->close(r);
 
@@ -363,7 +358,8 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
         /*if not enough bytes in buffer, read another packet*/
         while (aobpcm_packet_empty(&(self->pcm_decoder), self->frames)) {
             if (read_audio_packet(self->packet_reader,
-                                  &next_packet, packet_data)) {
+                                  &next_packet,
+                                  packet_data)) {
                 PyErr_SetString(PyExc_IOError, "I/O reading PCM packet");
                 return NULL;
             }
@@ -373,14 +369,14 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
             buf_extend(packet_data, self->frames);
         }
 
-        /*FIXME - make this thread friendly*/
         read_aobpcm(&(self->pcm_decoder), self->frames, self->codec_framelist);
         break;
     case MLP:
         /*if not enough bytes in buffer, read another packet*/
-        while (mlp_packet_empty(self->mlp_decoder)) {
+        while (mlp_packet_empty(packet_data)) {
             if (read_audio_packet(self->packet_reader,
-                                  &next_packet, packet_data)) {
+                                  &next_packet,
+                                  packet_data)) {
                 PyErr_SetString(PyExc_IOError, "I/O reading MLP packet");
                 return NULL;
             }
@@ -390,8 +386,8 @@ DVDA_Title_read(decoders_DVDA_Title *self, PyObject *args)
             buf_extend(packet_data, self->frames);
         }
 
-        /*FIXME - make this thread friendly*/
         if ((mlp_status = read_mlp_frames(self->mlp_decoder,
+                                          self->frames,
                                           self->codec_framelist)) != OK) {
             PyErr_SetString(mlp_python_exception(mlp_status),
                             mlp_python_exception_msg(mlp_status));
@@ -617,7 +613,7 @@ close_sector_reader(DVDA_Sector_Reader* reader)
 
 static int
 read_sector(DVDA_Sector_Reader* reader,
-            struct bs_buffer* sector)
+            struct br_buffer* sector)
 {
     if (reader->current.sector <= reader->end_sector) {
         DVDA_AOB* aob = reader->current.aob;
@@ -626,7 +622,7 @@ read_sector(DVDA_Sector_Reader* reader,
                                         sizeof(uint8_t),
                                         SECTOR_SIZE,
                                         aob->file);
-        buf_write(sector, sector_data, (uint32_t)bytes_read);
+        br_buf_extend(sector, sector_data, (unsigned)bytes_read);
 
         if (bytes_read == SECTOR_SIZE) {
             /*sector read successfully*/
@@ -694,7 +690,6 @@ open_packet_reader(DVDA_Sector_Reader* sectors,
     packets->end_sector = end_sector;
 
     packets->sectors = sectors;
-    packets->reader = br_substream_new(BS_BIG_ENDIAN);
 
     packets->total_sectors = end_sector - start_sector;
     seek_sector(sectors, start_sector);
@@ -703,14 +698,14 @@ open_packet_reader(DVDA_Sector_Reader* sectors,
 
 static int
 read_audio_packet(DVDA_Packet_Reader* packets,
-                  DVDA_Packet* packet, struct bs_buffer* packet_data)
+                  DVDA_Packet* packet,
+                  struct bs_buffer* packet_data)
 {
     if (packets->total_sectors) {
-        BitstreamReader* reader = packets->reader;
-        struct bs_buffer* buffer = reader->input.substream;
-        buf_reset(buffer);
+        BitstreamReader* reader = br_open_buffer(NULL, 0, BS_BIG_ENDIAN);
+        struct br_buffer* buffer = reader->input.buffer;
         if (!read_sector(packets->sectors, buffer)) {
-            if (buf_window_size(buffer) == 0) {
+            if (br_buf_empty(buffer)) {
                 return 0;
             }
 
@@ -749,7 +744,7 @@ read_audio_packet(DVDA_Packet_Reader* packets,
                 }
 
                 /*read packets from sector until sector is empty*/
-                while (buf_window_size(buffer) > 0) {
+                while (!br_buf_empty(buffer)) {
                     unsigned start_code;
                     unsigned stream_id;
                     unsigned packet_length;
@@ -793,10 +788,10 @@ read_audio_packet(DVDA_Packet_Reader* packets,
 
                         buf_reset(packet_data);
                         while (packet_length) {
-                            static uint8_t buffer[4096];
+                            static uint8_t buf[4096];
                             const unsigned to_read = MIN(packet_length, 4096);
-                            reader->read_bytes(reader, buffer, to_read);
-                            buf_write(packet_data, buffer, to_read);
+                            reader->read_bytes(reader, buf, to_read);
+                            buf_write(packet_data, buf, to_read);
                             packet_length -= to_read;
                         }
 
@@ -832,7 +827,6 @@ read_audio_packet(DVDA_Packet_Reader* packets,
 static void
 close_packet_reader(DVDA_Packet_Reader* packets)
 {
-    packets->reader->close(packets->reader);
     free(packets);
 }
 
@@ -981,8 +975,9 @@ int main(int argc, char* argv[]) {
             /*if not enough bytes in buffer, read another packet*/
             while (aobpcm_packet_empty(&(title.pcm_decoder), title.frames)) {
                 if (read_audio_packet(title.packet_reader,
-                                      &next_packet, packet_data)) {
-                    fprintf(stderr, "I/O Error reading PCM packet\n");
+                                      &next_packet,
+                                      packet_data)) {
+                    fprintf(stderr, "I/O error reading PCM packet\n");
                     goto error;
                 }
 
@@ -991,17 +986,17 @@ int main(int argc, char* argv[]) {
                 buf_extend(packet_data, title.frames);
             }
 
-            /*FIXME - make this thread friendly*/
             read_aobpcm(&(title.pcm_decoder),
                         title.frames,
                         title.codec_framelist);
             break;
         case MLP:
             /*if not enough bytes in buffer, read another packet*/
-            while (mlp_packet_empty(title.mlp_decoder)) {
+            while (mlp_packet_empty(packet_data)) {
                 if (read_audio_packet(title.packet_reader,
-                                      &next_packet, packet_data)) {
-                    fprintf(stderr, "I/O Error reading MLP packet\n");
+                                      &next_packet,
+                                      packet_data)) {
+                    fprintf(stderr, "I/O error reading MLP packet\n");
                     goto error;
                 }
 
@@ -1010,8 +1005,8 @@ int main(int argc, char* argv[]) {
                 buf_extend(packet_data, title.frames);
             }
 
-            /*FIXME - make this thread friendly*/
             if ((mlp_status = read_mlp_frames(title.mlp_decoder,
+                                              packet_data,
                                               title.codec_framelist)) != OK) {
                 fprintf(stderr, "*** MLP Error: %s\n",
                         mlp_python_exception_msg(mlp_status));

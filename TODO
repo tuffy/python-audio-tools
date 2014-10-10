@@ -7853,6 +7853,8 @@
     - [ ] cdplay
     - [ ] trackplay
     - [ ] trackverify
+** TODO Add seeking to Ogg FLAC decoder
+   Might as well make the format consistent
 * TODO Finish version 3.1
 ** TODO Support building cue sheets from discs
    Find some way of grabbing the index points from a disc

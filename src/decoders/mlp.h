@@ -129,10 +129,6 @@ struct substream {
 };
 
 typedef struct {
-    BitstreamReader* reader;
-    BitstreamReader* frame_reader;
-    BitstreamReader* substream_reader;
-
     struct major_sync major_sync;
     int major_sync_read;
     struct substream substream[MAX_MLP_SUBSTREAMS];
@@ -148,22 +144,31 @@ struct checkdata {
 };
 
 MLPDecoder*
-open_mlp_decoder(struct bs_buffer* frame_data);
+open_mlp_decoder(void);
 
 void
 close_mlp_decoder(MLPDecoder* decoder);
+
+/*given a packet, returns the total size of the MLP frame
+  no data is consumed from the packet
+
+  if the packet doesn't contain at least 4 bytes, returns 0*/
+unsigned
+mlp_total_frame_size(const struct bs_buffer *packet);
 
 /*returns 1 if there isn't enough data in the current packet
   to decode at least 1 MLP frame
   returns 0 otherwise*/
 int
-mlp_packet_empty(MLPDecoder* decoder);
+mlp_packet_empty(const struct bs_buffer *packet);
 
-/*given an MLPDecoder pointing to a buffer of frame data
-  (including length headers), decode as many frames as possible to framelist
+/*given an MLPDecoder
+  along with packet data
+  decode as many MLP frames as possible to framelist
   returns OK on success, or something else if an error occurs*/
 mlp_status
 read_mlp_frames(MLPDecoder* decoder,
+                struct bs_buffer *packet,
                 aa_int* framelist);
 
 /*given MLPDecoder context and a buffer of single frame data

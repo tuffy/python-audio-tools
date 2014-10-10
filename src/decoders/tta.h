@@ -63,7 +63,6 @@ typedef struct {
     int closed;
 
     BitstreamReader* bitstream;
-    BitstreamReader* frame;
     aa_int* framelist;
 
     /*a framelist generator*/
