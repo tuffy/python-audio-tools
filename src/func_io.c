@@ -1,4 +1,5 @@
 #include "func_io.h"
+#include <string.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -41,27 +42,76 @@ ext_open_r(void* user_data,
     input->close = close;
     input->free = free;
 
-    input->buffer = buf_new();
-    input->buffer_size = buffer_size;
+    input->buffer.data = malloc(buffer_size * sizeof(uint8_t));
+    input->buffer.pos = 0;
+    input->buffer.size = 0;
+    input->buffer.maximum_size = buffer_size;
 
     return input;
+}
+
+/*returns true if the buffer has no data*/
+static inline int
+reader_buffer_empty(const struct br_external_input* stream)
+{
+    return stream->buffer.pos == stream->buffer.size;
+}
+
+/*returns the amount of bytes currently in the buffer*/
+static int
+reader_buffer_size(const struct br_external_input* stream)
+{
+    return stream->buffer.size - stream->buffer.pos;
+}
+
+/*attempts to refill the buffer to its maximum size
+  by calling our external function
+  and returns the amount of bytes actually filled
+  (which may be 0 if no data is received or no more data can fit)*/
+static unsigned
+refill_reader_buffer(struct br_external_input* stream)
+{
+    const unsigned buffer_size = reader_buffer_size(stream);
+    unsigned filled;
+
+    /*reclaim used buffer space, if any*/
+    if (buffer_size) {
+        memmove(stream->buffer.data,
+                stream->buffer.data + stream->buffer.pos,
+                buffer_size);
+        stream->buffer.pos = 0;
+        stream->buffer.size -= buffer_size;
+    } else {
+        stream->buffer.pos = stream->buffer.size = 0;
+    }
+
+    /*then fill buffer from external function*/
+    filled = stream->read(stream->user_data,
+                          stream->buffer.data + stream->buffer.size,
+                          stream->buffer.maximum_size - stream->buffer.size);
+    stream->buffer.size += filled;
+    return filled;
+}
+
+/*mark buffer as empty and needing to be refilled*/
+static inline void
+reset_reader_buffer(struct br_external_input* stream)
+{
+    stream->buffer.pos = stream->buffer.size = 0;
 }
 
 int
 ext_getc(struct br_external_input* stream)
 {
-    struct bs_buffer* buffer = stream->buffer;
-    if (!buf_window_size(buffer)) {
+    if (reader_buffer_empty(stream)) {
         /*buffer is empty, so try to refill from external function*/
-        if (stream->read(stream->user_data,
-                         buffer,
-                         stream->buffer_size)) {
+        if (refill_reader_buffer(stream) == 0) {
             /*read unsuccessful, so return EOF*/
             return EOF;
         }
     }
-    /*this may return EOF if the read was unable to add more data*/
-    return buf_getc(buffer);
+
+    return stream->buffer.data[stream->buffer.pos++];
 }
 
 unsigned
@@ -69,35 +119,33 @@ ext_fread(struct br_external_input* stream,
           uint8_t* data,
           unsigned data_size)
 {
-    struct bs_buffer* buffer = stream->buffer;
+    const unsigned initial_data_size = data_size;
 
-    /*if there's enough bytes in the buffer*/
-    if (data_size <= buf_window_size(buffer)) {
-        /*simply copy them directly to "data"
-          and return the amount read*/
+    /*if data_size == 0 this loop will be a no-op
+      but I think that's an uncommon case*/
+    do {
+        /*copy either the total bytes in the buffer
+          or the remaining "data_size" to "data", whichever is less*/
+        const unsigned buffer_size = reader_buffer_size(stream);
+        const unsigned to_copy =
+            data_size > buffer_size ? buffer_size : data_size;
 
-        return buf_read(buffer, data, data_size);
-    } else {
-        /*otherwise, populate the buffer with read() calls*/
-        while (data_size > buf_window_size(buffer)) {
-            const buf_size_t old_size = buf_window_size(buffer);
-            if (!stream->read(stream->user_data,
-                              buffer,
-                              stream->buffer_size) &&
-                (buf_window_size(buffer) > old_size)) {
-                /*as long as the reads are successful
-                  and the buffer continues to grow*/
-                continue;
-            } else {
-                /*otherwise, stop reading and return what we have*/
-                break;
+        memcpy(data, stream->buffer.data + stream->buffer.pos, to_copy);
+        stream->buffer.pos += to_copy;
+        data += to_copy;
+        data_size -= to_copy;
+
+        if (data_size) {
+            /*if another pass is required, refill the buffer*/
+            if (refill_reader_buffer(stream) == 0) {
+                /*read unsuccessful, so return as many bytes as we could get*/
+                return initial_data_size - data_size;
             }
         }
+    } while (data_size);
 
-        /*read as much of the buffer as necessary/possible to "bytes"
-          and return the amount actually read*/
-        return buf_read(buffer, data, data_size);
-    }
+    /*all bytes processed successfully*/
+    return initial_data_size;
 }
 
 int
@@ -138,7 +186,7 @@ ext_fseek_r(struct br_external_input *stream, long position, int whence)
     switch (whence) {
     case 0:  /*SEEK_SET*/
     case 2:  /*SEEK_END*/
-        buf_reset(stream->buffer);
+        reset_reader_buffer(stream);
         return stream->seek(stream->user_data, position, whence);
     case 1:  /*SEEK_CUR*/
         /*if the relative position being seeked is still in the
@@ -146,21 +194,23 @@ ext_fseek_r(struct br_external_input *stream, long position, int whence)
           otherwise, perform a relative seek
           that accounts for the current size of the buffer contents*/
         if (position > 0) {
-            if (position <= buf_window_size(stream->buffer)) {
-                return buf_fseek(stream->buffer, position, whence);
+            const unsigned buffer_size = reader_buffer_size(stream);
+            if (position <= buffer_size) {
+                stream->buffer.pos += position;
+                return 0;
             } else {
-                const unsigned buffer_size = buf_window_size(stream->buffer);
-                buf_reset(stream->buffer);
+                reset_reader_buffer(stream);
                 return stream->seek(stream->user_data,
                                     position - buffer_size,
                                     whence);
             }
         } else if (position < 0) {
-            if (-position <= stream->buffer->window_start) {
-                return buf_fseek(stream->buffer, position, whence);
+            if (-position <= stream->buffer.pos) {
+                stream->buffer.pos += position;
+                return 0;
             } else {
-                const unsigned buffer_size = buf_window_size(stream->buffer);
-                buf_reset(stream->buffer);
+                const unsigned buffer_size = reader_buffer_size(stream);
+                reset_reader_buffer(stream);
                 return stream->seek(stream->user_data,
                                     position - buffer_size,
                                     whence);
@@ -185,7 +235,7 @@ void
 ext_free_r(struct br_external_input* stream)
 {
     stream->free(stream->user_data);
-    buf_close(stream->buffer);
+    free(stream->buffer.data);
     free(stream);
 }
 
@@ -211,27 +261,62 @@ ext_open_w(void* user_data,
     output->close = close;
     output->free = free;
 
-    output->buffer = buf_new();
-    output->buffer_size = buffer_size;
+    output->buffer.data = malloc(buffer_size * sizeof(uint8_t));
+    output->buffer.pos = 0;
+    output->buffer.maximum_size = buffer_size;
 
     return output;
+}
+
+/*returns true if the buffer can hold no more data*/
+static int
+writer_buffer_full(const struct bw_external_output* stream)
+{
+    return stream->buffer.pos == stream->buffer.maximum_size;
+}
+
+/*attempts to empty the buffer by calling our external function
+  and returns 0 on success, 1 if some write error occurs*/
+static int
+empty_writer_buffer(struct bw_external_output* stream)
+{
+    /*send buffer contents to external function*/
+    if (stream->write(stream->user_data,
+                      stream->buffer.data,
+                      stream->buffer.pos)) {
+        /*some write error occurred*/
+        return 1;
+    }
+
+    /*reclaim buffer space so it can get more data*/
+    stream->buffer.pos = 0;
+
+    /*return success*/
+    return 0;
+}
+
+/*returns the total bytes that can fit in the buffer
+  before it becomes full*/
+static unsigned
+writer_buffer_remaining_size(const struct bw_external_output* stream)
+{
+    return stream->buffer.maximum_size - stream->buffer.pos;
 }
 
 int
 ext_putc(int i, struct bw_external_output* stream)
 {
-    struct bs_buffer* buffer = stream->buffer;
-
-    /*add byte to internal buffer*/
-    buf_putc(i, buffer);
-
-    /*then flush internal buffer while it is too large*/
-    while (buf_window_size(buffer) >= stream->buffer_size) {
-        if (stream->write(stream->user_data, buffer, stream->buffer_size)) {
+    /*flush buffer if it can hold no more data*/
+    if (writer_buffer_full(stream)) {
+        if (empty_writer_buffer(stream)) {
             return EOF;
         }
     }
 
+    /*add byte to internal buffer*/
+    stream->buffer.data[stream->buffer.pos++] = (uint8_t)i;
+
+    /*return success*/
     return i;
 }
 
@@ -240,17 +325,26 @@ ext_fwrite(struct bw_external_output* stream,
            const uint8_t *data,
            unsigned data_size)
 {
-    struct bs_buffer* buffer = stream->buffer;
+    do {
+        /*copy either the total size that can fit in the buffer
+          or "data_size" from "data" to the buffer, whichever is less*/
+        const unsigned buffer_size = writer_buffer_remaining_size(stream);
+        const unsigned to_copy =
+            data_size > buffer_size ? buffer_size : data_size;
 
-    /*add data to internal buffer*/
-    buf_write(buffer, data, data_size);
+        memcpy(stream->buffer.data + stream->buffer.pos, data, to_copy);
+        stream->buffer.pos += to_copy;
+        data += to_copy;
+        data_size -= to_copy;
 
-    /*then flush internal buffer while it is too large*/
-    while (buf_window_size(buffer) >= stream->buffer_size) {
-        if (stream->write(stream->user_data, buffer, stream->buffer_size)) {
-            return EOF;
+        if (data_size) {
+            /*if another pass is required, empty the buffer*/
+            if (empty_writer_buffer(stream)) {
+                /*write unsuccessful, so return EOF*/
+                return EOF;
+            }
         }
-    }
+    } while (data_size);
 
     return 0;
 }
@@ -290,16 +384,11 @@ ext_free_pos_w(struct bw_external_output *stream, void *pos)
 int
 ext_flush_w(struct bw_external_output* stream)
 {
-    struct bs_buffer* buffer = stream->buffer;
-    while (buf_window_size(buffer) > 0) {
-        if (stream->write(stream->user_data,
-                          buffer,
-                          buf_window_size(buffer))) {
-            /*some error occurred when writing stream*/
-            return EOF;
-        }
+    if (empty_writer_buffer(stream)) {
+        return EOF;
+    } else {
+        return stream->flush(stream->user_data);
     }
-    return stream->flush(stream->user_data);
 }
 
 int
@@ -317,6 +406,6 @@ void
 ext_free_w(struct bw_external_output* stream)
 {
     stream->free(stream->user_data);
-    buf_close(stream->buffer);
+    free(stream->buffer.data);
     free(stream);
 }

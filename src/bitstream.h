@@ -1538,31 +1538,42 @@ br_buf_fseek(struct br_buffer *buf, long position, int whence);
  *                          Python-specific                        *
  *******************************************************************/
 
-int br_read_python(PyObject *reader,
-                   struct bs_buffer* buffer,
-                   unsigned buffer_size);
+unsigned
+br_read_python(PyObject *reader,
+               uint8_t *buffer,
+               unsigned buffer_size);
 
-int bw_write_python(PyObject* writer,
-                    struct bs_buffer* buffer,
-                    unsigned buffer_size);
+int
+bw_write_python(PyObject* writer,
+                const uint8_t *buffer,
+                unsigned buffer_size);
 
-int bw_flush_python(PyObject* writer);
+int
+bw_flush_python(PyObject* writer);
 
-int bs_setpos_python(PyObject* stream, PyObject* pos);
+int
+bs_setpos_python(PyObject* stream, PyObject* pos);
 
-PyObject* bs_getpos_python(PyObject* stream);
+PyObject*
+bs_getpos_python(PyObject* stream);
 
-void bs_free_pos_python(PyObject* pos);
+void
+bs_free_pos_python(PyObject* pos);
 
-int bs_fseek_python(PyObject* stream, long position, int whence);
+int
+bs_fseek_python(PyObject* stream, long position, int whence);
 
-int bs_close_python(PyObject* obj);
+int
+bs_close_python(PyObject* obj);
 
-void bs_free_python_decref(PyObject* obj);
+void
+bs_free_python_decref(PyObject* obj);
 
-void bs_free_python_nodecref(PyObject* obj);
+void
+bs_free_python_nodecref(PyObject* obj);
 
-int python_obj_seekable(PyObject* obj);
+int
+python_obj_seekable(PyObject* obj);
 
 #endif
 

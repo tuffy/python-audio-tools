@@ -1,9 +1,9 @@
 #ifndef FUNCIO_H
 #define FUNCIO_H
 
-#include "buffer.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -26,16 +26,16 @@
 
 /*casts for inserting functions with non-void pointers into ext_open_r*/
 
-/*returns 0 on successful read, 1 if a read error occurs*/
-typedef int (*ext_read_f)(void* user_data,
-                          struct bs_buffer* buffer,
-                          unsigned buffer_size);
+/*returns number of bytes actually read*/
+typedef unsigned (*ext_read_f)(void* user_data,
+                               uint8_t* buffer,
+                               unsigned buffer_size);
 
 /*casts for inserting functions with non-void pointers into ext_open_w*/
 
 /*returns 0 on successful write, 1 if a write error occurs*/
 typedef int (*ext_write_f)(void* user_data,
-                           struct bs_buffer* buffer,
+                           const uint8_t* buffer,
                            unsigned buffer_size);
 
 /*returns 0 on a successful flush, EOF if a write error occurs*/
@@ -71,8 +71,12 @@ struct br_external_input {
     ext_close_f close;
     ext_free_f free;
 
-    struct bs_buffer* buffer;
-    unsigned buffer_size;
+    struct {
+        uint8_t *data;
+        unsigned pos;
+        unsigned size;
+        unsigned maximum_size;
+    } buffer;
 };
 
 struct bw_external_output {
@@ -85,8 +89,11 @@ struct bw_external_output {
     ext_close_f close;
     ext_free_f free;
 
-    struct bs_buffer* buffer;
-    unsigned buffer_size;
+    struct {
+        uint8_t *data;
+        unsigned pos;
+        unsigned maximum_size;
+    } buffer;
 };
 
 /*** stdio-like functions for br_external_input ***/

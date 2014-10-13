@@ -1158,7 +1158,7 @@ void
 br_mark_e(BitstreamReader* bs, int mark_id)
 {
     struct br_external_input* input = bs->input.external;
-    const unsigned buffer_size = buf_window_size(input->buffer);
+    const unsigned buffer_size = input->buffer.size - input->buffer.pos;
     struct br_mark* mark = malloc(sizeof(struct br_mark));
 
     if ((mark->position.external.pos = ext_getpos_r(input)) == NULL) {
@@ -1169,7 +1169,7 @@ br_mark_e(BitstreamReader* bs, int mark_id)
     mark->position.external.buffer_size = buffer_size;
     mark->position.external.buffer = malloc(buffer_size * sizeof(uint8_t));
     memcpy(mark->position.external.buffer,
-           buf_window_start(input->buffer),
+           input->buffer.data + input->buffer.pos,
            buffer_size * sizeof(uint8_t));
     mark->state = bs->state;
 
@@ -1223,10 +1223,11 @@ br_rewind_e(BitstreamReader* bs, int mark_id)
             /*unable to seek to previous position*/
             br_abort(bs);
         }
-        buf_reset(input->buffer);
-        buf_write(input->buffer,
-                  mark->position.external.buffer,
-                  mark->position.external.buffer_size);
+        memcpy(input->buffer.data,
+               mark->position.external.buffer,
+               mark->position.external.buffer_size);
+        input->buffer.pos = 0;
+        input->buffer.size = mark->position.external.buffer_size;
         bs->state = mark->state;
     } else {
         fprintf(stderr, "*** Warning: no marks on stack %d to rewind\n",
@@ -3096,73 +3097,79 @@ br_buf_fseek(struct br_buffer *buf, long position, int whence)
 
 #ifndef STANDALONE
 
-int br_read_python(PyObject *reader,
-                   struct bs_buffer* buffer,
-                   unsigned buffer_size)
+unsigned
+br_read_python(PyObject *reader,
+               uint8_t *buffer,
+               unsigned buffer_size)
 {
-    PyObject* read_result = PyObject_CallMethod(reader, "read", "I", buffer_size);
-
     /*call read() method on reader*/
-    if (read_result != NULL) {
-        char *string;
-        Py_ssize_t string_size;
+    PyObject* read_result =
+        PyObject_CallMethod(reader, "read", "I", buffer_size);
+    char *string;
+    Py_ssize_t string_size;
+    unsigned to_copy;
 
-        /*convert returned object to string of bytes*/
-        if (PyBytes_AsStringAndSize(read_result,
-                                    &string,
-                                    &string_size) != -1) {
-            /*then append bytes to buffer and return success*/
-            buf_write(buffer, (uint8_t*)string, (unsigned)string_size);
-
-            Py_DECREF(read_result);
-            return 0;
-        } else {
-            /*string conversion failed so clear error and return an EOF
-              (which will likely generate an IOError exception if its own)*/
-
-            Py_DECREF(read_result);
-            PyErr_Clear();
-            return 1;
-        }
-    } else {
-        /*read() method call failed
-          so clear error and return an EOF
-          (which will likely generate an IOError exception of its own)*/
+    if (read_result == NULL) {
+        /*some exception occurred, so clear result and return no bytes
+          (which will likely turn into an I/O exception later)*/
         PyErr_Clear();
-        return 1;
+        return 0;
     }
 
+    /*get string data from returned object*/
+    if (PyBytes_AsStringAndSize(read_result,
+                                &string,
+                                &string_size) == -1) {
+        /*got something that wasn't a string from .read()
+          so clear exception and return no bytes*/
+        Py_DECREF(read_result);
+        PyErr_Clear();
+        return 0;
+    }
+
+    /*write either "buffer_size" or "string_size" bytes to buffer
+      whichever is less*/
+    if (string_size >= buffer_size) {
+        /*truncate strings larger than expected*/
+        to_copy = buffer_size;
+    } else {
+        to_copy = (unsigned)string_size;
+    }
+
+    memcpy(buffer, (uint8_t*)string, to_copy);
+
+    /*perform cleanup and return bytes actually read*/
+    Py_DECREF(read_result);
+
+    return to_copy;
 }
 
 int bw_write_python(PyObject* writer,
-                    struct bs_buffer* buffer,
+                    const uint8_t *buffer,
                     unsigned buffer_size)
 {
-    while (buf_window_size(buffer) >= buffer_size) {
 #if PY_MAJOR_VERSION >= 3
-        char format[] = "y#";
+    char format[] = "y#";
 #else
-        char format[] = "s#";
+    char format[] = "s#";
 #endif
-        PyObject* write_result =
-            PyObject_CallMethod(writer, "write", format,
-                                buf_window_start(buffer),
-                                buffer_size);
-        if (write_result != NULL) {
-            Py_DECREF(write_result);
-            buffer->window_start += buffer_size;
-        } else {
-            /*write method call failed, so clear error
-              before generating Python IOError*/
-            PyErr_Clear();
-            return 1;
-        }
+    PyObject* write_result = PyObject_CallMethod(writer,
+                                                 "write", format,
+                                                 buffer,
+                                                 (int)buffer_size);
+    if (write_result != NULL) {
+        Py_DECREF(write_result);
+        return 0;
+    } else {
+        /*write method call failed so clear error and return a failure
+          which will probably turn into an I/O exception later*/
+        PyErr_Clear();
+        return 1;
     }
-
-    return 0;
 }
 
-int bw_flush_python(PyObject* writer)
+int
+bw_flush_python(PyObject* writer)
 {
     PyObject* flush_result = PyObject_CallMethod(writer, "flush", NULL);
     if (flush_result != NULL) {
@@ -3175,7 +3182,8 @@ int bw_flush_python(PyObject* writer)
     }
 }
 
-int bs_setpos_python(PyObject* stream, PyObject* pos)
+int
+bs_setpos_python(PyObject* stream, PyObject* pos)
 {
     if (pos != NULL) {
         PyObject *seek = PyObject_GetAttrString(stream, "seek");
@@ -3200,7 +3208,8 @@ int bs_setpos_python(PyObject* stream, PyObject* pos)
     return 0;
 }
 
-PyObject* bs_getpos_python(PyObject* stream)
+PyObject*
+bs_getpos_python(PyObject* stream)
 {
     PyObject *pos = PyObject_CallMethod(stream, "tell", NULL);
     if (pos != NULL) {
@@ -3211,12 +3220,14 @@ PyObject* bs_getpos_python(PyObject* stream)
     }
 }
 
-void bs_free_pos_python(PyObject* pos)
+void
+bs_free_pos_python(PyObject* pos)
 {
     Py_XDECREF(pos);
 }
 
-int bs_fseek_python(PyObject* stream, long position, int whence)
+int
+bs_fseek_python(PyObject* stream, long position, int whence)
 {
     PyObject *result =
         PyObject_CallMethod(stream, "seek", "li", position, whence);
@@ -3228,7 +3239,8 @@ int bs_fseek_python(PyObject* stream, long position, int whence)
     }
 }
 
-int bs_close_python(PyObject* obj)
+int
+bs_close_python(PyObject* obj)
 {
     /*call close method on reader/writer*/
     PyObject* close_result = PyObject_CallMethod(obj, "close", NULL);
@@ -3243,18 +3255,21 @@ int bs_close_python(PyObject* obj)
     }
 }
 
-void bs_free_python_decref(PyObject* obj)
+void
+bs_free_python_decref(PyObject* obj)
 {
     Py_XDECREF(obj);
 }
 
-void bs_free_python_nodecref(PyObject* obj)
+void
+bs_free_python_nodecref(PyObject* obj)
 {
     /*no DECREF, so does nothing*/
     return;
 }
 
-int python_obj_seekable(PyObject* obj)
+int
+python_obj_seekable(PyObject* obj)
 {
     PyObject *seek;
     PyObject *tell;
@@ -3444,16 +3459,16 @@ typedef void (*write_check)(BitstreamWriter*, bs_endianness);
 void
 check_output_file(void);
 
-int ext_fread_test(FILE* user_data,
-                   struct bs_buffer* buffer,
-                   unsigned buffer_size);
+unsigned ext_fread_test(FILE* user_data,
+                        uint8_t* buffer,
+                        unsigned buffer_size);
 
 int ext_fclose_test(FILE* user_data);
 
 void ext_ffree_test(FILE* user_data);
 
 int ext_fwrite_test(FILE* user_data,
-                    struct bs_buffer* buffer,
+                    const uint8_t* buffer,
                     unsigned buffer_size);
 
 int ext_fflush_test(FILE* user_data);
@@ -6335,21 +6350,15 @@ test_rec_split_dumps(bs_endianness endianness,
 }
 
 
-int ext_fread_test(FILE* user_data,
-                   struct bs_buffer* buffer,
-                   unsigned buffer_size)
+unsigned ext_fread_test(FILE* user_data,
+                        uint8_t* buffer,
+                        unsigned buffer_size)
 {
-    uint8_t data[2];
-    const unsigned bytes_read = (unsigned)fread(data,
-                                                sizeof(uint8_t),
-                                                (size_t)buffer_size,
-                                                user_data);
-
-    if (bytes_read > 0) {
-        buf_write(buffer, data, bytes_read);
+    const size_t read = fread(buffer, sizeof(uint8_t), buffer_size, user_data);
+    if (read >= 0) {
+        return (unsigned)read;
+    }else {
         return 0;
-    } else {
-        return 1;
     }
 }
 
@@ -6364,18 +6373,18 @@ void ext_ffree_test(FILE* user_data)
 }
 
 int ext_fwrite_test(FILE* user_data,
-                    struct bs_buffer* buffer,
+                    const uint8_t* buffer,
                     unsigned buffer_size)
 {
-    while (buf_window_size(buffer) >= buffer_size) {
-        fwrite(buf_window_start(buffer),
-               sizeof(uint8_t),
-               buffer_size,
-               user_data);
-        buffer->window_start += buffer_size;
+    const size_t written = fwrite(buffer,
+                                  sizeof(uint8_t),
+                                  buffer_size,
+                                  user_data);
+    if (written == buffer_size) {
+        return 0;
+    } else {
+        return 1;
     }
-
-    return 0;
 }
 
 int ext_fflush_test(FILE* user_data)

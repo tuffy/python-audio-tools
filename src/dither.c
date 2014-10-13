@@ -21,40 +21,53 @@
   wrapped around the os.urandom function call
   for generating individual bits of dither for an audio stream.*/
 
-static int
+/*this is quite similar to br_read_python
+  except that it pulls data from os.urandom()*/
+static unsigned
 read_os_random(PyObject* os_module,
-               struct bs_buffer* buffer,
+               uint8_t* buffer,
                unsigned buffer_size)
 {
-    PyObject* string;
+    /*call unrandom() function on os module*/
+    PyObject* read_result =
+        PyObject_CallMethod(os_module, "urandom", "I", buffer_size);
+    char *string;
+    Py_ssize_t string_size;
+    unsigned to_copy;
 
-    /*call os.urandom() and retrieve a Python object*/
-    if ((string = PyObject_CallMethod(os_module,
-                                      "urandom", "I", buffer_size)) != NULL) {
-        char *buffer_s;
-        Py_ssize_t buffer_len;
-
-        /*convert Python object to string and length*/
-        if (PyBytes_AsStringAndSize(string, &buffer_s, &buffer_len) != -1) {
-            /*extend buffer for additional data*/
-            buf_write(buffer, (uint8_t*)buffer_s, (unsigned)buffer_len);
-
-            /*DECREF Python object and return OK*/
-            Py_DECREF(string);
-            return 0;
-        } else {
-            /*os.urandom() didn't return a string
-              so print error and clear it*/
-            Py_DECREF(string);
-            PyErr_Print();
-            return 1;
-        }
-    } else {
-        /*error occured in os.urandom() call
-          so print error and clear it*/
-        PyErr_Print();
-        return 1;
+    if (read_result == NULL) {
+        /*some exception occurred, so clear result and return no bytes
+          (which will likely turn into an I/O exception later)*/
+        PyErr_Clear();
+        return 0;
     }
+
+    /*get string data from returned object*/
+    if (PyBytes_AsStringAndSize(read_result,
+                                &string,
+                                &string_size) == -1) {
+        /*got something that wasn't a string from .read()
+          so clear exception and return no bytes*/
+        Py_DECREF(read_result);
+        PyErr_Clear();
+        return 0;
+    }
+
+    /*write either "buffer_size" or "string_size" bytes to buffer
+      whichever is less*/
+    if (string_size >= buffer_size) {
+        /*truncate strings larger than expected*/
+        to_copy = buffer_size;
+    } else {
+        to_copy = (unsigned)string_size;
+    }
+
+    memcpy(buffer, (uint8_t*)string, to_copy);
+
+    /*perform cleanup and return bytes actually read*/
+    Py_DECREF(read_result);
+
+    return to_copy;
 }
 
 static void
