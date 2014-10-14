@@ -256,7 +256,7 @@ encoders_encode_flac(char *filename,
         Py_DECREF(offset);
 #endif
         encoder.frame->reset(encoder.frame);
-        flacenc_write_frame(encoder.frame, &encoder, samples);
+        flacenc_write_frame((BitstreamWriter*)encoder.frame, &encoder, samples);
         encoder.streaminfo.total_samples += samples->_[0]->len;
         encoder.streaminfo.minimum_frame_size =
             MIN(encoder.streaminfo.minimum_frame_size,
@@ -531,10 +531,10 @@ flacenc_write_frame(BitstreamWriter* bs,
 
     if ((encoder->streaminfo.channels == 2) &&
         ((encoder->options.mid_side || encoder->options.adaptive_mid_side))) {
-        BitstreamWriter* left_subframe = encoder->left_subframe;
-        BitstreamWriter* right_subframe = encoder->right_subframe;
-        BitstreamWriter* average_subframe = encoder->average_subframe;
-        BitstreamWriter* difference_subframe = encoder->difference_subframe;
+        BitstreamRecorder* left_subframe = encoder->left_subframe;
+        BitstreamRecorder* right_subframe = encoder->right_subframe;
+        BitstreamRecorder* average_subframe = encoder->average_subframe;
+        BitstreamRecorder* difference_subframe = encoder->difference_subframe;
         unsigned left_subframe_bits;
         unsigned right_subframe_bits;
         unsigned average_subframe_bits;
@@ -549,22 +549,22 @@ flacenc_write_frame(BitstreamWriter* bs,
                                    encoder->average_samples,
                                    encoder->difference_samples);
 
-        flacenc_write_subframe(left_subframe,
+        flacenc_write_subframe((BitstreamWriter*)left_subframe,
                                encoder,
                                encoder->streaminfo.bits_per_sample,
                                samples->_[0]);
 
-        flacenc_write_subframe(right_subframe,
+        flacenc_write_subframe((BitstreamWriter*)right_subframe,
                                encoder,
                                encoder->streaminfo.bits_per_sample,
                                samples->_[1]);
 
-        flacenc_write_subframe(average_subframe,
+        flacenc_write_subframe((BitstreamWriter*)average_subframe,
                                encoder,
                                encoder->streaminfo.bits_per_sample,
                                encoder->average_samples);
 
-        flacenc_write_subframe(difference_subframe,
+        flacenc_write_subframe((BitstreamWriter*)difference_subframe,
                                encoder,
                                encoder->streaminfo.bits_per_sample + 1,
                                encoder->difference_samples);
@@ -707,21 +707,23 @@ flacenc_write_subframe(BitstreamWriter* bs,
         /*build FIXED subframe, if allowed*/
         if (try_FIXED) {
             encoder->fixed_subframe->reset(encoder->fixed_subframe);
-            flacenc_write_fixed_subframe(encoder->fixed_subframe,
-                                         encoder,
-                                         bits_per_sample,
-                                         wasted_bps,
-                                         subframe_samples);
+            flacenc_write_fixed_subframe(
+                (BitstreamWriter*)encoder->fixed_subframe,
+                encoder,
+                bits_per_sample,
+                wasted_bps,
+                subframe_samples);
         }
 
         /*build LPC subframe, if allowed*/
         if (try_LPC) {
             encoder->lpc_subframe->reset(encoder->lpc_subframe);
-            flacenc_write_lpc_subframe(encoder->lpc_subframe,
-                                       encoder,
-                                       bits_per_sample,
-                                       wasted_bps,
-                                       subframe_samples);
+            flacenc_write_lpc_subframe(
+                (BitstreamWriter*)encoder->lpc_subframe,
+                encoder,
+                bits_per_sample,
+                wasted_bps,
+                subframe_samples);
         }
 
         if (try_VERBATIM) {
@@ -1071,7 +1073,7 @@ flacenc_best_lpc_coefficients(struct flac_context* encoder,
             unsigned order;
             a_int* candidate_coeffs = a_int_new();
             int candidate_shift;
-            BitstreamWriter* candidate_subframe =
+            BitstreamAccumulator* candidate_subframe =
                 bw_open_accumulator(BS_BIG_ENDIAN);
 
             a_int* best_coeffs = a_int_new();
@@ -1090,7 +1092,7 @@ flacenc_best_lpc_coefficients(struct flac_context* encoder,
                     &candidate_shift);
 
                 flacenc_encode_lpc_subframe(
-                    candidate_subframe,
+                    (BitstreamWriter*)candidate_subframe,
                     encoder,
                     bits_per_sample,
                     wasted_bits_per_sample,

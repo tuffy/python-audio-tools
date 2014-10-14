@@ -66,19 +66,19 @@ struct flac_context {
 
     a_int* average_samples;
     a_int* difference_samples;
-    BitstreamWriter* left_subframe;
-    BitstreamWriter* right_subframe;
-    BitstreamWriter* average_subframe;
-    BitstreamWriter* difference_subframe;
+    BitstreamRecorder* left_subframe;
+    BitstreamRecorder* right_subframe;
+    BitstreamRecorder* average_subframe;
+    BitstreamRecorder* difference_subframe;
 
     a_int* subframe_samples;
 
-    BitstreamWriter* frame;
-    BitstreamWriter* fixed_subframe;
+    BitstreamRecorder* frame;
+    BitstreamRecorder* fixed_subframe;
     aa_int* fixed_subframe_orders;
     l_int* truncated_order;
 
-    BitstreamWriter* lpc_subframe;
+    BitstreamRecorder* lpc_subframe;
     a_double* tukey_window;
     a_double* windowed_signal;
     a_double* autocorrelation_values;

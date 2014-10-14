@@ -493,8 +493,8 @@ int main(int argc, char* argv[]) {
     unsigned bits_per_sample = 16;
 
     unsigned block_size = 256;
-    BitstreamWriter* header = bw_open_recorder(BS_BIG_ENDIAN);
-    BitstreamWriter* footer = bw_open_recorder(BS_BIG_ENDIAN);
+    BitstreamRecorder* header = bw_open_recorder(BS_BIG_ENDIAN);
+    BitstreamRecorder* footer = bw_open_recorder(BS_BIG_ENDIAN);
 
     pcmreader* pcmreader;
     FILE *output_file;
@@ -561,7 +561,7 @@ int main(int argc, char* argv[]) {
                 size_t byte_count;
                 byte_count = fread(bytes, sizeof(uint8_t), 4096, f);
                 while (byte_count > 0) {
-                    header->write_bytes(header,
+                    header->write_bytes((BitstreamWriter*)header,
                                         bytes,
                                         (unsigned int)byte_count);
                     byte_count = fread(bytes, sizeof(uint8_t), 4096, f);
@@ -580,7 +580,7 @@ int main(int argc, char* argv[]) {
                 size_t byte_count;
                 byte_count = fread(bytes, sizeof(uint8_t), 4096, f);
                 while (byte_count > 0) {
-                    footer->write_bytes(footer,
+                    footer->write_bytes((BitstreamWriter*)footer,
                                         bytes,
                                         (unsigned int)byte_count);
                     byte_count = fread(bytes, sizeof(uint8_t), 4096, f);

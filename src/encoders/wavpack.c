@@ -174,15 +174,18 @@ encoders_encode_wavpack(char *filename,
         const uint64_t max_size = 4294967296llu;
 
         if (data_size < max_size) {
-            BitstreamWriter* sub_block = context.cache.sub_block;
+            BitstreamRecorder* sub_block = context.cache.sub_block;
             sub_block->reset(sub_block);
 
             /*maximum data size large enough to fit into 32-bit size field
               so go back and rewrite wave header properly*/
             if (context.wave.footer_data == NULL) {
-                write_wave_header(sub_block, pcmreader, block_index, 0);
+                write_wave_header((BitstreamWriter*)sub_block,
+                                  pcmreader, block_index,
+                                  0);
             } else {
-                write_wave_header(sub_block, pcmreader, block_index,
+                write_wave_header((BitstreamWriter*)sub_block,
+                                  pcmreader, block_index,
                                   context.wave.footer_len);
             }
 
@@ -617,7 +620,7 @@ encode_block(BitstreamWriter* bs,
     aa_int* mid_side = context->cache.mid_side;
     aa_int* correlated = context->cache.correlated;
     aa_int* correlation_temp = context->cache.correlation_temp;
-    BitstreamWriter* sub_block = context->cache.sub_block;
+    BitstreamRecorder* sub_block = context->cache.sub_block;
     unsigned sub_blocks_size = 0;
     uint32_t crc;
 
@@ -740,7 +743,7 @@ encode_block(BitstreamWriter* bs,
             /*no external RIFF WAVE header,
               so generate temporary one to be populated later*/
             write_dummy_wave_header(
-                sub_block,
+                (BitstreamWriter*)sub_block,
                 pcmreader,
                 (context->wave.footer_data == NULL) ?
                 0 : context->wave.footer_len);
@@ -748,7 +751,7 @@ encode_block(BitstreamWriter* bs,
             write_sub_block(bs, WV_DUMMY, 0, sub_block);
         } else {
             /*external header given, so output as-is*/
-            sub_block->write_bytes(sub_block,
+            sub_block->write_bytes((BitstreamWriter*)sub_block,
                                    context->wave.header_data,
                                    context->wave.header_len);
             write_sub_block(bs, WV_WAVE_HEADER, 1, sub_block);
@@ -760,19 +763,19 @@ encode_block(BitstreamWriter* bs,
     /*if correlation passes, write three correlation sub blocks*/
     if (parameters->terms->len > 0) {
         sub_block->reset(sub_block);
-        write_correlation_terms(sub_block,
+        write_correlation_terms((BitstreamWriter*)sub_block,
                                 parameters->terms,
                                 parameters->deltas);
         write_sub_block(bs, WV_TERMS, 0, sub_block);
 
         sub_block->reset(sub_block);
-        write_correlation_weights(sub_block,
+        write_correlation_weights((BitstreamWriter*)sub_block,
                                   parameters->weights,
                                   effective_channel_count);
         write_sub_block(bs, WV_WEIGHTS, 0, sub_block);
 
         sub_block->reset(sub_block);
-        write_correlation_samples(sub_block,
+        write_correlation_samples((BitstreamWriter*)sub_block,
                                   parameters->terms,
                                   parameters->samples,
                                   effective_channel_count);
@@ -782,7 +785,7 @@ encode_block(BitstreamWriter* bs,
     /*if wasted BPS, write extended integers sub block*/
     if (wasted_bps > 0) {
         sub_block->reset(sub_block);
-        sub_block->build(sub_block, "8u 8u 8u 8u",
+        sub_block->build((BitstreamWriter*)sub_block, "8u 8u 8u 8u",
                          0, wasted_bps, 0, 0);
         write_sub_block(bs, WV_INT32_INFO, 0, sub_block);
     }
@@ -790,7 +793,7 @@ encode_block(BitstreamWriter* bs,
     /*if total channels > 2, write channel info sub block*/
     if (pcmreader->channels > 2) {
         sub_block->reset(sub_block);
-        sub_block->build(sub_block, "8u 32u",
+        sub_block->build((BitstreamWriter*)sub_block, "8u 32u",
                          pcmreader->channels,
                          pcmreader->channel_mask);
         write_sub_block(bs, WV_CHANNEL_INFO, 0, sub_block);
@@ -799,7 +802,8 @@ encode_block(BitstreamWriter* bs,
     /*if nonstandard sample rate, write sample rate sub block*/
     if (encoded_sample_rate(pcmreader->sample_rate) == 15) {
         sub_block->reset(sub_block);
-        sub_block->write(sub_block, 32, pcmreader->sample_rate);
+        sub_block->write((BitstreamWriter*)sub_block,
+                         32, pcmreader->sample_rate);
         write_sub_block(bs, WV_SAMPLE_RATE, 1, sub_block);
     }
 
@@ -835,14 +839,14 @@ encode_block(BitstreamWriter* bs,
 
     /*write entropy variables sub block*/
     sub_block->reset(sub_block);
-    write_entropy_variables(sub_block,
+    write_entropy_variables((BitstreamWriter*)sub_block,
                             effective_channel_count,
                             parameters->entropies);
     write_sub_block(bs, WV_ENTROPY, 0, sub_block);
 
     /*write bitstream sub block*/
     sub_block->reset(sub_block);
-    write_bitstream(sub_block,
+    write_bitstream((BitstreamWriter*)sub_block,
                     parameters->entropies,
                     correlated);
     write_sub_block(bs, WV_BITSTREAM, 0, sub_block);
@@ -862,11 +866,11 @@ static void
 write_sub_block(BitstreamWriter* block,
                 unsigned metadata_function,
                 unsigned nondecoder_data,
-                BitstreamWriter* sub_block)
+                BitstreamRecorder* sub_block)
 {
     unsigned actual_size_1_less;
 
-    sub_block->byte_align(sub_block);
+    sub_block->byte_align((BitstreamWriter*)sub_block);
     actual_size_1_less = sub_block->bytes_written(sub_block) % 2;
     block->write(block, 5, metadata_function);
     block->write(block, 1, nondecoder_data);
@@ -1776,7 +1780,7 @@ encode_footer_block(BitstreamWriter* bs,
                     const pcmreader* pcmreader,
                     unsigned total_pcm_frames)
 {
-    BitstreamWriter* sub_block = context->cache.sub_block;
+    BitstreamRecorder* sub_block = context->cache.sub_block;
     unsigned sub_blocks_size = 0;
     unsigned char md5sum[16];
 
@@ -1802,13 +1806,13 @@ encode_footer_block(BitstreamWriter* bs,
     /*add MD5 sub block*/
     audiotools__MD5Final(md5sum, &(context->md5sum));
     sub_block->reset(sub_block);
-    sub_block->write_bytes(sub_block, md5sum, 16);
+    sub_block->write_bytes((BitstreamWriter*)sub_block, md5sum, 16);
     write_sub_block(bs, WV_MD5, 1, sub_block);
 
     /*if present, add RIFF WAVE footer sub block*/
     if (context->wave.footer_data != NULL) {
         sub_block->reset(sub_block);
-        sub_block->write_bytes(sub_block,
+        sub_block->write_bytes((BitstreamWriter*)sub_block,
                                context->wave.footer_data,
                                context->wave.footer_len);
         write_sub_block(bs, WV_WAVE_FOOTER, 1, sub_block);

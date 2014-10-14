@@ -52,8 +52,8 @@ struct alac_context {
     aa_int* correlated_channels;
     a_int* qlp_coefficients0;
     a_int* qlp_coefficients1;
-    BitstreamWriter *residual0;
-    BitstreamWriter *residual1;
+    BitstreamRecorder *residual0;
+    BitstreamRecorder *residual1;
 
     a_double* tukey_window;
     a_double* windowed_signal;
@@ -63,12 +63,12 @@ struct alac_context {
     a_int* qlp_coefficients8;
     a_int* residual_values4;
     a_int* residual_values8;
-    BitstreamWriter *residual_block4;
-    BitstreamWriter *residual_block8;
+    BitstreamRecorder *residual_block4;
+    BitstreamRecorder *residual_block8;
 
-    BitstreamWriter *compressed_frame;
-    BitstreamWriter *interlaced_frame;
-    BitstreamWriter *best_interlaced_frame;
+    BitstreamRecorder *compressed_frame;
+    BitstreamRecorder *interlaced_frame;
+    BitstreamRecorder *best_interlaced_frame;
 
     /*set during write_frame
       in case a single residual value exceeds the maximum allowed
@@ -198,7 +198,7 @@ typedef struct {
     struct alac_context encoder;
     PyObject *framelist_type;
     aa_int* channels;
-    BitstreamWriter* output_buffer;
+    BitstreamRecorder* output_buffer;
 } encoders_ALACEncoder;
 
 static PyObject*

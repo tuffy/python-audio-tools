@@ -2023,27 +2023,23 @@ static PyObject*
 BitstreamWriter_write_huffman_code(bitstream_BitstreamWriter *self,
                                    PyObject *args)
 {
-    PyObject* huffman_tree_obj;
     bitstream_HuffmanTree* huffman_tree;
     int value;
+    BitstreamWriter* writer = self->bitstream;
 
-    if (!PyArg_ParseTuple(args, "Oi", &huffman_tree_obj, &value))
+    if (!PyArg_ParseTuple(args, "O!i",
+                          &bitstream_HuffmanTreeType,
+                          &huffman_tree,
+                          &value))
         return NULL;
 
-    if (Py_TYPE(huffman_tree_obj) != &bitstream_HuffmanTreeType) {
-        PyErr_SetString(PyExc_TypeError, "argument must a HuffmanTree object");
-        return NULL;
-    }
+    if (!setjmp(*bw_try(writer))) {
+        const int result = writer->write_huffman_code(
+            writer, huffman_tree->bw_table, value);
 
-    huffman_tree = (bitstream_HuffmanTree*)huffman_tree_obj;
+        bw_etry(writer);
 
-    if (!setjmp(*bw_try(self->bitstream))) {
-        const int r = self->bitstream->write_huffman_code(
-            self->bitstream, huffman_tree->bw_table, value);
-
-        bw_etry(self->bitstream);
-
-        if (r) {
+        if (result) {
             PyErr_SetString(PyExc_ValueError, "invalid HuffmanTree value");
             return NULL;
         } else {
@@ -2051,7 +2047,7 @@ BitstreamWriter_write_huffman_code(bitstream_BitstreamWriter *self,
             return Py_None;
         }
     } else {
-        bw_etry(self->bitstream);
+        bw_etry(writer);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
@@ -2076,37 +2072,6 @@ static PyObject*
 BitstreamWriter_byte_aligned(bitstream_BitstreamWriter *self, PyObject *args)
 {
     return PyBool_FromLong(self->bitstream->byte_aligned(self->bitstream));
-}
-
-static PyObject*
-BitstreamWriter_set_endianness(bitstream_BitstreamWriter *self,
-                               PyObject *args)
-{
-    int little_endian;
-
-    if (!PyArg_ParseTuple(args, "i", &little_endian))
-        return NULL;
-
-    if ((little_endian != 0) && (little_endian != 1)) {
-        PyErr_SetString(PyExc_ValueError,
-                    "endianness must be 0 (big-endian) or 1 (little-endian)");
-        return NULL;
-    }
-
-    self->bitstream->set_endianness(
-                    self->bitstream,
-                    little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-
-    if (little_endian) {
-        self->write_unsigned = bwpy_write_unsigned_le;
-        self->write_signed = bwpy_write_signed_le;
-    } else {
-        self->write_unsigned = bwpy_write_unsigned_be;
-        self->write_signed = bwpy_write_signed_be;
-    }
-
-    Py_INCREF(Py_None);
-    return Py_None;
 }
 
 static PyObject*
@@ -2174,6 +2139,37 @@ BitstreamWriter_flush(bitstream_BitstreamWriter *self, PyObject *args)
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
+}
+
+static PyObject*
+BitstreamWriter_set_endianness(bitstream_BitstreamWriter *self,
+                               PyObject *args)
+{
+    int little_endian;
+
+    if (!PyArg_ParseTuple(args, "i", &little_endian))
+        return NULL;
+
+    if ((little_endian != 0) && (little_endian != 1)) {
+        PyErr_SetString(PyExc_ValueError,
+                    "endianness must be 0 (big-endian) or 1 (little-endian)");
+        return NULL;
+    }
+
+    self->bitstream->set_endianness(
+                    self->bitstream,
+                    little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+
+    if (little_endian) {
+        self->write_unsigned = bwpy_write_unsigned_le;
+        self->write_signed = bwpy_write_signed_le;
+    } else {
+        self->write_unsigned = bwpy_write_unsigned_be;
+        self->write_signed = bwpy_write_signed_be;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
 static PyObject*
@@ -2386,7 +2382,9 @@ BitstreamRecorder_write(bitstream_BitstreamRecorder *self,
 
     if (!bw_validate_unsigned_range((unsigned)count, value)) {
         return NULL;
-    } else if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
+    } else if (self->write_unsigned((BitstreamWriter*)self->bitstream,
+                                    (unsigned)count,
+                                    value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2411,7 +2409,9 @@ BitstreamRecorder_write_signed(bitstream_BitstreamRecorder *self,
 
     if (!bw_validate_signed_range((unsigned)count, value)) {
         return NULL;
-    } else if (self->write_signed(self->bitstream, (unsigned)count, value)) {
+    } else if (self->write_signed((BitstreamWriter*)self->bitstream,
+                                  (unsigned)count,
+                                  value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2423,6 +2423,7 @@ static PyObject*
 BitstreamRecorder_unary(bitstream_BitstreamRecorder *self,
                         PyObject *args)
 {
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
     int stop_bit;
     unsigned int value;
 
@@ -2434,13 +2435,14 @@ BitstreamRecorder_unary(bitstream_BitstreamRecorder *self,
         return NULL;
     }
 
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_unary(self->bitstream, stop_bit, value);
-        bw_etry(self->bitstream);
+    /*recorders can fail to write if the stream is closed*/
+    if (!setjmp(*bw_try(writer))) {
+        writer->write_unary(writer, stop_bit, value);
+        bw_etry(writer);
         Py_INCREF(Py_None);
         return Py_None;
     } else {
-        bw_etry(self->bitstream);
+        bw_etry(writer);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
@@ -2450,28 +2452,34 @@ static PyObject*
 BitstreamRecorder_write_huffman_code(bitstream_BitstreamRecorder *self,
                                      PyObject *args)
 {
-    PyObject* huffman_tree_obj;
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
     bitstream_HuffmanTree* huffman_tree;
     int value;
 
-    if (!PyArg_ParseTuple(args, "Oi", &huffman_tree_obj, &value))
+    if (!PyArg_ParseTuple(args, "O!i",
+                          &bitstream_HuffmanTreeType,
+                          &huffman_tree,
+                          &value))
         return NULL;
 
-    if (Py_TYPE(huffman_tree_obj) != &bitstream_HuffmanTreeType) {
-        PyErr_SetString(PyExc_TypeError, "argument must a HuffmanTree object");
-        return NULL;
-    }
+    /*recorders can fail to write if the stream is closed*/
+    if (!setjmp(*bw_try(writer))) {
+        const int result = writer->write_huffman_code(
+            writer, huffman_tree->bw_table, value);
 
-    huffman_tree = (bitstream_HuffmanTree*)huffman_tree_obj;
+        bw_etry(writer);
 
-    if (self->bitstream->write_huffman_code(self->bitstream,
-                                            huffman_tree->bw_table,
-                                            value)) {
-        PyErr_SetString(PyExc_ValueError, "invalid HuffmanTree value");
-        return NULL;
+        if (result) {
+            PyErr_SetString(PyExc_ValueError, "invalid HuffmanTree value");
+            return NULL;
+        } else {
+            Py_INCREF(Py_None);
+            return Py_None;
+        }
     } else {
-        Py_INCREF(Py_None);
-        return Py_None;
+        bw_etry(writer);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
     }
 }
 
@@ -2479,13 +2487,16 @@ static PyObject*
 BitstreamRecorder_byte_align(bitstream_BitstreamRecorder *self,
                              PyObject *args)
 {
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->byte_align(self->bitstream);
-        bw_etry(self->bitstream);
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
+
+    /*recorders can fail to write if the stream is closed*/
+    if (!setjmp(*bw_try(writer))) {
+        writer->byte_align(writer);
+        bw_etry(writer);
         Py_INCREF(Py_None);
         return Py_None;
     } else {
-        bw_etry(self->bitstream);
+        bw_etry(writer);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
@@ -2495,13 +2506,15 @@ static PyObject*
 BitstreamRecorder_byte_aligned(bitstream_BitstreamRecorder *self,
                                PyObject *args)
 {
-    return PyBool_FromLong(self->bitstream->byte_aligned(self->bitstream));
+    return PyBool_FromLong(
+        self->bitstream->byte_aligned((BitstreamWriter*)self->bitstream));
 }
 
 static PyObject*
 BitstreamRecorder_write_bytes(bitstream_BitstreamRecorder *self,
                               PyObject *args)
 {
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
     const char* bytes;
 #ifdef PY_SSIZE_T_CLEAN
     Py_ssize_t bytes_len;
@@ -2512,14 +2525,14 @@ BitstreamRecorder_write_bytes(bitstream_BitstreamRecorder *self,
     if (!PyArg_ParseTuple(args, "s#", &bytes, &bytes_len))
         return NULL;
 
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_bytes(self->bitstream,
-                                     (uint8_t*)bytes, bytes_len);
-        bw_etry(self->bitstream);
+    /*writers can fail to write if the stream is closed*/
+    if (!setjmp(*bw_try(writer))) {
+        writer->write_bytes(writer, (uint8_t*)bytes, bytes_len);
+        bw_etry(writer);
         Py_INCREF(Py_None);
         return Py_None;
     } else {
-        bw_etry(self->bitstream);
+        bw_etry(writer);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
@@ -2537,7 +2550,7 @@ BitstreamRecorder_build(bitstream_BitstreamRecorder *self,
         return NULL;
     } else if ((iterator = PyObject_GetIter(values)) == NULL) {
         return NULL;
-    } else if (bitstream_build(self->bitstream,
+    } else if (bitstream_build((BitstreamWriter*)self->bitstream,
                                self->write_unsigned,
                                self->write_signed,
                                format,
@@ -2554,15 +2567,25 @@ BitstreamRecorder_build(bitstream_BitstreamRecorder *self,
 static PyObject*
 BitstreamRecorder_flush(bitstream_BitstreamRecorder *self, PyObject *args)
 {
-    self->bitstream->flush(self->bitstream);
-    Py_INCREF(Py_None);
-    return Py_None;
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
+    /*flush may fail if stream is closed*/
+    if (!setjmp(*bw_try(writer))) {
+        writer->flush(writer);
+        bw_etry(writer);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(writer);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
 }
 
 static PyObject*
 BitstreamRecorder_set_endianness(bitstream_BitstreamRecorder *self,
                                  PyObject *args)
 {
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
     int little_endian;
 
     if (!PyArg_ParseTuple(args, "i", &little_endian))
@@ -2574,9 +2597,8 @@ BitstreamRecorder_set_endianness(bitstream_BitstreamRecorder *self,
         return NULL;
     }
 
-    self->bitstream->set_endianness(
-                    self->bitstream,
-                    little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    writer->set_endianness(writer,
+                           little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
     if (little_endian) {
         self->write_unsigned = bwpy_write_unsigned_le;
@@ -2624,7 +2646,7 @@ BitstreamRecorder_swap(bitstream_BitstreamRecorder *self,
                           &bitstream_BitstreamRecorderType, &to_swap))
         return NULL;
 
-    to_swap->bitstream->swap(to_swap->bitstream, self->bitstream);
+    recorder_swap(&(to_swap->bitstream), &(self->bitstream));
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -2652,10 +2674,10 @@ internal_writer(PyObject *writer)
         return writer_obj->bitstream;
     } else if (Py_TYPE(writer) == &bitstream_BitstreamRecorderType) {
         recorder_obj = (bitstream_BitstreamRecorder*)writer;
-        return recorder_obj->bitstream;
+        return (BitstreamWriter*)recorder_obj->bitstream;
     } else if (Py_TYPE(writer) == &bitstream_BitstreamAccumulatorType) {
         accumulator_obj = (bitstream_BitstreamAccumulator*)writer;
-        return accumulator_obj->bitstream;
+        return (BitstreamWriter*)accumulator_obj->bitstream;
     } else {
         return NULL;
     }
@@ -2672,13 +2694,13 @@ BitstreamRecorder_copy(bitstream_BitstreamRecorder *self,
         return NULL;
 
     if ((target = internal_writer(bitstreamwriter_obj)) != NULL) {
-        if (!setjmp(*bw_try(self->bitstream))) {
+        if (!setjmp(*bw_try((BitstreamWriter*)self->bitstream))) {
             self->bitstream->copy(self->bitstream, target);
-            bw_etry(self->bitstream);
+            bw_etry((BitstreamWriter*)self->bitstream);
             Py_INCREF(Py_None);
             return Py_None;
         } else {
-            bw_etry(self->bitstream);
+            bw_etry((BitstreamWriter*)self->bitstream);
             PyErr_SetString(PyExc_IOError, "I/O error writing stream");
             return NULL;
         }
@@ -2730,15 +2752,15 @@ BitstreamRecorder_split(bitstream_BitstreamRecorder *self,
     }
 
 
-    if (!setjmp(*bw_try(self->bitstream))) {
+    if (!setjmp(*bw_try((BitstreamWriter*)self->bitstream))) {
         total_bytes = self->bitstream->split(self->bitstream,
                                              total_bytes,
                                              target,
                                              remainder);
-        bw_etry(self->bitstream);
+        bw_etry((BitstreamWriter*)self->bitstream);
         return Py_BuildValue("I", total_bytes);
     } else {
-        bw_etry(self->bitstream);
+        bw_etry((BitstreamWriter*)self->bitstream);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
@@ -2748,6 +2770,7 @@ static PyObject*
 BitstreamRecorder_add_callback(bitstream_BitstreamRecorder *self,
                                PyObject *args)
 {
+    BitstreamWriter *writer = (BitstreamWriter*)self->bitstream;
     PyObject* callback;
 
     if (!PyArg_ParseTuple(args, "O", &callback))
@@ -2759,9 +2782,9 @@ BitstreamRecorder_add_callback(bitstream_BitstreamRecorder *self,
     }
 
     Py_INCREF(callback);
-    self->bitstream->add_callback(self->bitstream,
-                                  (bs_callback_f)BitstreamWriter_callback,
-                                  callback);
+    writer->add_callback(writer,
+                         (bs_callback_f)BitstreamWriter_callback,
+                         callback);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -2771,11 +2794,12 @@ static PyObject*
 BitstreamRecorder_pop_callback(bitstream_BitstreamRecorder *self,
                                PyObject *args)
 {
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
     struct bs_callback callback;
     PyObject* callback_obj;
 
-    if (self->bitstream->callbacks != NULL) {
-        self->bitstream->pop_callback(self->bitstream, &callback);
+    if (writer->callbacks != NULL) {
+        writer->pop_callback(writer, &callback);
         callback_obj = callback.data;
         /*decref object from stack and then incref object for return
           should have a net effect of noop*/
@@ -2790,12 +2814,13 @@ static PyObject*
 BitstreamRecorder_call_callbacks(bitstream_BitstreamRecorder *self,
                                  PyObject *args)
 {
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
     uint8_t byte;
 
     if (!PyArg_ParseTuple(args, "b", &byte))
         return NULL;
 
-    self->bitstream->call_callbacks(self->bitstream, byte);
+    writer->call_callbacks(writer, byte);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -2960,7 +2985,9 @@ BitstreamAccumulator_write(bitstream_BitstreamAccumulator *self,
 
     if (!bw_validate_unsigned_range((unsigned)count, value)) {
         return NULL;
-    } else if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
+    } else if (self->write_unsigned((BitstreamWriter*)self->bitstream,
+                                    (unsigned)count,
+                                    value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2984,7 +3011,9 @@ BitstreamAccumulator_write_signed(bitstream_BitstreamAccumulator *self,
 
     if (!bw_validate_signed_range((unsigned)count, value)) {
         return NULL;
-    } else if (self->write_signed(self->bitstream, (unsigned)count, value)) {
+    } else if (self->write_signed((BitstreamWriter*)self->bitstream,
+                                  (unsigned)count,
+                                  value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2996,6 +3025,7 @@ static PyObject*
 BitstreamAccumulator_unary(bitstream_BitstreamAccumulator *self,
                            PyObject *args)
 {
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
     int stop_bit;
     unsigned int value;
 
@@ -3007,13 +3037,14 @@ BitstreamAccumulator_unary(bitstream_BitstreamAccumulator *self,
         return NULL;
     }
 
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_unary(self->bitstream, stop_bit, value);
-        bw_etry(self->bitstream);
+    /*accumulators may fail to write if the stream is closed*/
+    if (!setjmp(*bw_try(writer))) {
+        writer->write_unary(writer, stop_bit, value);
+        bw_etry(writer);
         Py_INCREF(Py_None);
         return Py_None;
     } else {
-        bw_etry(self->bitstream);
+        bw_etry(writer);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
@@ -3023,28 +3054,34 @@ static PyObject*
 BitstreamAccumulator_write_huffman_code(bitstream_BitstreamAccumulator *self,
                                         PyObject *args)
 {
-    PyObject* huffman_tree_obj;
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
     bitstream_HuffmanTree* huffman_tree;
     int value;
 
-    if (!PyArg_ParseTuple(args, "Oi", &huffman_tree_obj, &value))
+    if (!PyArg_ParseTuple(args, "O!i",
+                          &bitstream_HuffmanTreeType,
+                          &huffman_tree,
+                          &value))
         return NULL;
 
-    if (Py_TYPE(huffman_tree_obj) != &bitstream_HuffmanTreeType) {
-        PyErr_SetString(PyExc_TypeError, "argument must a HuffmanTree object");
-        return NULL;
-    }
+    /*accumulators may fail to write if the stream is closed*/
+    if (!setjmp(*bw_try(writer))) {
+        const int result = writer->write_huffman_code(
+            writer, huffman_tree->bw_table, value);
 
-    huffman_tree = (bitstream_HuffmanTree*)huffman_tree_obj;
+        bw_etry(writer);
 
-    if (self->bitstream->write_huffman_code(self->bitstream,
-                                            huffman_tree->bw_table,
-                                            value)) {
-        PyErr_SetString(PyExc_ValueError, "invalid HuffmanTree value");
-        return NULL;
+        if (result) {
+            PyErr_SetString(PyExc_ValueError, "invalid HuffmanTree value");
+            return NULL;
+        } else {
+            Py_INCREF(Py_None);
+            return Py_None;
+        }
     } else {
-        Py_INCREF(Py_None);
-        return Py_None;
+        bw_etry(writer);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
     }
 }
 
@@ -3052,13 +3089,16 @@ static PyObject*
 BitstreamAccumulator_byte_align(bitstream_BitstreamAccumulator *self,
                                 PyObject *args)
 {
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->byte_align(self->bitstream);
-        bw_etry(self->bitstream);
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
+
+    /*accumulators may fail to write if the stream is closed*/
+    if (!setjmp(*bw_try(writer))) {
+        writer->byte_align(writer);
+        bw_etry(writer);
         Py_INCREF(Py_None);
         return Py_None;
     } else {
-        bw_etry(self->bitstream);
+        bw_etry(writer);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
@@ -3068,44 +3108,15 @@ static PyObject*
 BitstreamAccumulator_byte_aligned(bitstream_BitstreamAccumulator *self,
                                   PyObject *args)
 {
-    return PyBool_FromLong(self->bitstream->byte_aligned(self->bitstream));
-}
-
-static PyObject*
-BitstreamAccumulator_set_endianness(bitstream_BitstreamAccumulator *self,
-                                    PyObject *args)
-{
-    int little_endian;
-
-    if (!PyArg_ParseTuple(args, "i", &little_endian))
-        return NULL;
-
-    if ((little_endian != 0) && (little_endian != 1)) {
-        PyErr_SetString(PyExc_ValueError,
-                    "endianness must be 0 (big-endian) or 1 (little-endian)");
-        return NULL;
-    }
-
-    self->bitstream->set_endianness(
-                    self->bitstream,
-                    little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-
-    if (little_endian) {
-        self->write_unsigned = bwpy_write_unsigned_le;
-        self->write_signed = bwpy_write_signed_le;
-    } else {
-        self->write_unsigned = bwpy_write_unsigned_be;
-        self->write_signed = bwpy_write_signed_be;
-    }
-
-    Py_INCREF(Py_None);
-    return Py_None;
+    return PyBool_FromLong(
+        self->bitstream->byte_aligned((BitstreamWriter*)self->bitstream));
 }
 
 static PyObject*
 BitstreamAccumulator_write_bytes(bitstream_BitstreamAccumulator *self,
                                  PyObject *args)
 {
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
     const char* bytes;
 #ifdef PY_SSIZE_T_CLEAN
     Py_ssize_t bytes_len;
@@ -3116,14 +3127,14 @@ BitstreamAccumulator_write_bytes(bitstream_BitstreamAccumulator *self,
     if (!PyArg_ParseTuple(args, "s#", &bytes, &bytes_len))
         return NULL;
 
-    if (!setjmp(*bw_try(self->bitstream))) {
-        self->bitstream->write_bytes(self->bitstream,
-                                     (uint8_t*)bytes, bytes_len);
-        bw_etry(self->bitstream);
+    /*accumulators may fail to write if the stream is closed*/
+    if (!setjmp(*bw_try(writer))) {
+        writer->write_bytes(writer, (uint8_t*)bytes, bytes_len);
+        bw_etry(writer);
         Py_INCREF(Py_None);
         return Py_None;
     } else {
-        bw_etry(self->bitstream);
+        bw_etry(writer);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
@@ -3141,7 +3152,7 @@ BitstreamAccumulator_build(bitstream_BitstreamAccumulator *self,
         return NULL;
     } else if ((iterator = PyObject_GetIter(values)) == NULL) {
         return NULL;
-    } else if (bitstream_build(self->bitstream,
+    } else if (bitstream_build((BitstreamWriter*)self->bitstream,
                                self->write_unsigned,
                                self->write_signed,
                                format,
@@ -3158,7 +3169,47 @@ BitstreamAccumulator_build(bitstream_BitstreamAccumulator *self,
 static PyObject*
 BitstreamAccumulator_flush(bitstream_BitstreamAccumulator *self, PyObject *args)
 {
-    self->bitstream->flush(self->bitstream);
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
+    /*accumulators may fail to write if the stream is closed*/
+    if (!setjmp(*bw_try(writer))) {
+        writer->flush(writer);
+        bw_etry(writer);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bw_etry(writer);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return NULL;
+    }
+}
+
+static PyObject*
+BitstreamAccumulator_set_endianness(bitstream_BitstreamAccumulator *self,
+                                    PyObject *args)
+{
+    BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
+    int little_endian;
+
+    if (!PyArg_ParseTuple(args, "i", &little_endian))
+        return NULL;
+
+    if ((little_endian != 0) && (little_endian != 1)) {
+        PyErr_SetString(PyExc_ValueError,
+                    "endianness must be 0 (big-endian) or 1 (little-endian)");
+        return NULL;
+    }
+
+    writer->set_endianness(writer,
+                           little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+
+    if (little_endian) {
+        self->write_unsigned = bwpy_write_unsigned_le;
+        self->write_signed = bwpy_write_signed_le;
+    } else {
+        self->write_unsigned = bwpy_write_unsigned_be;
+        self->write_signed = bwpy_write_signed_be;
+    }
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -3252,7 +3303,7 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
     } else if ((iterator = PyObject_GetIter(values)) == NULL) {
         return NULL;
     } else {
-        BitstreamWriter* stream;
+        BitstreamRecorder* stream;
         write_object_f write_unsigned;
         write_object_f write_signed;
         if (is_little_endian) {
@@ -3264,7 +3315,7 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
             write_unsigned = bwpy_write_unsigned_be;
             write_signed = bwpy_write_signed_be;
         }
-        if (!bitstream_build(stream,
+        if (!bitstream_build((BitstreamWriter*)stream,
                              write_unsigned,
                              write_signed,
                              format,

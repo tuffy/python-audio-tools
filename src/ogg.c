@@ -155,24 +155,26 @@ write_ogg_page(BitstreamWriter *ogg_stream,
                const struct ogg_page *page)
 {
     uint32_t checksum = 0;
-    BitstreamWriter *temp = bw_open_recorder(BS_LITTLE_ENDIAN);
+    BitstreamRecorder *temp = bw_open_recorder(BS_LITTLE_ENDIAN);
     uint8_t i;
 
     /*attach checksum calculator to temporary stream*/
-    temp->add_callback(temp, (bs_callback_f)ogg_crc, &checksum);
+    temp->add_callback((BitstreamWriter*)temp,
+                       (bs_callback_f)ogg_crc,
+                       &checksum);
 
     /*dump header and data to temporary stream*/
-    write_ogg_page_header(temp, &(page->header));
+    write_ogg_page_header((BitstreamWriter*)temp, &(page->header));
     for (i = 0; i < page->header.segment_count; i++) {
-        temp->write_bytes(temp,
+        temp->write_bytes((BitstreamWriter*)temp,
                           page->segment[i],
                           page->header.segment_lengths[i]);
     }
 
     /*output header, calculated checksum and the rest to actual stream*/
-    temp->split(temp, 22, ogg_stream, temp);
+    temp->split(temp, 22, ogg_stream, (BitstreamWriter*)temp);
     ogg_stream->write(ogg_stream, 32, checksum);
-    temp->split(temp, 4, NULL, temp);
+    temp->split(temp, 4, NULL, (BitstreamWriter*)temp);
     temp->copy(temp, ogg_stream);
 
     /*remove temporary stream*/

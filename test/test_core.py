@@ -3645,8 +3645,7 @@ class Bitstream(unittest.TestCase):
     def test_edge_cases(self):
         from audiotools.bitstream import BitstreamReader
 
-        temp = tempfile.NamedTemporaryFile()
-        try:
+        with tempfile.NamedTemporaryFile() as temp:
             # write the temp file with a set of known big-endian data
             temp.write(ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
                                       128, 0, 0, 0, 127, 255, 255, 255,
@@ -3667,11 +3666,8 @@ class Bitstream(unittest.TestCase):
             self.__test_edge_reader_be__(subreader)
             subreader.close()
             reader.close()
-        finally:
-            temp.close()
 
-        temp = tempfile.NamedTemporaryFile()
-        try:
+        with tempfile.NamedTemporaryFile() as temp:
             # write the temp file with a collection of known little-endian data
             temp.write(ints_to_bytes([0, 0, 0, 0, 255, 255, 255, 255,
                                       0, 0, 0, 128, 255, 255, 255, 127,
@@ -3692,8 +3688,6 @@ class Bitstream(unittest.TestCase):
             self.__test_edge_reader_be__(subreader)
             subreader.close()
             reader.close()
-        finally:
-            temp.close()
 
         # test a bunch of big-endian values via the bitstream writer
         self.__test_edge_writer__(self.__get_edge_writer_be__,

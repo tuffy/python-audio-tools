@@ -660,7 +660,7 @@ PyTypeObject bitstream_BitstreamWriterType = {
 typedef struct {
     PyObject_HEAD
 
-    BitstreamWriter* bitstream;
+    BitstreamRecorder* bitstream;
     write_object_f write_unsigned;
     write_object_f write_signed;
 } bitstream_BitstreamRecorder;
@@ -922,7 +922,7 @@ bitstream_build(BitstreamWriter* stream,
 typedef struct {
     PyObject_HEAD
 
-    BitstreamWriter* bitstream;
+    BitstreamAccumulator* bitstream;
     write_object_f write_unsigned;
     write_object_f write_signed;
 } bitstream_BitstreamAccumulator;

@@ -1385,6 +1385,7 @@ BitstreamWriter*
 bw_open(FILE *f, bs_endianness endianness)
 {
     BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
+    bs->endianness = endianness;
     bs->type = BW_FILE;
 
     bs->output.file = f;
@@ -1399,15 +1400,15 @@ bw_open(FILE *f, bs_endianness endianness)
     switch (endianness) {
     case BS_BIG_ENDIAN:
         bs->write = bw_write_bits_f_be;
-        bs->write_64 = bw_write_bits64_f_be;
         bs->write_signed = bw_write_signed_bits_f_e_r_be;
+        bs->write_64 = bw_write_bits64_f_be;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
         bs->set_endianness = bw_set_endianness_f_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_f_le;
-        bs->write_64 = bw_write_bits64_f_le;
         bs->write_signed = bw_write_signed_bits_f_e_r_le;
+        bs->write_64 = bw_write_bits64_f_le;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
         bs->set_endianness = bw_set_endianness_f_le;
         break;
@@ -1416,19 +1417,10 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->write_bytes = bw_write_bytes_f;
     bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
-    bs->build = bw_build;
     bs->byte_aligned = bw_byte_aligned_f_e_r;
     bs->byte_align = bw_byte_align_f_e_r;
-    bs->bits_written = bw_bits_written_f_e_c;
-    bs->bytes_written = bw_bytes_written;
-    bs->reset = bw_reset_f_e_c;
-    bs->copy = bw_copy_f_e_a_c;
-    bs->split = bw_split_f_e_a_c;
-    bs->swap = bw_swap_f_e_a_c;
+    bs->build = bw_build;
     bs->flush = bw_flush_f;
-    bs->close_internal_stream = bw_close_internal_stream_f;
-    bs->free = bw_free_f_a;
-    bs->close = bw_close;
     bs->add_callback = bw_add_callback;
     bs->push_callback = bw_push_callback;
     bs->pop_callback = bw_pop_callback;
@@ -1437,6 +1429,9 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->has_mark = bw_has_mark;
     bs->rewind = bw_rewind_f;
     bs->unmark = bw_unmark_f;
+    bs->close_internal_stream = bw_close_internal_stream_f;
+    bs->free = bw_free_f;
+    bs->close = bw_close_f_e;
 
     return bs;
 }
@@ -1454,6 +1449,7 @@ bw_open_external(void* user_data,
                  ext_free_f free)
 {
     BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
+    bs->endianness = endianness;
     bs->type = BW_EXTERNAL;
 
     bs->output.external = ext_open_w(user_data,
@@ -1476,15 +1472,15 @@ bw_open_external(void* user_data,
     switch (endianness) {
     case BS_BIG_ENDIAN:
         bs->write = bw_write_bits_e_be;
-        bs->write_64 = bw_write_bits64_e_be;
         bs->write_signed = bw_write_signed_bits_f_e_r_be;
+        bs->write_64 = bw_write_bits64_e_be;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
         bs->set_endianness = bw_set_endianness_e_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_e_le;
-        bs->write_64 = bw_write_bits64_e_le;
         bs->write_signed = bw_write_signed_bits_f_e_r_le;
+        bs->write_64 = bw_write_bits64_e_le;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
         bs->set_endianness = bw_set_endianness_e_le;
         break;
@@ -1493,19 +1489,10 @@ bw_open_external(void* user_data,
     bs->write_bytes = bw_write_bytes_e;
     bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
-    bs->build = bw_build;
     bs->byte_aligned = bw_byte_aligned_f_e_r;
     bs->byte_align = bw_byte_align_f_e_r;
-    bs->bits_written = bw_bits_written_f_e_c;
-    bs->bytes_written = bw_bytes_written;
-    bs->reset = bw_reset_f_e_c;
-    bs->copy = bw_copy_f_e_a_c;
-    bs->split = bw_split_f_e_a_c;
-    bs->swap = bw_swap_f_e_a_c;
+    bs->build = bw_build;
     bs->flush = bw_flush_e;
-    bs->close_internal_stream = bw_close_internal_stream_e;
-    bs->free = bw_free_e;
-    bs->close = bw_close;
     bs->add_callback = bw_add_callback;
     bs->push_callback = bw_push_callback;
     bs->pop_callback = bw_pop_callback;
@@ -1514,15 +1501,19 @@ bw_open_external(void* user_data,
     bs->has_mark = bw_has_mark;
     bs->rewind = bw_rewind_e;
     bs->unmark = bw_unmark_e;
+    bs->close_internal_stream = bw_close_internal_stream_e;
+    bs->free = bw_free_e;
+    bs->close = bw_close_f_e;
 
     return bs;
 }
 
 
-BitstreamWriter*
+BitstreamRecorder*
 bw_open_recorder(bs_endianness endianness)
 {
-    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
+    BitstreamRecorder *bs = malloc(sizeof(BitstreamRecorder));
+    bs->endianness = endianness;
     bs->type = BW_RECORDER;
 
     bs->output.buffer = buf_new();
@@ -1537,15 +1528,15 @@ bw_open_recorder(bs_endianness endianness)
     switch (endianness) {
     case BS_BIG_ENDIAN:
         bs->write = bw_write_bits_r_be;
-        bs->write_64 = bw_write_bits64_r_be;
         bs->write_signed = bw_write_signed_bits_f_e_r_be;
+        bs->write_64 = bw_write_bits64_r_be;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
         bs->set_endianness = bw_set_endianness_r_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_r_le;
-        bs->write_64 = bw_write_bits64_r_le;
         bs->write_signed = bw_write_signed_bits_f_e_r_le;
+        bs->write_64 = bw_write_bits64_r_le;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
         bs->set_endianness = bw_set_endianness_r_le;
         break;
@@ -1554,19 +1545,10 @@ bw_open_recorder(bs_endianness endianness)
     bs->write_bytes = bw_write_bytes_r;
     bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
-    bs->build = bw_build;
     bs->byte_aligned = bw_byte_aligned_f_e_r;
     bs->byte_align = bw_byte_align_f_e_r;
-    bs->bits_written = bw_bits_written_r;
-    bs->bytes_written = bw_bytes_written;
-    bs->reset = bw_reset_r;
+    bs->build = bw_build;
     bs->flush = bw_flush_r_a_c;
-    bs->copy = bw_copy_r;
-    bs->split = bw_split_r;
-    bs->swap = bw_swap_r;
-    bs->close_internal_stream = bw_close_internal_stream_r_a;
-    bs->free = bw_free_r;
-    bs->close = bw_close;
     bs->add_callback = bw_add_callback;
     bs->push_callback = bw_push_callback;
     bs->pop_callback = bw_pop_callback;
@@ -1575,14 +1557,23 @@ bw_open_recorder(bs_endianness endianness)
     bs->has_mark = bw_has_mark;
     bs->rewind = bw_rewind_r_a;
     bs->unmark = bw_unmark_r_a;
+    bs->close_internal_stream = bw_close_internal_stream_r;
+    bs->free = bw_free_r;
+    bs->close = bw_close_r;
+    bs->bits_written = bw_bits_written_r;
+    bs->bytes_written = bw_bytes_written_r;
+    bs->reset = bw_reset_r;
+    bs->copy = bw_copy_r;
+    bs->split = bw_split_r;
 
     return bs;
 }
 
-BitstreamWriter*
+BitstreamAccumulator*
 bw_open_accumulator(bs_endianness endianness)
 {
-    BitstreamWriter *bs = malloc(sizeof(BitstreamWriter));
+    BitstreamAccumulator *bs = malloc(sizeof(BitstreamAccumulator));
+    bs->endianness = endianness;
     bs->type = BW_ACCUMULATOR;
 
     bs->output.accumulator = 0;
@@ -1595,26 +1586,17 @@ bw_open_accumulator(bs_endianness endianness)
     bs->exceptions_used = NULL;
 
     bs->write = bw_write_bits_a;
-    bs->write_bytes = bw_write_bytes_a;
     bs->write_signed = bw_write_signed_bits_a;
     bs->write_64 = bw_write_bits64_a;
     bs->write_signed_64 = bw_write_signed_bits64_a;
+    bs->write_bytes = bw_write_bytes_a;
     bs->write_unary = bw_write_unary_a;
     bs->write_huffman_code = bw_write_huffman;
-    bs->build = bw_build;
     bs->byte_aligned = bw_byte_aligned_a;
     bs->byte_align = bw_byte_align_a;
     bs->set_endianness = bw_set_endianness_a;
-    bs->bits_written = bw_bits_written_a;
-    bs->bytes_written = bw_bytes_written;
-    bs->reset = bw_reset_a;
+    bs->build = bw_build;
     bs->flush = bw_flush_r_a_c;
-    bs->copy = bw_copy_f_e_a_c;
-    bs->split = bw_split_f_e_a_c;
-    bs->swap = bw_swap_f_e_a_c;
-    bs->close_internal_stream = bw_close_internal_stream_r_a;
-    bs->free = bw_free_f_a;
-    bs->close = bw_close;
     bs->add_callback = bw_add_callback;
     bs->push_callback = bw_push_callback;
     bs->pop_callback = bw_pop_callback;
@@ -1623,6 +1605,12 @@ bw_open_accumulator(bs_endianness endianness)
     bs->has_mark = bw_has_mark;
     bs->rewind = bw_rewind_r_a;
     bs->unmark = bw_unmark_r_a;
+    bs->close_internal_stream = bw_close_internal_stream_a;
+    bs->free = bw_free_a;
+    bs->close = bw_close_a;
+    bs->bits_written = bw_bits_written_a;
+    bs->bytes_written = bw_bytes_written_a;
+    bs->reset = bw_reset_a;
 
     return bs;
 }
@@ -2060,6 +2048,7 @@ bw_byte_align_c(BitstreamWriter* bs)
 void
 bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->buffer = 0;
     bs->buffer_size = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
@@ -2074,6 +2063,7 @@ bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
 void
 bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->buffer = 0;
     bs->buffer_size = 0;
     if (endianness == BS_BIG_ENDIAN) {
@@ -2088,6 +2078,7 @@ bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness)
 void
 bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->buffer = 0;
     bs->buffer_size = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
@@ -2102,6 +2093,7 @@ bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness)
 void
 bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->buffer = 0;
     bs->buffer_size = 0;
     if (endianness == BS_BIG_ENDIAN) {
@@ -2116,6 +2108,7 @@ bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness)
 void
 bw_set_endianness_e_be(BitstreamWriter* bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->buffer = 0;
     bs->buffer_size = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
@@ -2130,6 +2123,7 @@ bw_set_endianness_e_be(BitstreamWriter* bs, bs_endianness endianness)
 void
 bw_set_endianness_e_le(BitstreamWriter* bs, bs_endianness endianness)
 {
+    bs->endianness = endianness;
     bs->buffer = 0;
     bs->buffer_size = 0;
     if (endianness == BS_BIG_ENDIAN) {
@@ -2146,6 +2140,7 @@ void
 bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness)
 {
     /*swapping endianness results in a byte alignment*/
+    bs->endianness = endianness;
     bw_byte_align_a(bs);
 }
 
@@ -2231,41 +2226,32 @@ bw_build(struct BitstreamWriter_s* stream, const char* format, ...)
 
 
 unsigned int
-bw_bits_written_f_e_c(const BitstreamWriter* bs)
-{
-    /*actual file writing doesn't keep track of bits written
-      since the total could be extremely large*/
-    return 0;
-}
-
-unsigned int
-bw_bits_written_r(const BitstreamWriter* bs)
+bw_bits_written_r(const BitstreamRecorder* bs)
 {
     return (unsigned int)((buf_window_size(bs->output.buffer) * 8) +
                           bs->buffer_size);
 }
 
 unsigned int
-bw_bits_written_a(const BitstreamWriter* bs)
+bw_bits_written_a(const BitstreamAccumulator* bs)
 {
     return bs->output.accumulator;
 }
 
 unsigned int
-bw_bytes_written(const BitstreamWriter* bs)
+bw_bytes_written_r(const BitstreamRecorder* bs)
+{
+    return bs->bits_written(bs) / 8;
+}
+
+unsigned int
+bw_bytes_written_a(const BitstreamAccumulator* bs)
 {
     return bs->bits_written(bs) / 8;
 }
 
 void
-bw_reset_f_e_c(BitstreamWriter* bs)
-{
-    /*don't call reset() on a non-recorder, non-accumulator*/
-    assert(0);
-}
-
-void
-bw_reset_r(BitstreamWriter* bs)
+bw_reset_r(BitstreamRecorder* bs)
 {
     bs->buffer = 0;
     bs->buffer_size = 0;
@@ -2273,7 +2259,7 @@ bw_reset_r(BitstreamWriter* bs)
 }
 
 void
-bw_reset_a(BitstreamWriter* bs)
+bw_reset_a(BitstreamAccumulator* bs)
 {
     bs->output.accumulator = 0;
 }
@@ -2302,14 +2288,7 @@ bw_flush_e(BitstreamWriter* bs)
 
 
 void
-bw_copy_f_e_a_c(const BitstreamWriter* bs, BitstreamWriter* target)
-{
-    /*don't call copy() from a non-recorder*/
-    assert(0);
-}
-
-void
-bw_copy_r(const BitstreamWriter* bs, BitstreamWriter* target)
+bw_copy_r(const BitstreamRecorder* bs, BitstreamWriter* target)
 {
     /*dump all the bytes from our internal buffer*/
     target->write_bytes(target,
@@ -2326,18 +2305,7 @@ bw_copy_r(const BitstreamWriter* bs, BitstreamWriter* target)
 
 
 unsigned
-bw_split_f_e_a_c(const BitstreamWriter* bs,
-                 unsigned bytes,
-                 BitstreamWriter* target,
-                 BitstreamWriter* remainder)
-{
-    /*don't call split() from a non-recorder*/
-    assert(0);
-    return 0;
-}
-
-unsigned
-bw_split_r(const BitstreamWriter* bs,
+bw_split_r(const BitstreamRecorder* bs,
            unsigned bytes,
            BitstreamWriter* target,
            BitstreamWriter* remainder)
@@ -2353,7 +2321,7 @@ bw_split_r(const BitstreamWriter* bs,
     }
 
     if (remainder != NULL) {
-        if (remainder != bs) {
+        if (remainder != (BitstreamWriter*)bs) {
             /*then, dump the remaining bytes from source to "remaining"
               if it is a separate writer*/
             const unsigned to_remainder = buffer_size - to_target;
@@ -2422,7 +2390,6 @@ bw_close_methods(BitstreamWriter* bs)
     bs->byte_aligned = bw_byte_aligned_c;
     bs->byte_align = bw_byte_align_c;
     bs->set_endianness = bw_set_endianness_c;
-    bs->close_internal_stream = bw_close_internal_stream_c;
 }
 
 void
@@ -2434,12 +2401,25 @@ bw_close_internal_stream_f(BitstreamWriter* bs)
 
     /*swap write methods with closed methods*/
     bw_close_methods(bs);
+    bs->close_internal_stream = bw_close_internal_stream_cf;
 }
 
 void
-bw_close_internal_stream_r_a(BitstreamWriter* bs)
+bw_close_internal_stream_cf(BitstreamWriter* bs)
 {
-    bw_close_methods(bs);
+    return;
+}
+
+void
+bw_close_internal_stream_r(BitstreamRecorder* bs)
+{
+    bw_close_methods((BitstreamWriter*)bs);
+}
+
+void
+bw_close_internal_stream_a(BitstreamAccumulator* bs)
+{
+    bw_close_methods((BitstreamWriter*)bs);
 }
 
 void
@@ -2451,18 +2431,12 @@ bw_close_internal_stream_e(BitstreamWriter* bs)
 
     /*swap read methods with closed methods*/
     bw_close_methods(bs);
+    bs->close_internal_stream = bw_close_internal_stream_cf;
 }
 
 
 void
-bw_close_internal_stream_c(BitstreamWriter* bs)
-{
-    return;
-}
-
-
-void
-bw_free_f_a(BitstreamWriter* bs)
+bw_free_f(BitstreamWriter* bs)
 {
     struct bs_exception *e_node;
     struct bs_exception *e_next;
@@ -2499,13 +2473,19 @@ bw_free_f_a(BitstreamWriter* bs)
 }
 
 void
-bw_free_r(BitstreamWriter* bs)
+bw_free_r(BitstreamRecorder* bs)
 {
     /*deallocate buffer*/
     buf_close(bs->output.buffer);
 
     /*perform additional deallocations on rest of struct*/
-    bw_free_f_a(bs);
+    bw_free_f((BitstreamWriter*)bs);
+}
+
+void
+bw_free_a(BitstreamAccumulator* bs)
+{
+    bw_free_f((BitstreamWriter*)bs);
 }
 
 void
@@ -2515,24 +2495,35 @@ bw_free_e(BitstreamWriter* bs)
     ext_free_w(bs->output.external);
 
     /*perform additional deallocations on rest of struct*/
-    bw_free_f_a(bs);
+    bw_free_f(bs);
 }
 
 
 void
-bw_close(BitstreamWriter* bs)
+bw_close_f_e(BitstreamWriter* bs)
 {
     bs->close_internal_stream(bs);
     bs->free(bs);
 }
 
+void
+bw_close_r(BitstreamRecorder* bs)
+{
+    bs->close_internal_stream(bs);
+    bs->free(bs);
+}
+void
+bw_close_a(BitstreamAccumulator* bs)
+{
+    bs->close_internal_stream(bs);
+    bs->free(bs);
+}
 
 int
 bw_has_mark(const BitstreamWriter *bs, int mark_id)
 {
     return (bw_get_mark(bs->mark_stacks, mark_id) != NULL);
 }
-
 
 void
 bw_mark_f(BitstreamWriter *bs, int mark_id)
@@ -2703,6 +2694,13 @@ bw_read(BitstreamWriter* source, uint8_t* buffer, unsigned bytes)
     return buf_read(source->output.buffer, buffer, bytes);
 }
 
+void
+recorder_swap(BitstreamRecorder **a, BitstreamRecorder **b)
+{
+    BitstreamRecorder *c = *a;
+    *a = *b;
+    *b = c;
+}
 
 const char*
 bs_parse_format(const char *format,
@@ -3359,31 +3357,38 @@ test_edge_reader_le(BitstreamReader* reader);
 void
 test_edge_writer(BitstreamWriter* (*get_writer)(void),
                  void (*validate_writer)(BitstreamWriter*));
+void
+test_edge_recorder(BitstreamRecorder* (*get_writer)(void),
+                   void (*validate_writer)(BitstreamRecorder*));
+void
+test_edge_accumulator(BitstreamAccumulator* (*get_writer)(void),
+                      void (*validate_writer)(BitstreamAccumulator*));
+
 BitstreamWriter*
 get_edge_writer_be(void);
-BitstreamWriter*
+BitstreamRecorder*
 get_edge_recorder_be(void);
-BitstreamWriter*
+BitstreamAccumulator*
 get_edge_accumulator_be(void);
 
 void
 validate_edge_writer_be(BitstreamWriter* writer);
 void
-validate_edge_recorder_be(BitstreamWriter* recorder);
+validate_edge_recorder_be(BitstreamRecorder* recorder);
 void
-validate_edge_accumulator(BitstreamWriter* accumulator);
+validate_edge_accumulator(BitstreamAccumulator* accumulator);
 
 BitstreamWriter*
 get_edge_writer_le(void);
-BitstreamWriter*
+BitstreamRecorder*
 get_edge_recorder_le(void);
-BitstreamWriter*
+BitstreamAccumulator*
 get_edge_accumulator_le(void);
 
 void
 validate_edge_writer_le(BitstreamWriter* writer);
 void
-validate_edge_recorder_le(BitstreamWriter* recorder);
+validate_edge_recorder_le(BitstreamRecorder* recorder);
 
 /*this uses "temp_filename" as an output file and opens it separately*/
 void
@@ -3392,15 +3397,19 @@ test_writer(bs_endianness endianness);
 void
 test_rec_copy_dumps(bs_endianness endianness,
                     BitstreamWriter* writer,
-                    BitstreamWriter* recorder);
+                    BitstreamRecorder* recorder);
 
 void
 test_rec_split_dumps(bs_endianness endianness,
                      BitstreamWriter* writer,
-                     BitstreamWriter* recorder);
+                     BitstreamRecorder* recorder);
 
 void
 test_writer_close_errors(BitstreamWriter* writer);
+void
+test_recorder_close_errors(BitstreamRecorder* recorder);
+void
+test_accumulator_close_errors(BitstreamAccumulator* accumulator);
 
 void
 test_writer_marks(BitstreamWriter* writer);
@@ -4856,8 +4865,9 @@ void
 test_writer(bs_endianness endianness) {
     FILE* output_file;
     BitstreamWriter* writer;
-    BitstreamWriter* sub_writer;
-    BitstreamWriter* sub_sub_writer;
+    BitstreamAccumulator* accumulator;
+    BitstreamRecorder* sub_writer;
+    BitstreamRecorder* sub_sub_writer;
 
     int i;
     write_check checks[] = {writer_perform_write,
@@ -4978,7 +4988,7 @@ test_writer(bs_endianness endianness) {
         writer = bw_open(output_file, endianness);
         sub_writer = bw_open_recorder(endianness);
         assert(sub_writer->bits_written(sub_writer) == 0);
-        checks[i](sub_writer, endianness);
+        checks[i]((BitstreamWriter*)sub_writer, endianness);
         sub_writer->copy(sub_writer, writer);
         fflush(output_file);
         check_output_file();
@@ -5008,60 +5018,44 @@ test_writer(bs_endianness endianness) {
     writer->close(writer);
 
     sub_writer = bw_open_recorder(endianness);
-    test_writer_close_errors(sub_writer);
-    sub_writer->set_endianness(sub_writer, endianness == BS_BIG_ENDIAN ?
+    test_recorder_close_errors(sub_writer);
+    sub_writer->set_endianness((BitstreamWriter*)sub_writer,
+                               endianness == BS_BIG_ENDIAN ?
                                BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-    test_writer_close_errors(sub_writer);
+    test_recorder_close_errors(sub_writer);
     sub_writer->free(sub_writer);
 
     /*perform accumulator-based checks*/
     for (i = 0; i < total_checks; i++) {
-        writer = bw_open_accumulator(endianness);
-        assert(writer->bits_written(writer) == 0);
-        checks[i](writer, endianness);
-        assert(writer->bits_written(writer) == 32);
-        writer->close(writer);
+        accumulator = bw_open_accumulator(endianness);
+        assert(accumulator->bits_written(accumulator) == 0);
+        checks[i]((BitstreamWriter*)accumulator, endianness);
+        assert(accumulator->bits_written(accumulator) == 32);
+        accumulator->close(accumulator);
     }
 
-    writer = bw_open_accumulator(endianness);
-    test_writer_close_errors(writer);
-    writer->set_endianness(writer, endianness == BS_BIG_ENDIAN ?
-                           BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-    test_writer_close_errors(writer);
-    writer->free(writer);
-
-    /*check swap records*/
-    output_file = fopen(temp_filename, "wb");
-    writer = bw_open(output_file, endianness);
-    sub_writer = bw_open_recorder(endianness);
-    sub_sub_writer = bw_open_recorder(endianness);
-    sub_sub_writer->write(sub_sub_writer, 8, 0xB1);
-    sub_sub_writer->write(sub_sub_writer, 8, 0xED);
-    sub_writer->write(sub_writer, 8, 0x3B);
-    sub_writer->write(sub_writer, 8, 0xC1);
-    sub_writer->swap(sub_writer, sub_sub_writer);
-    sub_writer->copy(sub_writer, writer);
-    sub_sub_writer->copy(sub_sub_writer, writer);
-    fflush(output_file);
-    check_output_file();
-    writer->close(writer);
-    sub_writer->close(sub_writer);
-    sub_sub_writer->close(sub_sub_writer);
+    accumulator = bw_open_accumulator(endianness);
+    test_accumulator_close_errors(accumulator);
+    accumulator->set_endianness((BitstreamWriter*)accumulator,
+                                endianness == BS_BIG_ENDIAN ?
+                                BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    test_accumulator_close_errors(accumulator);
+    accumulator->free(accumulator);
 
     /*check recorder reset*/
     output_file = fopen(temp_filename, "wb");
     writer = bw_open(output_file, endianness);
     sub_writer = bw_open_recorder(endianness);
-    sub_writer->write(sub_writer, 8, 0xAA);
-    sub_writer->write(sub_writer, 8, 0xBB);
-    sub_writer->write(sub_writer, 8, 0xCC);
-    sub_writer->write(sub_writer, 8, 0xDD);
-    sub_writer->write(sub_writer, 8, 0xEE);
+    sub_writer->write((BitstreamWriter*)sub_writer, 8, 0xAA);
+    sub_writer->write((BitstreamWriter*)sub_writer, 8, 0xBB);
+    sub_writer->write((BitstreamWriter*)sub_writer, 8, 0xCC);
+    sub_writer->write((BitstreamWriter*)sub_writer, 8, 0xDD);
+    sub_writer->write((BitstreamWriter*)sub_writer, 8, 0xEE);
     sub_writer->reset(sub_writer);
-    sub_writer->write(sub_writer, 8, 0xB1);
-    sub_writer->write(sub_writer, 8, 0xED);
-    sub_writer->write(sub_writer, 8, 0x3B);
-    sub_writer->write(sub_writer, 8, 0xC1);
+    sub_writer->write((BitstreamWriter*)sub_writer, 8, 0xB1);
+    sub_writer->write((BitstreamWriter*)sub_writer, 8, 0xED);
+    sub_writer->write((BitstreamWriter*)sub_writer, 8, 0x3B);
+    sub_writer->write((BitstreamWriter*)sub_writer, 8, 0xC1);
     sub_writer->copy(sub_writer, writer);
     fflush(output_file);
     sub_writer->close(sub_writer);
@@ -5126,14 +5120,21 @@ test_writer(bs_endianness endianness) {
 
     /*check recorder-based callback functions*/
     for (i = 0; i < total_checks; i++) {
+        BitstreamRecorder *recorder;
         sums[0] = sums[1] = 0;
         sums[2] = 1;
-        writer = bw_open_recorder(endianness);
-        writer->add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
-        writer->add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
-        writer->add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
-        checks[i](writer, endianness);
-        writer->close(writer);
+        recorder = bw_open_recorder(endianness);
+        recorder->add_callback((BitstreamWriter*)recorder,
+                               (bs_callback_f)func_add_one,
+                               &(sums[0]));
+        recorder->add_callback((BitstreamWriter*)recorder,
+                               (bs_callback_f)func_add_two,
+                               &(sums[1]));
+        recorder->add_callback((BitstreamWriter*)recorder,
+                               (bs_callback_f)func_mult_three,
+                               &(sums[2]));
+        checks[i]((BitstreamWriter*)recorder, endianness);
+        recorder->close(recorder);
         assert(sums[0] == 4);
         assert(sums[1] == 8);
         assert(sums[2] == 81);
@@ -5141,14 +5142,21 @@ test_writer(bs_endianness endianness) {
 
     /*check accumulator-based callback functions*/
     for (i = 0; i < total_checks; i++) {
+        BitstreamAccumulator *accumulator;
         sums[0] = sums[1] = 0;
         sums[2] = 1;
-        writer = bw_open_accumulator(endianness);
-        writer->add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
-        writer->add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
-        writer->add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
-        checks[i](writer, endianness);
-        writer->close(writer);
+        accumulator = bw_open_accumulator(endianness);
+        accumulator->add_callback((BitstreamWriter*)accumulator,
+                                  (bs_callback_f)func_add_one,
+                                  &(sums[0]));
+        accumulator->add_callback((BitstreamWriter*)accumulator,
+                                  (bs_callback_f)func_add_two,
+                                  &(sums[1]));
+        accumulator->add_callback((BitstreamWriter*)accumulator,
+                                  (bs_callback_f)func_mult_three,
+                                  &(sums[2]));
+        checks[i]((BitstreamWriter*)accumulator, endianness);
+        accumulator->close(accumulator);
 
         /*this is correct
           for speed reasons, accumulators don't call any callback functions
@@ -5192,10 +5200,10 @@ test_writer(bs_endianness endianness) {
         sub_sub_writer = bw_open_recorder(endianness);
         assert(sub_writer->bits_written(sub_writer) == 0);
         assert(sub_writer->bits_written(sub_sub_writer) == 0);
-        checks[i](sub_sub_writer, endianness);
+        checks[i]((BitstreamWriter*)sub_sub_writer, endianness);
         assert(sub_writer->bits_written(sub_writer) == 0);
         assert(sub_writer->bits_written(sub_sub_writer) == 32);
-        sub_sub_writer->copy(sub_sub_writer, sub_writer);
+        sub_sub_writer->copy(sub_sub_writer, (BitstreamWriter*)sub_writer);
         assert(sub_writer->bits_written(sub_writer) == 32);
         assert(sub_writer->bits_written(sub_sub_writer) == 32);
         sub_writer->copy(sub_writer, writer);
@@ -5209,17 +5217,17 @@ test_writer(bs_endianness endianness) {
 
     /*check that recorder->accumulator works*/
     for (i = 0; i < total_checks; i++) {
-        writer = bw_open_accumulator(endianness);
+        accumulator = bw_open_accumulator(endianness);
         sub_writer = bw_open_recorder(endianness);
-        assert(writer->bits_written(writer) == 0);
+        assert(accumulator->bits_written(accumulator) == 0);
         assert(sub_writer->bits_written(sub_writer) == 0);
-        checks[i](sub_writer, endianness);
-        assert(writer->bits_written(writer) == 0);
+        checks[i]((BitstreamWriter*)sub_writer, endianness);
+        assert(accumulator->bits_written(accumulator) == 0);
         assert(sub_writer->bits_written(sub_writer) == 32);
-        sub_writer->copy(sub_writer, writer);
-        assert(writer->bits_written(writer) == 32);
+        sub_writer->copy(sub_writer, (BitstreamWriter*)accumulator);
+        assert(accumulator->bits_written(accumulator) == 32);
         assert(sub_writer->bits_written(sub_writer) == 32);
-        writer->close(writer);
+        accumulator->close(accumulator);
         sub_writer->close(sub_writer);
     }
 
@@ -5256,71 +5264,75 @@ test_writer(bs_endianness endianness) {
     fclose(output_file);
 }
 
-void
-test_writer_close_errors(BitstreamWriter* writer)
-{
-    writer->close_internal_stream(writer);
-
-    if (!setjmp(*bw_try(writer))) {
-        writer->write(writer, 2, 1);
-        assert(0);
-    } else {
-        bw_etry(writer);
-    }
-
-    if (!setjmp(*bw_try(writer))) {
-        writer->write_signed(writer, 3, 1);
-        assert(0);
-    } else {
-        bw_etry(writer);
-    }
-
-    if (!setjmp(*bw_try(writer))) {
-        writer->write_64(writer, 4, 1);
-        assert(0);
-    } else {
-        bw_etry(writer);
-    }
-
-    if (!setjmp(*bw_try(writer))) {
-        writer->write_signed_64(writer, 5, 1);
-        assert(0);
-    } else {
-        bw_etry(writer);
-    }
-
-    if (!setjmp(*bw_try(writer))) {
-        writer->write_bytes(writer, (uint8_t*)"abcde", 5);
-        assert(0);
-    } else {
-        bw_etry(writer);
-    }
-
-    if (!setjmp(*bw_try(writer))) {
-        writer->byte_align(writer);
-        assert(0);
-    } else {
-        bw_etry(writer);
-    }
-
-    if (!setjmp(*bw_try(writer))) {
-        writer->write_unary(writer, 0, 5);
-        assert(0);
-    } else {
-        bw_etry(writer);
-    }
-
-    if (!setjmp(*bw_try(writer))) {
-        writer->build(writer, "1u", 1);
-        assert(0);
-    } else {
-        bw_etry(writer);
-    }
-
-    assert(writer->bits_written(writer) == 0);
-
-    writer->flush(writer);
+#define TEST_CLOSE_ERRORS(FUNC_NAME, CLASS)    \
+void                                           \
+FUNC_NAME(CLASS main_writer)                   \
+{                                              \
+    BitstreamWriter *writer;                   \
+    main_writer->close_internal_stream(main_writer); \
+    writer = (BitstreamWriter*)main_writer;    \
+                                               \
+    if (!setjmp(*bw_try(writer))) {            \
+        writer->write(writer, 2, 1);           \
+        assert(0);                             \
+    } else {                                   \
+        bw_etry(writer);                       \
+    }                                          \
+                                               \
+    if (!setjmp(*bw_try(writer))) {            \
+        writer->write_signed(writer, 3, 1);    \
+        assert(0);                             \
+    } else {                                   \
+        bw_etry(writer);                       \
+    }                                          \
+                                               \
+    if (!setjmp(*bw_try(writer))) {            \
+        writer->write_64(writer, 4, 1);        \
+        assert(0);                             \
+    } else {                                   \
+        bw_etry(writer);                       \
+    }                                          \
+                                               \
+    if (!setjmp(*bw_try(writer))) {            \
+        writer->write_signed_64(writer, 5, 1); \
+        assert(0);                             \
+    } else {                                   \
+        bw_etry(writer);                       \
+    }                                          \
+                                               \
+    if (!setjmp(*bw_try(writer))) {            \
+        writer->write_bytes(writer, (uint8_t*)"abcde", 5); \
+        assert(0);                             \
+    } else {                                   \
+        bw_etry(writer);                       \
+    }                                          \
+                                               \
+    if (!setjmp(*bw_try(writer))) {            \
+        writer->byte_align(writer);            \
+        assert(0);                             \
+    } else {                                   \
+        bw_etry(writer);                       \
+    }                                          \
+                                               \
+    if (!setjmp(*bw_try(writer))) {            \
+        writer->write_unary(writer, 0, 5);     \
+        assert(0);                             \
+    } else {                                   \
+        bw_etry(writer);                       \
+    }                                          \
+                                               \
+    if (!setjmp(*bw_try(writer))) {            \
+        writer->build(writer, "1u", 1);        \
+        assert(0);                             \
+    } else {                                   \
+        bw_etry(writer);                       \
+    }                                          \
+                                               \
+    writer->flush(writer);                     \
 }
+TEST_CLOSE_ERRORS(test_writer_close_errors, BitstreamWriter*)
+TEST_CLOSE_ERRORS(test_recorder_close_errors, BitstreamRecorder*)
+TEST_CLOSE_ERRORS(test_accumulator_close_errors, BitstreamAccumulator*)
 
 void
 writer_perform_write(BitstreamWriter* writer, bs_endianness endianness) {
@@ -5759,13 +5771,13 @@ void check_alignment_r(const align_check* check,
                        bs_endianness endianness)
 {
     FILE* f = fopen(temp_filename, "wb");
-    BitstreamWriter* rec = bw_open_recorder(endianness);
+    BitstreamRecorder* rec = bw_open_recorder(endianness);
     BitstreamWriter* bw = bw_open(f, endianness);
     BitstreamReader* br;
     struct stat s;
 
-    rec->write(rec, check->bits, check->value);
-    rec->byte_align(rec);
+    rec->write((BitstreamWriter*)rec, check->bits, check->value);
+    rec->byte_align((BitstreamWriter*)rec);
     rec->copy(rec, bw);
     rec->close(rec);
     bw->close(bw);
@@ -5782,10 +5794,10 @@ void check_alignment_r(const align_check* check,
 void check_alignment_a(const align_check* check,
                        bs_endianness endianness)
 {
-    BitstreamWriter* bw = bw_open_accumulator(endianness);
+    BitstreamAccumulator* bw = bw_open_accumulator(endianness);
 
-    bw->write(bw, check->bits, check->value);
-    bw->byte_align(bw);
+    bw->write((BitstreamWriter*)bw, check->bits, check->value);
+    bw->byte_align((BitstreamWriter*)bw);
 
     assert(bw->bits_written(bw) == (check->resulting_bytes * 8));
     assert(bw->bytes_written(bw) == check->resulting_bytes);
@@ -5882,19 +5894,19 @@ void test_edge_cases(void) {
     test_edge_writer(get_edge_writer_be, validate_edge_writer_be);
 
     /*test a bunch of known big-endian values via the bitstream recorder*/
-    test_edge_writer(get_edge_recorder_be, validate_edge_recorder_be);
+    test_edge_recorder(get_edge_recorder_be, validate_edge_recorder_be);
 
     /*test a bunch of known big-endian values via the bitstream accumulator*/
-    test_edge_writer(get_edge_accumulator_be, validate_edge_accumulator);
+    test_edge_accumulator(get_edge_accumulator_be, validate_edge_accumulator);
 
     /*test a bunch of known little-endian values via the bitstream writer*/
     test_edge_writer(get_edge_writer_le, validate_edge_writer_le);
 
     /*test a bunch of known little-endian values via the bitstream recorder*/
-    test_edge_writer(get_edge_recorder_le, validate_edge_recorder_le);
+    test_edge_recorder(get_edge_recorder_le, validate_edge_recorder_le);
 
     /*test a bunch of known little-endian values via the bitstream accumulator*/
-    test_edge_writer(get_edge_accumulator_le, validate_edge_accumulator);
+    test_edge_accumulator(get_edge_accumulator_le, validate_edge_accumulator);
 }
 
 void
@@ -6050,83 +6062,94 @@ test_edge_reader_le(BitstreamReader* reader)
     reader->unmark(reader, M_LE_EDGE);
 }
 
-void
-test_edge_writer(BitstreamWriter* (*get_writer)(void),
-                 void (*validate_writer)(BitstreamWriter*))
-{
-    BitstreamWriter* writer;
-
-    unsigned int u_val_1;
-    unsigned int u_val_2;
-    unsigned int u_val_3;
-    unsigned int u_val_4;
-    int s_val_1;
-    int s_val_2;
-    int s_val_3;
-    int s_val_4;
-    uint64_t u_val64_1;
-    uint64_t u_val64_2;
-    uint64_t u_val64_3;
-    uint64_t u_val64_4;
-    int64_t s_val64_1;
-    int64_t s_val64_2;
-    int64_t s_val64_3;
-    int64_t s_val64_4;
-
-    /*try the unsigned 32 and 64 bit values*/
-    writer = get_writer();
-    writer->write(writer, 32, 0);
-    writer->write(writer, 32, 4294967295UL);
-    writer->write(writer, 32, 2147483648UL);
-    writer->write(writer, 32, 2147483647UL);
-    writer->write_64(writer, 64, 0);
-    writer->write_64(writer, 64, 0xFFFFFFFFFFFFFFFFULL);
-    writer->write_64(writer, 64, 9223372036854775808ULL);
-    writer->write_64(writer, 64, 9223372036854775807ULL);
-    validate_writer(writer);
-
-    /*try the signed 32 and 64 bit values*/
-    writer = get_writer();
-    writer->write_signed(writer, 32, 0);
-    writer->write_signed(writer, 32, -1);
-    writer->write_signed(writer, 32, -2147483648LL);
-    writer->write_signed(writer, 32, 2147483647LL);
-    writer->write_signed_64(writer, 64, 0);
-    writer->write_signed_64(writer, 64, -1);
-    writer->write_signed_64(writer, 64, (9223372036854775808ULL * -1));
-    writer->write_signed_64(writer, 64, 9223372036854775807LL);
-    validate_writer(writer);
-
-    /*try the unsigned values via build()*/
-    writer = get_writer();
-    u_val_1 = 0;
-    u_val_2 = 4294967295UL;
-    u_val_3 = 2147483648UL;
-    u_val_4 = 2147483647UL;
-    u_val64_1 = 0;
-    u_val64_2 = 0xFFFFFFFFFFFFFFFFULL;
-    u_val64_3 = 9223372036854775808ULL;
-    u_val64_4 = 9223372036854775807ULL;
-    writer->build(writer, "32u 32u 32u 32u 64U 64U 64U 64U",
-                  u_val_1, u_val_2, u_val_3, u_val_4,
-                  u_val64_1, u_val64_2, u_val64_3, u_val64_4);
-    validate_writer(writer);
-
-    /*try the signed values via build()*/
-    writer = get_writer();
-    s_val_1 = 0;
-    s_val_2 = -1;
-    s_val_3 = -2147483648LL;
-    s_val_4 = 2147483647LL;
-    s_val64_1 = 0;
-    s_val64_2 = -1;
-    s_val64_3 = (9223372036854775808ULL * -1);
-    s_val64_4 = 9223372036854775807LL;
-    writer->build(writer, "32s 32s 32s 32s 64S 64S 64S 64S",
-                  s_val_1, s_val_2, s_val_3, s_val_4,
-                  s_val64_1, s_val64_2, s_val64_3, s_val64_4);
-    validate_writer(writer);
+#define TEST_WRITER(FUNC_NAME, CLASS)                                   \
+void                                                                    \
+FUNC_NAME(CLASS (*get_writer)(void),                                    \
+                 void (*validate_writer)(CLASS))                        \
+{                                                                       \
+    CLASS writer;                                                       \
+                                                                        \
+    unsigned int u_val_1;                                               \
+    unsigned int u_val_2;                                               \
+    unsigned int u_val_3;                                               \
+    unsigned int u_val_4;                                               \
+    int s_val_1;                                                        \
+    int s_val_2;                                                        \
+    int s_val_3;                                                        \
+    int s_val_4;                                                        \
+    uint64_t u_val64_1;                                                 \
+    uint64_t u_val64_2;                                                 \
+    uint64_t u_val64_3;                                                 \
+    uint64_t u_val64_4;                                                 \
+    int64_t s_val64_1;                                                  \
+    int64_t s_val64_2;                                                  \
+    int64_t s_val64_3;                                                  \
+    int64_t s_val64_4;                                                  \
+                                                                        \
+    /*try the unsigned 32 and 64 bit values*/                           \
+    writer = get_writer();                                              \
+    writer->write((BitstreamWriter*)writer, 32, 0);                     \
+    writer->write((BitstreamWriter*)writer, 32, 4294967295UL);          \
+    writer->write((BitstreamWriter*)writer, 32, 2147483648UL);          \
+    writer->write((BitstreamWriter*)writer, 32, 2147483647UL);          \
+    writer->write_64((BitstreamWriter*)writer, 64, 0);                  \
+    writer->write_64((BitstreamWriter*)writer,                          \
+                     64, 0xFFFFFFFFFFFFFFFFULL);                        \
+    writer->write_64((BitstreamWriter*)writer,                          \
+                     64, 9223372036854775808ULL);                       \
+    writer->write_64((BitstreamWriter*)writer,                          \
+                     64, 9223372036854775807ULL);                       \
+    validate_writer(writer);                                            \
+                                                                        \
+    /*try the signed 32 and 64 bit values*/                             \
+    writer = get_writer();                                              \
+    writer->write_signed((BitstreamWriter*)writer, 32, 0);              \
+    writer->write_signed((BitstreamWriter*)writer, 32, -1);             \
+    writer->write_signed((BitstreamWriter*)writer, 32, -2147483648LL);  \
+    writer->write_signed((BitstreamWriter*)writer, 32, 2147483647LL);   \
+    writer->write_signed_64((BitstreamWriter*)writer, 64, 0);           \
+    writer->write_signed_64((BitstreamWriter*)writer, 64, -1);          \
+    writer->write_signed_64((BitstreamWriter*)writer,                   \
+                            64, (9223372036854775808ULL * -1));         \
+    writer->write_signed_64((BitstreamWriter*)writer,                   \
+                            64, 9223372036854775807LL);                 \
+    validate_writer(writer);                                            \
+                                                                        \
+    /*try the unsigned values via build()*/                             \
+    writer = get_writer();                                              \
+    u_val_1 = 0;                                                        \
+    u_val_2 = 4294967295UL;                                             \
+    u_val_3 = 2147483648UL;                                             \
+    u_val_4 = 2147483647UL;                                             \
+    u_val64_1 = 0;                                                      \
+    u_val64_2 = 0xFFFFFFFFFFFFFFFFULL;                                  \
+    u_val64_3 = 9223372036854775808ULL;                                 \
+    u_val64_4 = 9223372036854775807ULL;                                 \
+    writer->build((BitstreamWriter*)writer,                             \
+                  "32u 32u 32u 32u 64U 64U 64U 64U",                    \
+                  u_val_1, u_val_2, u_val_3, u_val_4,                   \
+                  u_val64_1, u_val64_2, u_val64_3, u_val64_4);          \
+    validate_writer(writer);                                            \
+                                                                        \
+    /*try the signed values via build()*/                               \
+    writer = get_writer();                                              \
+    s_val_1 = 0;                                                        \
+    s_val_2 = -1;                                                       \
+    s_val_3 = -2147483648LL;                                            \
+    s_val_4 = 2147483647LL;                                             \
+    s_val64_1 = 0;                                                      \
+    s_val64_2 = -1;                                                     \
+    s_val64_3 = (9223372036854775808ULL * -1);                          \
+    s_val64_4 = 9223372036854775807LL;                                  \
+    writer->build((BitstreamWriter*)writer,                             \
+                  "32s 32s 32s 32s 64S 64S 64S 64S",                    \
+                  s_val_1, s_val_2, s_val_3, s_val_4,                   \
+                  s_val64_1, s_val64_2, s_val64_3, s_val64_4);          \
+    validate_writer(writer);                                            \
 }
+TEST_WRITER(test_edge_writer, BitstreamWriter*)
+TEST_WRITER(test_edge_recorder, BitstreamRecorder*)
+TEST_WRITER(test_edge_accumulator, BitstreamAccumulator*)
 
 BitstreamWriter*
 get_edge_writer_be(void)
@@ -6134,13 +6157,13 @@ get_edge_writer_be(void)
     return bw_open(fopen(temp_filename, "wb"), BS_BIG_ENDIAN);
 }
 
-BitstreamWriter*
+BitstreamRecorder*
 get_edge_recorder_be(void)
 {
     return bw_open_recorder(BS_BIG_ENDIAN);
 }
 
-BitstreamWriter*
+BitstreamAccumulator*
 get_edge_accumulator_be(void)
 {
     return bw_open_accumulator(BS_BIG_ENDIAN);
@@ -6167,7 +6190,7 @@ validate_edge_writer_be(BitstreamWriter* writer)
 }
 
 void
-validate_edge_recorder_be(BitstreamWriter* recorder)
+validate_edge_recorder_be(BitstreamRecorder* recorder)
 {
     BitstreamWriter* writer;
     const static uint8_t big_endian[] =
@@ -6193,7 +6216,7 @@ validate_edge_recorder_be(BitstreamWriter* recorder)
 }
 
 void
-validate_edge_accumulator(BitstreamWriter* accumulator)
+validate_edge_accumulator(BitstreamAccumulator* accumulator)
 {
     assert(accumulator->bits_written(accumulator) == 48 * 8);
     accumulator->close(accumulator);
@@ -6204,13 +6227,13 @@ get_edge_writer_le(void) {
     return bw_open(fopen(temp_filename, "wb"), BS_LITTLE_ENDIAN);
 }
 
-BitstreamWriter*
+BitstreamRecorder*
 get_edge_recorder_le(void)
 {
     return bw_open_recorder(BS_LITTLE_ENDIAN);
 }
 
-BitstreamWriter*
+BitstreamAccumulator*
 get_edge_accumulator_le(void)
 {
     return bw_open_accumulator(BS_LITTLE_ENDIAN);
@@ -6236,7 +6259,7 @@ validate_edge_writer_le(BitstreamWriter* writer) {
 }
 
 void
-validate_edge_recorder_le(BitstreamWriter* recorder)
+validate_edge_recorder_le(BitstreamRecorder* recorder)
 {
     BitstreamWriter* writer;
     const static uint8_t little_endian[] =
@@ -6262,40 +6285,40 @@ validate_edge_recorder_le(BitstreamWriter* recorder)
 void
 test_rec_copy_dumps(bs_endianness endianness,
                     BitstreamWriter* writer,
-                    BitstreamWriter* recorder)
+                    BitstreamRecorder* recorder)
 {
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        recorder->write(recorder, 2, 2);
+        recorder->write((BitstreamWriter*)recorder, 2, 2);
         recorder->copy(recorder, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 3, 6);
+        recorder->write((BitstreamWriter*)recorder, 3, 6);
         recorder->copy(recorder, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 5, 7);
+        recorder->write((BitstreamWriter*)recorder, 5, 7);
         recorder->copy(recorder, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 3, 5);
+        recorder->write((BitstreamWriter*)recorder, 3, 5);
         recorder->copy(recorder, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 19, 342977);
+        recorder->write((BitstreamWriter*)recorder, 19, 342977);
         recorder->copy(recorder, writer);
         recorder->reset(recorder);
         break;
     case BS_LITTLE_ENDIAN:
-        recorder->write(recorder, 2, 1);
+        recorder->write((BitstreamWriter*)recorder, 2, 1);
         recorder->copy(recorder, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 3, 4);
+        recorder->write((BitstreamWriter*)recorder, 3, 4);
         recorder->copy(recorder, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 5, 13);
+        recorder->write((BitstreamWriter*)recorder, 5, 13);
         recorder->copy(recorder, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 3, 3);
+        recorder->write((BitstreamWriter*)recorder, 3, 3);
         recorder->copy(recorder, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 19, 395743);
+        recorder->write((BitstreamWriter*)recorder, 19, 395743);
         recorder->copy(recorder, writer);
         recorder->reset(recorder);
         break;
@@ -6305,43 +6328,43 @@ test_rec_copy_dumps(bs_endianness endianness,
 void
 test_rec_split_dumps(bs_endianness endianness,
                      BitstreamWriter* writer,
-                     BitstreamWriter* recorder)
+                     BitstreamRecorder* recorder)
 {
-    BitstreamWriter* dummy = bw_open_accumulator(endianness);
+    BitstreamAccumulator* dummy = bw_open_accumulator(endianness);
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        recorder->write(recorder, 2, 2);
-        recorder->split(recorder, 0, dummy, writer);
+        recorder->write((BitstreamWriter*)recorder, 2, 2);
+        recorder->split(recorder, 0, (BitstreamWriter*)dummy, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 3, 6);
-        recorder->split(recorder, 0, dummy, writer);
+        recorder->write((BitstreamWriter*)recorder, 3, 6);
+        recorder->split(recorder, 0, (BitstreamWriter*)dummy, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 5, 7);
-        recorder->split(recorder, 0, dummy, writer);
+        recorder->write((BitstreamWriter*)recorder, 5, 7);
+        recorder->split(recorder, 0, (BitstreamWriter*)dummy, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 3, 5);
-        recorder->split(recorder, 0, dummy, writer);
+        recorder->write((BitstreamWriter*)recorder, 3, 5);
+        recorder->split(recorder, 0, (BitstreamWriter*)dummy, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 19, 342977);
-        recorder->split(recorder, 0, dummy, writer);
+        recorder->write((BitstreamWriter*)recorder, 19, 342977);
+        recorder->split(recorder, 0, (BitstreamWriter*)dummy, writer);
         recorder->reset(recorder);
         break;
     case BS_LITTLE_ENDIAN:
-        recorder->write(recorder, 2, 1);
-        recorder->split(recorder, 0, dummy, writer);
+        recorder->write((BitstreamWriter*)recorder, 2, 1);
+        recorder->split(recorder, 0, (BitstreamWriter*)dummy, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 3, 4);
-        recorder->split(recorder, 0, dummy, writer);
+        recorder->write((BitstreamWriter*)recorder, 3, 4);
+        recorder->split(recorder, 0, (BitstreamWriter*)dummy, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 5, 13);
-        recorder->split(recorder, 0, dummy, writer);
+        recorder->write((BitstreamWriter*)recorder, 5, 13);
+        recorder->split(recorder, 0, (BitstreamWriter*)dummy, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 3, 3);
-        recorder->split(recorder, 0, dummy, writer);
+        recorder->write((BitstreamWriter*)recorder, 3, 3);
+        recorder->split(recorder, 0, (BitstreamWriter*)dummy, writer);
         recorder->reset(recorder);
-        recorder->write(recorder, 19, 395743);
-        recorder->split(recorder, 0, dummy, writer);
+        recorder->write((BitstreamWriter*)recorder, 19, 395743);
+        recorder->split(recorder, 0, (BitstreamWriter*)dummy, writer);
         recorder->reset(recorder);
         break;
     }

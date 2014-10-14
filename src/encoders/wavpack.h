@@ -79,7 +79,7 @@ struct wavpack_encoder_context {
         aa_int* mid_side;
         aa_int* correlated;
         aa_int* correlation_temp;
-        BitstreamWriter* sub_block;
+        BitstreamRecorder* sub_block;
     } cache;
 };
 
@@ -211,7 +211,7 @@ static void
 write_sub_block(BitstreamWriter* block,
                 unsigned metadata_function,
                 unsigned nondecoder_data,
-                BitstreamWriter* sub_block);
+                BitstreamRecorder* sub_block);
 
 
 /*terms[p] and deltas[p] are the correlation term and deltas values

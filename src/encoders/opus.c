@@ -199,8 +199,10 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
 
     /*write header and comment packets to Ogg stream*/
     {
-        BitstreamWriter *header = bw_open_recorder(BS_LITTLE_ENDIAN);
-        BitstreamWriter *comment = bw_open_recorder(BS_LITTLE_ENDIAN);
+        BitstreamRecorder *header = bw_open_recorder(BS_LITTLE_ENDIAN);
+        BitstreamWriter *header_w =(BitstreamWriter*)header;
+        BitstreamRecorder *comment = bw_open_recorder(BS_LITTLE_ENDIAN);
+        BitstreamWriter *comment_w = (BitstreamWriter*)comment;
         int i;
 
         /*write header packet to Ogg stream*/
@@ -211,20 +213,20 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
         ogg_packet packet_head;
         ogg_packet packet_tags;
 
-        header->write_bytes(header,
-                            (uint8_t*)opushead,
-                            (unsigned)strlen(opushead));
-        header->write(header, 8, 1);       /*version*/
-        header->write(header, 8, pcmreader->channels);
-        header->write(header, 16, preskip);
-        header->write(header, 32, original_sample_rate);
-        header->write(header, 16, 0);      /*output gain*/
-        header->write(header, 8, channel_mapping);
+        header_w->write_bytes(header_w,
+                              (uint8_t*)opushead,
+                              (unsigned)strlen(opushead));
+        header_w->write(header_w, 8, 1);       /*version*/
+        header_w->write(header_w, 8, pcmreader->channels);
+        header_w->write(header_w, 16, preskip);
+        header_w->write(header_w, 32, original_sample_rate);
+        header_w->write(header_w, 16, 0);      /*output gain*/
+        header_w->write(header_w, 8, channel_mapping);
         if (channel_mapping != 0) {
-            header->write(header, 8, stream_count);
-            header->write(header, 8, coupled_stream_count);
+            header_w->write(header_w, 8, stream_count);
+            header_w->write(header_w, 8, coupled_stream_count);
             for (i = 0; i < pcmreader->channels; i++) {
-                header->write(header, 8, stream_map[i]);
+                header_w->write(header_w, 8, stream_map[i]);
             }
         }
 
@@ -245,14 +247,14 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
         }
 
         /*write comment packet to Ogg stream*/
-        comment->write_bytes(comment,
-                             (uint8_t*)opuscomment,
-                             (unsigned)strlen(opuscomment));
-        comment->write(comment, 32, (unsigned)vendor_string_len);
-        comment->write_bytes(comment,
-                             (uint8_t*)vendor_string,
-                             (unsigned)vendor_string_len);
-        comment->write(comment, 32, 0);
+        comment_w->write_bytes(comment_w,
+                               (uint8_t*)opuscomment,
+                               (unsigned)strlen(opuscomment));
+        comment_w->write(comment_w, 32, (unsigned)vendor_string_len);
+        comment_w->write_bytes(comment_w,
+                               (uint8_t*)vendor_string,
+                               (unsigned)vendor_string_len);
+        comment_w->write(comment_w, 32, 0);
 
         packet_tags.packet = buf_window_start(comment->output.buffer);
         packet_tags.bytes = buf_window_size(comment->output.buffer);
