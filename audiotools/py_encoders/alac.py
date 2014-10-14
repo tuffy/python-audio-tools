@@ -19,7 +19,6 @@
 
 from audiotools.bitstream import BitstreamWriter
 from audiotools.bitstream import BitstreamRecorder
-from audiotools.bitstream import BitstreamAccumulator
 from audiotools import BufferedPCMReader
 
 

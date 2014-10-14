@@ -209,19 +209,6 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
                            unsigned wasted_bits_per_sample,
                            const a_int* samples);
 
-/*given a set of samples and encoding parameters,
-  determines the best QLP coefficients/precision/shift-needed
-  for an LPC subframe*/
-void
-flacenc_best_lpc_coefficients(struct flac_context* encoder,
-                              unsigned bits_per_sample,
-                              unsigned wasted_bits_per_sample,
-                              const a_int* samples,
-
-                              a_int* qlp_coefficients,
-                              unsigned* qlp_precision,
-                              int* qlp_shift_needed);
-
 /*given a set of encoding parameters for an LPC subframe,
   generates the subframe's residuals and encodes it
   to the given BitstreamWriter*/

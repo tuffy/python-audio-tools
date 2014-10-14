@@ -1571,7 +1571,6 @@ class FlacAudio(WaveContainer, AiffContainer):
         """
 
         from audiotools.bitstream import BitstreamWriter
-        from audiotools.bitstream import BitstreamAccumulator
         from audiotools.bitstream import BitstreamReader
         from operator import add
 

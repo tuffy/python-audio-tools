@@ -938,26 +938,104 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
                            unsigned wasted_bits_per_sample,
                            const a_int* samples)
 {
+    a_double* windowed_signal = encoder->windowed_signal;
+    a_double* autocorrelation_values = encoder->autocorrelation_values;
+    aa_double* lp_coefficients = encoder->lp_coefficients;
+    a_double* lp_error = encoder->lp_error;
     a_int* qlp_coefficients = encoder->qlp_coefficients;
-    unsigned qlp_precision;
     int qlp_shift_needed;
 
-    flacenc_best_lpc_coefficients(encoder,
-                                  bits_per_sample,
-                                  wasted_bits_per_sample,
-                                  samples,
-                                  qlp_coefficients,
-                                  &qlp_precision,
-                                  &qlp_shift_needed);
+    if (samples->len <= (encoder->options.max_lpc_order + 1)) {
+        /*not enough samples, so built LPC subframe with dummy coeffs*/
+        qlp_coefficients->vset(qlp_coefficients, 1, 1);
+        flacenc_encode_lpc_subframe(bs,
+                                    encoder,
+                                    bits_per_sample,
+                                    wasted_bits_per_sample,
+                                    2,
+                                    0,
+                                    qlp_coefficients,
+                                    samples);
+        return;
+    }
 
-    flacenc_encode_lpc_subframe(bs,
-                                encoder,
-                                bits_per_sample,
-                                wasted_bits_per_sample,
-                                qlp_precision,
-                                qlp_shift_needed,
-                                qlp_coefficients,
-                                samples);
+    /*window signal*/
+    flacenc_window_signal(encoder, samples, windowed_signal);
+
+    /*transform windowed signal to autocorrelation values*/
+    flacenc_autocorrelate(encoder->options.max_lpc_order,
+                          windowed_signal,
+                          autocorrelation_values);
+
+    /*compute LP coefficients from autocorrelation values*/
+    flacenc_compute_lp_coefficients(encoder->options.max_lpc_order,
+                                    autocorrelation_values,
+                                    lp_coefficients,
+                                    lp_error);
+
+    if (!encoder->options.exhaustive_model_search) {
+        /*if not performing an exhaustive model search,
+          estimate which set of LP coefficients is best
+          and use those to build subframe*/
+        const unsigned best_order =
+            flacenc_estimate_best_lpc_order(
+                bits_per_sample,
+                encoder->options.qlp_coeff_precision,
+                encoder->options.max_lpc_order,
+                samples->len,
+                lp_error);
+
+        flacenc_quantize_coefficients(lp_coefficients,
+                                      best_order,
+                                      encoder->options.qlp_coeff_precision,
+                                      qlp_coefficients,
+                                      &qlp_shift_needed);
+
+        flacenc_encode_lpc_subframe(bs,
+                                    encoder,
+                                    bits_per_sample,
+                                    wasted_bits_per_sample,
+                                    encoder->options.qlp_coeff_precision,
+                                    qlp_shift_needed,
+                                    qlp_coefficients,
+                                    samples);
+    } else {
+        /*otherwise, build all possible subframes
+          and return the one which is actually the smallest*/
+        unsigned best_subframe_size = UINT_MAX;
+        BitstreamRecorder *best_subframe = bw_open_recorder(BS_BIG_ENDIAN);
+        BitstreamRecorder *subframe = bw_open_recorder(BS_BIG_ENDIAN);
+        unsigned order;
+
+        for (order = 1; order <= encoder->options.max_lpc_order; order++) {
+            subframe->reset(subframe);
+
+            flacenc_quantize_coefficients(
+                lp_coefficients,
+                order,
+                encoder->options.qlp_coeff_precision,
+                qlp_coefficients,
+                &qlp_shift_needed);
+
+            flacenc_encode_lpc_subframe((BitstreamWriter*)subframe,
+                                        encoder,
+                                        bits_per_sample,
+                                        wasted_bits_per_sample,
+                                        encoder->options.qlp_coeff_precision,
+                                        qlp_shift_needed,
+                                        qlp_coefficients,
+                                        samples);
+
+            if (subframe->bits_written(subframe) < best_subframe_size) {
+                best_subframe_size = subframe->bits_written(subframe);
+                recorder_swap(&best_subframe, &subframe);
+            }
+        }
+
+        best_subframe->copy(best_subframe, bs);
+        best_subframe->close(best_subframe);
+        subframe->close(subframe);
+    }
 }
 
 void
@@ -1017,116 +1095,6 @@ flacenc_encode_lpc_subframe(BitstreamWriter* bs,
                              lpc_residual);
 }
 
-void
-flacenc_best_lpc_coefficients(struct flac_context* encoder,
-                              unsigned bits_per_sample,
-                              unsigned wasted_bits_per_sample,
-                              const a_int* samples,
-
-                              a_int* qlp_coefficients,
-                              unsigned* qlp_precision,
-                              int* qlp_shift_needed)
-{
-    a_double* windowed_signal = encoder->windowed_signal;
-    a_double* autocorrelation_values = encoder->autocorrelation_values;
-    aa_double* lp_coefficients = encoder->lp_coefficients;
-    a_double* lp_error = encoder->lp_error;
-    unsigned best_order;
-
-    if (samples->len > (encoder->options.max_lpc_order + 1)) {
-        /*window signal*/
-        flacenc_window_signal(encoder,
-                              samples,
-                              windowed_signal);
-
-        /*transform windowed signal to autocorrelation values*/
-        flacenc_autocorrelate(encoder->options.max_lpc_order,
-                              windowed_signal,
-                              autocorrelation_values);
-
-        /*calculate LP coefficients from autocorrelation values*/
-        flacenc_compute_lp_coefficients(encoder->options.max_lpc_order,
-                                        autocorrelation_values,
-                                        lp_coefficients,
-                                        lp_error);
-
-        if (!encoder->options.exhaustive_model_search) {
-            /*if not performing exhaustive model search
-              estimate the best order from the error values*/
-
-            best_order =
-                flacenc_estimate_best_lpc_order(
-                    bits_per_sample,
-                    encoder->options.qlp_coeff_precision,
-                    encoder->options.max_lpc_order,
-                    samples->len,
-                    lp_error);
-
-            flacenc_quantize_coefficients(lp_coefficients,
-                                          best_order,
-                                          encoder->options.qlp_coeff_precision,
-                                          qlp_coefficients,
-                                          qlp_shift_needed);
-
-            *qlp_precision = encoder->options.qlp_coeff_precision;
-        } else {
-            unsigned order;
-            a_int* candidate_coeffs = a_int_new();
-            int candidate_shift;
-            BitstreamAccumulator* candidate_subframe =
-                bw_open_accumulator(BS_BIG_ENDIAN);
-
-            a_int* best_coeffs = a_int_new();
-            int best_shift_needed = 0;
-            unsigned best_bits = UINT_MAX;
-
-            /*otherwise, build LPC subframe from each set of LP coefficients*/
-            for (order = 1; order <= encoder->options.max_lpc_order; order++) {
-                candidate_subframe->reset(candidate_subframe);
-
-                flacenc_quantize_coefficients(
-                    lp_coefficients,
-                    order,
-                    encoder->options.qlp_coeff_precision,
-                    candidate_coeffs,
-                    &candidate_shift);
-
-                flacenc_encode_lpc_subframe(
-                    (BitstreamWriter*)candidate_subframe,
-                    encoder,
-                    bits_per_sample,
-                    wasted_bits_per_sample,
-                    encoder->options.qlp_coeff_precision,
-                    candidate_shift,
-                    candidate_coeffs,
-                    samples);
-
-                if (candidate_subframe->bits_written(candidate_subframe) <
-                    best_bits) {
-                    best_bits =
-                        candidate_subframe->bits_written(candidate_subframe);
-                    candidate_coeffs->swap(candidate_coeffs, best_coeffs);
-                    best_shift_needed = candidate_shift;
-                }
-            }
-
-            /*and return the parameters of the one which is smallest*/
-            best_coeffs->copy(best_coeffs, qlp_coefficients);
-            *qlp_precision = encoder->options.qlp_coeff_precision;
-            *qlp_shift_needed = best_shift_needed;
-
-            /*before deallocating any temporary space*/
-            candidate_coeffs->del(candidate_coeffs);
-            candidate_subframe->close(candidate_subframe);
-            best_coeffs->del(best_coeffs);
-        }
-    } else {
-        /*use a set of dummy coefficients*/
-        qlp_coefficients->vset(qlp_coefficients, 1, 1);
-        *qlp_precision = 2;
-        *qlp_shift_needed = 0;
-    }
-}
 
 void
 flacenc_window_signal(struct flac_context* encoder,

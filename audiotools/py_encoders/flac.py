@@ -19,7 +19,6 @@
 
 from audiotools.bitstream import BitstreamWriter
 from audiotools.bitstream import BitstreamRecorder
-from audiotools.bitstream import BitstreamAccumulator
 from audiotools import BufferedPCMReader
 from hashlib import md5
 
@@ -104,7 +103,8 @@ def encode_flac(filename,
                 disable_verbatim_subframes=False,
                 disable_constant_subframes=False,
                 disable_fixed_subframes=False,
-                disable_lpc_subframes=False):
+                disable_lpc_subframes=False,
+                padding_size=4096):
 
     current_offset = 0
     frame_offsets = []
@@ -130,11 +130,14 @@ def encode_flac(filename,
     output_file = open(filename, "wb")
     writer = BitstreamWriter(output_file, False)
 
-    # write placeholder metadata blocks
+    # write placeholder metadata blocks such as STREAMINFO and PADDING
     writer.write_bytes("fLaC")
-    writer.build("1u 7u 24u", [1, 0, 34])
+    writer.build("1u 7u 24u", [0, 0, 34])
     writer.mark(0)
     streaminfo.write(writer)
+
+    writer.build("1u 7u 24u", [1, 1, padding_size])
+    writer.write_bytes(b"\x00" * padding_size)
 
     # walk through PCM reader's FrameLists
     frame_number = 0
@@ -393,22 +396,11 @@ def encode_subframe(writer, options, bits_per_sample, samples):
                               samples)
 
         if (options.max_lpc_order > 0):
-            (lpc_order,
-             qlp_coeffs,
-             qlp_shift_needed) = compute_lpc_coefficients(options,
-                                                          wasted_bps,
-                                                          bits_per_sample,
-                                                          samples)
-
             lpc_subframe = BitstreamRecorder(0)
             encode_lpc_subframe(lpc_subframe,
                                 options,
                                 wasted_bps,
                                 bits_per_sample,
-                                lpc_order,
-                                options.qlp_precision,
-                                qlp_shift_needed,
-                                qlp_coeffs,
                                 samples)
 
             if (((bits_per_sample * len(samples)) <
@@ -565,6 +557,104 @@ def encode_residual_partition(rice_parameter, residuals):
     return partition
 
 
+def encode_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
+                        samples):
+    """computes the best LPC subframe from the given samples
+    according to the options and writes it to the given BitstreamWriter"""
+
+    # window signal
+    windowed = [(sample * tukey) for (sample, tukey) in
+                zip(samples, tukey_window(len(samples), 0.5))]
+
+    # compute autocorrelation values
+    if (len(samples) > (options.max_lpc_order + 1)):
+        autocorrelation_values = [
+            sum(x * y for x, y in zip(windowed, windowed[lag:]))
+            for lag in range(0, options.max_lpc_order + 1)]
+    else:
+        # not enough samples, so build LPC with dummy coeffs
+        write_lpc_subframe(writer=writer,
+                           options=options,
+                           wasted_bps=wasted_bps,
+                           bits_per_sample=bits_per_sample,
+                           order=1,
+                           qlp_precision=options.qlp_precision,
+                           qlp_shift_needed=0,
+                           qlp_coefficients=[0],
+                           samples=samples)
+        return
+
+    # compute LP coefficients from autocorrelation values
+    if ((len(autocorrelation_values) > 1) and
+        (set(autocorrelation_values) != {0.0})):
+        (lp_coefficients, error) = \
+            compute_lp_coefficients(autocorrelation_values)
+    else:
+        # all autocorrelation values are zero
+        # so build LPC with dummy coeffs
+        write_lpc_subframe(writer=writer,
+                           options=options,
+                           wasted_bps=wasted_bps,
+                           bits_per_sample=bits_per_sample,
+                           order=1,
+                           qlp_precision=options.qlp_precision,
+                           qlp_shift_needed=0,
+                           qlp_coefficients=[0],
+                           samples=samples)
+        return
+
+    if (not options.exhaustive_model_search):
+        # if not performaing an exhaustive model search
+        # estimate which set of LP coefficients is best
+        # and use those to build subframe
+
+        order = estimate_best_lpc_order(options,
+                                        len(samples),
+                                        bits_per_sample,
+                                        error)
+        (qlp_coefficients, qlp_shift_needed) = \
+            quantize_coefficients(options.qlp_precision,
+                                  lp_coefficients,
+                                  order)
+
+        write_lpc_subframe(writer=writer,
+                           options=options,
+                           wasted_bps=wasted_bps,
+                           bits_per_sample=bits_per_sample,
+                           order=order,
+                           qlp_precision=options.qlp_precision,
+                           qlp_shift_needed=qlp_shift_needed,
+                           qlp_coefficients=qlp_coefficients,
+                           samples=samples)
+    else:
+        # otherwise, build all possible subframes
+        # and return the one which is actually the smallest
+
+        best_subframe_size = 2 ** 32
+        best_subframe = BitstreamRecorder(0)
+
+        for order in range(1, options.max_lpc_order + 1):
+            (qlp_coefficients, qlp_shift_needed) = \
+                quantize_coefficients(options.qlp_precision,
+                                      lp_coefficients,
+                                      order)
+
+            subframe = BitstreamRecorder(0)
+            write_lpc_subframe(writer=subframe,
+                               options=options,
+                               wasted_bps=wasted_bps,
+                               bits_per_sample=bits_per_sample,
+                               order=order,
+                               qlp_precision=options.qlp_precision,
+                               qlp_shift_needed=qlp_shift_needed,
+                               qlp_coefficients=qlp_coefficients,
+                               samples=samples)
+            if (subframe.bits() < best_subframe_size):
+                best_subframe = subframe
+        else:
+            best_subframe.copy(writer)
+
+
 def tukey_window(sample_count, alpha):
     from math import cos, pi
 
@@ -583,76 +673,6 @@ def tukey_window(sample_count, alpha):
                    (1 +
                     cos(pi * (((2 * n) / (alpha * (sample_count - 1))) -
                               (2 / alpha) + 1))))
-
-
-def compute_lpc_coefficients(options, wasted_bps, bits_per_sample, samples):
-    """returns a (order, qlp_coeffs, qlp_shift_needed) triple
-    where order is an int
-    where qlp_coeffs is a list of ints (whose length equals order)
-    and qlp_shift_needed is a non-negative integer"""
-
-    # window signal
-    windowed = [(sample * tukey) for (sample, tukey) in
-                zip(samples, tukey_window(len(samples), 0.5))]
-
-    # compute autocorrelation values
-    if (len(samples) > (options.max_lpc_order + 1)):
-        autocorrelation_values = [
-            sum([x * y for x, y in zip(windowed, windowed[lag:])])
-            for lag in range(0, options.max_lpc_order + 1)]
-
-        if ((len(autocorrelation_values) > 1) and
-            (set(autocorrelation_values) !=
-             set([0.0]))):
-            (lp_coefficients,
-             error) = compute_lp_coefficients(autocorrelation_values)
-
-            if (not options.exhaustive_model_search):
-                # if not performing exhaustive model search,
-                # estimate which set of LP coefficients is best
-                # and return those
-
-                order = estimate_best_lpc_order(options,
-                                                len(samples),
-                                                bits_per_sample,
-                                                error)
-                (qlp_coeffs,
-                 qlp_shift_needed) = quantize_coefficients(
-                    options.qlp_precision,
-                    lp_coefficients,
-                    order)
-
-                return (order, qlp_coeffs, qlp_shift_needed)
-            else:
-                # if performing exhaustive model search,
-                # build LPC subframe from each set of LP coefficients
-                # and return the one that is smallest
-
-                best_subframe_size = 2 ** 32
-                best_order = None
-                best_coeffs = None
-                best_shift_needed = None
-                for order in range(1, options.max_lpc_order + 1):
-                    (qlp_coeffs,
-                     qlp_shift_needed) = quantize_coefficients(
-                        options.qlp_precision, lp_coefficients, order)
-
-                    subframe = BitstreamAccumulator(0)
-                    encode_lpc_subframe(subframe, options,
-                                        wasted_bps, bits_per_sample,
-                                        order, options.qlp_precision,
-                                        qlp_shift_needed, qlp_coeffs, samples)
-                    if (subframe.bits() < best_subframe_size):
-                        best_subframe_size = subframe.bits()
-                        best_order = order
-                        best_coeffs = qlp_coeffs
-                        best_shift_needed = qlp_shift_needed
-
-                return (best_order, best_coeffs, best_shift_needed)
-        else:
-            return (1, [0], 0)
-    else:
-        return (1, [0], 0)
 
 
 def compute_lp_coefficients(autocorrelation):
@@ -740,9 +760,9 @@ def quantize_coefficients(qlp_precision, lp_coefficients, order):
         return (qlp_coeffs, 0)
 
 
-def encode_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
-                        order, qlp_precision, qlp_shift_needed,
-                        qlp_coefficients, samples):
+def write_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
+                       order, qlp_precision, qlp_shift_needed,
+                       qlp_coefficients, samples):
     assert(order == len(qlp_coefficients))
     assert(qlp_shift_needed >= 0)
 
