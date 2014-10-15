@@ -2505,13 +2505,10 @@ class Bitstream(unittest.TestCase):
 
     @LIB_BITSTREAM
     def test_init_error(self):
-        from audiotools.bitstream import BitstreamAccumulator
         from audiotools.bitstream import BitstreamReader
         from audiotools.bitstream import BitstreamRecorder
         from audiotools.bitstream import BitstreamWriter
 
-        self.assertRaises(TypeError, BitstreamAccumulator)
-        self.assertRaises(TypeError, BitstreamAccumulator, None)
         self.assertRaises(TypeError, BitstreamRecorder)
         self.assertRaises(TypeError, BitstreamRecorder, None)
         self.assertRaises(TypeError, BitstreamWriter)
@@ -3165,11 +3162,6 @@ class Bitstream(unittest.TestCase):
 
         temp_file.close()
 
-    def __get_edge_accumulator_be__(self):
-        from audiotools.bitstream import BitstreamAccumulator
-
-        return (BitstreamAccumulator(0), None)
-
     def __validate_edge_accumulator_be__(self, writer, temp_file):
         self.assertEqual(writer.bits(), 48 * 8)
 
@@ -3218,18 +3210,12 @@ class Bitstream(unittest.TestCase):
 
         temp_file.close()
 
-    def __get_edge_accumulator_le__(self):
-        from audiotools.bitstream import BitstreamAccumulator
-
-        return (BitstreamAccumulator(1), None)
-
     def __validate_edge_accumulator_le__(self, writer, temp_file):
         self.assertEqual(writer.bits(), 48 * 8)
 
     def __test_writer__(self, endianness):
         from audiotools.bitstream import BitstreamWriter
         from audiotools.bitstream import BitstreamRecorder
-        from audiotools.bitstream import BitstreamAccumulator
 
         checks = [self.__writer_perform_write__,
                   self.__writer_perform_write_signed__,
@@ -3267,12 +3253,6 @@ class Bitstream(unittest.TestCase):
                 self.assertEqual(recorder.bits(), 32)
             finally:
                 temp.close()
-
-        # perform accumulator-based checks
-        for check in checks:
-            writer = BitstreamAccumulator(endianness)
-            check(writer, endianness)
-            self.assertEqual(writer.bits(), 32)
 
         # check swap records
         temp = tempfile.NamedTemporaryFile()
@@ -3348,19 +3328,6 @@ class Bitstream(unittest.TestCase):
                 self.__check_output_file__(temp)
             finally:
                 temp.close()
-
-        # check that recorder->accumulator works
-        for check in checks:
-            recorder = BitstreamRecorder(endianness)
-            accumulator = BitstreamAccumulator(endianness)
-            self.assertEqual(recorder.bits(), 0)
-            self.assertEqual(accumulator.bits(), 0)
-            check(recorder, endianness)
-            self.assertEqual(recorder.bits(), 32)
-            self.assertEqual(accumulator.bits(), 0)
-            recorder.copy(accumulator)
-            self.assertEqual(recorder.bits(), 32)
-            self.assertEqual(accumulator.bits(), 32)
 
     def __writer_perform_write__(self, writer, endianness):
         if (endianness == 0):
@@ -3554,13 +3521,11 @@ class Bitstream(unittest.TestCase):
     def test_write_errors(self):
         from audiotools.bitstream import BitstreamWriter
         from audiotools.bitstream import BitstreamRecorder
-        from audiotools.bitstream import BitstreamAccumulator
 
         for little_endian in [False, True]:
             for writer in [BitstreamWriter(BytesIO(),
                                            little_endian),
-                           BitstreamRecorder(little_endian),
-                           BitstreamAccumulator(little_endian)]:
+                           BitstreamRecorder(little_endian)]:
                 # writing negative number of bits shouldn't work
                 self.assertRaises(ValueError,
                                   writer.write,
@@ -3697,10 +3662,6 @@ class Bitstream(unittest.TestCase):
         self.__test_edge_writer__(self.__get_edge_recorder_be__,
                                   self.__validate_edge_recorder_be__)
 
-        # test a bunch of big-endian values via the bitstream accumulator
-        self.__test_edge_writer__(self.__get_edge_accumulator_be__,
-                                  self.__validate_edge_accumulator_be__)
-
         # test a bunch of little-endian values via the bitstream writer
         self.__test_edge_writer__(self.__get_edge_writer_le__,
                                   self.__validate_edge_writer_le__)
@@ -3709,16 +3670,11 @@ class Bitstream(unittest.TestCase):
         self.__test_edge_writer__(self.__get_edge_recorder_le__,
                                   self.__validate_edge_recorder_le__)
 
-        # test a bunch of little-endian values via the bitstream accumulator
-        self.__test_edge_writer__(self.__get_edge_accumulator_le__,
-                                  self.__validate_edge_accumulator_le__)
-
     @LIB_BITSTREAM
     def test_huge_values(self):
         from audiotools.bitstream import BitstreamReader
         from audiotools.bitstream import BitstreamWriter
         from audiotools.bitstream import BitstreamRecorder
-        from audiotools.bitstream import BitstreamAccumulator
 
         for b in [2, 4, 8, 16, 32, 64, 128, 256, 512]:
             data = os.urandom(b)
@@ -3782,21 +3738,6 @@ class Bitstream(unittest.TestCase):
                 self.assertEqual(data, signed_data1.data())
                 self.assertEqual(data, signed_data2.data())
 
-                unsigned_data1 = BitstreamAccumulator(little_endian)
-                unsigned_data2 = BitstreamAccumulator(little_endian)
-                signed_data1 = BitstreamAccumulator(little_endian)
-                signed_data2 = BitstreamAccumulator(little_endian)
-
-                unsigned_data1.write(bits, unsigned1)
-                unsigned_data2.build("%du" % (bits), [unsigned1])
-                signed_data1.write_signed(bits, signed1)
-                signed_data2.build("%ds" % (bits), [signed1])
-
-                self.assertEqual(unsigned_data1.bits(), bits)
-                self.assertEqual(unsigned_data2.bits(), bits)
-                self.assertEqual(signed_data1.bits(), bits)
-                self.assertEqual(signed_data2.bits(), bits)
-
                 # check that endianness swapping works
                 r = BitstreamReader(
                     BytesIO(data),
@@ -3822,13 +3763,6 @@ class Bitstream(unittest.TestCase):
                 w.write(bits // 2, unsigned2)
 
                 self.assertEqual(data, w.data())
-
-                w = BitstreamAccumulator(little_endian)
-                w.write(bits // 2, unsigned1)
-                w.set_endianness(not little_endian)
-                w.write(bits // 2, unsigned2)
-
-                self.assertEqual(bits, w.bits())
 
     @LIB_BITSTREAM
     def test_python_reader(self):
@@ -4288,7 +4222,6 @@ class Bitstream(unittest.TestCase):
     def test_writer_close(self):
         from audiotools.bitstream import BitstreamWriter
         from audiotools.bitstream import BitstreamRecorder
-        from audiotools.bitstream import BitstreamAccumulator
 
         def test_writer(writer):
             self.assertRaises(IOError, writer.write, 1, 1)
@@ -4356,27 +4289,11 @@ class Bitstream(unittest.TestCase):
         test_writer(writer)
         del(writer)
 
-        # test a BitstreamAccumulator
-        writer = BitstreamAccumulator(0)
-        writer.close()
-        test_writer(writer)
-        writer.set_endianness(1)
-        test_writer(writer)
-        del(writer)
-
-        writer = BitstreamAccumulator(1)
-        writer.close()
-        test_writer(writer)
-        writer.set_endianness(0)
-        test_writer(writer)
-        del(writer)
-
     @LIB_BITSTREAM
     def test_writer_context(self):
         from io import BytesIO
         from audiotools.bitstream import BitstreamWriter
         from audiotools.bitstream import BitstreamRecorder
-        from audiotools.bitstream import BitstreamAccumulator
 
         # if simply deallocated, writers should flush contents
         # but not close internal stream
@@ -4455,24 +4372,6 @@ class Bitstream(unittest.TestCase):
             w.write(3, 0x3)
             w.write(19, 0x609DF)
             self.assertEqual(w.data(), b"\xB1\xED\x3B\xC1")
-
-        # accumulators should work in a context manager
-        # even if it's not particularly useful
-        with BitstreamAccumulator(False) as w:
-            w.write(2, 0x2)
-            w.write(3, 0x6)
-            w.write(5, 0x07)
-            w.write(3, 0x5)
-            w.write(19, 0x53BC1)
-            self.assertEqual(w.bits(), 32)
-
-        with BitstreamAccumulator(True) as w:
-            w.write(2, 0x1)
-            w.write(3, 0x4)
-            w.write(5, 0x0D)
-            w.write(3, 0x3)
-            w.write(19, 0x609DF)
-            self.assertEqual(w.bits(), 32)
 
     def __test_writer_marks__(self, writer):
         writer.write(1, 1)

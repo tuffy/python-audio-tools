@@ -44,7 +44,7 @@ typedef int state_t;
 
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_BUFFER, BR_EXTERNAL} br_type;
-typedef enum {BW_FILE, BW_EXTERNAL, BW_RECORDER, BW_ACCUMULATOR} bw_type;
+typedef enum {BW_FILE, BW_EXTERNAL, BW_RECORDER} bw_type;
 typedef enum {BS_INST_UNSIGNED,
               BS_INST_SIGNED,
               BS_INST_UNSIGNED64,
@@ -788,7 +788,6 @@ struct bw_mark_stack {
     union {                                                 \
         FILE* file;                                         \
         struct bs_buffer* buffer;                           \
-        unsigned int accumulator;                           \
         struct bw_external_output* external;                \
     } output;                                               \
                                                             \
@@ -1033,43 +1032,6 @@ typedef struct BitstreamRecorder_s {
 } BitstreamRecorder;
 
 
-/*BitstreamAccumulator is a subclass of BitstreamWriter
-  and can be used anyplace its parent is used
-  but contains additional methods for getting a count of bits written*/
-typedef struct BitstreamAccumulator_s {
-    BITSTREAMWRITER_TYPE
-
-    /*flushes and closes the internal stream*/
-    /*for accumulators, does nothing        */
-    /*once the internal stream is closed,   */
-    /*the writer's I/O methods are updated  */
-    /*to generate errors if called again    */
-    void
-    (*close_internal_stream)(struct BitstreamAccumulator_s* bs);
-
-    /*deallocates any callbacks, exceptions and marks*/
-    /*frees BitstreamAccumulator struct*/
-    void
-    (*free)(struct BitstreamAccumulator_s* bs);
-
-    /*calls close_internal_stream(), followed by free()*/
-    void
-    (*close)(struct BitstreamAccumulator_s* bs);
-
-    /*returns the total bits written to the stream thus far*/
-    unsigned int
-    (*bits_written)(const struct BitstreamAccumulator_s* bs);
-
-    /*returns the total bytes written to the stream thus far*/
-    unsigned int
-    (*bytes_written)(const struct BitstreamAccumulator_s* bs);
-
-    /*resets the stream for new values*/
-    void
-    (*reset)(struct BitstreamAccumulator_s* bs);
-} BitstreamAccumulator;
-
-
 /*************************************************************
  Bitstream Writer Function Matrix
  The write functions come in three output variants
@@ -1091,7 +1053,6 @@ typedef struct BitstreamAccumulator_s {
  | bw_write_bits_e_le | function    | little endian |
  | bw_write_bits_r_be | recorder    | big endian    |
  | bw_write_bits_r_le | recorder    | little endian |
- | bw_write_bits_a    | accumulator | N/A           |
 
  *************************************************************/
 
@@ -1135,10 +1096,6 @@ bw_open_external(void* user_data,
 BitstreamRecorder*
 bw_open_recorder(bs_endianness endianness);
 
-BitstreamAccumulator*
-bw_open_accumulator(bs_endianness endianness);
-
-
 
 /*bs->write(bs, count, value)  methods*/
 void
@@ -1154,8 +1111,6 @@ bw_write_bits_r_be(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
 bw_write_bits_r_le(BitstreamWriter* bs, unsigned int count, unsigned int value);
 void
-bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value);
-void
 bw_write_bits_c(BitstreamWriter* bs, unsigned int count, unsigned int value);
 
 /*bs->write_signed(bs, count, value)  methods*/
@@ -1165,8 +1120,6 @@ bw_write_signed_bits_f_e_r_be(BitstreamWriter* bs, unsigned int count,
 void
 bw_write_signed_bits_f_e_r_le(BitstreamWriter* bs, unsigned int count,
                               int value);
-void
-bw_write_signed_bits_a(BitstreamWriter* bs, unsigned int count, int value);
 void
 bw_write_signed_bits_c(BitstreamWriter* bs, unsigned int count, int value);
 
@@ -1185,8 +1138,6 @@ bw_write_bits64_r_be(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
 bw_write_bits64_r_le(BitstreamWriter* bs, unsigned int count, uint64_t value);
 void
-bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value);
-void
 bw_write_bits64_c(BitstreamWriter* bs, unsigned int count, uint64_t value);
 
 
@@ -1197,9 +1148,6 @@ bw_write_signed_bits64_f_e_r_be(BitstreamWriter* bs, unsigned int count,
 void
 bw_write_signed_bits64_f_e_r_le(BitstreamWriter* bs, unsigned int count,
                                 int64_t value);
-void
-bw_write_signed_bits64_a(BitstreamWriter* bs, unsigned int count,
-                         int64_t value);
 void
 bw_write_signed_bits64_c(BitstreamWriter* bs, unsigned int count,
                          int64_t value);
@@ -1213,16 +1161,12 @@ bw_write_bytes_e(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
 void
 bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
 void
-bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
-void
 bw_write_bytes_c(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
 
 
 /*bs->write_unary(bs, stop_bit, value)  methods*/
 void
 bw_write_unary_f_e_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
-void
-bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value);
 void
 bw_write_unary_c(BitstreamWriter* bs, int stop_bit, unsigned int value);
 
@@ -1238,16 +1182,12 @@ bw_write_huffman(BitstreamWriter* bs,
 int
 bw_byte_aligned_f_e_r(const BitstreamWriter* bs);
 int
-bw_byte_aligned_a(const BitstreamWriter* bs);
-int
 bw_byte_aligned_c(const BitstreamWriter* bs);
 
 
 /*bs->byte_align(bs)  methods*/
 void
 bw_byte_align_f_e_r(BitstreamWriter* bs);
-void
-bw_byte_align_a(BitstreamWriter* bs);
 void
 bw_byte_align_c(BitstreamWriter* bs);
 
@@ -1266,8 +1206,6 @@ bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness);
 void
 bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness);
 void
-bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness);
-void
 bw_set_endianness_c(BitstreamWriter* bs, bs_endianness endianness);
 
 
@@ -1280,7 +1218,7 @@ bw_build(struct BitstreamWriter_s* stream, const char* format, ...);
 void
 bw_flush_f(BitstreamWriter* bs);
 void
-bw_flush_r_a_c(BitstreamWriter* bs);
+bw_flush_r_c(BitstreamWriter* bs);
 void
 bw_flush_e(BitstreamWriter* bs);
 
@@ -1311,7 +1249,7 @@ bw_mark_f(BitstreamWriter *bs, int mark_id);
 void
 bw_mark_e(BitstreamWriter *bs, int mark_id);
 void
-bw_mark_r_a(BitstreamWriter *bs, int mark_id);
+bw_mark_r(BitstreamWriter *bs, int mark_id);
 
 
 /*bs->has_mark(bs, id)  method*/
@@ -1325,7 +1263,7 @@ bw_rewind_f(BitstreamWriter *bs, int mark_id);
 void
 bw_rewind_e(BitstreamWriter *bs, int mark_id);
 void
-bw_rewind_r_a(BitstreamWriter *bs, int mark_id);
+bw_rewind_r(BitstreamWriter *bs, int mark_id);
 
 
 /*bs->unmark(bs, id)  method*/
@@ -1334,7 +1272,7 @@ bw_unmark_f(BitstreamWriter *bs, int mark_id);
 void
 bw_unmark_e(BitstreamWriter *bs, int mark_id);
 void
-bw_unmark_r_a(BitstreamWriter *bs, int mark_id);
+bw_unmark_r(BitstreamWriter *bs, int mark_id);
 
 void
 bw_close_methods(BitstreamWriter* bs);
@@ -1349,8 +1287,6 @@ void
 bw_close_internal_stream_cf(BitstreamWriter* bs);
 void
 bw_close_internal_stream_r(BitstreamRecorder* bs);
-void
-bw_close_internal_stream_a(BitstreamAccumulator* bs);
 
 
 /*bs->free(bs)  methods*/
@@ -1360,8 +1296,6 @@ void
 bw_free_e(BitstreamWriter* bs);
 void
 bw_free_r(BitstreamRecorder* bs);
-void
-bw_free_a(BitstreamAccumulator* bs);
 
 
 /*bs->close(bs)  method*/
@@ -1369,29 +1303,21 @@ void
 bw_close_f_e(BitstreamWriter* bs);
 void
 bw_close_r(BitstreamRecorder* bs);
-void
-bw_close_a(BitstreamAccumulator* bs);
 
 
 /*bs->bits_written(bs)  methods*/
 unsigned int
 bw_bits_written_r(const BitstreamRecorder* bs);
-unsigned int
-bw_bits_written_a(const BitstreamAccumulator* bs);
 
 
 /*bs->bytes_written(bs)  methods*/
 unsigned int
 bw_bytes_written_r(const BitstreamRecorder* bs);
-unsigned int
-bw_bytes_written_a(const BitstreamAccumulator* bs);
 
 
 /*bs->reset(bs)  methods*/
 void
 bw_reset_r(BitstreamRecorder* bs);
-void
-bw_reset_a(BitstreamAccumulator* bs);
 
 
 /*bs->copy(bs)  method*/

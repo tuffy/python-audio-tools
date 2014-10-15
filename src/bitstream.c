@@ -1548,15 +1548,15 @@ bw_open_recorder(bs_endianness endianness)
     bs->byte_aligned = bw_byte_aligned_f_e_r;
     bs->byte_align = bw_byte_align_f_e_r;
     bs->build = bw_build;
-    bs->flush = bw_flush_r_a_c;
+    bs->flush = bw_flush_r_c;
     bs->add_callback = bw_add_callback;
     bs->push_callback = bw_push_callback;
     bs->pop_callback = bw_pop_callback;
     bs->call_callbacks = bw_call_callbacks;
-    bs->mark = bw_mark_r_a;
+    bs->mark = bw_mark_r;
     bs->has_mark = bw_has_mark;
-    bs->rewind = bw_rewind_r_a;
-    bs->unmark = bw_unmark_r_a;
+    bs->rewind = bw_rewind_r;
+    bs->unmark = bw_unmark_r;
     bs->close_internal_stream = bw_close_internal_stream_r;
     bs->free = bw_free_r;
     bs->close = bw_close_r;
@@ -1565,52 +1565,6 @@ bw_open_recorder(bs_endianness endianness)
     bs->reset = bw_reset_r;
     bs->copy = bw_copy_r;
     bs->split = bw_split_r;
-
-    return bs;
-}
-
-BitstreamAccumulator*
-bw_open_accumulator(bs_endianness endianness)
-{
-    BitstreamAccumulator *bs = malloc(sizeof(BitstreamAccumulator));
-    bs->endianness = endianness;
-    bs->type = BW_ACCUMULATOR;
-
-    bs->output.accumulator = 0;
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-
-    bs->callbacks = NULL;
-    bs->exceptions = NULL;
-    bs->mark_stacks = NULL;
-    bs->exceptions_used = NULL;
-
-    bs->write = bw_write_bits_a;
-    bs->write_signed = bw_write_signed_bits_a;
-    bs->write_64 = bw_write_bits64_a;
-    bs->write_signed_64 = bw_write_signed_bits64_a;
-    bs->write_bytes = bw_write_bytes_a;
-    bs->write_unary = bw_write_unary_a;
-    bs->write_huffman_code = bw_write_huffman;
-    bs->byte_aligned = bw_byte_aligned_a;
-    bs->byte_align = bw_byte_align_a;
-    bs->set_endianness = bw_set_endianness_a;
-    bs->build = bw_build;
-    bs->flush = bw_flush_r_a_c;
-    bs->add_callback = bw_add_callback;
-    bs->push_callback = bw_push_callback;
-    bs->pop_callback = bw_pop_callback;
-    bs->call_callbacks = bw_call_callbacks;
-    bs->mark = bw_mark_r_a;
-    bs->has_mark = bw_has_mark;
-    bs->rewind = bw_rewind_r_a;
-    bs->unmark = bw_unmark_r_a;
-    bs->close_internal_stream = bw_close_internal_stream_a;
-    bs->free = bw_free_a;
-    bs->close = bw_close_a;
-    bs->bits_written = bw_bits_written_a;
-    bs->bytes_written = bw_bytes_written_a;
-    bs->reset = bw_reset_a;
 
     return bs;
 }
@@ -1716,20 +1670,12 @@ FUNC_WRITE_BITS_BE(bw_write_bits_r_be,
 FUNC_WRITE_BITS_LE(bw_write_bits_r_le,
                    unsigned int, buf_putc, bs->output.buffer)
 
-void
-bw_write_bits_a(BitstreamWriter* bs, unsigned int count, unsigned int value)
-{
-    assert(value < (1ll << count));
-    bs->output.accumulator += count;
-}
 
 void
 bw_write_bits_c(BitstreamWriter* bs, unsigned int count, unsigned int value)
 {
     bw_abort(bs);
 }
-
-
 
 void
 bw_write_signed_bits_f_e_r_be(BitstreamWriter* bs, unsigned int count,
@@ -1764,19 +1710,10 @@ bw_write_signed_bits_f_e_r_le(BitstreamWriter* bs, unsigned int count,
 }
 
 void
-bw_write_signed_bits_a(BitstreamWriter* bs, unsigned int count, int value)
-{
-    assert(value <= ((1 << (count - 1)) - 1));
-    assert(value >= -(1 << (count - 1)));
-    bs->output.accumulator += count;
-}
-
-void
 bw_write_signed_bits_c(BitstreamWriter* bs, unsigned int count, int value)
 {
     bw_abort(bs);
 }
-
 
 FUNC_WRITE_BITS_BE(bw_write_bits64_f_be,
                    uint64_t, fputc, bs->output.file)
@@ -1790,13 +1727,6 @@ FUNC_WRITE_BITS_BE(bw_write_bits64_r_be,
                    uint64_t, buf_putc, bs->output.buffer)
 FUNC_WRITE_BITS_LE(bw_write_bits64_r_le,
                    uint64_t, buf_putc, bs->output.buffer)
-
-void
-bw_write_bits64_a(BitstreamWriter* bs, unsigned int count, uint64_t value)
-{
-    assert(count < 64 ? value < (int64_t)(1ll << count) : 1);
-    bs->output.accumulator += count;
-}
 
 void
 bw_write_bits64_c(BitstreamWriter* bs, unsigned int count, uint64_t value)
@@ -1836,14 +1766,6 @@ bw_write_signed_bits64_f_e_r_le(BitstreamWriter* bs, unsigned int count,
     }
 }
 
-void
-bw_write_signed_bits64_a(BitstreamWriter* bs, unsigned int count,
-                         int64_t value)
-{
-    assert(value <= ((1ll << (count - 1)) - 1));
-    assert(value >= -(1ll << (count - 1)));
-    bs->output.accumulator += count;
-}
 
 void
 bw_write_signed_bits64_c(BitstreamWriter* bs, unsigned int count,
@@ -1932,12 +1854,6 @@ bw_write_bytes_e(BitstreamWriter* bs, const uint8_t* bytes,
 }
 
 void
-bw_write_bytes_a(BitstreamWriter* bs, const uint8_t* bytes,
-                 unsigned int count) {
-    bs->output.accumulator += (count * 8);
-}
-
-void
 bw_write_bytes_c(BitstreamWriter* bs, const uint8_t* bytes,
                  unsigned int count)
 {
@@ -1964,13 +1880,6 @@ bw_write_unary_f_e_r(BitstreamWriter* bs, int stop_bit, unsigned int value)
 
     /*finally, send our stop bit*/
     bs->write(bs, 1, stop_bit);
-}
-
-void
-bw_write_unary_a(BitstreamWriter* bs, int stop_bit, unsigned int value)
-{
-    assert(value >= 0);
-    bs->output.accumulator += (value + 1);
 }
 
 void
@@ -2012,12 +1921,6 @@ bw_byte_aligned_f_e_r(const BitstreamWriter *bs)
 }
 
 int
-bw_byte_aligned_a(const BitstreamWriter *bs)
-{
-    return ((bs->output.accumulator % 8) == 0);
-}
-
-int
 bw_byte_aligned_c(const BitstreamWriter *bs)
 {
     return 1;
@@ -2030,13 +1933,6 @@ bw_byte_align_f_e_r(BitstreamWriter* bs)
       which results in a byte being written*/
     if (bs->buffer_size > 0)
         bs->write(bs, 8 - bs->buffer_size, 0);
-}
-
-void
-bw_byte_align_a(BitstreamWriter* bs)
-{
-    if (bs->output.accumulator % 8)
-        bs->output.accumulator += (8 - (bs->output.accumulator % 8));
 }
 
 void
@@ -2137,14 +2033,6 @@ bw_set_endianness_e_le(BitstreamWriter* bs, bs_endianness endianness)
 
 
 void
-bw_set_endianness_a(BitstreamWriter* bs, bs_endianness endianness)
-{
-    /*swapping endianness results in a byte alignment*/
-    bs->endianness = endianness;
-    bw_byte_align_a(bs);
-}
-
-void
 bw_set_endianness_c(BitstreamWriter* bs, bs_endianness endianness)
 {
     return;
@@ -2233,19 +2121,7 @@ bw_bits_written_r(const BitstreamRecorder* bs)
 }
 
 unsigned int
-bw_bits_written_a(const BitstreamAccumulator* bs)
-{
-    return bs->output.accumulator;
-}
-
-unsigned int
 bw_bytes_written_r(const BitstreamRecorder* bs)
-{
-    return bs->bits_written(bs) / 8;
-}
-
-unsigned int
-bw_bytes_written_a(const BitstreamAccumulator* bs)
 {
     return bs->bits_written(bs) / 8;
 }
@@ -2259,19 +2135,13 @@ bw_reset_r(BitstreamRecorder* bs)
 }
 
 void
-bw_reset_a(BitstreamAccumulator* bs)
-{
-    bs->output.accumulator = 0;
-}
-
-void
 bw_flush_f(BitstreamWriter* bs)
 {
     fflush(bs->output.file);
 }
 
 void
-bw_flush_r_a_c(BitstreamWriter* bs)
+bw_flush_r_c(BitstreamWriter* bs)
 {
     /*recorders and accumulators are always flushed,
       closed streams do nothing when flushed*/
@@ -2346,36 +2216,6 @@ bw_split_r(const BitstreamRecorder* bs,
     return to_target;
 }
 
-
-void
-bw_swap_f_e_a_c(BitstreamWriter* bs,
-                BitstreamWriter* target)
-{
-    /*does nothing*/
-    return;
-}
-
-void
-bw_swap_r(BitstreamWriter* bs,
-          BitstreamWriter* target)
-{
-    BitstreamWriter c;
-
-    assert(target->type == BW_RECORDER);
-    /*ensure they have the same endianness*/
-    assert(bs->write == target->write);
-
-    c.output.buffer = bs->output.buffer;
-    c.buffer_size = bs->buffer_size;
-    c.buffer = bs->buffer;
-    bs->output.buffer = target->output.buffer;
-    bs->buffer_size = target->buffer_size;
-    bs->buffer = target->buffer;
-    target->output.buffer = c.output.buffer;
-    target->buffer_size = c.buffer_size;
-    target->buffer = c.buffer;
-}
-
 void
 bw_close_methods(BitstreamWriter* bs)
 {
@@ -2386,7 +2226,7 @@ bw_close_methods(BitstreamWriter* bs)
     bs->write_signed = bw_write_signed_bits_c;
     bs->write_signed_64 = bw_write_signed_bits64_c;
     bs->write_unary = bw_write_unary_c;
-    bs->flush = bw_flush_r_a_c;
+    bs->flush = bw_flush_r_c;
     bs->byte_aligned = bw_byte_aligned_c;
     bs->byte_align = bw_byte_align_c;
     bs->set_endianness = bw_set_endianness_c;
@@ -2412,12 +2252,6 @@ bw_close_internal_stream_cf(BitstreamWriter* bs)
 
 void
 bw_close_internal_stream_r(BitstreamRecorder* bs)
-{
-    bw_close_methods((BitstreamWriter*)bs);
-}
-
-void
-bw_close_internal_stream_a(BitstreamAccumulator* bs)
 {
     bw_close_methods((BitstreamWriter*)bs);
 }
@@ -2483,12 +2317,6 @@ bw_free_r(BitstreamRecorder* bs)
 }
 
 void
-bw_free_a(BitstreamAccumulator* bs)
-{
-    bw_free_f((BitstreamWriter*)bs);
-}
-
-void
 bw_free_e(BitstreamWriter* bs)
 {
     /*calls free function on user data*/
@@ -2508,12 +2336,6 @@ bw_close_f_e(BitstreamWriter* bs)
 
 void
 bw_close_r(BitstreamRecorder* bs)
-{
-    bs->close_internal_stream(bs);
-    bs->free(bs);
-}
-void
-bw_close_a(BitstreamAccumulator* bs)
 {
     bs->close_internal_stream(bs);
     bs->free(bs);
@@ -2557,9 +2379,9 @@ bw_mark_e(BitstreamWriter *bs, int mark_id)
     }
 }
 void
-bw_mark_r_a(BitstreamWriter *bs, int mark_id)
+bw_mark_r(BitstreamWriter *bs, int mark_id)
 {
-    /*recorders and accumulators shouldn't set marks*/
+    /*FIXME - update this to allow recorders to set marks*/
     assert(0);
 }
 
@@ -2600,9 +2422,9 @@ bw_rewind_e(BitstreamWriter *bs, int mark_id)
     }
 }
 void
-bw_rewind_r_a(BitstreamWriter *bs, int mark_id)
+bw_rewind_r(BitstreamWriter *bs, int mark_id)
 {
-    /*recorders and accumulators shouldn't rewind to a mark*/
+    /*FIXME - update this to allow recorders to set marks*/
     assert(0);
 }
 
@@ -2637,9 +2459,9 @@ bw_unmark_e(BitstreamWriter *bs, int mark_id)
     }
 }
 void
-bw_unmark_r_a(BitstreamWriter *bs, int mark_id)
+bw_unmark_r(BitstreamWriter *bs, int mark_id)
 {
-    /*recorders and accumulators shouldn't attempt to unmark*/
+    /*FIXME - update this to allow recorders to set marks*/
     assert(0);
 }
 
@@ -3360,30 +3182,21 @@ test_edge_writer(BitstreamWriter* (*get_writer)(void),
 void
 test_edge_recorder(BitstreamRecorder* (*get_writer)(void),
                    void (*validate_writer)(BitstreamRecorder*));
-void
-test_edge_accumulator(BitstreamAccumulator* (*get_writer)(void),
-                      void (*validate_writer)(BitstreamAccumulator*));
 
 BitstreamWriter*
 get_edge_writer_be(void);
 BitstreamRecorder*
 get_edge_recorder_be(void);
-BitstreamAccumulator*
-get_edge_accumulator_be(void);
 
 void
 validate_edge_writer_be(BitstreamWriter* writer);
 void
 validate_edge_recorder_be(BitstreamRecorder* recorder);
-void
-validate_edge_accumulator(BitstreamAccumulator* accumulator);
 
 BitstreamWriter*
 get_edge_writer_le(void);
 BitstreamRecorder*
 get_edge_recorder_le(void);
-BitstreamAccumulator*
-get_edge_accumulator_le(void);
 
 void
 validate_edge_writer_le(BitstreamWriter* writer);
@@ -3408,8 +3221,6 @@ void
 test_writer_close_errors(BitstreamWriter* writer);
 void
 test_recorder_close_errors(BitstreamRecorder* recorder);
-void
-test_accumulator_close_errors(BitstreamAccumulator* accumulator);
 
 void
 test_writer_marks(BitstreamWriter* writer);
@@ -3503,8 +3314,6 @@ void check_alignment_f(const align_check* check,
 void check_alignment_r(const align_check* check,
                        bs_endianness endianness);
 
-void check_alignment_a(const align_check* check,
-                       bs_endianness endianness);
 
 void check_alignment_e(const align_check* check,
                        bs_endianness endianness);
@@ -4865,7 +4674,6 @@ void
 test_writer(bs_endianness endianness) {
     FILE* output_file;
     BitstreamWriter* writer;
-    BitstreamAccumulator* accumulator;
     BitstreamRecorder* sub_writer;
     BitstreamRecorder* sub_sub_writer;
 
@@ -5025,23 +4833,6 @@ test_writer(bs_endianness endianness) {
     test_recorder_close_errors(sub_writer);
     sub_writer->free(sub_writer);
 
-    /*perform accumulator-based checks*/
-    for (i = 0; i < total_checks; i++) {
-        accumulator = bw_open_accumulator(endianness);
-        assert(accumulator->bits_written(accumulator) == 0);
-        checks[i]((BitstreamWriter*)accumulator, endianness);
-        assert(accumulator->bits_written(accumulator) == 32);
-        accumulator->close(accumulator);
-    }
-
-    accumulator = bw_open_accumulator(endianness);
-    test_accumulator_close_errors(accumulator);
-    accumulator->set_endianness((BitstreamWriter*)accumulator,
-                                endianness == BS_BIG_ENDIAN ?
-                                BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-    test_accumulator_close_errors(accumulator);
-    accumulator->free(accumulator);
-
     /*check recorder reset*/
     output_file = fopen(temp_filename, "wb");
     writer = bw_open(output_file, endianness);
@@ -5081,15 +4872,6 @@ test_writer(bs_endianness endianness) {
             check_alignment_r(&(achecks_be[i]), endianness);
         } else if (endianness == BS_LITTLE_ENDIAN) {
             check_alignment_r(&(achecks_le[i]), endianness);
-        }
-    }
-
-    /*check an accumulator-based byte-align*/
-    for (i = 0; i < total_achecks; i++) {
-        if (endianness == BS_BIG_ENDIAN) {
-            check_alignment_a(&(achecks_be[i]), endianness);
-        } else if (endianness == BS_LITTLE_ENDIAN) {
-            check_alignment_a(&(achecks_le[i]), endianness);
         }
     }
 
@@ -5140,32 +4922,6 @@ test_writer(bs_endianness endianness) {
         assert(sums[2] == 81);
     }
 
-    /*check accumulator-based callback functions*/
-    for (i = 0; i < total_checks; i++) {
-        BitstreamAccumulator *accumulator;
-        sums[0] = sums[1] = 0;
-        sums[2] = 1;
-        accumulator = bw_open_accumulator(endianness);
-        accumulator->add_callback((BitstreamWriter*)accumulator,
-                                  (bs_callback_f)func_add_one,
-                                  &(sums[0]));
-        accumulator->add_callback((BitstreamWriter*)accumulator,
-                                  (bs_callback_f)func_add_two,
-                                  &(sums[1]));
-        accumulator->add_callback((BitstreamWriter*)accumulator,
-                                  (bs_callback_f)func_mult_three,
-                                  &(sums[2]));
-        checks[i]((BitstreamWriter*)accumulator, endianness);
-        accumulator->close(accumulator);
-
-        /*this is correct
-          for speed reasons, accumulators don't call any callback functions
-          so the final values remain unchanged*/
-        assert(sums[0] == 0);
-        assert(sums[1] == 0);
-        assert(sums[2] == 1);
-    }
-
     /*check an external function callback functions*/
     for (i = 0; i < total_checks; i++) {
         sums[0] = sums[1] = 0;
@@ -5213,22 +4969,6 @@ test_writer(bs_endianness endianness) {
         sub_writer->close(sub_writer);
         sub_sub_writer->close(sub_sub_writer);
         fclose(output_file);
-    }
-
-    /*check that recorder->accumulator works*/
-    for (i = 0; i < total_checks; i++) {
-        accumulator = bw_open_accumulator(endianness);
-        sub_writer = bw_open_recorder(endianness);
-        assert(accumulator->bits_written(accumulator) == 0);
-        assert(sub_writer->bits_written(sub_writer) == 0);
-        checks[i]((BitstreamWriter*)sub_writer, endianness);
-        assert(accumulator->bits_written(accumulator) == 0);
-        assert(sub_writer->bits_written(sub_writer) == 32);
-        sub_writer->copy(sub_writer, (BitstreamWriter*)accumulator);
-        assert(accumulator->bits_written(accumulator) == 32);
-        assert(sub_writer->bits_written(sub_writer) == 32);
-        accumulator->close(accumulator);
-        sub_writer->close(sub_writer);
     }
 
     /*check that file-based marks work*/
@@ -5332,7 +5072,6 @@ FUNC_NAME(CLASS main_writer)                   \
 }
 TEST_CLOSE_ERRORS(test_writer_close_errors, BitstreamWriter*)
 TEST_CLOSE_ERRORS(test_recorder_close_errors, BitstreamRecorder*)
-TEST_CLOSE_ERRORS(test_accumulator_close_errors, BitstreamAccumulator*)
 
 void
 writer_perform_write(BitstreamWriter* writer, bs_endianness endianness) {
@@ -5791,19 +5530,6 @@ void check_alignment_r(const align_check* check,
     br->close(br);
 }
 
-void check_alignment_a(const align_check* check,
-                       bs_endianness endianness)
-{
-    BitstreamAccumulator* bw = bw_open_accumulator(endianness);
-
-    bw->write((BitstreamWriter*)bw, check->bits, check->value);
-    bw->byte_align((BitstreamWriter*)bw);
-
-    assert(bw->bits_written(bw) == (check->resulting_bytes * 8));
-    assert(bw->bytes_written(bw) == check->resulting_bytes);
-
-    bw->close(bw);
-}
 
 void check_alignment_e(const align_check* check,
                        bs_endianness endianness)
@@ -5896,17 +5622,11 @@ void test_edge_cases(void) {
     /*test a bunch of known big-endian values via the bitstream recorder*/
     test_edge_recorder(get_edge_recorder_be, validate_edge_recorder_be);
 
-    /*test a bunch of known big-endian values via the bitstream accumulator*/
-    test_edge_accumulator(get_edge_accumulator_be, validate_edge_accumulator);
-
     /*test a bunch of known little-endian values via the bitstream writer*/
     test_edge_writer(get_edge_writer_le, validate_edge_writer_le);
 
     /*test a bunch of known little-endian values via the bitstream recorder*/
     test_edge_recorder(get_edge_recorder_le, validate_edge_recorder_le);
-
-    /*test a bunch of known little-endian values via the bitstream accumulator*/
-    test_edge_accumulator(get_edge_accumulator_le, validate_edge_accumulator);
 }
 
 void
@@ -6149,7 +5869,6 @@ FUNC_NAME(CLASS (*get_writer)(void),                                    \
 }
 TEST_WRITER(test_edge_writer, BitstreamWriter*)
 TEST_WRITER(test_edge_recorder, BitstreamRecorder*)
-TEST_WRITER(test_edge_accumulator, BitstreamAccumulator*)
 
 BitstreamWriter*
 get_edge_writer_be(void)
@@ -6161,12 +5880,6 @@ BitstreamRecorder*
 get_edge_recorder_be(void)
 {
     return bw_open_recorder(BS_BIG_ENDIAN);
-}
-
-BitstreamAccumulator*
-get_edge_accumulator_be(void)
-{
-    return bw_open_accumulator(BS_BIG_ENDIAN);
 }
 
 void
@@ -6215,12 +5928,6 @@ validate_edge_recorder_be(BitstreamRecorder* recorder)
     fclose(input_file);
 }
 
-void
-validate_edge_accumulator(BitstreamAccumulator* accumulator)
-{
-    assert(accumulator->bits_written(accumulator) == 48 * 8);
-    accumulator->close(accumulator);
-}
 
 BitstreamWriter*
 get_edge_writer_le(void) {
@@ -6233,11 +5940,6 @@ get_edge_recorder_le(void)
     return bw_open_recorder(BS_LITTLE_ENDIAN);
 }
 
-BitstreamAccumulator*
-get_edge_accumulator_le(void)
-{
-    return bw_open_accumulator(BS_LITTLE_ENDIAN);
-}
 
 void
 validate_edge_writer_le(BitstreamWriter* writer) {
@@ -6330,7 +6032,7 @@ test_rec_split_dumps(bs_endianness endianness,
                      BitstreamWriter* writer,
                      BitstreamRecorder* recorder)
 {
-    BitstreamAccumulator* dummy = bw_open_accumulator(endianness);
+    BitstreamRecorder* dummy = bw_open_recorder(endianness);
 
     switch (endianness) {
     case BS_BIG_ENDIAN:

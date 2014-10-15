@@ -590,8 +590,7 @@ bits or bytes, for possible output into a :class:`BitstreamWriter`.
 
 .. method:: BitstreamRecorder.copy(bitstreamwriter)
 
-   Given a :class:`BitstreamWriter`, :class:`BitstreamRecorder`
-   or :class:`BitstreamAccumulator` object,
+   Given a :class:`BitstreamWriter` or :class:`BitstreamRecorder` object,
    copies all recorded output to that stream,
    including any partially written bytes.
 
@@ -605,7 +604,7 @@ bits or bytes, for possible output into a :class:`BitstreamWriter`.
    Copies the given number of recorded bytes to ``target``
    and the remaining bytes to ``remainder``,
    which are :class:`BitstreamWriter`, :class:`BitstreamRecorder`,
-   :class:`BitstreamAccumulator` objects, or ``None``.
+   or ``None``.
    It is possible for ``target`` or ``remainder`` to be
    the same object as the recorder performing :meth:`BitstreamRecorder.split`.
 
@@ -640,129 +639,6 @@ bits or bytes, for possible output into a :class:`BitstreamWriter`.
 .. method:: BitstreamRecorder.__exit__(exc_type, exc_value, traceback)
 
    Exits the recorders's context manager.
-
-BitstreamAccumulator Objects
-----------------------------
-
-This is a file-like object for recording the size of writing
-individual bits and bytes.
-The actual writes themselves are not recorded.
-
-.. class:: BitstreamAccumulator(is_little_endian)
-
-   ``is_little_endian`` indicates whether to record a big-endian
-   or little-endian output stream.
-
-.. method:: BitstreamAccumulator.write(bits, value)
-
-   Counts the given number of bits written to the stream.
-   Bits must be: ``0 <= bits <= 32`` .
-   Value must be: ``0 <= value < (2 ** bits)`` .
-
-.. method:: BitstreamAccumulator.write64(bits, value)
-
-   Counts the given number of bits written to the stream.
-   Bits must be: ``0 <= bits <= 64`` .
-   Value must be: ``0 <= value < (2 ** bits)`` .
-
-.. method:: BitstreamAccumulator.write_signed(bits, value)
-
-   Counts the given number of bits written to the stream.
-   Bits must be: ``0 <= bits <= 32`` .
-   Value must be: ``-(2 ** (bits - 1)) <= value < 2 ** (bits - 1)`` .
-
-.. method:: BitstreamAccumulator.write_signed64(bits, value)
-
-   Counts the given number of bits written to the stream.
-   Bits must be: ``0 <= bits <= 64`` .
-   Value must be: ``-(2 ** (bits - 1)) <= value < 2 ** (bits - 1)`` .
-
-.. method:: BitstreamAccumulator.unary(stop_bit, value)
-
-   Counts ``value`` number of bits, plus 1 additional stop bit.
-
-.. method:: BitstreamWriter.write_huffman_code(huffman_tree, value)
-
-   Given a :class:`HuffmanTree` object and an integer value to write,
-   determines the proper output code and calculates its size
-   when written to disk.
-   Raises :exc:`ValueError` if the integer value is not present
-   in the tree.
-
-.. method:: BitstreamAccumulator.byte_align()
-
-   Counts ``0`` bits as necessary until the stream is aligned
-   on a byte boundary.
-
-.. method:: BitstreamAccumulator.byte_aligned()
-
-   Returns ``True`` if the stream is positioned on a byte boundary.
-
-.. method:: BitstreamAccumulator.build(format_string, value_list)
-
-   Given a format string representing a set of individual writes,
-   and a list of values to write,
-   counts the number of bits written to the stream.
-
-   ====== ============= =====================
-   format value         method performed
-   ====== ============= =====================
-   "#u"   unsigned int  write(#, u)
-   "#s"   signed int    write(#, s)
-   "#U"   unsigned long write64(#, ul)
-   "#S"   signed long   write_signed64(#, sl)
-   "#p"   N/A           write(#, 0)
-   "#P"   N/A           write(# * 8, 0)
-   "#b"   string        write_bytes(#, s)
-   "a"    N/A           byte_align()
-   ====== ============= =====================
-
-   For instance:
-
-   >>> w.build("3u 4s 36U", [1, -2, 3L])
-
-   is equivalent to:
-
-   >>> w.write(3,1)
-   >>> w.write_signed(4, -2)
-   >>> w.write64(36, 3L)
-
-.. method:: BitstreamAccumulator.write_bytes(string)
-
-   Counts the number of bytes in the given binary string.
-
-.. method:: BitstreamAccumulator.set_endianness(is_little_endian)
-
-   Sets the stream's endianness where ``False`` indicates
-   big-endian, while ``True`` indicates little-endian.
-   The stream is automatically byte-aligned prior
-   to changing its byte order.
-
-.. method:: BitstreamAccumulator.close()
-
-   Does nothing.
-   This is merely a placeholder for compatibility with
-   :class:`BitstreamWriter`.
-
-.. method:: BitstreamAccumulator.bits()
-
-   Returns the counted number of bits as an integer.
-
-.. method:: BitstreamAccumulator.bytes()
-
-   Returns the counted number of bytes as an integer.
-
-.. method:: BitstreamAccumulator.reset()
-
-   Resets the counted number of bits to zero.
-
-.. method:: BitstreamAccumulator.__enter__()
-
-   Returns the accumulator's context manager.
-
-.. method:: BitstreamAccumulator.__exit__(exc_type, exc_value, traceback)
-
-   Exits the accumulator's context manager.
 
 HuffmanTree Objects
 -------------------

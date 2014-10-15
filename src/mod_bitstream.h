@@ -738,7 +738,7 @@ BitstreamRecorder_reset(bitstream_BitstreamRecorder *self,
                         PyObject *args);
 
 /*returns the internal BitstreamWriter struct of the given object
-  or NULL if it is not a BitstreamWriter/Recorder/Accumulator*/
+  or NULL if it is not a BitstreamWriter/Recorder*/
 static BitstreamWriter*
 internal_writer(PyObject *writer);
 
@@ -811,13 +811,13 @@ PyMethodDef BitstreamRecorder_methods[] = {
     {"copy", (PyCFunction)BitstreamRecorder_copy, METH_VARARGS,
      "copy(target)\n"
      "copies the written data to \"target\", which must be a\n"
-     "BitstreamWriter, Recorder or Accumulator"},
+     "BitstreamWriter or Recorder"},
     {"split", (PyCFunction)BitstreamRecorder_split, METH_VARARGS,
      "split(target, remainder, bytes)\n"
      "copies the given number of written bytes to \"target\"\n"
      "and the remaining bytes to \"remainder\"\n"
      "where \"target\" and \"remainder\" must be a\n"
-     "BitstreamWriter, Recorder, Accumulator or None"},
+     "BitstreamWriter, Recorder, or None"},
     {"build", (PyCFunction)BitstreamRecorder_build, METH_VARARGS,
      "build(format_string, [value1, value2, ...])\n"
      "where \"format_string\" maps to the calls:\n"
@@ -918,189 +918,6 @@ bitstream_build(BitstreamWriter* stream,
                 write_object_f write_signed,
                 const char* format,
                 PyObject* iterator);
-
-typedef struct {
-    PyObject_HEAD
-
-    BitstreamAccumulator* bitstream;
-    write_object_f write_unsigned;
-    write_object_f write_signed;
-} bitstream_BitstreamAccumulator;
-
-static PyObject*
-BitstreamAccumulator_write(bitstream_BitstreamAccumulator *self,
-                           PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_write_signed(bitstream_BitstreamAccumulator *self,
-                                  PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_unary(bitstream_BitstreamAccumulator *self,
-                           PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_write_huffman_code(bitstream_BitstreamAccumulator *self,
-                                        PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_byte_align(bitstream_BitstreamAccumulator *self,
-                                PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_byte_aligned(bitstream_BitstreamAccumulator *self,
-                                  PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_set_endianness(bitstream_BitstreamAccumulator *self,
-                                    PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_write_bytes(bitstream_BitstreamAccumulator *self,
-                                 PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_build(bitstream_BitstreamAccumulator *self,
-                           PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_flush(bitstream_BitstreamAccumulator *self,
-                           PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_close(bitstream_BitstreamAccumulator *self, PyObject *args);
-
-int
-BitstreamAccumulator_init(bitstream_BitstreamAccumulator *self, PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_bits(bitstream_BitstreamAccumulator *self,
-                          PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_bytes(bitstream_BitstreamAccumulator *self,
-                           PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_reset(bitstream_BitstreamAccumulator *self,
-                           PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_enter(bitstream_BitstreamAccumulator *self,
-                           PyObject *args);
-
-static PyObject*
-BitstreamAccumulator_exit(bitstream_BitstreamAccumulator *self,
-                          PyObject *args);
-
-PyMethodDef BitstreamAccumulator_methods[] = {
-    {"write", (PyCFunction)BitstreamAccumulator_write, METH_VARARGS,
-     "write(bits, unsigned int)"},
-    {"write_signed", (PyCFunction)BitstreamAccumulator_write_signed,
-     METH_VARARGS,
-    "write_signed(bits, signed int)"},
-    {"unary", (PyCFunction)BitstreamAccumulator_unary, METH_VARARGS,
-     "unary(stop_bit, unsigned int)\n"
-     "where \"stop_bit\" must be 0 or 1\n"
-     "writes value as the given number of not stop_bit values (1 or 0)\n"
-     "followed by a stop_bit"},
-     {"write_huffman_code",
-     (PyCFunction)BitstreamAccumulator_write_huffman_code,
-     METH_VARARGS, "write_huffman_code(huffman_tree, value)\n"
-     "given a compiled HuffmanTree and int value,\n"
-     "writes that value to the stream"},
-    {"byte_align", (PyCFunction)BitstreamAccumulator_byte_align, METH_NOARGS,
-     "byte_align()\n"
-     "pads the stream with 0 bits until the next whole byte"},
-    {"byte_aligned", (PyCFunction)BitstreamAccumulator_byte_aligned,
-     METH_NOARGS,
-     "byte_aligned() -> True if the stream is currently byte-aligned"},
-    {"flush", (PyCFunction)BitstreamAccumulator_flush, METH_NOARGS,
-     "flush()\n"
-     "flushes pending data to any underlying file object"},
-    {"close", (PyCFunction)BitstreamAccumulator_close, METH_NOARGS,
-     "close()\n"
-     "closes the stream and any underlying file object"},
-    {"set_endianness", (PyCFunction)BitstreamAccumulator_set_endianness,
-     METH_VARARGS,
-     "set_endianness(endianness)\n"
-     "where 0 = big endian, 1 = little endian"},
-    {"write_bytes", (PyCFunction)BitstreamAccumulator_write_bytes, METH_VARARGS,
-     "write_bytes(bytes, string)"},
-    {"build", (PyCFunction)BitstreamAccumulator_build, METH_VARARGS,
-     "build(format_string, [value1, value2, ...])\n"
-     "where \"format_string\" maps to the calls:\n"
-     "\"#u\" -> write(#, unsigned int value)\n"
-     "\"#s\" -> write_signed(#, signed int value)\n"
-     "\"#p\" -> write(#, 0)\n"
-     "\"#P\" -> write(# * 8, 0)\n"
-     "\"#b\" -> write_bytes(#, string value)\n"
-     "\"a\"  -> byte_align()\n\n"
-     "for instance:\n"
-     "a.build(\"3u 4s 36\", [1, -2, 3L])\n   ==\n"
-     "a.write(3, 1); a.write_signed(4, -2); a.write(36, 3L)"},
-    {"bits", (PyCFunction)BitstreamAccumulator_bits, METH_NOARGS,
-     "bits() -> unsigned int\n"
-     "returns the total number of bits written thus far"},
-    {"bytes", (PyCFunction)BitstreamAccumulator_bytes, METH_NOARGS,
-     "bytes() -> unsigned int\n"
-     "returns the total number of bytes written thus far"},
-    {"reset", (PyCFunction)BitstreamAccumulator_reset, METH_NOARGS,
-     "reset()\n"},
-    {"__enter__", (PyCFunction)BitstreamAccumulator_enter,
-     METH_NOARGS, "enter() -> self"},
-    {"__exit__", (PyCFunction)BitstreamAccumulator_exit,
-     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
-    {NULL}
-};
-
-void
-BitstreamAccumulator_dealloc(bitstream_BitstreamAccumulator *self);
-
-static PyObject*
-BitstreamAccumulator_new(PyTypeObject *type, PyObject *args,
-                         PyObject *kwds);
-
-PyTypeObject bitstream_BitstreamAccumulatorType = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "bitstream.BitstreamAccumulator",    /*tp_name*/
-    sizeof(bitstream_BitstreamAccumulator), /*tp_basicsize*/
-    0,                         /*tp_itemsize*/
-    (destructor)BitstreamAccumulator_dealloc, /*tp_dealloc*/
-    0,                         /*tp_print*/
-    0,                         /*tp_getattr*/
-    0,                         /*tp_setattr*/
-    0,                         /*tp_compare*/
-    0,                         /*tp_repr*/
-    0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
-    0,                         /*tp_as_mapping*/
-    0,                         /*tp_hash */
-    0,                         /*tp_call*/
-    0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
-    0,                         /*tp_setattro*/
-    0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "BitstreamAccumulator objects", /* tp_doc */
-    0,                         /* tp_traverse */
-    0,                         /* tp_clear */
-    0,                         /* tp_richcompare */
-    0,                         /*  tp_weaklistoffset */
-    0,                         /* tp_iter */
-    0,                         /* tp_iternext */
-    BitstreamAccumulator_methods,   /* tp_methods */
-    0,                         /* tp_members */
-    0,                         /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)BitstreamAccumulator_init,/* tp_init */
-    0,                         /* tp_alloc */
-    BitstreamAccumulator_new,  /* tp_new */
-};
 
 void
 BitstreamWriter_callback(uint8_t byte, PyObject *callback);
