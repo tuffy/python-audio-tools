@@ -495,7 +495,7 @@ class WaveReader(object):
                     self.total_pcm_frames = (chunk_size //
                                              self.bytes_per_pcm_frame)
                     self.remaining_pcm_frames = self.total_pcm_frames
-                    self.stream.mark()
+                    self.data_start = self.stream.getpos()
                     return
             else:
                 # all other chunks are ignored
@@ -520,10 +520,6 @@ class WaveReader(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
-
-    def __del__(self):
-        if (self.stream.has_mark()):
-            self.stream.unmark()
 
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of PCM frames"""
@@ -565,7 +561,7 @@ class WaveReader(object):
         pcm_frame_offset = min(pcm_frame_offset, self.total_pcm_frames)
 
         # position file in "data" chunk
-        self.stream.rewind()
+        self.stream.setpos(self.data_start)
         self.stream.seek(pcm_frame_offset * self.bytes_per_pcm_frame, 1)
         self.remaining_pcm_frames = (self.total_pcm_frames -
                                      pcm_frame_offset)

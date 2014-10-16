@@ -319,9 +319,9 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         from audiotools.bitstream import BitstreamReader
         from audiotools import ChannelMask
 
-        reader = BitstreamReader(open(self.filename, "rb"), 1)
-        reader.mark()
-        try:
+        with BitstreamReader(open(self.filename, "rb"), True) as reader:
+            pos = reader.getpos()
+
             (block_id,
              total_samples,
              bits_per_sample,
@@ -349,7 +349,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                 else:
                     # no SAMPLE RATE sub-block found
                     # so pull info from FMT chunk
-                    reader.rewind()
+                    reader.setpos(pos)
                     (self.__samplerate__,) = self.fmt_chunk(reader).parse(
                         "32p 32u")
 
@@ -365,7 +365,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                     self.__channel_mask__ = ChannelMask(0x3)
             else:
                 # if not mono or stereo, pull from CHANNEL INFO sub-block
-                reader.rewind()
+                reader.setpos(pos)
                 for (block_id,
                      nondecoder,
                      data_size,
@@ -378,7 +378,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                 else:
                     # no CHANNEL INFO sub-block found
                     # so pull info from FMT chunk
-                    reader.rewind()
+                    reader.setpos(pos)
                     fmt = self.fmt_chunk(reader)
                     compression_code = fmt.read(16)
                     self.__channels__ = fmt.read(16)
@@ -416,10 +416,6 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                     else:
                         from audiotools.text import ERR_WAVPACK_UNSUPPORTED_FMT
                         raise InvalidWavPack(ERR_WAVPACK_UNSUPPORTED_FMT)
-
-        finally:
-            reader.unmark()
-            reader.close()
 
     def bits_per_sample(self):
         """returns an integer number of bits-per-sample this track contains"""

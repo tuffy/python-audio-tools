@@ -104,6 +104,9 @@ typedef struct {
 
     /*a framelist generator*/
     PyObject* audiotools_pcm;
+
+    /*a mark for seeking purposes*/
+    br_pos_t* beginning_of_frames;
 } decoders_FlacDecoder;
 
 static PyObject*

@@ -46,6 +46,9 @@ MOD_INIT(bitstream)
     if (PyType_Ready(&bitstream_HuffmanTreeType) < 0)
         return MOD_ERROR_VAL;
 
+    if (PyType_Ready(&bitstream_BitstreamReaderPositionType) < 0)
+        return MOD_ERROR_VAL;
+
     bitstream_BitstreamWriterType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&bitstream_BitstreamWriterType) < 0)
         return MOD_ERROR_VAL;
@@ -61,6 +64,10 @@ MOD_INIT(bitstream)
     Py_INCREF(&bitstream_HuffmanTreeType);
     PyModule_AddObject(m, "HuffmanTree",
                        (PyObject *)&bitstream_HuffmanTreeType);
+
+    Py_INCREF(&bitstream_BitstreamReaderPositionType);
+    PyModule_AddObject(m, "BitstreamReaderPosition",
+                       (PyObject *)&bitstream_BitstreamReaderPositionType);
 
     Py_INCREF(&bitstream_BitstreamWriterType);
     PyModule_AddObject(m, "BitstreamWriter",
@@ -795,72 +802,62 @@ BitstreamReader_close(bitstream_BitstreamReader *self, PyObject *args)
 }
 
 static PyObject*
-BitstreamReader_mark(bitstream_BitstreamReader *self, PyObject *args)
+BitstreamReader_getpos(bitstream_BitstreamReader *self, PyObject *args)
 {
-    int mark_id = 0;
+    PyTypeObject *type = &bitstream_BitstreamReaderPositionType;
+    br_pos_t* pos;
+    bitstream_BitstreamReaderPosition* pos_obj;
 
-    if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
-        return NULL;
+    /*get position from internal reader*/
+    if (!setjmp(*br_try(self->bitstream))) {
+        pos = self->bitstream->getpos(self->bitstream);
+        br_etry(self->bitstream);
     } else {
-        if (!setjmp(*br_try(self->bitstream))) {
-            self->bitstream->mark(self->bitstream, mark_id);
-            br_etry(self->bitstream);
-            Py_INCREF(Py_None);
-            return Py_None;
-        } else {
-            br_etry(self->bitstream);
-            PyErr_SetString(PyExc_IOError,
-                            "I/O error getting current position");
-            return NULL;
-        }
+        /*raise IOError if a problem occurs getting the position*/
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "unable to get current position");
+        return NULL;
     }
+
+    /*otherwise, allocate new position object and populate it*/
+    pos_obj = (bitstream_BitstreamReaderPosition *)type->tp_alloc(type, 0);
+    pos_obj->pos = pos;
+
+    /*then return fresh position object*/
+    return (PyObject *)pos_obj;
 }
 
 static PyObject*
-BitstreamReader_has_mark(bitstream_BitstreamReader *self, PyObject *args)
+BitstreamReader_setpos(bitstream_BitstreamReader *self, PyObject *args)
 {
-    int mark_id = 0;
+    bitstream_BitstreamReaderPosition* pos_obj;
 
-    if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
+    if (!PyArg_ParseTuple(args, "O!",
+                          &bitstream_BitstreamReaderPositionType,
+                          &pos_obj))
         return NULL;
-    } else {
-        return PyBool_FromLong(
-            self->bitstream->has_mark(self->bitstream, mark_id));
+
+    /*ensure position has come from this reader*/
+    if (pos_obj->pos->reader != self->bitstream) {
+        PyErr_SetString(PyExc_IOError,
+                        "position is not from this BitstreamReader");
+        return NULL;
     }
-}
 
-static PyObject*
-BitstreamReader_rewind(bitstream_BitstreamReader *self, PyObject *args)
-{
-    int mark_id = 0;
+    if (!setjmp(*br_try(self->bitstream))) {
+        self->bitstream->setpos(self->bitstream, pos_obj->pos);
+        br_etry(self->bitstream);
 
-    if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
-        return NULL;
-    } else {
-        if (!setjmp(*br_try(self->bitstream))) {
-            self->bitstream->rewind(self->bitstream, mark_id);
-            br_etry(self->bitstream);
-            Py_INCREF(Py_None);
-            return Py_None;
-        } else {
-            br_etry(self->bitstream);
-            PyErr_SetString(PyExc_IOError, "I/O error seeking to position");
-            return NULL;
-        }
-    }
-}
-
-static PyObject*
-BitstreamReader_unmark(bitstream_BitstreamReader *self, PyObject *args)
-{
-    int mark_id = 0;
-    if (!PyArg_ParseTuple(args, "|i", &mark_id)) {
-        return NULL;
-    } else {
-        self->bitstream->unmark(self->bitstream, mark_id);
         Py_INCREF(Py_None);
         return Py_None;
+    } else {
+        /*raise IOError if some problem occurs setting the position*/
+        br_etry(self->bitstream);
+
+        PyErr_SetString(PyExc_IOError, "unable to set position");
+        return NULL;
     }
+
 }
 
 /*given a numeric object
@@ -1470,6 +1467,17 @@ HuffmanTree_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self = (bitstream_HuffmanTree *)type->tp_alloc(type, 0);
 
     return (PyObject *)self;
+}
+
+void
+BitstreamReaderPosition_dealloc(bitstream_BitstreamReaderPosition *self)
+{
+    /*since the position contains a copy of the "free" function
+      needed to free the object returned by getpos,
+      this position object can be safely freed after its parent reader*/
+    self->pos->del(self->pos);
+
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 int

@@ -1794,9 +1794,8 @@ class TestFrameList(unittest.TestCase):
                             "MD5 mismatch for %s using %s" % (
                                 track.NAME, repr(sine)))
                         for new_format in audiotools.AVAILABLE_TYPES:
-                            temp_track2 = tempfile.NamedTemporaryFile(
-                                suffix="." + format.SUFFIX)
-                            try:
+                            with tempfile.NamedTemporaryFile(
+                                suffix="." + format.SUFFIX) as temp_track2:
                                 try:
                                     track2 = new_format.from_pcm(
                                         temp_track2.name,
@@ -1811,8 +1810,6 @@ class TestFrameList(unittest.TestCase):
                                         md5sum.hexdigest(),
                                         sine.hexdigest(),
                                         "MD5 mismatch for converting %s from %s to %s" % (repr(sine), track.NAME, track2.NAME))
-                            finally:
-                                temp_track2.close()
             finally:
                 temp_track.close()
 
@@ -2021,21 +2018,21 @@ class Bitstream(unittest.TestCase):
         # check the bitstream reader
         # against some known big-endian values
 
-        reader.mark()
+        pos = reader.getpos()
         self.assertEqual(reader.read(2), 0x2)
         self.assertEqual(reader.read(3), 0x6)
         self.assertEqual(reader.read(5), 0x07)
         self.assertEqual(reader.read(3), 0x5)
         self.assertEqual(reader.read(19), 0x53BC1)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(2), 0x2)
         reader.skip(3)
         self.assertEqual(reader.read(5), 0x07)
         reader.skip(3)
         self.assertEqual(reader.read(19), 0x53BC1)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(1), 1)
         bit = reader.read(1)
         self.assertEqual(bit, 0)
@@ -2043,35 +2040,35 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(2), 1)
         reader.byte_align()
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(8), 0xB1)
         reader.unread(0)
         self.assertEqual(reader.read(1), 0)
         reader.unread(1)
         self.assertEqual(reader.read(1), 1)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read_signed(2), -2)
         self.assertEqual(reader.read_signed(3), -2)
         self.assertEqual(reader.read_signed(5), 7)
         self.assertEqual(reader.read_signed(3), -3)
         self.assertEqual(reader.read_signed(19), -181311)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.unary(0), 1)
         self.assertEqual(reader.unary(0), 2)
         self.assertEqual(reader.unary(0), 0)
         self.assertEqual(reader.unary(0), 0)
         self.assertEqual(reader.unary(0), 4)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.unary(1), 0)
         self.assertEqual(reader.unary(1), 1)
         self.assertEqual(reader.unary(1), 0)
         self.assertEqual(reader.unary(1), 3)
         self.assertEqual(reader.unary(1), 0)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read_huffman_code(table), 1)
         self.assertEqual(reader.read_huffman_code(table), 0)
         self.assertEqual(reader.read_huffman_code(table), 4)
@@ -2088,7 +2085,7 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read_huffman_code(table), 4)
         self.assertEqual(reader.read_huffman_code(table), 2)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(3), 5)
         reader.byte_align()
         self.assertEqual(reader.read(3), 7)
@@ -2098,13 +2095,13 @@ class Bitstream(unittest.TestCase):
         reader.byte_align()
         self.assertEqual(reader.read(4), 12)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read_bytes(2), b"\xB1\xED")
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(4), 11)
         self.assertEqual(reader.read_bytes(2), b"\x1E\xD3")
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(3), 5)
         reader.set_endianness(1)
         self.assertEqual(reader.read(3), 5)
@@ -2113,21 +2110,21 @@ class Bitstream(unittest.TestCase):
         reader.set_endianness(0)
         self.assertEqual(reader.read(4), 12)
 
-        reader.rewind()
-        reader.mark()
+        reader.setpos(pos)
+        pos2 = reader.getpos()
         self.assertEqual(reader.read(4), 0xB)
-        reader.rewind()
+        reader.setpos(pos2)
         self.assertEqual(reader.read(8), 0xB1)
-        reader.rewind()
+        reader.setpos(pos2)
         self.assertEqual(reader.read(12), 0xB1E)
-        reader.unmark()
-        reader.mark()
+        del(pos2)
+        pos3 = reader.getpos()
         self.assertEqual(reader.read(4), 0xD)
-        reader.rewind()
+        reader.setpos(pos3)
         self.assertEqual(reader.read(8), 0xD3)
-        reader.rewind()
+        reader.setpos(pos3)
         self.assertEqual(reader.read(12), 0xD3B)
-        reader.unmark()
+        del(pos3)
 
         reader.seek(3, 0)
         self.assertEqual(reader.read(8), 0xC1)
@@ -2231,28 +2228,27 @@ class Bitstream(unittest.TestCase):
         except IOError:
             self.assertTrue(True)
 
-        reader.rewind()
-        reader.unmark()
+        reader.setpos(pos)
 
     def __test_little_endian_reader__(self, reader, table):
         # check the bitstream reader
         # against some known little-endian values
 
-        reader.mark()
+        pos = reader.getpos()
         self.assertEqual(reader.read(2), 0x1)
         self.assertEqual(reader.read(3), 0x4)
         self.assertEqual(reader.read(5), 0x0D)
         self.assertEqual(reader.read(3), 0x3)
         self.assertEqual(reader.read(19), 0x609DF)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(2), 0x1)
         reader.skip(3)
         self.assertEqual(reader.read(5), 0x0D)
         reader.skip(3)
         self.assertEqual(reader.read(19), 0x609DF)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(1), 1)
         bit = reader.read(1)
         self.assertEqual(bit, 0)
@@ -2260,35 +2256,35 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(4), 8)
         reader.byte_align()
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(8), 0xB1)
         reader.unread(0)
         self.assertEqual(reader.read(1), 0)
         reader.unread(1)
         self.assertEqual(reader.read(1), 1)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read_signed(2), 1)
         self.assertEqual(reader.read_signed(3), -4)
         self.assertEqual(reader.read_signed(5), 13)
         self.assertEqual(reader.read_signed(3), 3)
         self.assertEqual(reader.read_signed(19), -128545)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.unary(0), 1)
         self.assertEqual(reader.unary(0), 0)
         self.assertEqual(reader.unary(0), 0)
         self.assertEqual(reader.unary(0), 2)
         self.assertEqual(reader.unary(0), 2)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.unary(1), 0)
         self.assertEqual(reader.unary(1), 3)
         self.assertEqual(reader.unary(1), 0)
         self.assertEqual(reader.unary(1), 1)
         self.assertEqual(reader.unary(1), 0)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read_huffman_code(table), 1)
         self.assertEqual(reader.read_huffman_code(table), 3)
         self.assertEqual(reader.read_huffman_code(table), 1)
@@ -2304,14 +2300,14 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read_huffman_code(table), 4)
         self.assertEqual(reader.read_huffman_code(table), 3)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read_bytes(2), b"\xB1\xED")
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(4), 1)
 
         self.assertEqual(reader.read_bytes(2), b"\xDB\xBE")
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(3), 1)
         reader.byte_align()
         self.assertEqual(reader.read(3), 5)
@@ -2321,7 +2317,7 @@ class Bitstream(unittest.TestCase):
         reader.byte_align()
         self.assertEqual(reader.read(4), 1)
 
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.read(3), 1)
         reader.set_endianness(0)
         self.assertEqual(reader.read(3), 7)
@@ -2330,79 +2326,76 @@ class Bitstream(unittest.TestCase):
         reader.set_endianness(1)
         self.assertEqual(reader.read(4), 1)
 
-        reader.rewind()
-        reader.mark()
+        reader.setpos(pos)
+        pos2 = reader.getpos()
         self.assertEqual(reader.read(4), 0x1)
-        reader.rewind()
+        reader.setpos(pos2)
         self.assertEqual(reader.read(8), 0xB1)
-        reader.rewind()
+        reader.setpos(pos2)
         self.assertEqual(reader.read(12), 0xDB1)
-        reader.unmark()
-        reader.mark()
+        del(pos2)
+        pos3 = reader.getpos()
         self.assertEqual(reader.read(4), 0xE)
-        reader.rewind()
+        reader.setpos(pos3)
         self.assertEqual(reader.read(8), 0xBE)
-        reader.rewind()
+        reader.setpos(pos3)
         self.assertEqual(reader.read(12), 0x3BE)
-        reader.unmark()
+        del(pos3)
 
-        reader.rewind()
-        reader.unmark()
+        reader.setpos(pos)
 
     def __test_try__(self, reader, table):
-        reader.mark()
+        start = reader.getpos()
 
         # bounce to the very end of the stream
         reader.skip(31)
-        reader.mark()
+        pos = reader.getpos()
         self.assertEqual(reader.read(1), 1)
-        reader.rewind()
+        reader.setpos(pos)
 
         # then test all the read methods to ensure they trigger br_abort
         # in the case of unary/Huffman, the stream ends on a "1" bit
         # whether reading it big-endian or little-endian
 
         self.assertRaises(IOError, reader.read, 2)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(IOError, reader.read_signed, 2)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(IOError, reader.skip, 2)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(IOError, reader.unary, 0)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertEqual(reader.unary(1), 0)
         self.assertRaises(IOError, reader.unary, 1)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(IOError, reader.read_huffman_code, table)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(IOError, reader.read_bytes, 2)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(IOError, reader.substream, 1)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(ValueError, reader.read, -1)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(ValueError, reader.read_signed, -1)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(ValueError, reader.read_signed, 0)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(ValueError, reader.skip, -1)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(ValueError, reader.read_bytes, -2)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(IOError, reader.skip_bytes, 2 ** 30)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(IOError, reader.skip_bytes, 2 ** 65)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(IOError, reader.read_bytes, 2 ** 30)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(IOError, reader.read_bytes, 2 ** 65)
-        reader.rewind()
+        reader.setpos(pos)
         self.assertRaises(IOError, reader.substream, 2 ** 30)
-        reader.rewind()
+        reader.setpos(pos)
 
-        reader.unmark()
-        reader.rewind()
-        reader.unmark()
+        reader.setpos(start)
 
     def __test_callbacks_reader__(self,
                                   reader,
@@ -2411,7 +2404,7 @@ class Bitstream(unittest.TestCase):
                                   table,
                                   huffman_code_count):
         counter = ByteCounter()
-        reader.mark()
+        start = reader.getpos()
         reader.add_callback(counter.callback)
 
         # a single callback
@@ -2419,7 +2412,7 @@ class Bitstream(unittest.TestCase):
         for i in range(8):
             reader.read(4)
         self.assertEqual(int(counter), 4)
-        reader.rewind()
+        reader.setpos(start)
 
         # calling callbacks directly
         counter.reset()
@@ -2434,7 +2427,7 @@ class Bitstream(unittest.TestCase):
             reader.read(4)
         self.assertEqual(int(counter), 8)
         reader.pop_callback()
-        reader.rewind()
+        reader.setpos(start)
 
         # temporarily suspending the callback
         counter.reset()
@@ -2446,7 +2439,7 @@ class Bitstream(unittest.TestCase):
         reader.add_callback(counter.callback)
         reader.read(8)
         self.assertEqual(int(counter), 2)
-        reader.rewind()
+        reader.setpos(start)
 
         # temporarily adding two callbacks
         counter.reset()
@@ -2458,21 +2451,21 @@ class Bitstream(unittest.TestCase):
         reader.pop_callback()
         reader.read(8)
         self.assertEqual(int(counter), 6)
-        reader.rewind()
+        reader.setpos(start)
 
         # read_signed
         counter.reset()
         for i in range(8):
             reader.read_signed(4)
         self.assertEqual(int(counter), 4)
-        reader.rewind()
+        reader.setpos(start)
 
         # skip
         counter.reset()
         for i in range(8):
             reader.skip(4)
         self.assertEqual(int(counter), 4)
-        reader.rewind()
+        reader.setpos(start)
 
         # read_unary
         counter.reset()
@@ -2480,28 +2473,28 @@ class Bitstream(unittest.TestCase):
             reader.unary(0)
         self.assertEqual(int(counter), 4)
         counter.reset()
-        reader.rewind()
+        reader.setpos(start)
         for i in range(unary_1_reads):
             reader.unary(1)
         self.assertEqual(int(counter), 4)
-        reader.rewind()
+        reader.setpos(start)
 
         # read_huffman_code
         counter.reset()
         for i in range(huffman_code_count):
             reader.read_huffman_code(table)
         self.assertEqual(int(counter), 4)
-        reader.rewind()
+        reader.setpos(start)
 
         # read_bytes
         counter.reset()
         reader.read_bytes(2)
         reader.read_bytes(2)
         self.assertEqual(int(counter), 4)
-        reader.rewind()
+        reader.setpos(start)
 
         reader.pop_callback()
-        reader.unmark()
+        del(start)
 
     @LIB_BITSTREAM
     def test_init_error(self):
@@ -2882,7 +2875,7 @@ class Bitstream(unittest.TestCase):
         for reader in [BitstreamReader(temp, False),
                        BitstreamReader(temp_s, False),
                        BitstreamReader(data, False)]:
-            reader.mark()
+            start = reader.getpos()
 
             reader.skip(16)
             subreader = reader.substream(4)
@@ -2891,7 +2884,7 @@ class Bitstream(unittest.TestCase):
             self.__test_callbacks_reader__(subreader, 14, 18, table_be, 13)
 
             # check a big-endian substream built from another substream
-            reader.rewind()
+            reader.setpos(start)
             reader.skip(8)
             subreader1 = reader.substream(6)
             subreader1.skip(8)
@@ -2899,7 +2892,6 @@ class Bitstream(unittest.TestCase):
             self.__test_big_endian_reader__(subreader2, table_be)
             self.__test_try__(subreader2, table_be)
             self.__test_callbacks_reader__(subreader2, 14, 18, table_be, 13)
-            reader.unmark()
 
         temp.seek(0, 0)
         temp_s.seek(0, 0)
@@ -2908,7 +2900,7 @@ class Bitstream(unittest.TestCase):
         for reader in [BitstreamReader(temp, True),
                        BitstreamReader(temp_s, True),
                        BitstreamReader(data, True)]:
-            reader.mark()
+            start = reader.getpos()
 
             reader.skip(16)
             subreader = reader.substream(4)
@@ -2917,7 +2909,7 @@ class Bitstream(unittest.TestCase):
             self.__test_callbacks_reader__(subreader, 14, 18, table_le, 13)
 
             # check a little-endian substream built from another substream
-            reader.rewind()
+            reader.setpos(start)
             reader.skip(8)
             subreader1 = reader.substream(6)
             subreader1.skip(8)
@@ -2925,7 +2917,6 @@ class Bitstream(unittest.TestCase):
             self.__test_little_endian_reader__(subreader2, table_le)
             self.__test_try__(subreader2, table_le)
             self.__test_callbacks_reader__(subreader2, 14, 18, table_le, 13)
-            reader.unmark()
 
         temp.close()
 
@@ -2934,10 +2925,10 @@ class Bitstream(unittest.TestCase):
         self.__test_writer__(1)
 
     def __test_edge_reader_be__(self, reader):
-        reader.mark()
+        start = reader.getpos()
 
         # try the unsigned 32 and 64 bit values
-        reader.rewind()
+        reader.setpos(start)
         self.assertEqual(reader.read(32), 0)
         self.assertEqual(reader.read(32), 4294967295)
         self.assertEqual(reader.read(32), 2147483648)
@@ -2948,7 +2939,7 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(64), 9223372036854775807)
 
         # try the signed 32 and 64 bit values
-        reader.rewind()
+        reader.setpos(start)
         self.assertEqual(reader.read_signed(32), 0)
         self.assertEqual(reader.read_signed(32), -1)
         self.assertEqual(reader.read_signed(32), -2147483648)
@@ -2959,7 +2950,7 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read_signed(64), 9223372036854775807)
 
         # try the unsigned values via parse()
-        reader.rewind()
+        reader.setpos(start)
         (u_val_1,
          u_val_2,
          u_val_3,
@@ -2978,7 +2969,7 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(u_val64_4, 9223372036854775807)
 
         # try the signed values via parse()
-        reader.rewind()
+        reader.setpos(start)
         (s_val_1,
          s_val_2,
          s_val_3,
@@ -2995,11 +2986,9 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(s_val64_2, -1)
         self.assertEqual(s_val64_3, -9223372036854775808)
         self.assertEqual(s_val64_4, 9223372036854775807)
-
-        reader.unmark()
 
     def __test_edge_reader_le__(self, reader):
-        reader.mark()
+        start = reader.getpos()
 
         # try the unsigned 32 and 64 bit values
         self.assertEqual(reader.read(32), 0)
@@ -3012,7 +3001,7 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read(64), 9223372036854775807)
 
         # try the signed 32 and 64 bit values
-        reader.rewind()
+        reader.setpos(start)
         self.assertEqual(reader.read_signed(32), 0)
         self.assertEqual(reader.read_signed(32), -1)
         self.assertEqual(reader.read_signed(32), -2147483648)
@@ -3023,7 +3012,7 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(reader.read_signed(64), 9223372036854775807)
 
         # try the unsigned values via parse()
-        reader.rewind()
+        reader.setpos(start)
         (u_val_1,
          u_val_2,
          u_val_3,
@@ -3042,7 +3031,7 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(u_val64_4, 9223372036854775807)
 
         # try the signed values via parse()
-        reader.rewind()
+        reader.setpos(start)
         (s_val_1,
          s_val_2,
          s_val_3,
@@ -3059,8 +3048,6 @@ class Bitstream(unittest.TestCase):
         self.assertEqual(s_val64_2, -1)
         self.assertEqual(s_val64_3, -9223372036854775808)
         self.assertEqual(s_val64_4, 9223372036854775807)
-
-        reader.unmark()
 
     def __test_edge_writer__(self, get_writer, validate_writer):
         # try the unsigned 32 and 64 bit values
@@ -3858,20 +3845,18 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(1), 1)
 
             bitstream = BitstreamReader(new_temp(), False)
-            bitstream.mark()
+            pos = bitstream.getpos()
             self.assertEqual(bitstream.read(4), 0xB)
-            bitstream.rewind()
+            bitstream.setpos(pos)
             self.assertEqual(bitstream.read(8), 0xB1)
-            bitstream.rewind()
+            bitstream.setpos(pos)
             self.assertEqual(bitstream.read(12), 0xB1E)
-            bitstream.unmark()
-            bitstream.mark()
+            pos = bitstream.getpos()
             self.assertEqual(bitstream.read(4), 0xD)
-            bitstream.rewind()
+            bitstream.setpos(pos)
             self.assertEqual(bitstream.read(8), 0xD3)
-            bitstream.rewind()
+            bitstream.setpos(pos)
             self.assertEqual(bitstream.read(12), 0xD3B)
-            bitstream.unmark()
 
             del(bitstream)
             bitstream = BitstreamReader(new_temp(), False)
@@ -3924,20 +3909,18 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(1), 1)
 
             bitstream = BitstreamReader(new_temp(), True)
-            bitstream.mark()
+            pos = bitstream.getpos()
             self.assertEqual(bitstream.read(4), 0x1)
-            bitstream.rewind()
+            bitstream.setpos(pos)
             self.assertEqual(bitstream.read(8), 0xB1)
-            bitstream.rewind()
+            bitstream.setpos(pos)
             self.assertEqual(bitstream.read(12), 0xDB1)
-            bitstream.unmark()
-            bitstream.mark()
+            pos = bitstream.getpos()
             self.assertEqual(bitstream.read(4), 0xE)
-            bitstream.rewind()
+            bitstream.setpos(pos)
             self.assertEqual(bitstream.read(8), 0xBE)
-            bitstream.rewind()
+            bitstream.setpos(pos)
             self.assertEqual(bitstream.read(12), 0x3BE)
-            bitstream.unmark()
 
     @LIB_BITSTREAM
     def test_simple_writer(self):

@@ -23,8 +23,6 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-enum {BEGINNING_OF_FRAMES};
-
 #ifndef STANDALONE
 int
 FlacDecoder_init(decoders_FlacDecoder *self,
@@ -42,6 +40,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->qlp_coeffs = a_int_new();
     self->framelist_data = a_int_new();
     self->audiotools_pcm = NULL;
+    self->beginning_of_frames = NULL;
     self->remaining_samples = 0;
 
     if (!PyArg_ParseTuple(args, "O", &file)) {
@@ -76,7 +75,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     /*place mark at beginning of stream but after metadata
       in case seeking is needed*/
     if (!setjmp(*br_try(self->bitstream))) {
-        self->bitstream->mark(self->bitstream, BEGINNING_OF_FRAMES);
+        self->beginning_of_frames = self->bitstream->getpos(self->bitstream);
         br_etry(self->bitstream);
     } else {
         br_etry(self->bitstream);
@@ -142,12 +141,12 @@ FlacDecoder_dealloc(decoders_FlacDecoder *self)
     self->framelist_data->del(self->framelist_data);
     Py_XDECREF(self->audiotools_pcm);
 
-    if (self->bitstream != NULL) {
-        /*clear out seek mark, if present*/
-        if (self->bitstream->has_mark(self->bitstream, BEGINNING_OF_FRAMES)) {
-            self->bitstream->unmark(self->bitstream, BEGINNING_OF_FRAMES);
-        }
+    /*clean out seek mark, if necessary*/
+    if (self->beginning_of_frames != NULL) {
+        self->beginning_of_frames->del(self->beginning_of_frames);
+    }
 
+    if (self->bitstream != NULL) {
         self->bitstream->free(self->bitstream);
     }
 
@@ -344,7 +343,7 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
 
     /*position bitstream to indicated value in file*/
     if (!setjmp(*br_try(self->bitstream))) {
-        self->bitstream->rewind(self->bitstream, BEGINNING_OF_FRAMES);
+        self->bitstream->setpos(self->bitstream, self->beginning_of_frames);
         while (byte_offset) {
             /*perform this in chunks in case seeked distance
               is longer than a "long" taken by fseek*/

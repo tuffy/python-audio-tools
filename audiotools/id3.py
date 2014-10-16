@@ -274,26 +274,22 @@ def read_id3v2_comment(filename):
 
     from audiotools.bitstream import BitstreamReader
 
-    reader = BitstreamReader(open(filename, "rb"), False)
-    reader.mark()
-    try:
+    with BitstreamReader(open(filename, "rb"), False) as reader:
+        start = reader.getpos()
         (tag, version_major, version_minor) = reader.parse("3b 8u 8u")
         if (tag != b'ID3'):
             raise ValueError("invalid ID3 header")
         elif (version_major == 0x2):
-            reader.rewind()
+            reader.setpos(start)
             return ID3v22Comment.parse(reader)
         elif (version_major == 0x3):
-            reader.rewind()
+            reader.setpos(start)
             return ID3v23Comment.parse(reader)
         elif (version_major == 0x4):
-            reader.rewind()
+            reader.setpos(start)
             return ID3v24Comment.parse(reader)
         else:
             raise ValueError("unsupported ID3 version")
-    finally:
-        reader.unmark()
-        reader.close()
 
 
 def skip_id3v2_comment(file):

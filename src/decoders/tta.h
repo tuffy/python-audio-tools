@@ -67,6 +67,9 @@ typedef struct {
 
     /*a framelist generator*/
     PyObject* audiotools_pcm;
+
+    /*position of start of frames*/
+    br_pos_t* frames_start;
 } decoders_TTADecoder;
 
 static PyObject*

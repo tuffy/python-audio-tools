@@ -82,8 +82,15 @@ struct br_buffer {
     unsigned size;
 };
 
-/*a mark on the BitstreamReader's stream which can be rewound to*/
-struct br_mark {
+struct BitstreamReader_s;
+
+/*a position on the BitstreamReader's stream which can be rewound to*/
+typedef struct br_pos_s {
+    /*our source reader
+      attempting to setpos on some other reader will raise an error*/
+    struct BitstreamReader_s *reader;
+
+    /*the position being rewound to*/
     union {
         fpos_t file;
         unsigned buffer;
@@ -91,18 +98,16 @@ struct br_mark {
             void* pos;
             unsigned buffer_size;
             uint8_t* buffer;
+            ext_free_pos_f free_pos;
         } external;
     } position;
-    state_t state;
-    struct br_mark *next;
-};
 
-/*all the marks on the mark stack with the same ID*/
-struct br_mark_stack {
-    int mark_id;
-    struct br_mark *marks;
-    struct br_mark_stack *next;
-};
+    /*partial reader state*/
+    state_t state;
+
+    /*a function to delete position when finished with it*/
+    void (*del)(struct br_pos_s *pos);
+} br_pos_t;
 
 /*a Huffman jump table entry
 
@@ -140,7 +145,6 @@ typedef struct BitstreamReader_s {
     state_t state;
     struct bs_callback* callbacks;
     struct bs_exception* exceptions;
-    struct br_mark_stack* mark_stacks;
 
     struct bs_exception* exceptions_used;
 
@@ -170,12 +174,6 @@ typedef struct BitstreamReader_s {
     void
     (*skip)(struct BitstreamReader_s* bs, unsigned int count);
 
-    /*skips "count" number of bytes from the current stream as if read
-
-      callbacks are called on each skipped byte*/
-    void
-    (*skip_bytes)(struct BitstreamReader_s* bs, unsigned int count);
-
     /*pushes a single 0 or 1 bit back onto the stream
       in the current endian format
 
@@ -193,19 +191,17 @@ typedef struct BitstreamReader_s {
     void
     (*skip_unary)(struct BitstreamReader_s* bs, int stop_bit);
 
+    /*sets the stream's format to big endian or little endian
+      which automatically byte aligns it*/
+    void
+    (*set_endianness)(struct BitstreamReader_s* bs,
+                      bs_endianness endianness);
+
     /*reads the next Huffman code from the stream
       where the code tree is defined from the given compiled table*/
     int
     (*read_huffman_code)(struct BitstreamReader_s* bs,
                          br_huffman_table_t table[]);
-
-    /*returns 1 if the stream is byte-aligned, 0 if not*/
-    int
-    (*byte_aligned)(const struct BitstreamReader_s* bs);
-
-    /*aligns the stream to a byte boundary*/
-    void
-    (*byte_align)(struct BitstreamReader_s* bs);
 
     /*reads "byte_count" number of 8-bit bytes
       and places them in "bytes"
@@ -219,6 +215,12 @@ typedef struct BitstreamReader_s {
     (*read_bytes)(struct BitstreamReader_s* bs,
                   uint8_t* bytes,
                   unsigned int byte_count);
+
+    /*skips "count" number of bytes from the current stream as if read
+
+      callbacks are called on each skipped byte*/
+    void
+    (*skip_bytes)(struct BitstreamReader_s* bs, unsigned int count);
 
     /*takes a format string,
       performs the indicated read operations with prefixed numeric lengths
@@ -256,11 +258,70 @@ typedef struct BitstreamReader_s {
     void
     (*parse)(struct BitstreamReader_s* bs, const char* format, ...);
 
-    /*sets the stream's format to big endian or little endian
-      which automatically byte aligns it*/
+    /*returns 1 if the stream is byte-aligned, 0 if not*/
+    int
+    (*byte_aligned)(const struct BitstreamReader_s* bs);
+
+    /*aligns the stream to a byte boundary*/
     void
-    (*set_endianness)(struct BitstreamReader_s* bs,
-                      bs_endianness endianness);
+    (*byte_align)(struct BitstreamReader_s* bs);
+
+    /*pushes a callback function into the stream
+      which is called on every byte read*/
+    void
+    (*add_callback)(struct BitstreamReader_s* bs,
+                    bs_callback_f callback,
+                    void* data);
+
+    /*pushes the given callback onto the callback stack
+      data from "callback" is copied onto a new internal struct
+      it does not need to be allocated from the heap*/
+    void
+    (*push_callback)(struct BitstreamReader_s* bs,
+                     struct bs_callback* callback);
+
+    /*pops the most recently added callback from the stack
+      if "callback" is not NULL, data from the popped callback
+      is copied to that struct*/
+    void
+    (*pop_callback)(struct BitstreamReader_s* bs,
+                    struct bs_callback* callback);
+
+    /*explicitly call all set callbacks as if "byte" had been read
+      from the input stream*/
+    void
+    (*call_callbacks)(struct BitstreamReader_s* bs,
+                      uint8_t byte);
+
+    /*returns a new pos instance which can be rewound to
+      may call br_abort() if the position cannot be gotten
+      or the stream is closed*/
+    br_pos_t*
+    (*getpos)(struct BitstreamReader_s* bs);
+
+    /*sets the stream's position from a pos instance
+      may call br_abort() if the position cannot be set
+      the stream is closed, or the position is from another stream*/
+    void
+    (*setpos)(struct BitstreamReader_s* bs, const br_pos_t* pos);
+
+    /*moves the stream directly to the given location, in bytes,
+      relative to the beginning, current or end of the stream
+
+      no callbacks are called on the intervening bytes*/
+    void
+    (*seek)(struct BitstreamReader_s* bs, long position, bs_whence whence);
+
+    /*creates a substream from the current stream
+      containing the given number of bytes
+      and with the input stream's endianness
+
+      the substream must be freed when finished
+
+      br_abort() is called if insufficient bytes
+      are available on the input stream*/
+    struct BitstreamReader_s*
+    (*substream)(struct BitstreamReader_s* bs, unsigned bytes);
 
     /*closes the BistreamReader's internal stream
 
@@ -290,73 +351,6 @@ typedef struct BitstreamReader_s {
     /*calls close_internal_stream(), followed by free()*/
     void
     (*close)(struct BitstreamReader_s* bs);
-
-    /*pushes a callback function into the stream
-      which is called on every byte read*/
-    void
-    (*add_callback)(struct BitstreamReader_s* bs,
-                    bs_callback_f callback,
-                    void* data);
-
-    /*pushes the given callback onto the callback stack
-      data from "callback" is copied onto a new internal struct
-      it does not need to be allocated from the heap*/
-    void
-    (*push_callback)(struct BitstreamReader_s* bs,
-                     struct bs_callback* callback);
-
-    /*pops the most recently added callback from the stack
-      if "callback" is not NULL, data from the popped callback
-      is copied to that struct*/
-    void
-    (*pop_callback)(struct BitstreamReader_s* bs,
-                    struct bs_callback* callback);
-
-    /*explicitly call all set callbacks as if "byte" had been read
-      from the input stream*/
-    void
-    (*call_callbacks)(struct BitstreamReader_s* bs,
-                      uint8_t byte);
-
-    /*pushes the stream's current position onto the given mark stack
-
-      all pushed marks should be unmarked once no longer needed*/
-    void
-    (*mark)(struct BitstreamReader_s* bs, int mark_id);
-
-    /*returns 1 if the stream has a mark with the given ID*/
-    int
-    (*has_mark)(const struct BitstreamReader_s* bs, int mark_id);
-
-    /*rewinds the stream to the next previous mark on the given mark stack
-
-      rewinding does not affect the mark itself*/
-    void
-    (*rewind)(struct BitstreamReader_s* bs, int mark_id);
-
-    /*pops the top value from the given mark stack
-
-      unmarking does not affect the stream's current position*/
-    void
-    (*unmark)(struct BitstreamReader_s* bs, int mark_id);
-
-    /*moves the stream directly to the given location, in bytes,
-      relative to the beginning, current or end of the stream
-
-      no callbacks are called on the intervening bytes*/
-    void
-    (*seek)(struct BitstreamReader_s* bs, long position, bs_whence whence);
-
-    /*creates a substream from the current stream
-      containing the given number of bytes
-      and with the input stream's endianness
-
-      the substream must be freed when finished
-
-      br_abort() is called if insufficient bytes
-      are available on the input stream*/
-    struct BitstreamReader_s*
-    (*substream)(struct BitstreamReader_s* bs, unsigned bytes);
 } BitstreamReader;
 
 
@@ -492,11 +486,6 @@ void
 br_skip_bits_c(BitstreamReader* bs, unsigned int count);
 
 
-/*bs->skip_bytes(bs, count)  method*/
-void
-br_skip_bytes(BitstreamReader* bs, unsigned int count);
-
-
 /*bs->unread(bs, unread_bit)  methods*/
 void
 br_unread_bit_be(BitstreamReader* bs, int unread_bit);
@@ -504,6 +493,7 @@ void
 br_unread_bit_le(BitstreamReader* bs, int unread_bit);
 void
 br_unread_bit_c(BitstreamReader* bs, int unread_bit);
+
 
 /*bs->read_unary(bs, stop_bit)  methods*/
 unsigned int
@@ -539,6 +529,23 @@ void
 br_skip_unary_c(BitstreamReader* bs, int stop_bit);
 
 
+/*bs->set_endianness(bs, endianness)  methods*/
+void
+br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness);
+void
+br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness);
+void
+br_set_endianness_b_be(BitstreamReader *bs, bs_endianness endianness);
+void
+br_set_endianness_b_le(BitstreamReader *bs, bs_endianness endianness);
+void
+br_set_endianness_e_be(BitstreamReader *bs, bs_endianness endianness);
+void
+br_set_endianness_e_le(BitstreamReader *bs, bs_endianness endianness);
+void
+br_set_endianness_c(BitstreamReader *bs, bs_endianness endianness);
+
+
 /*bs->read_huffman_code(bs, table)  methods*/
 int
 br_read_huffman_code_f(BitstreamReader *bs,
@@ -552,16 +559,6 @@ br_read_huffman_code_e(BitstreamReader *bs,
 int
 br_read_huffman_code_c(BitstreamReader *bs,
                        br_huffman_table_t table[]);
-
-
-/*bs->byte_aligned(bs)  method*/
-int
-br_byte_aligned(const BitstreamReader* bs);
-
-
-/*bs->byte_align(bs)  method*/
-void
-br_byte_align(BitstreamReader* bs);
 
 
 /*bs->read_bytes(bs, bytes, byte_count)  methods*/
@@ -582,26 +579,92 @@ br_read_bytes_c(struct BitstreamReader_s* bs,
                 uint8_t* bytes,
                 unsigned int byte_count);
 
+
+/*bs->skip_bytes(bs, count)  method*/
+void
+br_skip_bytes(BitstreamReader* bs, unsigned int count);
+
+
 /*bs->parse(bs, format, ...)  method*/
 void
 br_parse(struct BitstreamReader_s* stream, const char* format, ...);
 
 
-/*bs->set_endianness(bs, endianness)  methods*/
+/*bs->byte_aligned(bs)  method*/
+int
+br_byte_aligned(const BitstreamReader* bs);
+
+
+/*bs->byte_align(bs)  method*/
 void
-br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness);
+br_byte_align(BitstreamReader* bs);
+
+
+/*bs->add_callback(bs, callback, data)  method*/
 void
-br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness);
+br_add_callback(BitstreamReader *bs, bs_callback_f callback, void *data);
+
+
+/*bs->push_callback(bs, callback)  method*/
 void
-br_set_endianness_b_be(BitstreamReader *bs, bs_endianness endianness);
+br_push_callback(BitstreamReader *bs, struct bs_callback *callback);
+
+
+/*bs->pop_callback(bs, callback)  method*/
 void
-br_set_endianness_b_le(BitstreamReader *bs, bs_endianness endianness);
+br_pop_callback(BitstreamReader *bs, struct bs_callback *callback);
+
+
+/*bs->call_callbacks(bs, byte)  method*/
 void
-br_set_endianness_e_be(BitstreamReader *bs, bs_endianness endianness);
+br_call_callbacks(BitstreamReader *bs, uint8_t byte);
+
+
+/*bs->getpos()  methods*/
+br_pos_t*
+br_getpos_f(BitstreamReader* bs);
+br_pos_t*
+br_getpos_b(BitstreamReader* bs);
+br_pos_t*
+br_getpos_e(BitstreamReader* bs);
+br_pos_t*
+br_getpos_c(BitstreamReader* bs);
+
+
+/*bs->setpos(pos)  methods*/
 void
-br_set_endianness_e_le(BitstreamReader *bs, bs_endianness endianness);
+br_setpos_f(BitstreamReader* bs, const br_pos_t* pos);
 void
-br_set_endianness_c(BitstreamReader *bs, bs_endianness endianness);
+br_setpos_b(BitstreamReader* bs, const br_pos_t* pos);
+void
+br_setpos_e(BitstreamReader* bs, const br_pos_t* pos);
+void
+br_setpos_c(BitstreamReader* bs, const br_pos_t* pos);
+
+
+/*pos->del()  methods*/
+void
+br_pos_del_f(br_pos_t* pos);
+void
+br_pos_del_b(br_pos_t* pos);
+void
+br_pos_del_e(br_pos_t* pos);
+
+
+/*bs->seek(bs, position, whence)  methods*/
+void
+br_seek_f(BitstreamReader* bs, long position, bs_whence whence);
+void
+br_seek_b(BitstreamReader* bs, long position, bs_whence whence);
+void
+br_seek_e(BitstreamReader* bs, long position, bs_whence whence);
+void
+br_seek_c(BitstreamReader* bs, long position, bs_whence whence);
+
+
+/*bs->substream(bs, bytes)  method*/
+struct BitstreamReader_s*
+br_substream(struct BitstreamReader_s *stream, unsigned bytes);
 
 
 /*converts all read methods to ones that generate I/O errors
@@ -636,84 +699,20 @@ void
 br_close(BitstreamReader* bs);
 
 
-/*bs->has_mark(bs, id)  method*/
-int
-br_has_mark(const BitstreamReader* bs, int mark_id);
-
-
-/*bs->mark(bs, id)  methods*/
-void
-br_mark_f(BitstreamReader* bs, int mark_id);
-void
-br_mark_b(BitstreamReader* bs, int mark_id);
-void
-br_mark_e(BitstreamReader* bs, int mark_id);
-void
-br_mark_c(BitstreamReader* bs, int mark_id);
-
-/*bs->rewind(bs, id)  methods*/
-void
-br_rewind_f(BitstreamReader* bs, int mark_id);
-void
-br_rewind_b(BitstreamReader* bs, int mark_id);
-void
-br_rewind_e(BitstreamReader* bs, int mark_id);
-void
-br_rewind_c(BitstreamReader* bs, int mark_id);
-
-/*bs->unmark(bs, id)  methods*/
-void
-br_unmark_f_b(BitstreamReader* bs, int mark_id);
-void
-br_unmark_e(BitstreamReader* bs, int mark_id);
-
-
-/*bs->seek(bs, position, whence)  methods*/
-void
-br_seek_f(BitstreamReader* bs, long position, bs_whence whence);
-void
-br_seek_b(BitstreamReader* bs, long position, bs_whence whence);
-void
-br_seek_e(BitstreamReader* bs, long position, bs_whence whence);
-void
-br_seek_c(BitstreamReader* bs, long position, bs_whence whence);
-
-
-/*bs->substream(bs, bytes)  method*/
-struct BitstreamReader_s*
-br_substream(struct BitstreamReader_s *stream, unsigned bytes);
-
-
-/*bs->add_callback(bs, callback, data)  method*/
-void
-br_add_callback(BitstreamReader *bs, bs_callback_f callback, void *data);
-
-
-/*bs->push_callback(bs, callback)  method*/
-void
-br_push_callback(BitstreamReader *bs, struct bs_callback *callback);
-
-
-/*bs->pop_callback(bs, callback)  method*/
-void
-br_pop_callback(BitstreamReader *bs, struct bs_callback *callback);
-
-
-/*bs->call_callbacks(bs, byte)  method*/
-void
-br_call_callbacks(BitstreamReader *bs, uint8_t byte);
-
-
-
 /*Called by the read functions if one attempts to read past
   the end of the stream.
   If an exception stack is available (with br_try),
   this jumps to that location via longjmp(3).
   If not, this prints an error message and performs an unconditional exit.
 */
+#ifdef DEBUG
+#define br_abort(bs) __br_abort__((bs), __LINE__)
+void
+__br_abort__(BitstreamReader *bs, int lineno);
+#else
 void
 br_abort(BitstreamReader *bs);
-
+#endif
 
 /*Sets up an exception stack for use by setjmp(3).
   The basic call procudure is as follows:
@@ -1402,33 +1401,9 @@ unsigned
 bs_format_byte_size(const char* format);
 
 
-
 /*******************************************************************
  *                           mark handlers                         *
  *******************************************************************/
-
-/*adds the given mark to the stack and returns the next stack*/
-struct br_mark_stack*
-br_add_mark(struct br_mark_stack* stack, int mark_id, struct br_mark* mark);
-
-/*returns the top mark with the given mark_id, or NULL*/
-struct br_mark*
-br_get_mark(const struct br_mark_stack* stack, int mark_id);
-
-/*pops the next mark with the given mark_id
-  or NULL if the mark_id isn't found
-  and returns an updated stack*/
-struct br_mark_stack*
-br_pop_mark(struct br_mark_stack* stack,
-            int mark_id,
-            struct br_mark** mark);
-
-/*pops the next mark from the current stack
-  and returns an updated stack*/
-struct br_mark_stack*
-br_pop_mark_stack(struct br_mark_stack* stack,
-                  struct br_mark** mark);
-
 
 /*adds the given mark to the stack and returns the next stack*/
 struct bw_mark_stack*

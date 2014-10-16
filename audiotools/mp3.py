@@ -509,33 +509,29 @@ class MP3Audio(AudioFile):
         from audiotools.bitstream import BitstreamReader
 
         reader = BitstreamReader(mp3file, False)
-        reader.mark()
+        pos = reader.getpos()
         try:
             (sync,
              mpeg_id,
              layer_description) = reader.parse("11u 2u 2u 1p")
         except IOError as err:
-            reader.unmark()
             raise err
 
         while (not ((sync == 0x7FF) and
                     (mpeg_id in (0, 2, 3)) and
                     (layer_description in (1, 2, 3)))):
-            reader.rewind()
-            reader.unmark()
+            reader.setpos(pos)
             reader.skip(8)
             bytes_skipped += 1
-            reader.mark()
+            pos = reader.getpos()
             try:
                 (sync,
                  mpeg_id,
                  layer_description) = reader.parse("11u 2u 2u 1p")
             except IOError as err:
-                reader.unmark()
                 raise err
         else:
-            reader.rewind()
-            reader.unmark()
+            reader.setpos(pos)
             return bytes_skipped
 
     @classmethod
@@ -552,17 +548,15 @@ class MP3Audio(AudioFile):
         reader = BitstreamReader(mp3file, False)
 
         # skip over any bytes that aren't a valid MPEG header
-        reader.mark()
+        pos = reader.getpos()
         (frame_sync, mpeg_id, layer) = reader.parse("11u 2u 2u 1p")
         while (not ((frame_sync == 0x7FF) and
                     (mpeg_id in (0, 2, 3)) and
                     (layer in (1, 2, 3)))):
-            reader.rewind()
-            reader.unmark()
+            reader.setpos(pos)
             reader.skip(8)
-            reader.mark()
-        reader.rewind()
-        reader.unmark()
+            pos = reader.getpos()
+        reader.setpos(pos)
 
     @classmethod
     def __find_last_mp3_frame__(cls, mp3file):

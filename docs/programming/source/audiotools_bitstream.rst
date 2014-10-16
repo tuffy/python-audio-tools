@@ -55,7 +55,7 @@ out of a larger binary file stream.
    of the given buffer size.
    This means the position of the file is likely to be further along
    than one might expect given the number of bits already read.
-   The BitstreamReader's mark, rewind and seek methods
+   The BitstreamReader's getpos, setpos and seek methods
    will handle buffering correctly and are preferable
    to intermingling BitstreamReader and ``file`` operations.
 
@@ -173,34 +173,25 @@ out of a larger binary file stream.
    The stream is automatically byte-aligned prior
    to changing its byte order.
 
-.. method:: BitstreamReader.mark([mark_id])
+.. method:: BitstreamReader.getpos()
 
-   Pushes the stream's current position onto a mark stack
-   with the given optional mark ID.
-   That position may be returned to with calls to :meth:`rewind`.
+   Returns a :class:`BitstreamReaderPosition` object
+   of the stream's current position.
+   May raise :exc:`IOError` if an error occurs getting the position.
 
-   If marks are left on the stream, :class:`BitstreamReader` will
-   generate a warning at deallocation-time.
+.. method:: BitstreamReader.setpos(position)
 
-.. method:: BitstreamReader.has_mark([mark_id])
-
-   Returns ``True`` if the given ID has been marked in the stream.
-
-.. method:: BitstreamReader.rewind([mark_id])
-
-   Returns the stream to the most recently marked position on the
-   mark stack with the given mark ID.
-   This has no effect on the mark stack itself.
-
-.. method:: BitstreamReader.unmark([mark_id])
-
-   Removes the most recently marked position from the mark stack
-   with the given mark ID.
-   This has no effect on the stream's current position.
+   Given a :class:`BitstreamReaderPosition` object,
+   sets the stream to that position.
+   The position must be one returned by this object's
+   :meth:`BitstreamReader.getpos` method;
+   one cannot apply a position from one reader to a different one.
+   May raise :exc:`IOError` if an error occurs setting the position.
 
 .. method:: BitstreamReader.seek(position, [whence])
 
-   Positions the stream at the given byte relative
+   Given an integer position value,
+   positions the stream at the given byte relative
    to whence, which may be 0 for the beginning of the stream
    (the default), 1 for the current position and 2 for the stream end.
 

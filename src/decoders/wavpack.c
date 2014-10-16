@@ -35,7 +35,8 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
 #endif
     struct block_header header;
     status error;
-    enum {BEGINNING_OF_STREAM, AFTER_BLOCK_HEADER};
+    br_pos_t* beginning_of_stream;
+    br_pos_t* after_block_header;
 
     self->bitstream = NULL;
 
@@ -94,7 +95,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     /*read initial block to populate
       sample_rate, bits_per_sample, channels, and channel_mask*/
     if (!setjmp(*br_try(self->bitstream))) {
-        self->bitstream->mark(self->bitstream, BEGINNING_OF_STREAM);
+        beginning_of_stream = self->bitstream->getpos(self->bitstream);
         br_etry(self->bitstream);
     } else {
         br_etry(self->bitstream);
@@ -108,35 +109,35 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
 #ifndef STANDALONE
         PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
 #endif
-        self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
+        beginning_of_stream->del(beginning_of_stream);
         return -1;
     }
 
     if ((self->sample_rate = unencode_sample_rate(header.sample_rate)) == 0) {
         /*in the event of an odd sample rate,
           look for a sample rate sub block within the first block*/
-        self->bitstream->mark(self->bitstream, AFTER_BLOCK_HEADER);
+        after_block_header = self->bitstream->getpos(self->bitstream);
         switch (error =
                 read_sample_rate_sub_block(&header,
                                            self->bitstream,
                                            &(self->sample_rate))) {
         case OK:
-            self->bitstream->rewind(self->bitstream, AFTER_BLOCK_HEADER);
-            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
+            self->bitstream->setpos(self->bitstream, after_block_header);
+            after_block_header->del(after_block_header);
             break;
         case SUB_BLOCK_NOT_FOUND:
 #ifndef STANDALONE
             PyErr_SetString(PyExc_ValueError, "sample rate undefined");
 #endif
-            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
-            self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
+            after_block_header->del(after_block_header);
+            beginning_of_stream->del(beginning_of_stream);
             return -1;
         default:
 #ifndef STANDALONE
             PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
 #endif
-            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
-            self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
+            after_block_header->del(after_block_header);
+            beginning_of_stream->del(beginning_of_stream);
             return -1;
         }
     }
@@ -154,29 +155,29 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
         /*in the event of a stream with more than 2 channels,
           look for a channel count/channel mask sub block
           within the first block*/
-        self->bitstream->mark(self->bitstream, AFTER_BLOCK_HEADER);
+        after_block_header = self->bitstream->getpos(self->bitstream);
         switch (error =
                 read_channel_count_sub_block(&header,
                                              self->bitstream,
                                              &(self->channels),
                                              &(self->channel_mask))) {
         case OK:
-            self->bitstream->rewind(self->bitstream, AFTER_BLOCK_HEADER);
-            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
+            self->bitstream->setpos(self->bitstream, after_block_header);
+            after_block_header->del(after_block_header);
             break;
         case SUB_BLOCK_NOT_FOUND:
 #ifndef STANDALONE
             PyErr_SetString(PyExc_ValueError, "channel count/mask undefined");
 #endif
-            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
-            self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
+            after_block_header->del(after_block_header);
+            beginning_of_stream->del(beginning_of_stream);
             return -1;
         default:
 #ifndef STANDALONE
             PyErr_SetString(wavpack_exception(error), wavpack_strerror(error));
 #endif
-            self->bitstream->unmark(self->bitstream, AFTER_BLOCK_HEADER);
-            self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
+            after_block_header->del(after_block_header);
+            beginning_of_stream->del(beginning_of_stream);
             return -1;
         }
     }
@@ -184,8 +185,8 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->total_pcm_frames = header.total_samples;
     self->remaining_pcm_samples = header.total_samples;
 
-    self->bitstream->rewind(self->bitstream, BEGINNING_OF_STREAM);
-    self->bitstream->unmark(self->bitstream, BEGINNING_OF_STREAM);
+    self->bitstream->setpos(self->bitstream, beginning_of_stream);
+    beginning_of_stream->del(beginning_of_stream);
 
     /*mark stream as not closed and ready for reading*/
     self->closed = 0;
@@ -392,6 +393,7 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     }
 }
 
+
 PyObject*
 WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
 {
@@ -399,7 +401,8 @@ WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
     long long sought_offset;
     unsigned best_pcm_offset = 0;
     struct block_header header;
-    enum {BLOCK_START, BEST_BYTE_OFFSET};
+    br_pos_t *block_start = NULL;
+    br_pos_t *best_byte_offset = NULL;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
@@ -417,11 +420,11 @@ WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
     if (!setjmp(*br_try(stream))) {
         /*go to beginning of file*/
         stream->seek(stream, 0, BS_SEEK_SET);
-        stream->mark(stream, BEST_BYTE_OFFSET);
+        best_byte_offset = stream->getpos(stream);
 
         /*find latest block such that block index <= sought_offset*/
         do {
-            stream->mark(stream, BLOCK_START);
+            block_start = stream->getpos(stream);
             if (read_block_header(stream, &header) == OK) {
                 /*candidate blocks must have initial bit set,
                   have more than 0 samples
@@ -429,30 +432,25 @@ WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
                 if (header.initial_block &&
                     header.block_samples &&
                     (header.block_index <= sought_offset)) {
-                    /*transfer BLOCK_START mark to BEST_BYTE_OFFSET mark*/
-                    struct br_mark *mark;
-                    stream->unmark(stream, BEST_BYTE_OFFSET);
-                    stream->mark_stacks = br_pop_mark(stream->mark_stacks,
-                                                      BLOCK_START,
-                                                      &mark);
-                    stream->mark_stacks = br_add_mark(stream->mark_stacks,
-                                                      BEST_BYTE_OFFSET,
-                                                      mark);
+                    /*update our best offset*/
+                    best_byte_offset->del(best_byte_offset);
+                    best_byte_offset = block_start;
+                    block_start = NULL;
                     best_pcm_offset = header.block_index;
                 } else {
-                    stream->unmark(stream, BLOCK_START);
+                    block_start->del(block_start);
                 }
             } else {
-                stream->rewind(stream, BLOCK_START);
-                stream->unmark(stream, BLOCK_START);
+                stream->setpos(stream, block_start);
+                block_start->del(block_start);
                 break;
             }
             stream->seek(stream, header.block_size - 24, BS_SEEK_CUR);
         } while (header.block_index < sought_offset);
 
         /*rewind to start of candidate block*/
-        stream->rewind(stream, BEST_BYTE_OFFSET);
-        stream->unmark(stream, BEST_BYTE_OFFSET);
+        stream->setpos(stream, best_byte_offset);
+        best_byte_offset->del(best_byte_offset);
 
         br_etry(stream);
 
@@ -472,11 +470,11 @@ WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
         return Py_BuildValue("I", best_pcm_offset);
     } else {
         br_etry(stream);
-        if (stream->has_mark(stream, BLOCK_START)) {
-            stream->unmark(stream, BLOCK_START);
+        if (block_start != NULL) {
+            block_start->del(block_start);
         }
-        if (stream->has_mark(stream, BEST_BYTE_OFFSET)) {
-            stream->unmark(stream, BEST_BYTE_OFFSET);
+        if (best_byte_offset != NULL) {
+            best_byte_offset->del(best_byte_offset);
         }
         PyErr_SetString(PyExc_IOError, "I/O error seeking in stream");
         return NULL;

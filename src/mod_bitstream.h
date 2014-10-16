@@ -156,16 +156,10 @@ static PyObject*
 BitstreamReader_close(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
-BitstreamReader_mark(bitstream_BitstreamReader *self, PyObject *args);
+BitstreamReader_getpos(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
-BitstreamReader_has_mark(bitstream_BitstreamReader *self, PyObject *args);
-
-static PyObject*
-BitstreamReader_rewind(bitstream_BitstreamReader *self, PyObject *args);
-
-static PyObject*
-BitstreamReader_unmark(bitstream_BitstreamReader *self, PyObject *args);
+BitstreamReader_setpos(bitstream_BitstreamReader *self, PyObject *args);
 
 static PyObject*
 BitstreamReader_seek(bitstream_BitstreamReader *self, PyObject *args);
@@ -244,19 +238,10 @@ PyMethodDef BitstreamReader_methods[] = {
     {"close", (PyCFunction)BitstreamReader_close, METH_NOARGS,
      "close()\n"
      "closes the stream and any underlying file object"},
-    {"mark", (PyCFunction)BitstreamReader_mark, METH_VARARGS,
-     "mark([mark_id])\n"
-     "pushes the current position onto a stack\n"
-     "which may be returned to with calls to rewind()\n"
-     "all marked positions should be unmarked when no longer needed"},
-    {"has_mark", (PyCFunction)BitstreamReader_has_mark, METH_VARARGS,
-     "has_mark([mark_id]) -> True if the given mark_id is present"},
-    {"rewind", (PyCFunction)BitstreamReader_rewind, METH_VARARGS,
-     "rewind([mark_id])\n"
-     "returns to the most recently marked position in the stream"},
-    {"unmark", (PyCFunction)BitstreamReader_unmark, METH_VARARGS,
-     "unmark([mark_id])\n"
-     "removes the most recently marked position from the stream"},
+    {"getpos", (PyCFunction)BitstreamReader_getpos, METH_NOARGS,
+     "getpos() -> position"},
+    {"setpos", (PyCFunction)BitstreamReader_setpos, METH_VARARGS,
+     "setpos(position)"},
     {"seek", (PyCFunction)BitstreamReader_seek, METH_VARARGS,
      "seek(position, whence)\n"
      "positions the stream at the given position where\n"
@@ -386,12 +371,64 @@ PyTypeObject bitstream_HuffmanTreeType = {
     0,                         /* tp_base */
     0,                         /* tp_dict */
     0,                         /* tp_descr_get */
-
     0,                         /* tp_descr_set */
     0,                         /* tp_dictoffset */
     (initproc)HuffmanTree_init, /* tp_init */
     0,                         /* tp_alloc */
     HuffmanTree_new,          /* tp_new */
+};
+
+/*BitstreamReaderPosition is an opaque container for positions
+  returned by BitstreamReader.getpos()
+  it has no methods or attributes and can't even be instantiated directly*/
+typedef struct {
+    PyObject_HEAD
+
+    br_pos_t *pos;
+} bitstream_BitstreamReaderPosition;
+
+void
+BitstreamReaderPosition_dealloc(bitstream_BitstreamReaderPosition *self);
+
+PyTypeObject bitstream_BitstreamReaderPositionType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "bitstream.BitstreamReaderPosition",    /*tp_name*/
+    sizeof(bitstream_BitstreamReaderPosition), /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)BitstreamReaderPosition_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    0,                         /*tp_flags*/
+    "BitstreamReaderPosition", /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    0,                         /* tp_methods */
+    0,                         /* tp_members */
+    0,                         /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    0,                         /* tp_init */
+    0,                         /* tp_alloc */
+    0,                         /* tp_new */
 };
 
 PyObject*

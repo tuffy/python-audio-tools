@@ -412,7 +412,7 @@ class AiffReader(object):
                     raise ValueError(ERR_AIFF_PREMATURE_SSND_CHUNK)
                 else:
                     self.stream.skip_bytes(8)
-                    self.stream.mark()
+                    self.ssnd_start = self.stream.getpos()
                     return
             else:
                 # all other chunks are ignored
@@ -435,10 +435,6 @@ class AiffReader(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
-
-    def __del__(self):
-        if (self.stream.has_mark()):
-            self.stream.unmark()
 
     def read(self, pcm_frames):
         """try to read a pcm.FrameList with the given number of PCM frames"""
@@ -480,7 +476,7 @@ class AiffReader(object):
                                self.total_pcm_frames)
 
         # position file in "SSND" chunk
-        self.stream.rewind()
+        self.stream.setpos(self.ssnd_start)
         self.stream.seek((pcm_frame_offset * self.bytes_per_pcm_frame), 1)
         self.remaining_pcm_frames = (self.total_pcm_frames -
                                      pcm_frame_offset)

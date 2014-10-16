@@ -328,54 +328,52 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
             with BitstreamReader(open(filename, "rb"), False) as reader:
                 mdia = get_m4a_atom(reader,
                                     b"moov", b"trak", b"mdia")[1]
+                mdia_start = mdia.getpos()
         except IOError:
             from audiotools.text import ERR_M4A_IOERROR
             raise InvalidM4A(ERR_M4A_IOERROR)
         except KeyError:
             from audiotools.text import ERR_M4A_MISSING_MDIA
             raise InvalidM4A(ERR_M4A_MISSING_MDIA)
-        mdia.mark()
+
         try:
-            try:
-                stsd = get_m4a_atom(mdia, b"minf", b"stbl", b"stsd")[1]
-            except KeyError:
-                from audiotools.text import ERR_M4A_MISSING_STSD
-                raise InvalidM4A(ERR_M4A_MISSING_STSD)
+            stsd = get_m4a_atom(mdia, b"minf", b"stbl", b"stsd")[1]
+        except KeyError:
+            from audiotools.text import ERR_M4A_MISSING_STSD
+            raise InvalidM4A(ERR_M4A_MISSING_STSD)
 
-            # then, fetch the mp4a atom for bps, channels and sample rate
-            try:
-                (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
-                (mp4a,
-                 self.__channels__,
-                 self.__bits_per_sample__) = stsd.parse(
-                    "32p 4b 48p 16p 16p 16p 4P 16u 16u 16p 16p 32p")
-            except IOError:
-                from audiotools.text import ERR_M4A_INVALID_MP4A
-                raise InvalidM4A(ERR_M4A_INVALID_MP4A)
+        # then, fetch the mp4a atom for bps, channels and sample rate
+        try:
+            (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
+            (mp4a,
+             self.__channels__,
+             self.__bits_per_sample__) = stsd.parse(
+                "32p 4b 48p 16p 16p 16p 4P 16u 16u 16p 16p 32p")
+        except IOError:
+            from audiotools.text import ERR_M4A_INVALID_MP4A
+            raise InvalidM4A(ERR_M4A_INVALID_MP4A)
 
-            # finally, fetch the mdhd atom for total track length
-            mdia.rewind()
-            try:
-                mdhd = get_m4a_atom(mdia, b"mdhd")[1]
-            except KeyError:
-                from audiotools.text import ERR_M4A_MISSING_MDHD
-                raise InvalidM4A(ERR_M4A_MISSING_MDHD)
-            try:
-                (version, ) = mdhd.parse("8u 24p")
-                if (version == 0):
-                    (self.__sample_rate__,
-                     self.__length__,) = mdhd.parse("32p 32p 32u 32u 2P 16p")
-                elif (version == 1):
-                    (self.__sample_rate__,
-                     self.__length__,) = mdhd.parse("64p 64p 32u 64U 2P 16p")
-                else:
-                    from audiotools.text import ERR_M4A_UNSUPPORTED_MDHD
-                    raise InvalidM4A(ERR_M4A_UNSUPPORTED_MDHD)
-            except IOError:
-                from audiotools.text import ERR_M4A_INVALID_MDHD
-                raise InvalidM4A(ERR_M4A_INVALID_MDHD)
-        finally:
-            mdia.unmark()
+        # finally, fetch the mdhd atom for total track length
+        mdia.setpos(mdia_start)
+        try:
+            mdhd = get_m4a_atom(mdia, b"mdhd")[1]
+        except KeyError:
+            from audiotools.text import ERR_M4A_MISSING_MDHD
+            raise InvalidM4A(ERR_M4A_MISSING_MDHD)
+        try:
+            (version, ) = mdhd.parse("8u 24p")
+            if (version == 0):
+                (self.__sample_rate__,
+                 self.__length__,) = mdhd.parse("32p 32p 32u 32u 2P 16p")
+            elif (version == 1):
+                (self.__sample_rate__,
+                 self.__length__,) = mdhd.parse("64p 64p 32u 64U 2P 16p")
+            else:
+                from audiotools.text import ERR_M4A_UNSUPPORTED_MDHD
+                raise InvalidM4A(ERR_M4A_UNSUPPORTED_MDHD)
+        except IOError:
+            from audiotools.text import ERR_M4A_INVALID_MDHD
+            raise InvalidM4A(ERR_M4A_INVALID_MDHD)
 
     def channel_mask(self):
         """returns a ChannelMask object of this track's channel layout"""
@@ -706,69 +704,66 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             with BitstreamReader(open(filename, "rb"), False) as reader:
                 mdia = get_m4a_atom(reader,
                                     b"moov", b"trak", b"mdia")[1]
+                mdia_start = mdia.getpos()
         except IOError:
             from audiotools.text import ERR_ALAC_IOERROR
             raise InvalidALAC(ERR_ALAC_IOERROR)
         except KeyError:
             from audiotools.text import ERR_M4A_MISSING_MDIA
             raise InvalidALAC(ERR_M4A_MISSING_MDIA)
-        mdia.mark()
+
         try:
-            try:
-                stsd = get_m4a_atom(mdia, b"minf", b"stbl", b"stsd")[1]
-            except KeyError:
-                from audiotools.text import ERR_M4A_MISSING_STSD
-                raise InvalidALAC(ERR_M4A_MISSING_STSD)
+            stsd = get_m4a_atom(mdia, b"minf", b"stbl", b"stsd")[1]
+        except KeyError:
+            from audiotools.text import ERR_M4A_MISSING_STSD
+            raise InvalidALAC(ERR_M4A_MISSING_STSD)
 
-            # then, fetch the alac atom for bps, channels and sample rate
-            try:
-                # though some of these fields are parsed redundantly
-                # in .to_pcm(), we still need to parse them here
-                # to fetch values for .bits_per_sample(), etc.
-                (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
-                (alac1,
-                 alac2,
-                 self.__max_samples_per_frame__,
-                 self.__bits_per_sample__,
-                 self.__history_multiplier__,
-                 self.__initial_history__,
-                 self.__maximum_k__,
-                 self.__channels__,
-                 self.__sample_rate__) = stsd.parse(
-                    # ignore much of the stuff in the "high" ALAC atom
-                    "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
-                    # and use the attributes in the "low" ALAC atom instead
-                    "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
-            except IOError:
-                from audiotools.text import ERR_ALAC_INVALID_ALAC
-                raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
+        # then, fetch the alac atom for bps, channels and sample rate
+        try:
+            # though some of these fields are parsed redundantly
+            # in .to_pcm(), we still need to parse them here
+            # to fetch values for .bits_per_sample(), etc.
+            (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
+            (alac1,
+             alac2,
+             self.__max_samples_per_frame__,
+             self.__bits_per_sample__,
+             self.__history_multiplier__,
+             self.__initial_history__,
+             self.__maximum_k__,
+             self.__channels__,
+             self.__sample_rate__) = stsd.parse(
+                # ignore much of the stuff in the "high" ALAC atom
+                "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
+                # and use the attributes in the "low" ALAC atom instead
+                "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
+        except IOError:
+            from audiotools.text import ERR_ALAC_INVALID_ALAC
+            raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
 
-            if ((alac1 != b'alac') or (alac2 != b'alac')):
-                from audiotools.text import ERR_ALAC_INVALID_ALAC
-                mdia.unmark()
-                raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
+        if ((alac1 != b'alac') or (alac2 != b'alac')):
+            from audiotools.text import ERR_ALAC_INVALID_ALAC
+            raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
 
-            # finally, fetch the mdhd atom for total track length
-            mdia.rewind()
-            try:
-                mdhd = get_m4a_atom(mdia, b"mdhd")[1]
-            except KeyError:
-                from audiotools.text import ERR_M4A_MISSING_MDHD
-                raise InvalidALAC(ERR_M4A_MISSING_MDHD)
-            try:
-                (version, ) = mdhd.parse("8u 24p")
-                if (version == 0):
-                    (self.__length__,) = mdhd.parse("32p 32p 32p 32u 2P 16p")
-                elif (version == 1):
-                    (self.__length__,) = mdhd.parse("64p 64p 32p 64U 2P 16p")
-                else:
-                    from audiotools.text import ERR_M4A_UNSUPPORTED_MDHD
-                    raise InvalidALAC(ERR_M4A_UNSUPPORTED_MDHD)
-            except IOError:
-                from audiotools.text import ERR_M4A_INVALID_MDHD
-                raise InvalidALAC(ERR_M4A_INVALID_MDHD)
-        finally:
-            mdia.unmark()
+        # finally, fetch the mdhd atom for total track length
+        mdia.setpos(mdia_start)
+        try:
+            mdhd = get_m4a_atom(mdia, b"mdhd")[1]
+        except KeyError:
+            from audiotools.text import ERR_M4A_MISSING_MDHD
+            raise InvalidALAC(ERR_M4A_MISSING_MDHD)
+        try:
+            (version, ) = mdhd.parse("8u 24p")
+            if (version == 0):
+                (self.__length__,) = mdhd.parse("32p 32p 32p 32u 2P 16p")
+            elif (version == 1):
+                (self.__length__,) = mdhd.parse("64p 64p 32p 64U 2P 16p")
+            else:
+                from audiotools.text import ERR_M4A_UNSUPPORTED_MDHD
+                raise InvalidALAC(ERR_M4A_UNSUPPORTED_MDHD)
+        except IOError:
+            from audiotools.text import ERR_M4A_INVALID_MDHD
+            raise InvalidALAC(ERR_M4A_INVALID_MDHD)
 
     def channels(self):
         """returns an integer number of channels this track contains"""
@@ -861,9 +856,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
         from audiotools.bitstream import BitstreamReader
 
-        reader = BitstreamReader(open(self.filename, "rb"), False)
-        reader.mark()
-        try:
+        with BitstreamReader(open(self.filename, "rb"), False) as reader:
+            stream_start = reader.getpos()
             has_stts = has_m4a_atom(reader,
                                     b"moov",
                                     b"trak",
@@ -871,7 +865,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                     b"minf",
                                     b"stbl",
                                     b"stts")
-            reader.rewind()
+            reader.setpos(stream_start)
             has_stsc = has_m4a_atom(reader,
                                     b"moov",
                                     b"trak",
@@ -879,7 +873,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                     b"minf",
                                     b"stbl",
                                     b"stsc")
-            reader.rewind()
+            reader.setpos(stream_start)
             has_stco = has_m4a_atom(reader,
                                     b"moov",
                                     b"trak",
@@ -888,9 +882,6 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                     b"stbl",
                                     b"stco")
             return has_stts and has_stsc and has_stco
-        finally:
-            reader.unmark()
-            reader.close()
 
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""

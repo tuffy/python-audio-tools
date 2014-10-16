@@ -19,8 +19,6 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-enum {FRAME_DATA};
-
 MLPDecoder*
 open_mlp_decoder(void)
 {
@@ -439,7 +437,7 @@ mlp_status
 read_mlp_major_sync(BitstreamReader* bs,
                     struct major_sync* major_sync)
 {
-    bs->mark(bs, FRAME_DATA);
+    br_pos_t* frame_data = bs->getpos(bs);
     if (!setjmp(*br_try(bs))) {
         const unsigned sync_words = bs->read(bs, 24);
         const unsigned stream_type = bs->read(bs, 8);
@@ -461,18 +459,18 @@ read_mlp_major_sync(BitstreamReader* bs,
                 (major_sync->substream_count != 2))
                 return INVALID_MAJOR_SYNC;
 
-            bs->unmark(bs, FRAME_DATA);
+            frame_data->del(frame_data);
             br_etry(bs);
             return OK;
         } else {
-            bs->rewind(bs, FRAME_DATA);
-            bs->unmark(bs, FRAME_DATA);
+            bs->setpos(bs, frame_data);
+            frame_data->del(frame_data);
             br_etry(bs);
             return NO_MAJOR_SYNC;
         }
     } else {
-        bs->rewind(bs, FRAME_DATA);
-        bs->unmark(bs, FRAME_DATA);
+        bs->setpos(bs, frame_data);
+        frame_data->del(frame_data);
         br_etry(bs);
         return NO_MAJOR_SYNC;
     }

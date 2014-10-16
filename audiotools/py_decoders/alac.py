@@ -68,66 +68,63 @@ class ALACDecoder(object):
     def __init__(self, filename):
         self.reader = BitstreamReader(open(filename, "rb"), False)
 
-        self.reader.mark()
+        stream_start = self.reader.getpos()
+
+        # locate the "alac" atom
+        # which is full of required decoding parameters
         try:
-            # locate the "alac" atom
-            # which is full of required decoding parameters
-            try:
-                stsd = self.find_sub_atom(b"moov", b"trak", b"mdia",
-                                          b"minf", b"stbl", b"stsd")
-            except KeyError:
-                raise ValueError("required stsd atom not found")
+            stsd = self.find_sub_atom(b"moov", b"trak", b"mdia",
+                                      b"minf", b"stbl", b"stsd")
+        except KeyError:
+            raise ValueError("required stsd atom not found")
 
-            (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
-            (alac1,
-             alac2,
-             self.samples_per_frame,
-             self.bits_per_sample,
-             self.history_multiplier,
-             self.initial_history,
-             self.maximum_k,
-             self.channels,
-             self.sample_rate) = stsd.parse(
-                # ignore much of the stuff in the "high" ALAC atom
-                "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
-                # and use the attributes in the "low" ALAC atom instead
-                "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
+        (stsd_version, descriptions) = stsd.parse("8u 24p 32u")
+        (alac1,
+         alac2,
+         self.samples_per_frame,
+         self.bits_per_sample,
+         self.history_multiplier,
+         self.initial_history,
+         self.maximum_k,
+         self.channels,
+         self.sample_rate) = stsd.parse(
+            # ignore much of the stuff in the "high" ALAC atom
+            "32p 4b 6P 16p 16p 16p 4P 16p 16p 16p 16p 4P" +
+            # and use the attributes in the "low" ALAC atom instead
+            "32p 4b 4P 32u 8p 8u 8u 8u 8u 8u 16p 32p 32p 32u")
 
-            self.channel_mask = {1: 0x0004,
-                                 2: 0x0003,
-                                 3: 0x0007,
-                                 4: 0x0107,
-                                 5: 0x0037,
-                                 6: 0x003F,
-                                 7: 0x013F,
-                                 8: 0x00FF}.get(self.channels, 0)
+        self.channel_mask = {1: 0x0004,
+                             2: 0x0003,
+                             3: 0x0007,
+                             4: 0x0107,
+                             5: 0x0037,
+                             6: 0x003F,
+                             7: 0x013F,
+                             8: 0x00FF}.get(self.channels, 0)
 
-            if ((alac1 != b'alac') or (alac2 != b'alac')):
-                raise ValueError("Invalid alac atom")
+        if ((alac1 != b'alac') or (alac2 != b'alac')):
+            raise ValueError("Invalid alac atom")
 
-            # also locate the "mdhd" atom
-            # which contains the stream's length in PCM frames
-            self.reader.rewind()
-            mdhd = self.find_sub_atom(b"moov", b"trak", b"mdia", b"mdhd")
-            (version, ) = mdhd.parse("8u 24p")
-            if (version == 0):
-                (self.total_pcm_frames,) = mdhd.parse(
-                    "32p 32p 32p 32u 2P 16p")
-            elif (version == 1):
-                (self.total_pcm_frames,) = mdhd.parse(
-                    "64p 64p 32p 64U 2P 16p")
-            else:
-                raise ValueError("invalid mdhd version")
+        # also locate the "mdhd" atom
+        # which contains the stream's length in PCM frames
+        self.reader.setpos(stream_start)
+        mdhd = self.find_sub_atom(b"moov", b"trak", b"mdia", b"mdhd")
+        (version, ) = mdhd.parse("8u 24p")
+        if (version == 0):
+            (self.total_pcm_frames,) = mdhd.parse(
+                "32p 32p 32p 32u 2P 16p")
+        elif (version == 1):
+            (self.total_pcm_frames,) = mdhd.parse(
+                "64p 64p 32p 64U 2P 16p")
+        else:
+            raise ValueError("invalid mdhd version")
 
-            # finally, set our stream to the "mdat" atom
-            self.reader.rewind()
+        # finally, set our stream to the "mdat" atom
+        self.reader.setpos(stream_start)
+        (atom_size, atom_name) = self.reader.parse("32u 4b")
+        while (atom_name != b"mdat"):
+            self.reader.skip_bytes(atom_size - 8)
             (atom_size, atom_name) = self.reader.parse("32u 4b")
-            while (atom_name != b"mdat"):
-                self.reader.skip_bytes(atom_size - 8)
-                (atom_size, atom_name) = self.reader.parse("32u 4b")
-
-        finally:
-            self.reader.unmark()
 
     def find_sub_atom(self, *atom_names):
         reader = self.reader

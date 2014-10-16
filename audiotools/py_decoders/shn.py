@@ -62,10 +62,9 @@ class SHNDecoder(object):
         self.stream_finished = False
 
         # try to read the first command for a wave/aiff header
-        self.reader.mark()
+        data_start = self.reader.getpos()
         self.read_metadata()
-        self.reader.rewind()
-        self.reader.unmark()
+        self.reader.setpos(data_start)
 
     def read_metadata(self):
         from io import BytesIO

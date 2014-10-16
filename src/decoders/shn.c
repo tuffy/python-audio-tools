@@ -734,10 +734,11 @@ process_iff_header(BitstreamReader* bs,
                    unsigned* sample_rate,
                    unsigned* channel_mask)
 {
-    enum {COMMAND_START, VERBATIM_START};
+    br_pos_t* command_start;
+    br_pos_t* verbatim_start;
     unsigned command;
 
-    bs->mark(bs, COMMAND_START);
+    command_start = bs->getpos(bs);
     if (!setjmp(*br_try(bs))) {
         command = read_unsigned(bs, COMMAND_SIZE);
 
@@ -746,38 +747,38 @@ process_iff_header(BitstreamReader* bs,
             unsigned verbatim_size;
 
             verbatim = read_verbatim(bs, &verbatim_size);
-            verbatim->mark(verbatim, VERBATIM_START);
+            verbatim_start = verbatim->getpos(verbatim);
 
             if (!read_wave_header(verbatim, verbatim_size,
                                   sample_rate, channel_mask)) {
-                verbatim->unmark(verbatim, VERBATIM_START);
+                verbatim_start->del(verbatim_start);
                 verbatim->close(verbatim);
-                bs->rewind(bs, COMMAND_START);
-                bs->unmark(bs, COMMAND_START);
+                bs->setpos(bs, command_start);
+                command_start->del(command_start);
                 br_etry(bs);
                 return;
             } else {
-                verbatim->rewind(verbatim, VERBATIM_START);
+                verbatim->setpos(verbatim, verbatim_start);
             }
 
             if (!read_aiff_header(verbatim, verbatim_size,
                                   sample_rate, channel_mask)) {
-                verbatim->unmark(verbatim, VERBATIM_START);
+                verbatim_start->del(verbatim_start);
                 verbatim->close(verbatim);
-                bs->rewind(bs, COMMAND_START);
-                bs->unmark(bs, COMMAND_START);
+                bs->setpos(bs, command_start);
+                command_start->del(command_start);
                 br_etry(bs);
                 return;
             } else {
-                verbatim->rewind(verbatim, VERBATIM_START);
+                verbatim->setpos(verbatim, verbatim_start);
             }
 
             /*neither wave header or aiff header found,
               so use dummy values again*/
-            verbatim->unmark(verbatim, VERBATIM_START);
+            verbatim_start->del(verbatim_start);
             verbatim->close(verbatim);
-            bs->rewind(bs, COMMAND_START);
-            bs->unmark(bs, COMMAND_START);
+            bs->setpos(bs, command_start);
+            command_start->del(command_start);
             *sample_rate = 44100;
             *channel_mask = 0;
             br_etry(bs);
@@ -785,8 +786,8 @@ process_iff_header(BitstreamReader* bs,
         } else {
             /*VERBATIM isn't the first command
               so rewind and set some dummy values*/
-            bs->rewind(bs, COMMAND_START);
-            bs->unmark(bs, COMMAND_START);
+            bs->setpos(bs, command_start);
+            command_start->del(command_start);
             *sample_rate = 44100;
             *channel_mask = 0;
             br_etry(bs);
@@ -796,7 +797,7 @@ process_iff_header(BitstreamReader* bs,
         /*wrap IFF chunk reader in try block
           to unmark the stream prior to bubbling up
           the read exception to read_shn_header()*/
-        bs->unmark(bs, COMMAND_START);
+        command_start->del(command_start);
         br_etry(bs);
         br_abort(bs);
     }
