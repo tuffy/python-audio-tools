@@ -623,7 +623,6 @@ musepack.tex \
 dvda2.tex \
 freedb.tex \
 musicbrainz.tex \
-musicbrainz_mmd.tex \
 accuraterip.tex \
 replaygain.tex \
 references.tex \
