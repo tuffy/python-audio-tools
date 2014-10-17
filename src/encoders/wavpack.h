@@ -52,8 +52,8 @@ struct wavpack_encoder_context {
     struct encoding_parameters* parameters;
     unsigned blocks_per_set;
 
-    /*total PCM frames written*/
-    uint32_t total_frames;
+    /*a stack of positions which may need to be populated*/
+    struct bw_pos_stack *total_frames_positions;
 
     /*running MD5 sum of PCM data*/
     audiotools__MD5Context md5sum;
@@ -72,6 +72,10 @@ struct wavpack_encoder_context {
         int footer_len;
 #endif
     } wave;
+
+    /*the position in the file of the RIFF WAVE header
+      in case it needs to be filled in*/
+    bw_pos_t* wave_header_position;
 
     /*cached stuff we don't want to reallocate every time*/
     struct {
@@ -168,8 +172,9 @@ free_block_parameters(struct encoding_parameters* params);
 
 static void
 write_block_header(BitstreamWriter* bs,
-                   unsigned sub_blocks_size,
+                   bw_pos_t **sub_blocks_size_pos,
                    unsigned total_pcm_frames,
+                   bw_pos_t **total_pcm_frames_pos,
                    unsigned block_index,
                    unsigned block_samples,
                    unsigned bits_per_sample,

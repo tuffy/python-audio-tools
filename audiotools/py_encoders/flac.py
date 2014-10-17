@@ -133,7 +133,7 @@ def encode_flac(filename,
     # write placeholder metadata blocks such as STREAMINFO and PADDING
     writer.write_bytes("fLaC")
     writer.build("1u 7u 24u", [0, 0, 34])
-    writer.mark(0)
+    streaminfo_start = writer.getpos()
     streaminfo.write(writer)
 
     writer.build("1u 7u 24u", [1, 1, padding_size])
@@ -160,9 +160,8 @@ def encode_flac(filename,
         frame = pcmreader.read(block_size)
 
     # return to beginning of file and rewrite STREAMINFO block
-    writer.rewind(0)
+    writer.setpos(streaminfo_start)
     streaminfo.write(writer)
-    writer.unmark(0)
     writer.flush()
     writer.close()
 

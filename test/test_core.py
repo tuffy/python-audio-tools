@@ -4358,20 +4358,19 @@ class Bitstream(unittest.TestCase):
 
     def __test_writer_marks__(self, writer):
         writer.write(1, 1)
-        self.assertRaises(IOError, writer.mark)
+        self.assertRaises(IOError, writer.getpos)
         writer.write(2, 3)
-        self.assertRaises(IOError, writer.mark)
+        self.assertRaises(IOError, writer.getpos)
         writer.write(3, 7)
-        self.assertRaises(IOError, writer.mark)
+        self.assertRaises(IOError, writer.getpos)
         writer.write(2, 3)
-        writer.mark()
+        pos = writer.getpos()
         writer.write(4, 15)
-        self.assertRaises(IOError, writer.rewind)
+        self.assertRaises(IOError, writer.setpos, pos)
         writer.write(4, 15)
         writer.write(8, 0xFF)
-        writer.rewind()
+        writer.setpos(pos)
         writer.write(8, 0)
-        writer.unmark()
 
     @LIB_BITSTREAM
     def test_writer_marks(self):

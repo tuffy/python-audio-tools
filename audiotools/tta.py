@@ -202,7 +202,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 total_tta_frames = div_ceil(total_pcm_frames, block_size)
 
                 # write temporary seektable to disk
-                writer.mark()
+                seektable_start = writer.getpos()
                 write_seektable(writer, [0] * total_tta_frames)
                 writer.flush()
 
@@ -226,9 +226,8 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 assert(len(frame_sizes) == total_tta_frames)
 
                 # go back and rewrite seektable with completed one
-                writer.rewind()
+                writer.setpos(seektable_start)
                 write_seektable(writer, frame_sizes)
-                writer.unmark()
             else:
                 import tempfile
 
@@ -261,8 +260,6 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 frames.close()
         finally:
             counter.close()
-            if (writer.has_mark()):
-                writer.unmark()
             writer.close()
 
         return cls(filename)

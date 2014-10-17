@@ -53,7 +53,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     struct alac_context encoder;
     aa_int* channels = aa_int_new();
     unsigned frame_byte_size = 0;
-    enum {MDAT_HEADER};
+    bw_pos_t* mdat_header = NULL;
 
     PyObject *log_output;
 
@@ -113,7 +113,7 @@ ALACEncoder_encode_alac(char *filename,
     struct alac_context encoder;
     aa_int* channels = aa_int_new();
     unsigned frame_byte_size = 0;
-    enum {MDAT_HEADER};
+    bw_pos_t* mdat_header = NULL;
 
     init_encoder(&encoder);
 
@@ -132,7 +132,7 @@ ALACEncoder_encode_alac(char *filename,
     output = bw_open(output_file, BS_BIG_ENDIAN);
 #endif
     /*FIXME - check marks/rewinds for I/O errors*/
-    output->mark(output, MDAT_HEADER);
+    mdat_header = output->getpos(output);
 
     output->add_callback(output,
                          (bs_callback_f)byte_counter,
@@ -162,10 +162,10 @@ ALACEncoder_encode_alac(char *filename,
 
     /*return to header and rewrite it with the actual value*/
     output->pop_callback(output, NULL);
-    output->rewind(output, MDAT_HEADER);
+    output->setpos(output, mdat_header);
     output->write(output, 32,
                   encoder.frame_sizes->sum(encoder.frame_sizes) + 8);
-    output->unmark(output, MDAT_HEADER);
+    mdat_header->del(mdat_header);
 
     /*close and free allocated files/buffers,
       which varies depending on whether we're running standlone or not*/
@@ -185,7 +185,9 @@ ALACEncoder_encode_alac(char *filename,
  error:
 
     pcmreader->del(pcmreader);
-    output->unmark(output, MDAT_HEADER);
+    if (mdat_header != NULL) {
+        mdat_header->del(mdat_header);
+    }
     output->free(output);
     free_encoder(&encoder);
     channels->del(channels);
@@ -202,7 +204,9 @@ ALACEncoder_encode_alac(char *filename,
     return 0;
  error:
     pcmreader->del(pcmreader);
-    output->unmark(output, MDAT_HEADER);
+    if (mdat_header != NULL) {
+        mdat_header->del(mdat_header);
+    }
     output->close(output);
     free_encoder(&encoder);
     channels->del(channels);

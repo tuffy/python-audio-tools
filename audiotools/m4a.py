@@ -966,7 +966,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 raise EncodingError(str(err))
             try:
                 m4a_writer = BitstreamWriter(f, False)
-                m4a_writer.mark(1)
+                stream_start = m4a_writer.getpos()
                 m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
                 ftyp.build(m4a_writer)
                 m4a_writer.build("32u 4b", (moov.size() + 8, moov.name))
@@ -975,7 +975,6 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 free.build(m4a_writer)
                 m4a_writer.flush()
             except IOError as err:
-                m4a_writer.unmark(1)
                 m4a_writer.close()
                 pcmreader.close()
                 cls.__unlink__(filename)
@@ -993,7 +992,6 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                         history_multiplier=cls.HISTORY_MULTIPLIER,
                         maximum_k=cls.MAXIMUM_K)
             except (IOError, ValueError) as err:
-                m4a_writer.unmark(1)
                 m4a_writer.close()
                 cls.__unlink__(filename)
                 raise EncodingError(str(err))
@@ -1002,7 +1000,6 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
             if (actual_pcm_frames != total_pcm_frames):
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
-                m4a_writer.unmark(1)
                 m4a_writer.close()
                 cls.__unlink__(filename)
                 raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
@@ -1023,12 +1020,11 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                      total_pcm_frames,
                                      frame_byte_sizes)
 
-            m4a_writer.rewind(1)
+            m4a_writer.setpos(stream_start)
             m4a_writer.build("32u 4b", (ftyp.size() + 8, ftyp.name))
             ftyp.build(m4a_writer)
             m4a_writer.build("32u 4b", (moov.size() + 8, moov.name))
             moov.build(m4a_writer)
-            m4a_writer.unmark(1)
             m4a_writer.flush()
             m4a_writer.close()
 

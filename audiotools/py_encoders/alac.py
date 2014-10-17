@@ -74,7 +74,7 @@ def encode_mdat(file, pcmreader,
     frame_byte_sizes = []
 
     # write placeholder mdat header
-    mdat.mark()
+    mdat_start = mdat.getpos()
     mdat.write(32, 0)
     mdat.write_bytes(b"mdat")
 
@@ -90,9 +90,8 @@ def encode_mdat(file, pcmreader,
         frame = pcmreader.read(block_size)
 
     # finally, return to start of mdat and write actual length
-    mdat.rewind()
+    mdat.setpos(mdat_start)
     mdat.write(32, sum(frame_byte_sizes) + 8)
-    mdat.unmark()
 
     return (frame_byte_sizes, total_pcm_frames)
 

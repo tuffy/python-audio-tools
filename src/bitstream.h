@@ -90,7 +90,7 @@ typedef struct br_pos_s {
       attempting to setpos on some other reader will raise an error*/
     struct BitstreamReader_s *reader;
 
-    /*the position being rewound to*/
+    /*the position in the stream*/
     union {
         fpos_t file;
         unsigned buffer;
@@ -764,20 +764,32 @@ typedef struct {
     int larger;
 } bw_huffman_table_t;
 
+struct BitstreamWriter_s;
+
 /*a mark on the BitstreamWriter's stream which can be rewound to*/
-struct bw_mark {
+typedef struct bw_pos_s {
+    /*our source writer
+      attempting to setpos on some other writer will raise an error*/
+    struct BitstreamWriter_s *writer;
+
+    /*the position in the stream*/
     union {
         fpos_t file;
-        void* external;
+        /*FIXME - add buffer position for BitstreamRecorder*/
+        struct {
+            void* pos;
+            ext_free_pos_f free_pos;
+        } external;
     } position;
-    struct bw_mark *next;
-};
 
-/*all the marks on the mark stack with the same ID*/
-struct bw_mark_stack {
-    int mark_id;
-    struct bw_mark *marks;
-    struct bw_mark_stack *next;
+    /*a function to delete position when finished with it*/
+    void (*del)(struct bw_pos_s *pos);
+} bw_pos_t;
+
+
+struct bw_pos_stack {
+    bw_pos_t* pos;
+    struct bw_pos_stack* next;
 };
 
 #define BITSTREAMWRITER_TYPE                                \
@@ -795,8 +807,6 @@ struct bw_mark_stack {
                                                             \
     struct bs_callback* callbacks;                          \
     struct bs_exception* exceptions;                        \
-    struct bw_mark_stack* mark_stacks;                      \
-                                                            \
     struct bs_exception* exceptions_used;                   \
                                                             \
     /*writes the given value as "count" number of unsigned bits*/ \
@@ -823,18 +833,18 @@ struct bw_mark_stack {
                        unsigned int count,                  \
                        int64_t value);                      \
                                                             \
-    /*writes "byte_count" number of bytes to the output stream*/ \
-    void                                                    \
-    (*write_bytes)(struct BitstreamWriter_s* bs,            \
-                   const uint8_t* bytes,                    \
-                   unsigned int byte_count);                \
-                                                            \
     /*writes "value" number of non stop bits to the current stream*/ \
     /*followed by a single stop bit*/                                \
     void                                                    \
     (*write_unary)(struct BitstreamWriter_s* bs,            \
                    int stop_bit,                            \
                    unsigned int value);                     \
+                                                            \
+    /*byte aligns the stream and sets its format*/          \
+    /*to big endian or little endian*/                      \
+    void                                                    \
+    (*set_endianness)(struct BitstreamWriter_s* bs,         \
+                      bs_endianness endianness);            \
                                                             \
     /*writes "value" is a Huffman code to the stream*/                   \
     /*where the code tree is defined from the given compiled table*/     \
@@ -844,20 +854,11 @@ struct bw_mark_stack {
                           bw_huffman_table_t table[],       \
                           int value);                       \
                                                             \
-    /*returns 1 if the stream is byte-aligned, 0 if not*/   \
-    int                                                     \
-    (*byte_aligned)(const struct BitstreamWriter_s* bs);    \
-                                                            \
-    /*if the stream is not already byte-aligned*/           \
-    /*pad it with 0 bits until it is*/                      \
+    /*writes "byte_count" number of bytes to the output stream*/ \
     void                                                    \
-    (*byte_align)(struct BitstreamWriter_s* bs);            \
-                                                            \
-    /*byte aligns the stream and sets its format*/          \
-    /*to big endian or little endian*/                      \
-    void                                                    \
-    (*set_endianness)(struct BitstreamWriter_s* bs,         \
-                      bs_endianness endianness);            \
+    (*write_bytes)(struct BitstreamWriter_s* bs,            \
+                   const uint8_t* bytes,                    \
+                   unsigned int byte_count);                \
                                                             \
     /*takes a format string,*/                                               \
     /*peforms the indicated write operations with prefixed numeric lengths*/ \
@@ -895,6 +896,15 @@ struct bw_mark_stack {
     (*build)(struct BitstreamWriter_s* bs,                  \
              const char* format, ...);                      \
                                                             \
+    /*returns 1 if the stream is byte-aligned, 0 if not*/   \
+    int                                                     \
+    (*byte_aligned)(const struct BitstreamWriter_s* bs);    \
+                                                            \
+    /*if the stream is not already byte-aligned*/           \
+    /*pad it with 0 bits until it is*/                      \
+    void                                                    \
+    (*byte_align)(struct BitstreamWriter_s* bs);            \
+                                                            \
     /*flushes the current output stream's pending data*/    \
     void                                                    \
     (*flush)(struct BitstreamWriter_s* bs);                 \
@@ -926,29 +936,19 @@ struct bw_mark_stack {
     (*call_callbacks)(struct BitstreamWriter_s* bs,         \
                       uint8_t byte);                        \
                                                             \
-    /*pushes the stream's current position onto the given mark stack*/ \
-    /*all pushed marks should be unmarked once no longer needed*/      \
-    /*attempting to set a mark while the output stream is not*/        \
-    /*byte-aligned will trigger an abort!*/                            \
-    void                                                    \
-    (*mark)(struct BitstreamWriter_s* bs, int mark_id);     \
+    /*returns a new pos instance which can be rewound to*/  \
+    /*may call bw_abort() if the position cannot be*/       \
+    /*gotten or the stream in closed*/                      \
+    bw_pos_t*                                               \
+    (*getpos)(struct BitstreamWriter_s* bs);                \
                                                             \
-    /*returns 1 if the stream has a mark with the given ID*/ \
-    int                                                     \
-    (*has_mark)(const struct BitstreamWriter_s* bs,         \
-                int mark_id);                               \
-                                                            \
-    /*rewinds the stream to the next previous mark on the given mark stack*/ \
-    /*rewinding does not affect the mark itself*/                            \
-    /*attempting to rewind to a mark while the output stream*/               \
-    /*is not byte-aligned will trigger an abort!*/                           \
+    /*sets the streams position from a pos instance*/       \
+    /*may call bw_abort() if the position cannot be set*/   \
+    /*the stream is closed, or the position*/               \
+    /*is from another stream*/                              \
     void                                                    \
-    (*rewind)(struct BitstreamWriter_s* bs, int mark_id);   \
-                                                            \
-    /*pops the top value from the given mark stack*/            \
-    /*unmarking does not affect the stream's current position*/ \
-    void                                                    \
-    (*unmark)(struct BitstreamWriter_s* bs, int mark_id);
+    (*setpos)(struct BitstreamWriter_s*,                    \
+              const bw_pos_t* ps);
 
 typedef struct BitstreamWriter_s {
     BITSTREAMWRITER_TYPE
@@ -981,24 +981,6 @@ typedef struct BitstreamWriter_s {
 typedef struct BitstreamRecorder_s {
     BITSTREAMWRITER_TYPE
 
-    /*flushes and closes the internal stream*/
-    /*for recorders, does nothing           */
-    /*once the internal stream is closed,   */
-    /*the writer's I/O methods are updated  */
-    /*to generate errors if called again    */
-    void
-    (*close_internal_stream)(struct BitstreamRecorder_s* bs);
-
-    /*for recorders, deallocates buffer              */
-    /*deallocates any callbacks, exceptions and marks*/
-    /*frees BitstreamRecorder struct                 */
-    void
-    (*free)(struct BitstreamRecorder_s* bs);
-
-    /*calls close_internal_stream(), followed by free()*/
-    void
-    (*close)(struct BitstreamRecorder_s* bs);
-
     /*returns the total bits written to the stream thus far*/
     unsigned int
     (*bits_written)(const struct BitstreamRecorder_s* bs);
@@ -1028,6 +1010,24 @@ typedef struct BitstreamRecorder_s {
              unsigned bytes,
              struct BitstreamWriter_s* target,
              struct BitstreamWriter_s* remainder);
+
+    /*flushes and closes the internal stream*/
+    /*for recorders, does nothing           */
+    /*once the internal stream is closed,   */
+    /*the writer's I/O methods are updated  */
+    /*to generate errors if called again    */
+    void
+    (*close_internal_stream)(struct BitstreamRecorder_s* bs);
+
+    /*for recorders, deallocates buffer              */
+    /*deallocates any callbacks, exceptions and marks*/
+    /*frees BitstreamRecorder struct                 */
+    void
+    (*free)(struct BitstreamRecorder_s* bs);
+
+    /*calls close_internal_stream(), followed by free()*/
+    void
+    (*close)(struct BitstreamRecorder_s* bs);
 } BitstreamRecorder;
 
 
@@ -1152,43 +1152,11 @@ bw_write_signed_bits64_c(BitstreamWriter* bs, unsigned int count,
                          int64_t value);
 
 
-/*bs->write_bytes(bs, bytes, byte_count)  methods*/
-void
-bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
-void
-bw_write_bytes_e(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
-void
-bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
-void
-bw_write_bytes_c(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
-
-
 /*bs->write_unary(bs, stop_bit, value)  methods*/
 void
 bw_write_unary_f_e_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
 void
 bw_write_unary_c(BitstreamWriter* bs, int stop_bit, unsigned int value);
-
-
-/*bs->write_huffman_code(bs, table, value)  methods*/
-int
-bw_write_huffman(BitstreamWriter* bs,
-                 bw_huffman_table_t table[],
-                 int value);
-
-
-/*bs->byte_aligned(bs)  method*/
-int
-bw_byte_aligned_f_e_r(const BitstreamWriter* bs);
-int
-bw_byte_aligned_c(const BitstreamWriter* bs);
-
-
-/*bs->byte_align(bs)  methods*/
-void
-bw_byte_align_f_e_r(BitstreamWriter* bs);
-void
-bw_byte_align_c(BitstreamWriter* bs);
 
 
 /*bs->set_endianness(bs, endianness)  methods*/
@@ -1208,9 +1176,41 @@ void
 bw_set_endianness_c(BitstreamWriter* bs, bs_endianness endianness);
 
 
+/*bs->write_huffman_code(bs, table, value)  methods*/
+int
+bw_write_huffman(BitstreamWriter* bs,
+                 bw_huffman_table_t table[],
+                 int value);
+
+
+/*bs->write_bytes(bs, bytes, byte_count)  methods*/
+void
+bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
+void
+bw_write_bytes_e(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
+void
+bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
+void
+bw_write_bytes_c(BitstreamWriter* bs, const uint8_t* bytes, unsigned int count);
+
+
 /*bs->build(bs, format, ...)  method*/
 void
 bw_build(struct BitstreamWriter_s* stream, const char* format, ...);
+
+
+/*bs->byte_aligned(bs)  method*/
+int
+bw_byte_aligned_f_e_r(const BitstreamWriter* bs);
+int
+bw_byte_aligned_c(const BitstreamWriter* bs);
+
+
+/*bs->byte_align(bs)  methods*/
+void
+bw_byte_align_f_e_r(BitstreamWriter* bs);
+void
+bw_byte_align_c(BitstreamWriter* bs);
 
 
 /*bs->flush(bs)  methods*/
@@ -1242,36 +1242,36 @@ void
 bw_call_callbacks(BitstreamWriter *bs, uint8_t byte);
 
 
-/*bs->mark(bs, id)  method*/
-void
-bw_mark_f(BitstreamWriter *bs, int mark_id);
-void
-bw_mark_e(BitstreamWriter *bs, int mark_id);
-void
-bw_mark_r(BitstreamWriter *bs, int mark_id);
+/*bs->getpos(bs)  method*/
+bw_pos_t*
+bw_getpos_f(BitstreamWriter *bs);
+bw_pos_t*
+bw_getpos_e(BitstreamWriter *bs);
+bw_pos_t*
+bw_getpos_r(BitstreamWriter *bs);
+bw_pos_t*
+bw_getpos_c(BitstreamWriter *bs);
 
 
-/*bs->has_mark(bs, id)  method*/
-int
-bw_has_mark(const BitstreamWriter *bs, int mark_id);
+/*pos->del(pos)  method*/
+void
+bw_pos_del_f(bw_pos_t* pos);
+void
+bw_pos_del_e(bw_pos_t* pos);
+void
+bw_pos_del_r(bw_pos_t* pos);
 
 
-/*bs->rewind(bs, id)  method*/
+/*bs->setpos(bs, pos)  method*/
 void
-bw_rewind_f(BitstreamWriter *bs, int mark_id);
+bw_setpos_f(BitstreamWriter *bs, const bw_pos_t* pos);
 void
-bw_rewind_e(BitstreamWriter *bs, int mark_id);
+bw_setpos_e(BitstreamWriter *bs, const bw_pos_t* pos);
 void
-bw_rewind_r(BitstreamWriter *bs, int mark_id);
+bw_setpos_r(BitstreamWriter *bs, const bw_pos_t* pos);
+void
+bw_setpos_c(BitstreamWriter *bs, const bw_pos_t* pos);
 
-
-/*bs->unmark(bs, id)  method*/
-void
-bw_unmark_f(BitstreamWriter *bs, int mark_id);
-void
-bw_unmark_e(BitstreamWriter *bs, int mark_id);
-void
-bw_unmark_r(BitstreamWriter *bs, int mark_id);
 
 void
 bw_close_methods(BitstreamWriter* bs);
@@ -1402,33 +1402,6 @@ bs_format_byte_size(const char* format);
 
 
 /*******************************************************************
- *                           mark handlers                         *
- *******************************************************************/
-
-/*adds the given mark to the stack and returns the next stack*/
-struct bw_mark_stack*
-bw_add_mark(struct bw_mark_stack* stack, int mark_id, struct bw_mark* mark);
-
-/*returns the top mark with the given mark_id, or NULL*/
-struct bw_mark*
-bw_get_mark(const struct bw_mark_stack* stack, int mark_id);
-
-/*pops the next mark with the given mark_id
-  or NULL if the mark_id isn't found
-  and returns an updated stack*/
-struct bw_mark_stack*
-bw_pop_mark(struct bw_mark_stack* stack,
-            int mark_id,
-            struct bw_mark** mark);
-
-/*pops the next mark from the current stack
-  and returns an updated stack*/
-struct bw_mark_stack*
-bw_pop_mark_stack(struct bw_mark_stack* stack,
-                  struct bw_mark** mark);
-
-
-/*******************************************************************
  *                       read buffer-specific                      *
  *******************************************************************/
 
@@ -1461,6 +1434,16 @@ br_buf_setpos(struct br_buffer *buf, unsigned pos);
 
 int
 br_buf_fseek(struct br_buffer *buf, long position, int whence);
+
+/*******************************************************************
+ *                       bw_pos_stack handlers                     *
+ *******************************************************************/
+
+void
+bw_pos_stack_push(struct bw_pos_stack** stack, bw_pos_t* pos);
+
+bw_pos_t*
+bw_pos_stack_pop(struct bw_pos_stack** stack);
 
 
 #ifndef STANDALONE

@@ -75,7 +75,7 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     unsigned block_size = 0;
     unsigned padding_size = DEFAULT_PADDING_SIZE;
-    enum {STREAMINFO};
+    bw_pos_t* streaminfo = NULL;
 
     encoder.options.mid_side = 0;
     encoder.options.adaptive_mid_side = 0;
@@ -140,7 +140,7 @@ encoders_encode_flac(char *filename,
     audiotools__MD5Context md5sum;
     aa_int* samples;
     unsigned padding_size = DEFAULT_PADDING_SIZE;
-    enum {STREAMINFO};
+    bw_pos_t* streaminfo = NULL;
 
     /*set user-defined encoding options*/
     encoder.options.block_size = block_size;
@@ -216,7 +216,7 @@ encoders_encode_flac(char *filename,
     output_stream->write(output_stream, 24, 34);
 
     /*write placeholder STREAMINFO*/
-    output_stream->mark(output_stream, STREAMINFO);
+    streaminfo = output_stream->getpos(output_stream);
     flacenc_write_streaminfo(output_stream, &(encoder.streaminfo));
 
     /*write VORBIS_COMMENT*/
@@ -273,9 +273,9 @@ encoders_encode_flac(char *filename,
 
     /*go back and re-write STREAMINFO with complete values*/
     audiotools__MD5Final(encoder.streaminfo.md5sum, &md5sum);
-    output_stream->rewind(output_stream, STREAMINFO);
+    output_stream->setpos(output_stream, streaminfo);
     flacenc_write_streaminfo(output_stream, &encoder.streaminfo);
-    output_stream->unmark(output_stream, STREAMINFO);
+    streaminfo->del(streaminfo);
 
     samples->del(samples); /*deallocate the temporary samples block*/
     pcmreader->del(pcmreader);
@@ -290,7 +290,9 @@ encoders_encode_flac(char *filename,
     samples->del(samples);
     pcmreader->del(pcmreader);
     flacenc_free_encoder(&encoder);
-    output_stream->unmark(output_stream, STREAMINFO);
+    if (streaminfo != NULL) {
+        streaminfo->del(streaminfo);
+    }
     output_stream->close(output_stream); /*close the output file*/
     return NULL;
 }
@@ -300,7 +302,9 @@ encoders_encode_flac(char *filename,
     samples->del(samples);
     pcmreader->del(pcmreader);
     flacenc_free_encoder(&encoder);
-    output_stream->unmark(output_stream, STREAMINFO);
+    if (streaminfo != NULL) {
+        streaminfo->del(streaminfo);
+    }
     output_stream->close(output_stream); /*close the output file*/
     return 0;
 }

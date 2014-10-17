@@ -37,11 +37,6 @@ WV_BITSTREAM = 0xA
 WV_CHANNEL_INFO = 0xD
 WV_MD5 = 0x6
 
-(MARK_BLOCK_OFFSETS,
- MARK_WAVE_HEADER,
- MARK_SUB_BLOCKS_SIZE,
- MARK_CURRENT_POSITION) = range(4)
-
 
 class Counter(object):
     def __init__(self, initial_value=0):
@@ -64,6 +59,7 @@ class EncoderContext(object):
         self.first_block_written = False
         self.wave_header = wave_header
         self.wave_footer = wave_footer
+        self.wave_header_start = None
 
 
 def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
@@ -354,6 +350,7 @@ def encode_wavpack(filename,
                                               correlation_passes),
                              wave_header,
                              wave_footer)
+    total_pcm_frames_positions = []
 
     block_index = 0
 
@@ -375,16 +372,18 @@ def encode_wavpack(filename,
             first_block = parameters is context.block_parameters[0]
             last_block = parameters is context.block_parameters[-1]
 
-            write_block(writer,
-                        context,
-                        channel_data,
-                        total_pcm_frames,
-                        block_index,
-                        first_block,
-                        last_block,
-                        parameters)
+            total_pcm_frames_pos = write_block(writer,
+                                               context,
+                                               channel_data,
+                                               total_pcm_frames,
+                                               block_index,
+                                               first_block,
+                                               last_block,
+                                               parameters)
 
             c += parameters.channel_count
+            if (total_pcm_frames == 0):
+                total_pcm_frames_positions.append(total_pcm_frames_pos)
 
         block_index += frame.frames
         frame = pcmreader.read(block_size)
@@ -394,7 +393,8 @@ def encode_wavpack(filename,
     sub_blocks_size = Counter()
 
     # write block header with placeholder sub blocks size
-    write_block_header(
+    (sub_blocks_size_pos,
+     total_pcm_frames_pos) = write_block_header(
         writer=writer,
         sub_blocks_size=int(sub_blocks_size),
         total_pcm_frames=total_pcm_frames,
@@ -412,6 +412,9 @@ def encode_wavpack(filename,
         false_stereo=0,
         CRC=0xFFFFFFFF)
 
+    if (total_pcm_frames == 0):
+        total_pcm_frames_positions.append(total_pcm_frames_pos)
+
     writer.add_callback(sub_blocks_size.add)
 
     # write MD5 in final block
@@ -428,17 +431,15 @@ def encode_wavpack(filename,
     writer.pop_callback()
 
     # fill in block header with total sub blocks size
-    writer.mark(MARK_CURRENT_POSITION)
-    writer.rewind(MARK_SUB_BLOCKS_SIZE)
+    end_of_block = writer.getpos()
+    writer.setpos(sub_blocks_size_pos)
     writer.write(32, int(sub_blocks_size) + 24)
-    writer.unmark(MARK_SUB_BLOCKS_SIZE)
-    writer.rewind(MARK_CURRENT_POSITION)
-    writer.unmark(MARK_CURRENT_POSITION)
+    writer.setpos(end_of_block)
 
     # update Wave header's "data" chunk size, if generated
     if (context.wave_header is None):
         sub_block.reset()
-        writer.rewind(MARK_WAVE_HEADER)
+        writer.setpos(context.wave_header_start)
         if (context.wave_footer is None):
             write_wave_header(sub_block, context.pcmreader,
                               context.total_frames, 0)
@@ -446,16 +447,15 @@ def encode_wavpack(filename,
             write_wave_header(sub_block, context.pcmreader,
                               context.total_frames, len(context.wave_footer))
         write_sub_block(writer, WV_WAVE_HEADER, 1, sub_block)
-        writer.unmark(MARK_WAVE_HEADER)
 
     # go back and populate block headers with total samples
-    while (writer.has_mark(MARK_BLOCK_OFFSETS)):
-        writer.rewind(MARK_BLOCK_OFFSETS)
-        writer.write(32, block_index)
-        writer.unmark(MARK_BLOCK_OFFSETS)
 
     if (total_pcm_frames > 0):
         assert(block_index == total_pcm_frames)
+
+    for pos in total_pcm_frames_positions:
+        writer.setpos(pos)
+        writer.write(32, block_index)
 
     writer.flush()
     writer.close()
@@ -535,7 +535,8 @@ def write_block(writer,
     sub_blocks_size = Counter()
 
     # write block header with placeholder total sub blocks size
-    write_block_header(
+    (sub_blocks_size_pos,
+     total_pcm_frames_pos) = write_block_header(
         writer=writer,
         sub_blocks_size=int(sub_blocks_size),
         total_pcm_frames=total_pcm_frames,
@@ -566,7 +567,7 @@ def write_block(writer,
             else:
                 write_wave_header(sub_block, context.pcmreader, 0,
                                   len(context.wave_footer))
-            writer.mark(MARK_WAVE_HEADER)
+            context.wave_header_start = writer.getpos()
             write_sub_block(writer, WV_DUMMY, 0, sub_block)
         else:
             sub_block.write_bytes(context.wave_header)
@@ -662,17 +663,18 @@ def write_block(writer,
     writer.pop_callback()
 
     # fill in total sub blocks size
-    writer.mark(MARK_CURRENT_POSITION)
-    writer.rewind(MARK_SUB_BLOCKS_SIZE)
+    end_of_block = writer.getpos()
+    writer.setpos(sub_blocks_size_pos)
     writer.write(32, int(sub_blocks_size) + 24)
-    writer.unmark(MARK_SUB_BLOCKS_SIZE)
-    writer.rewind(MARK_CURRENT_POSITION)
-    writer.unmark(MARK_CURRENT_POSITION)
+    writer.setpos(end_of_block)
 
     # round-trip entropy variables
     parameters.entropy_variables = [
         [wv_exp2(wv_log2(p)) for p in parameters.entropy_variables[0]],
         [wv_exp2(wv_log2(p)) for p in parameters.entropy_variables[1]]]
+
+    # return total PCM frames position to be filled in later
+    return total_pcm_frames_pos
 
 
 def bits(sample):
@@ -739,16 +741,15 @@ def write_block_header(writer,
                        CRC):
     writer.write_bytes(b"wvpk")             # block ID
     # block size
+    sub_blocks_size_pos = writer.getpos()
     if (sub_blocks_size > 0):
         writer.write(32, sub_blocks_size + 24)
     else:
-        writer.mark(MARK_SUB_BLOCKS_SIZE)
         writer.write(32, 0)
     writer.write(16, 0x0410)                # version
     writer.write(8, 0)                      # track number
     writer.write(8, 0)                      # index number
-    if (total_pcm_frames == 0):
-        writer.mark(MARK_BLOCK_OFFSETS)
+    total_pcm_frames_pos = writer.getpos()
     writer.write(32, total_pcm_frames)
     writer.write(32, block_index)
     writer.write(32, block_samples)
@@ -789,6 +790,8 @@ def write_block_header(writer,
     writer.write(1, false_stereo)
     writer.write(1, 0)                      # reserved
     writer.write(32, CRC)
+
+    return (sub_blocks_size_pos, total_pcm_frames_pos)
 
 
 def write_sub_block(writer, function, nondecoder_data, recorder):

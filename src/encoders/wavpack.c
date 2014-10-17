@@ -21,8 +21,6 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-enum {CURRENT_POSITION, SUB_BLOCKS_SIZE, TOTAL_PCM_FRAMES, WAVE_HEADER};
-
 #ifndef STANDALONE
 PyObject*
 encoders_encode_wavpack(PyObject *dummy,
@@ -172,6 +170,7 @@ encoders_encode_wavpack(char *filename,
                                     pcmreader->channels *
                                     (pcmreader->bits_per_sample / 8));
         const uint64_t max_size = 4294967296llu;
+        bw_pos_t* wave_header_pos = context.wave_header_position;
 
         if (data_size < max_size) {
             BitstreamRecorder* sub_block = context.cache.sub_block;
@@ -189,19 +188,20 @@ encoders_encode_wavpack(char *filename,
                                   context.wave.footer_len);
             }
 
-            stream->rewind(stream, WAVE_HEADER);
+            stream->setpos(stream, wave_header_pos);
             write_sub_block(stream, WV_WAVE_HEADER, 1, sub_block);
-            stream->unmark(stream, WAVE_HEADER);
+            wave_header_pos->del(wave_header_pos);
         } else {
-            stream->unmark(stream, WAVE_HEADER);
+            wave_header_pos->del(wave_header_pos);
         }
     }
 
     /*go back and set block header data as necessary*/
-    while (stream->has_mark(stream, TOTAL_PCM_FRAMES)) {
-        stream->rewind(stream, TOTAL_PCM_FRAMES);
+    while (context.total_frames_positions != NULL) {
+        bw_pos_t* pos = bw_pos_stack_pop(&(context.total_frames_positions));
+        stream->setpos(stream, pos);
         stream->write(stream, 32, block_index);
-        stream->unmark(stream, TOTAL_PCM_FRAMES);
+        pos->del(pos);
     }
 
     /*close open file handles and deallocate temporary space*/
@@ -220,11 +220,12 @@ encoders_encode_wavpack(char *filename,
 
  error:
     /*close open file handles and deallocate temporary space*/
-    while (stream->has_mark(stream, TOTAL_PCM_FRAMES)) {
-        stream->unmark(stream, TOTAL_PCM_FRAMES);
+    while (context.total_frames_positions != NULL) {
+        bw_pos_t* pos = bw_pos_stack_pop(&(context.total_frames_positions));
+        pos->del(pos);
     }
-    if (stream->has_mark(stream, WAVE_HEADER)) {
-        stream->unmark(stream, WAVE_HEADER);
+    if (context.wave_header_position != NULL) {
+        context.wave_header_position->del(context.wave_header_position);
     }
 
     free_context(&context);
@@ -282,7 +283,11 @@ init_context(struct wavpack_encoder_context* context,
         }
     }
 
-    /*initialized cache items*/
+    /*initialize positions to be populated later*/
+    context->total_frames_positions = NULL;
+    context->wave_header_position = NULL;
+
+    /*initialize cache items*/
     context->cache.shifted = aa_int_new();
     context->cache.mid_side = aa_int_new();
     context->cache.correlated = aa_int_new();
@@ -521,8 +526,9 @@ free_block_parameters(struct encoding_parameters* params)
 
 static void
 write_block_header(BitstreamWriter* bs,
-                   unsigned sub_blocks_size,
+                   bw_pos_t **sub_blocks_size_pos,
                    unsigned total_pcm_frames,
+                   bw_pos_t **total_pcm_frames_pos,
                    unsigned block_index,
                    unsigned block_samples,
                    unsigned bits_per_sample,
@@ -538,19 +544,18 @@ write_block_header(BitstreamWriter* bs,
                    uint32_t crc)
 {
     bs->write_bytes(bs, (uint8_t*)"wvpk", 4);
-    if (sub_blocks_size) {
-        bs->write(bs, 32, sub_blocks_size + 24);
-    } else {
-        bs->mark(bs, SUB_BLOCKS_SIZE);
-        bs->write(bs, 32, 24);
-    }
+
+    /*capture position for later and write placeholder sub blocks size*/
+    *sub_blocks_size_pos = bs->getpos(bs);
+    bs->write(bs, 32, 24);
+
     bs->write(bs, 16, WAVPACK_VERSION);
     bs->write(bs, 8, 0);              /*track number*/
     bs->write(bs, 8, 0);              /*index number*/
     if (total_pcm_frames) {
         bs->write(bs, 32, total_pcm_frames);
     } else {
-        bs->mark(bs, TOTAL_PCM_FRAMES);
+        *total_pcm_frames_pos = bs->getpos(bs);
         bs->write(bs, 32, 0);
     }
     bs->write(bs, 32, block_index);
@@ -623,6 +628,9 @@ encode_block(BitstreamWriter* bs,
     BitstreamRecorder* sub_block = context->cache.sub_block;
     unsigned sub_blocks_size = 0;
     uint32_t crc;
+    bw_pos_t* sub_blocks_size_pos;
+    bw_pos_t* total_pcm_frames_pos;
+    bw_pos_t* end_of_block;
 
     assert((channels->len == 1) || (channels->len == 2));
 
@@ -716,10 +724,12 @@ encode_block(BitstreamWriter* bs,
         reset_block_parameters(parameters, effective_channel_count);
     }
 
-    /*write block header with placeholder total sub blocks size*/
+    /*write block header with placeholder total sub blocks size
+      and possibly a placeholder total PCM frames value*/
     write_block_header(bs,
-                       sub_blocks_size,
+                       &sub_blocks_size_pos,
                        total_pcm_frames,
+                       &total_pcm_frames_pos,
                        block_index,
                        total_frames,
                        pcmreader->bits_per_sample,
@@ -734,6 +744,12 @@ encode_block(BitstreamWriter* bs,
                        false_stereo,
                        crc);
 
+    /*push total size position on stack if it needs populating later*/
+    if (total_pcm_frames == 0) {
+        bw_pos_stack_push(&(context->total_frames_positions),
+                          total_pcm_frames_pos);
+    }
+
     bs->add_callback(bs, (bs_callback_f)byte_counter, &sub_blocks_size);
 
     /*if first block in file, write wave header*/
@@ -747,7 +763,7 @@ encode_block(BitstreamWriter* bs,
                 pcmreader,
                 (context->wave.footer_data == NULL) ?
                 0 : context->wave.footer_len);
-            bs->mark(bs, WAVE_HEADER);
+            context->wave_header_position = bs->getpos(bs);
             write_sub_block(bs, WV_DUMMY, 0, sub_block);
         } else {
             /*external header given, so output as-is*/
@@ -854,12 +870,12 @@ encode_block(BitstreamWriter* bs,
     bs->pop_callback(bs, NULL);
 
     /*fill in total sub blocks size*/
-    bs->mark(bs, CURRENT_POSITION);
-    bs->rewind(bs, SUB_BLOCKS_SIZE);
+    end_of_block = bs->getpos(bs);
+    bs->setpos(bs, sub_blocks_size_pos);
     bs->write(bs, 32, sub_blocks_size + 24);
-    bs->unmark(bs, SUB_BLOCKS_SIZE);
-    bs->rewind(bs, CURRENT_POSITION);
-    bs->unmark(bs, CURRENT_POSITION);
+    sub_blocks_size_pos->del(sub_blocks_size_pos);
+    bs->setpos(bs, end_of_block);
+    end_of_block->del(end_of_block);
 }
 
 static void
@@ -1783,10 +1799,14 @@ encode_footer_block(BitstreamWriter* bs,
     BitstreamRecorder* sub_block = context->cache.sub_block;
     unsigned sub_blocks_size = 0;
     unsigned char md5sum[16];
+    bw_pos_t* sub_blocks_size_pos;
+    bw_pos_t* total_pcm_frames_pos;
+    bw_pos_t* end_of_block;
 
     write_block_header(bs,
-                       sub_blocks_size,
+                       &sub_blocks_size_pos,
                        total_pcm_frames,
+                       &total_pcm_frames_pos,
                        0xFFFFFFFF,  /*block index*/
                        0,           /*block samples*/
                        pcmreader->bits_per_sample,
@@ -1800,6 +1820,12 @@ encode_footer_block(BitstreamWriter* bs,
                        pcmreader->sample_rate,
                        0,           /*false stereo*/
                        0xFFFFFFFF); /*CRC*/
+
+    /*push total size position on stack if it needs populating later*/
+    if (total_pcm_frames == 0) {
+        bw_pos_stack_push(&(context->total_frames_positions),
+                          total_pcm_frames_pos);
+    }
 
     bs->add_callback(bs, (bs_callback_f)byte_counter, &sub_blocks_size);
 
@@ -1821,12 +1847,12 @@ encode_footer_block(BitstreamWriter* bs,
     bs->pop_callback(bs, NULL);
 
     /*fill in total sub blocks size*/
-    bs->mark(bs, CURRENT_POSITION);
-    bs->rewind(bs, SUB_BLOCKS_SIZE);
+    end_of_block = bs->getpos(bs);
+    bs->setpos(bs, sub_blocks_size_pos);
     bs->write(bs, 32, sub_blocks_size + 24);
-    bs->unmark(bs, SUB_BLOCKS_SIZE);
-    bs->rewind(bs, CURRENT_POSITION);
-    bs->unmark(bs, CURRENT_POSITION);
+    sub_blocks_size_pos->del(sub_blocks_size_pos);
+    bs->setpos(bs, end_of_block);
+    end_of_block->del(end_of_block);
 }
 
 static void

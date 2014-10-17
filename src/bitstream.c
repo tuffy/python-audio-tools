@@ -1368,12 +1368,12 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->type = BW_FILE;
 
     bs->output.file = f;
+
     bs->buffer_size = 0;
     bs->buffer = 0;
 
     bs->callbacks = NULL;
     bs->exceptions = NULL;
-    bs->mark_stacks = NULL;
     bs->exceptions_used = NULL;
 
     switch (endianness) {
@@ -1393,21 +1393,20 @@ bw_open(FILE *f, bs_endianness endianness)
         break;
     }
 
-    bs->write_bytes = bw_write_bytes_f;
     bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
+    bs->write_bytes = bw_write_bytes_f;
+    bs->build = bw_build;
     bs->byte_aligned = bw_byte_aligned_f_e_r;
     bs->byte_align = bw_byte_align_f_e_r;
-    bs->build = bw_build;
     bs->flush = bw_flush_f;
     bs->add_callback = bw_add_callback;
     bs->push_callback = bw_push_callback;
     bs->pop_callback = bw_pop_callback;
     bs->call_callbacks = bw_call_callbacks;
-    bs->mark = bw_mark_f;
-    bs->has_mark = bw_has_mark;
-    bs->rewind = bw_rewind_f;
-    bs->unmark = bw_unmark_f;
+    bs->getpos = bw_getpos_f;
+    bs->setpos = bw_setpos_f;
+
     bs->close_internal_stream = bw_close_internal_stream_f;
     bs->free = bw_free_f;
     bs->close = bw_close_f_e;
@@ -1445,7 +1444,6 @@ bw_open_external(void* user_data,
 
     bs->callbacks = NULL;
     bs->exceptions = NULL;
-    bs->mark_stacks = NULL;
     bs->exceptions_used = NULL;
 
     switch (endianness) {
@@ -1465,21 +1463,20 @@ bw_open_external(void* user_data,
         break;
     }
 
-    bs->write_bytes = bw_write_bytes_e;
     bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
+    bs->write_bytes = bw_write_bytes_e;
+    bs->build = bw_build;
     bs->byte_aligned = bw_byte_aligned_f_e_r;
     bs->byte_align = bw_byte_align_f_e_r;
-    bs->build = bw_build;
     bs->flush = bw_flush_e;
     bs->add_callback = bw_add_callback;
     bs->push_callback = bw_push_callback;
     bs->pop_callback = bw_pop_callback;
     bs->call_callbacks = bw_call_callbacks;
-    bs->mark = bw_mark_e;
-    bs->has_mark = bw_has_mark;
-    bs->rewind = bw_rewind_e;
-    bs->unmark = bw_unmark_e;
+    bs->setpos = bw_setpos_e;
+    bs->getpos = bw_getpos_e;
+
     bs->close_internal_stream = bw_close_internal_stream_e;
     bs->free = bw_free_e;
     bs->close = bw_close_f_e;
@@ -1501,7 +1498,6 @@ bw_open_recorder(bs_endianness endianness)
 
     bs->callbacks = NULL;
     bs->exceptions = NULL;
-    bs->mark_stacks = NULL;
     bs->exceptions_used = NULL;
 
     switch (endianness) {
@@ -1521,29 +1517,28 @@ bw_open_recorder(bs_endianness endianness)
         break;
     }
 
-    bs->write_bytes = bw_write_bytes_r;
     bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
+    bs->write_bytes = bw_write_bytes_r;
+    bs->build = bw_build;
     bs->byte_aligned = bw_byte_aligned_f_e_r;
     bs->byte_align = bw_byte_align_f_e_r;
-    bs->build = bw_build;
     bs->flush = bw_flush_r_c;
     bs->add_callback = bw_add_callback;
     bs->push_callback = bw_push_callback;
     bs->pop_callback = bw_pop_callback;
     bs->call_callbacks = bw_call_callbacks;
-    bs->mark = bw_mark_r;
-    bs->has_mark = bw_has_mark;
-    bs->rewind = bw_rewind_r;
-    bs->unmark = bw_unmark_r;
-    bs->close_internal_stream = bw_close_internal_stream_r;
-    bs->free = bw_free_r;
-    bs->close = bw_close_r;
+    bs->getpos = bw_getpos_r;
+    bs->setpos = bw_setpos_r;
+
     bs->bits_written = bw_bits_written_r;
     bs->bytes_written = bw_bytes_written_r;
     bs->reset = bw_reset_r;
     bs->copy = bw_copy_r;
     bs->split = bw_split_r;
+    bs->close_internal_stream = bw_close_internal_stream_r;
+    bs->free = bw_free_r;
+    bs->close = bw_close_r;
 
     return bs;
 }
@@ -1672,6 +1667,7 @@ bw_write_signed_bits_f_e_r_be(BitstreamWriter* bs, unsigned int count,
     }
 }
 
+
 void
 bw_write_signed_bits_f_e_r_le(BitstreamWriter* bs, unsigned int count,
                               int value)
@@ -1694,6 +1690,7 @@ bw_write_signed_bits_c(BitstreamWriter* bs, unsigned int count, int value)
     bw_abort(bs);
 }
 
+
 FUNC_WRITE_BITS_BE(bw_write_bits64_f_be,
                    uint64_t, fputc, bs->output.file)
 FUNC_WRITE_BITS_LE(bw_write_bits64_f_le,
@@ -1712,6 +1709,7 @@ bw_write_bits64_c(BitstreamWriter* bs, unsigned int count, uint64_t value)
 {
     bw_abort(bs);
 }
+
 
 void
 bw_write_signed_bits64_f_e_r_be(BitstreamWriter* bs, unsigned int count,
@@ -1754,91 +1752,6 @@ bw_write_signed_bits64_c(BitstreamWriter* bs, unsigned int count,
 }
 
 
-void
-bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes,
-                 unsigned int count)
-{
-    unsigned i;
-
-    if (bs->buffer_size == 0) {
-        struct bs_callback* callback;
-
-        /*stream is byte aligned, so perform optimized write*/
-        if (fwrite(bytes, sizeof(uint8_t), count, bs->output.file) != count)
-            bw_abort(bs);
-
-        /*perform callbacks on the written bytes*/
-        for (callback = bs->callbacks;
-             callback != NULL;
-             callback = callback->next)
-            for (i = 0; i < count; i++)
-                callback->callback(bytes[i], callback->data);
-    } else {
-        /*stream is not byte-aligned, so perform multiple writes*/
-        for (i = 0; i < count; i++)
-            bs->write(bs, 8, bytes[i]);
-    }
-}
-
-void
-bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes,
-                 unsigned int count)
-{
-    unsigned i;
-
-    if (bs->buffer_size == 0) {
-        struct bs_callback* callback;
-
-        /*stream is byte aligned, so perform optimized write*/
-        buf_write(bs->output.buffer, bytes, count);
-
-        /*perform callbacks on the written bytes*/
-        for (callback = bs->callbacks;
-             callback != NULL;
-             callback = callback->next)
-            for (i = 0; i < count; i++)
-                callback->callback(bytes[i], callback->data);
-    } else {
-        /*stream is not byte-aligned, so perform multiple writes*/
-        for (i = 0; i < count; i++)
-            bs->write(bs, 8, bytes[i]);
-    }
-}
-
-void
-bw_write_bytes_e(BitstreamWriter* bs, const uint8_t* bytes,
-                 unsigned int count)
-{
-    unsigned int i;
-
-    if (bs->buffer_size == 0) {
-        struct bs_callback* callback;
-
-        /*stream is byte aligned, so performed optimized write*/
-        if (ext_fwrite(bs->output.external, bytes, count)) {
-            bw_abort(bs);
-        }
-
-        /*perform callbacks on the written bytes*/
-        for (callback = bs->callbacks;
-             callback != NULL;
-             callback = callback->next)
-            for (i = 0; i < count; i++)
-                callback->callback(bytes[i], callback->data);
-    } else {
-        /*stream is not byte-aligned, so perform multiple writes*/
-        for (i = 0; i < count; i++)
-            bs->write(bs, 8, bytes[i]);
-    }
-}
-
-void
-bw_write_bytes_c(BitstreamWriter* bs, const uint8_t* bytes,
-                 unsigned int count)
-{
-    bw_abort(bs);
-}
-
 #define UNARY_BUFFER_SIZE 30
 
 void
@@ -1867,58 +1780,6 @@ bw_write_unary_c(BitstreamWriter* bs, int stop_bit, unsigned int value)
     bw_abort(bs);
 }
 
-
-int
-bw_write_huffman(BitstreamWriter* bs,
-                 bw_huffman_table_t* table,
-                 int value)
-{
-    int current_index = 0;
-
-    while (current_index != -1) {
-        if (table[current_index].value == value) {
-            bs->write(bs,
-                      table[current_index].write_count,
-                      table[current_index].write_value);
-            return 0;
-        } else if (value < table[current_index].value) {
-            current_index = table[current_index].smaller;
-        } else {
-            current_index = table[current_index].larger;
-        }
-    }
-
-    /*walked outside of the Huffman table, so return error*/
-    return 1;
-}
-
-
-int
-bw_byte_aligned_f_e_r(const BitstreamWriter *bs)
-{
-    return (bs->buffer_size == 0);
-}
-
-int
-bw_byte_aligned_c(const BitstreamWriter *bs)
-{
-    return 1;
-}
-
-void
-bw_byte_align_f_e_r(BitstreamWriter* bs)
-{
-    /*write enough 0 bits to completely fill the buffer
-      which results in a byte being written*/
-    if (bs->buffer_size > 0)
-        bs->write(bs, 8 - bs->buffer_size, 0);
-}
-
-void
-bw_byte_align_c(BitstreamWriter* bs)
-{
-    bw_abort(bs);
-}
 
 void
 bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
@@ -2014,9 +1875,119 @@ bw_set_endianness_e_le(BitstreamWriter* bs, bs_endianness endianness)
 void
 bw_set_endianness_c(BitstreamWriter* bs, bs_endianness endianness)
 {
-    return;
+    bs->endianness = endianness;
 }
 
+
+int
+bw_write_huffman(BitstreamWriter* bs,
+                 bw_huffman_table_t* table,
+                 int value)
+{
+    int current_index = 0;
+
+    while (current_index != -1) {
+        if (table[current_index].value == value) {
+            bs->write(bs,
+                      table[current_index].write_count,
+                      table[current_index].write_value);
+            return 0;
+        } else if (value < table[current_index].value) {
+            current_index = table[current_index].smaller;
+        } else {
+            current_index = table[current_index].larger;
+        }
+    }
+
+    /*walked outside of the Huffman table, so return error*/
+    return 1;
+}
+
+
+void
+bw_write_bytes_f(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count)
+{
+    unsigned i;
+
+    if (bs->buffer_size == 0) {
+        struct bs_callback* callback;
+
+        /*stream is byte aligned, so perform optimized write*/
+        if (fwrite(bytes, sizeof(uint8_t), count, bs->output.file) != count)
+            bw_abort(bs);
+
+        /*perform callbacks on the written bytes*/
+        for (callback = bs->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            for (i = 0; i < count; i++)
+                callback->callback(bytes[i], callback->data);
+    } else {
+        /*stream is not byte-aligned, so perform multiple writes*/
+        for (i = 0; i < count; i++)
+            bs->write(bs, 8, bytes[i]);
+    }
+}
+
+void
+bw_write_bytes_e(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count)
+{
+    unsigned int i;
+
+    if (bs->buffer_size == 0) {
+        struct bs_callback* callback;
+
+        /*stream is byte aligned, so performed optimized write*/
+        if (ext_fwrite(bs->output.external, bytes, count)) {
+            bw_abort(bs);
+        }
+
+        /*perform callbacks on the written bytes*/
+        for (callback = bs->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            for (i = 0; i < count; i++)
+                callback->callback(bytes[i], callback->data);
+    } else {
+        /*stream is not byte-aligned, so perform multiple writes*/
+        for (i = 0; i < count; i++)
+            bs->write(bs, 8, bytes[i]);
+    }
+}
+
+void
+bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count)
+{
+    unsigned i;
+
+    if (bs->buffer_size == 0) {
+        struct bs_callback* callback;
+
+        /*stream is byte aligned, so perform optimized write*/
+        buf_write(bs->output.buffer, bytes, count);
+
+        /*perform callbacks on the written bytes*/
+        for (callback = bs->callbacks;
+             callback != NULL;
+             callback = callback->next)
+            for (i = 0; i < count; i++)
+                callback->callback(bytes[i], callback->data);
+    } else {
+        /*stream is not byte-aligned, so perform multiple writes*/
+        for (i = 0; i < count; i++)
+            bs->write(bs, 8, bytes[i]);
+    }
+}
+
+void
+bw_write_bytes_c(BitstreamWriter* bs, const uint8_t* bytes,
+                 unsigned int count)
+{
+    bw_abort(bs);
+}
 
 
 void
@@ -2091,40 +2062,39 @@ bw_build(struct BitstreamWriter_s* stream, const char* format, ...)
     va_end(ap);
 }
 
-
-unsigned int
-bw_bits_written_r(const BitstreamRecorder* bs)
+int
+bw_byte_aligned_f_e_r(const BitstreamWriter *bs)
 {
-    return (unsigned int)((buf_window_size(bs->output.buffer) * 8) +
-                          bs->buffer_size);
+    return (bs->buffer_size == 0);
 }
 
-unsigned int
-bw_bytes_written_r(const BitstreamRecorder* bs)
+int
+bw_byte_aligned_c(const BitstreamWriter *bs)
 {
-    return bs->bits_written(bs) / 8;
+    return 1;
+}
+
+
+void
+bw_byte_align_f_e_r(BitstreamWriter* bs)
+{
+    /*write enough 0 bits to completely fill the buffer
+      which results in a byte being written*/
+    if (bs->buffer_size > 0)
+        bs->write(bs, 8 - bs->buffer_size, 0);
 }
 
 void
-bw_reset_r(BitstreamRecorder* bs)
+bw_byte_align_c(BitstreamWriter* bs)
 {
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    buf_reset(bs->output.buffer);
+    bw_abort(bs);
 }
+
 
 void
 bw_flush_f(BitstreamWriter* bs)
 {
     fflush(bs->output.file);
-}
-
-void
-bw_flush_r_c(BitstreamWriter* bs)
-{
-    /*recorders and accumulators are always flushed,
-      closed streams do nothing when flushed*/
-    return;
 }
 
 void
@@ -2135,65 +2105,147 @@ bw_flush_e(BitstreamWriter* bs)
     }
 }
 
+void
+bw_flush_r_c(BitstreamWriter* bs)
+{
+    /*recorders and accumulators are always flushed,
+      closed streams do nothing when flushed*/
+    return;
+}
+
+
+bw_pos_t*
+bw_getpos_f(BitstreamWriter *bs)
+{
+    bw_pos_t* pos;
+
+    if (!bw_byte_aligned_f_e_r(bs)) {
+        /*this is probably bad news because we're getting a partial
+          position in the stream*/
+        fprintf(stderr,
+                "*** Error: setpos on stream that's not byte-aligned");
+        abort();
+    }
+
+    pos = malloc(sizeof(bw_pos_t));
+    pos->writer = bs;
+    fgetpos(bs->output.file, &(pos->position.file));
+    pos->del = bw_pos_del_f;
+    return pos;
+}
+
+bw_pos_t*
+bw_getpos_e(BitstreamWriter *bs)
+{
+    struct bw_external_output* output = bs->output.external;
+    bw_pos_t* pos;
+    void* ext_pos;
+
+    if (!bw_byte_aligned_f_e_r(bs)) {
+        /*this is probably bad news because we're getting a partial
+          position in the stream*/
+        fprintf(stderr,
+                "*** Error: setpos on stream that's not byte-aligned");
+        abort();
+    }
+
+    if ((ext_pos = ext_getpos_w(output)) == NULL) {
+        /*some error getting position*/
+        bw_abort(bs);
+    }
+
+    pos = malloc(sizeof(bw_pos_t));
+    pos->writer = bs;
+    pos->position.external.pos = ext_pos;
+    pos->position.external.free_pos = output->free_pos;
+    pos->del = bw_pos_del_e;
+    return pos;
+}
+
+bw_pos_t*
+bw_getpos_r(BitstreamWriter *bs)
+{
+    /*FIXME - implement this properly*/
+    bw_abort(bs);
+    return NULL;
+}
+
+bw_pos_t*
+bw_getpos_c(BitstreamWriter *bs)
+{
+    bw_abort(bs);
+    return NULL;  /*shouldn't get here*/
+}
+
 
 void
-bw_copy_r(const BitstreamRecorder* bs, BitstreamWriter* target)
+bw_setpos_f(BitstreamWriter *bs, const bw_pos_t* pos)
 {
-    /*dump all the bytes from our internal buffer*/
-    target->write_bytes(target,
-                        buf_window_start(bs->output.buffer),
-                        buf_window_size(bs->output.buffer));
+    if (pos->writer != bs) {
+        bw_abort(bs);
+    }
+    if (!bw_byte_aligned_f_e_r(bs)) {
+        /*this is certainly bad news because we're losing
+          unwritten bytes before performing a jump*/
+        fprintf(stderr,
+                "*** Error: setpos on stream that's not byte-aligned");
+        abort();
+    }
+    fsetpos(bs->output.file, &(pos->position.file));
+}
 
-    /*then dump remaining bits with a partial write() call*/
-    if (bs->buffer_size > 0) {
-        target->write(target,
-                      bs->buffer_size,
-                      bs->buffer & ((1 << bs->buffer_size) - 1));
+void
+bw_setpos_e(BitstreamWriter *bs, const bw_pos_t* pos)
+{
+    struct bw_external_output* output = bs->output.external;
+    if (pos->writer != bs) {
+        bw_abort(bs);
+    }
+    if (!bw_byte_aligned_f_e_r(bs)) {
+        /*this is certainly bad news because we're losing
+          unwritten bytes before performing a jump*/
+        fprintf(stderr,
+                "*** Error: setpos on stream that's not byte-aligned");
+        abort();
+    }
+    if (ext_setpos_w(output, pos->position.external.pos)) {
+        bw_abort(bs);
     }
 }
 
-
-unsigned
-bw_split_r(const BitstreamRecorder* bs,
-           unsigned bytes,
-           BitstreamWriter* target,
-           BitstreamWriter* remainder)
+void
+bw_setpos_r(BitstreamWriter *bs, const bw_pos_t* pos)
 {
-    const uint8_t* buffer = buf_window_start(bs->output.buffer);
-    const unsigned buffer_size = buf_window_size(bs->output.buffer);
-    const unsigned to_target = MIN(bytes, buffer_size);
-
-    /*first, dump up to "total_bytes" from source to "target"
-      if available*/
-    if (target != NULL) {
-        target->write_bytes(target, buffer, to_target);
-    }
-
-    if (remainder != NULL) {
-        if (remainder != (BitstreamWriter*)bs) {
-            /*then, dump the remaining bytes from source to "remaining"
-              if it is a separate writer*/
-            const unsigned to_remainder = buffer_size - to_target;
-
-            remainder->write_bytes(remainder,
-                                   buffer + to_target,
-                                   to_remainder);
-
-            if (bs->buffer_size > 0) {
-                remainder->write(
-                    remainder,
-                    bs->buffer_size,
-                    bs->buffer & ((1 << bs->buffer_size) - 1));
-            }
-        } else {
-            /*if remaining is the same as source,
-              remove bytes from beginning of buffer*/
-            remainder->output.buffer->window_start += to_target;
-        }
-    }
-
-    return to_target;
+    /*FIXME - implement this properly*/
+    bw_abort(bs);
 }
+
+void
+bw_setpos_c(BitstreamWriter *bs, const bw_pos_t* pos)
+{
+    bw_abort(bs);
+}
+
+
+void
+bw_pos_del_f(bw_pos_t* pos)
+{
+    free(pos);
+}
+
+void
+bw_pos_del_e(bw_pos_t* pos)
+{
+    pos->position.external.free_pos(pos->position.external.pos);
+    free(pos);
+}
+
+void
+bw_pos_del_r(bw_pos_t* pos)
+{
+    free(pos);
+}
+
 
 void
 bw_close_methods(BitstreamWriter* bs)
@@ -2209,7 +2261,10 @@ bw_close_methods(BitstreamWriter* bs)
     bs->byte_aligned = bw_byte_aligned_c;
     bs->byte_align = bw_byte_align_c;
     bs->set_endianness = bw_set_endianness_c;
+    bs->getpos = bw_getpos_c;
+    bs->setpos = bw_setpos_c;
 }
+
 
 void
 bw_close_internal_stream_f(BitstreamWriter* bs)
@@ -2274,13 +2329,6 @@ bw_free_f(BitstreamWriter* bs)
         free(e_node);
     }
 
-    /*deallocate marks*/
-    while (bs->mark_stacks != NULL) {
-        const int mark_id = bs->mark_stacks->mark_id;
-        fprintf(stderr, "*** Warning: leftover mark on stack %d\n", mark_id);
-        bs->unmark(bs, mark_id);
-    }
-
     /*deallocate the struct itself*/
     free(bs);
 }
@@ -2305,7 +2353,6 @@ bw_free_e(BitstreamWriter* bs)
     bw_free_f(bs);
 }
 
-
 void
 bw_close_f_e(BitstreamWriter* bs)
 {
@@ -2320,129 +2367,88 @@ bw_close_r(BitstreamRecorder* bs)
     bs->free(bs);
 }
 
-int
-bw_has_mark(const BitstreamWriter *bs, int mark_id)
+unsigned int
+bw_bits_written_r(const BitstreamRecorder* bs)
 {
-    return (bw_get_mark(bs->mark_stacks, mark_id) != NULL);
+    return (unsigned int)((buf_window_size(bs->output.buffer) * 8) +
+                          bs->buffer_size);
+}
+
+unsigned int
+bw_bytes_written_r(const BitstreamRecorder* bs)
+{
+    return bs->bits_written(bs) / 8;
 }
 
 void
-bw_mark_f(BitstreamWriter *bs, int mark_id)
+bw_reset_r(BitstreamRecorder* bs)
 {
-    if (bs->buffer_size == 0) {
-        struct bw_mark* mark = malloc(sizeof(struct bw_mark));
-        fgetpos(bs->output.file, &(mark->position.file));
-        bs->mark_stacks = bw_add_mark(bs->mark_stacks, mark_id, mark);
-    } else {
-        fprintf(stderr,
-                "*** Error: Attempt to mark non-byte-aligned stream\n");
-        abort();
-    }
-}
-void
-bw_mark_e(BitstreamWriter *bs, int mark_id)
-{
-    if (bs->buffer_size == 0) {
-        void *position = ext_getpos_w(bs->output.external);
-        if (position != NULL) {
-            struct bw_mark* mark = malloc(sizeof(struct bw_mark));
-            mark->position.external = position;
-            bs->mark_stacks = bw_add_mark(bs->mark_stacks, mark_id, mark);
-        } else {
-            bw_abort(bs);
-        }
-    } else {
-        fprintf(stderr,
-                "*** Error: Attempt to mark non-byte-aligned stream\n");
-        abort();
-    }
-}
-void
-bw_mark_r(BitstreamWriter *bs, int mark_id)
-{
-    /*FIXME - update this to allow recorders to set marks*/
-    assert(0);
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    buf_reset(bs->output.buffer);
 }
 
+
+
 void
-bw_rewind_f(BitstreamWriter *bs, int mark_id)
+bw_copy_r(const BitstreamRecorder* bs, BitstreamWriter* target)
 {
-    if (bs->buffer_size == 0) {
-        struct bw_mark* mark = bw_get_mark(bs->mark_stacks, mark_id);
-        if (mark != NULL) {
-            fsetpos(bs->output.file, &(mark->position.file));
-        } else {
-            fprintf(stderr,
-                    "*** Warning: no marks on stack %d to rewind\n",
-                    mark_id);
-        }
-    } else {
-        fprintf(stderr,
-                "*** Error: Attempt to rewind non-byte-aligned stream\n");
+    /*dump all the bytes from our internal buffer*/
+    target->write_bytes(target,
+                        buf_window_start(bs->output.buffer),
+                        buf_window_size(bs->output.buffer));
+
+    /*then dump remaining bits with a partial write() call*/
+    if (bs->buffer_size > 0) {
+        target->write(target,
+                      bs->buffer_size,
+                      bs->buffer & ((1 << bs->buffer_size) - 1));
     }
 }
-void
-bw_rewind_e(BitstreamWriter *bs, int mark_id)
+
+
+unsigned
+bw_split_r(const BitstreamRecorder* bs,
+           unsigned bytes,
+           BitstreamWriter* target,
+           BitstreamWriter* remainder)
 {
-    if (bs->buffer_size == 0) {
-        struct bw_mark* mark = bw_get_mark(bs->mark_stacks, mark_id);
-        if (mark != NULL) {
-            if (ext_setpos_w(bs->output.external, mark->position.external)) {
-                bw_abort(bs);
+    const uint8_t* buffer = buf_window_start(bs->output.buffer);
+    const unsigned buffer_size = buf_window_size(bs->output.buffer);
+    const unsigned to_target = MIN(bytes, buffer_size);
+
+    /*first, dump up to "total_bytes" from source to "target"
+      if available*/
+    if (target != NULL) {
+        target->write_bytes(target, buffer, to_target);
+    }
+
+    if (remainder != NULL) {
+        if (remainder != (BitstreamWriter*)bs) {
+            /*then, dump the remaining bytes from source to "remaining"
+              if it is a separate writer*/
+            const unsigned to_remainder = buffer_size - to_target;
+
+            remainder->write_bytes(remainder,
+                                   buffer + to_target,
+                                   to_remainder);
+
+            if (bs->buffer_size > 0) {
+                remainder->write(
+                    remainder,
+                    bs->buffer_size,
+                    bs->buffer & ((1 << bs->buffer_size) - 1));
             }
         } else {
-            fprintf(stderr,
-                    "*** Warning: no marks on stack %d to rewind\n",
-                    mark_id);
+            /*if remaining is the same as source,
+              remove bytes from beginning of buffer*/
+            remainder->output.buffer->window_start += to_target;
         }
-    } else {
-        fprintf(stderr,
-                "*** Error: Attempt to rewind non-byte-aligned stream\n");
     }
-}
-void
-bw_rewind_r(BitstreamWriter *bs, int mark_id)
-{
-    /*FIXME - update this to allow recorders to set marks*/
-    assert(0);
+
+    return to_target;
 }
 
-
-void
-bw_unmark_f(BitstreamWriter *bs, int mark_id)
-{
-    struct bw_mark *mark;
-
-    bs->mark_stacks = bw_pop_mark(bs->mark_stacks, mark_id, &mark);
-    if (mark != NULL) {
-        free(mark);
-    } else {
-        fprintf(stderr,
-                "*** Warning: no marks on stack %d to remove\n",
-                mark_id);
-    }
-}
-void
-bw_unmark_e(BitstreamWriter *bs, int mark_id)
-{
-    struct bw_mark *mark;
-
-    bs->mark_stacks = bw_pop_mark(bs->mark_stacks, mark_id, &mark);
-    if (mark != NULL) {
-        ext_free_pos_w(bs->output.external, mark->position.external);
-        free(mark);
-    } else {
-        fprintf(stderr,
-                "*** Warning: no marks on stack %d to remove\n",
-                mark_id);
-    }
-}
-void
-bw_unmark_r(BitstreamWriter *bs, int mark_id)
-{
-    /*FIXME - update this to allow recorders to set marks*/
-    assert(0);
-}
 
 
 void
@@ -2693,94 +2699,6 @@ FUNC_CALL_CALLBACKS(br_call_callbacks, BitstreamReader)
 FUNC_CALL_CALLBACKS(bw_call_callbacks, BitstreamWriter)
 
 
-#define FUNC_ADD_MARK(FUNC_NAME, STACK_TYPE, MARK_TYPE) \
-  struct STACK_TYPE*                                    \
-  FUNC_NAME(struct STACK_TYPE *stack,                   \
-              int mark_id,                              \
-              struct MARK_TYPE *mark)                   \
-  {                                                     \
-      if (stack != NULL) {                              \
-          if (stack->mark_id == mark_id) {              \
-              mark->next = stack->marks;                \
-              stack->marks = mark;                      \
-              return stack;                             \
-          } else {                                      \
-              stack->next = FUNC_NAME(stack->next, mark_id, mark); \
-              return stack;                             \
-          }                                             \
-      } else {                                          \
-          struct STACK_TYPE* stack =                    \
-              malloc(sizeof(struct STACK_TYPE));        \
-          stack->mark_id = mark_id;                     \
-          stack->marks = mark;                          \
-          stack->next = NULL;                           \
-          mark->next = NULL;                            \
-          return stack;                                 \
-      }                                                 \
-  }
-FUNC_ADD_MARK(bw_add_mark, bw_mark_stack, bw_mark)
-
-#define FUNC_GET_MARK(FUNC_NAME, STACK_TYPE, MARK_TYPE) \
-  struct MARK_TYPE*                                      \
-  FUNC_NAME(const struct STACK_TYPE *stack, int mark_id) \
-  {                                                      \
-      if (stack != NULL) {                               \
-          if (stack->mark_id == mark_id) {               \
-              return stack->marks;                       \
-          } else {                                       \
-              return FUNC_NAME(stack->next, mark_id);    \
-          }                                              \
-      } else {                                           \
-          return NULL;                                   \
-      }                                                  \
-  }
-FUNC_GET_MARK(bw_get_mark, bw_mark_stack, bw_mark)
-
-#define FUNC_POP_MARK(FUNC_NAME, POP_FUNC, STACK_TYPE, MARK_TYPE) \
-  struct STACK_TYPE*                                              \
-  FUNC_NAME(struct STACK_TYPE *stack,                             \
-            int mark_id,                                          \
-            struct MARK_TYPE **mark)                              \
-  {                                                               \
-      if (stack != NULL) {                                        \
-          if (stack->mark_id == mark_id) {                        \
-              return POP_FUNC(stack, mark);                       \
-          } else {                                                \
-              stack->next = FUNC_NAME(stack->next, mark_id, mark); \
-              return stack;                                       \
-          }                                                       \
-      } else {                                                    \
-          *mark = NULL;                                           \
-          return NULL;                                            \
-      }                                                           \
-  }
-FUNC_POP_MARK(bw_pop_mark, bw_pop_mark_stack, bw_mark_stack, bw_mark)
-
-#define FUNC_POP_MARK_STACK(FUNC_NAME, STACK_TYPE, MARK_TYPE) \
-  struct STACK_TYPE*                                          \
-  FUNC_NAME(struct STACK_TYPE *stack,                         \
-            struct MARK_TYPE **mark)                          \
-  {                                                           \
-      if (stack != NULL) {                                    \
-          struct MARK_TYPE *top = stack->marks;               \
-          stack->marks = top->next;                           \
-          top->next = NULL;                                   \
-          *mark = top;                                        \
-          if (stack->marks != NULL) {                         \
-              return stack;                                   \
-          } else {                                            \
-              struct STACK_TYPE *next = stack->next;          \
-              free(stack);                                    \
-              return next;                                    \
-          }                                                   \
-      } else {                                                \
-          *mark = NULL;                                       \
-          return NULL;                                        \
-      }                                                       \
-  }
-FUNC_POP_MARK_STACK(bw_pop_mark_stack, bw_mark_stack, bw_mark)
-
-
 /*******************************************************************
  *                       read buffer-specific                      *
  *******************************************************************/
@@ -2889,6 +2807,25 @@ br_buf_fseek(struct br_buffer *buf, long position, int whence)
     }
 }
 
+
+void
+bw_pos_stack_push(struct bw_pos_stack** stack, bw_pos_t* pos)
+{
+    struct bw_pos_stack* new_node = malloc(sizeof(struct bw_pos_stack));
+    new_node->pos = pos;
+    new_node->next = *stack;
+    *stack = new_node;
+}
+
+bw_pos_t*
+bw_pos_stack_pop(struct bw_pos_stack** stack)
+{
+    struct bw_pos_stack *top_node = *stack;
+    bw_pos_t *pos = top_node->pos;
+    *stack = top_node->next;
+    free(top_node);
+    return pos;
+}
 
 #ifndef STANDALONE
 
@@ -3298,8 +3235,6 @@ void func_add_two(uint8_t byte, int* value);
 void func_mult_three(uint8_t byte, int* value);
 
 void test_buffer();
-
-enum {M_W_MARKS};
 
 int main(int argc, char* argv[]) {
     int fd;
@@ -6252,15 +6187,16 @@ void test_buffer(struct bs_buffer *buf)
 void
 test_writer_marks(BitstreamWriter* writer)
 {
+    bw_pos_t* pos;
     writer->write(writer, 1, 1);
     writer->write(writer, 2, 3);
     writer->write(writer, 3, 7);
     writer->write(writer, 2, 3);
-    writer->mark(writer, M_W_MARKS);
+    pos = writer->getpos(writer);
     writer->write(writer, 8, 0xFF);
     writer->write(writer, 8, 0xFF);
-    writer->rewind(writer, M_W_MARKS);
+    writer->setpos(writer, pos);
     writer->write(writer, 8, 0);
-    writer->unmark(writer, M_W_MARKS);
+    pos->del(pos);
 }
 #endif
