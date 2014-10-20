@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../array.h"
+#include "../buffer.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

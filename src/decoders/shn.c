@@ -1,5 +1,6 @@
 #include "shn.h"
 #include "../pcmconv.h"
+#include "../buffer.h"
 #include <string.h>
 #include <math.h>
 

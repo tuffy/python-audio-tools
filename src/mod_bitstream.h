@@ -775,6 +775,14 @@ BitstreamRecorder_split(bitstream_BitstreamRecorder *self,
                         PyObject *args);
 
 static PyObject*
+BitstreamRecorder_getpos(bitstream_BitstreamRecorder *self,
+                         PyObject *args);
+
+static PyObject*
+BitstreamRecorder_setpos(bitstream_BitstreamRecorder *self,
+                         PyObject *args);
+
+static PyObject*
 BitstreamRecorder_close(bitstream_BitstreamRecorder *self,
                         PyObject *args);
 
@@ -868,6 +876,10 @@ PyMethodDef BitstreamRecorder_methods[] = {
      METH_VARARGS,
      "call_callbacks(byte)\n"
      "calls the attached callbacks as if the byte had been written"},
+    {"getpos", (PyCFunction)BitstreamRecorder_getpos, METH_NOARGS,
+     "getpos() -> position"},
+    {"setpos", (PyCFunction)BitstreamRecorder_setpos, METH_VARARGS,
+     "setpos(position)"},
     {"__enter__", (PyCFunction)BitstreamRecorder_enter,
      METH_NOARGS, "enter() -> self"},
     {"__exit__", (PyCFunction)BitstreamRecorder_exit,

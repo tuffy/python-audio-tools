@@ -2,6 +2,7 @@
 #include "mod_defs.h"
 #include "bitstream.h"
 #include "huffman.h"
+#include "buffer.h"
 #include "mod_bitstream.h"
 
 /********************************************************
@@ -2615,9 +2616,11 @@ static PyObject*
 BitstreamRecorder_data(bitstream_BitstreamRecorder *self,
                        PyObject *args)
 {
+    BitstreamRecorder* recorder = self->bitstream;
+
     return PyBytes_FromStringAndSize(
-        (char *)buf_window_start(self->bitstream->output.buffer),
-        buf_window_size(self->bitstream->output.buffer));
+        (char*)recorder->data(recorder),
+        (Py_ssize_t)recorder->bytes_written(recorder));
 }
 
 static PyObject*
@@ -2804,6 +2807,80 @@ BitstreamRecorder_call_callbacks(bitstream_BitstreamRecorder *self,
 }
 
 static PyObject*
+BitstreamRecorder_getpos(bitstream_BitstreamRecorder *self,
+                         PyObject *args)
+{
+    PyTypeObject *type = &bitstream_BitstreamWriterPositionType;
+    bw_pos_t* pos;
+    bitstream_BitstreamWriterPosition* pos_obj;
+    BitstreamWriter* bitstream = (BitstreamWriter*)self->bitstream;
+
+    /*ensure stream is byte-aligned before getting position*/
+    if (!bitstream->byte_aligned(bitstream)) {
+        PyErr_SetString(PyExc_IOError, "stream must be byte-aligned");
+        return NULL;
+    }
+
+    if (!setjmp(*bw_try(bitstream))) {
+        /*this doesn't fail currently, but it doesn't hurt to check*/
+        pos = bitstream->getpos(bitstream);
+        bw_etry(bitstream);
+    } else {
+        /*raise IOError if a problem occurs getting the position*/
+        bw_etry(bitstream);
+        PyErr_SetString(PyExc_IOError, "unable to get current position");
+        return NULL;
+    }
+
+    /*otherwise, allocate new position object and populate it*/
+    pos_obj = (bitstream_BitstreamWriterPosition *)type->tp_alloc(type, 0);
+    pos_obj->pos = pos;
+
+    /*rethrn return fresh position object*/
+    return (PyObject *)pos_obj;
+}
+
+static PyObject*
+BitstreamRecorder_setpos(bitstream_BitstreamRecorder *self,
+                         PyObject *args)
+{
+    bitstream_BitstreamWriterPosition* pos_obj;
+    BitstreamWriter *writer = (BitstreamWriter*)self->bitstream;
+
+    if (!PyArg_ParseTuple(args, "O!",
+                          &bitstream_BitstreamWriterPositionType,
+                          &pos_obj))
+        return NULL;
+
+    /*ensure position has come from this reader*/
+    if (pos_obj->pos->writer != writer) {
+        PyErr_SetString(PyExc_IOError,
+                        "position is not from this BitstreamWriter");
+        return NULL;
+    }
+
+    /*ensure stream is byte-aligned before setting position*/
+    if (!writer->byte_aligned(writer)) {
+        PyErr_SetString(PyExc_IOError, "stream must be byte-aligned");
+        return NULL;
+    }
+
+    if (!setjmp(*bw_try(writer))) {
+        writer->setpos(writer, pos_obj->pos);
+        bw_etry(writer);
+
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        /*raise IOError if some problem occurs setting the position*/
+        bw_etry(writer);
+
+        PyErr_SetString(PyExc_IOError, "unable to set position");
+        return NULL;
+    }
+}
+
+static PyObject*
 BitstreamRecorder_enter(bitstream_BitstreamRecorder *self, PyObject *args)
 {
     Py_INCREF(self);
@@ -2968,8 +3045,8 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
                              format,
                              iterator)) {
             PyObject* data = PyBytes_FromStringAndSize(
-                (char *)buf_window_start(stream->output.buffer),
-                (Py_ssize_t)buf_window_size(stream->output.buffer));
+                (char *)stream->data(stream),
+                (Py_ssize_t)stream->bytes_written(stream));
             stream->close(stream);
             Py_DECREF(iterator);
             return data;

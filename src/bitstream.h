@@ -10,7 +10,6 @@
 #include <setjmp.h>
 #include <stdarg.h>
 #include <limits.h>
-#include "buffer.h"
 #include "func_io.h"
 
 /********************************************************
@@ -75,14 +74,8 @@ struct bs_exception {
     struct bs_exception *next;
 };
 
-/*an internal buffer for buffer BitstreamReaders*/
-struct br_buffer {
-    uint8_t *data;
-    unsigned pos;
-    unsigned size;
-};
-
 struct BitstreamReader_s;
+struct br_buffer;
 
 /*a position on the BitstreamReader's stream which can be rewound to*/
 typedef struct br_pos_s {
@@ -765,6 +758,7 @@ typedef struct {
 } bw_huffman_table_t;
 
 struct BitstreamWriter_s;
+struct recorder_buffer;
 
 /*a mark on the BitstreamWriter's stream which can be rewound to*/
 typedef struct bw_pos_s {
@@ -775,7 +769,7 @@ typedef struct bw_pos_s {
     /*the position in the stream*/
     union {
         fpos_t file;
-        /*FIXME - add buffer position for BitstreamRecorder*/
+        unsigned recorder;
         struct {
             void* pos;
             ext_free_pos_f free_pos;
@@ -798,7 +792,7 @@ struct bw_pos_stack {
                                                             \
     union {                                                 \
         FILE* file;                                         \
-        struct bs_buffer* buffer;                           \
+        struct bw_buffer* recorder;                         \
         struct bw_external_output* external;                \
     } output;                                               \
                                                             \
@@ -1010,6 +1004,12 @@ typedef struct BitstreamRecorder_s {
              unsigned bytes,
              struct BitstreamWriter_s* target,
              struct BitstreamWriter_s* remainder);
+
+    /*returns our internal buffer of data written so far
+      not including any partial bytes
+      use bytes_written() to determine this buffer's total size*/
+    const uint8_t*
+    (*data)(const struct BitstreamRecorder_s* bs);
 
     /*flushes and closes the internal stream*/
     /*for recorders, does nothing           */
@@ -1332,6 +1332,11 @@ bw_split_r(const BitstreamRecorder* bs,
            BitstreamWriter* remainder);
 
 
+/*bs->data(bs)  method*/
+const uint8_t*
+bw_data_r(const BitstreamRecorder* bs);
+
+
 /*unattached, BitstreamWriter functions*/
 
 /*Called by the write functions if a write failure is indicated.
@@ -1371,13 +1376,6 @@ bw_closed(BitstreamWriter* bs) {
     return (bs->write == bw_write_bits_c);
 }
 
-/*extracts up to the first "bytes" number of bytes from "source"
-  to "buffer", removes them from the recorder
-  and returns the amount of bytes actually read*/
-unsigned
-bw_read(BitstreamWriter* source, uint8_t* buffer, unsigned bytes);
-
-
 void
 recorder_swap(BitstreamRecorder **a, BitstreamRecorder **b);
 
@@ -1405,11 +1403,28 @@ bs_format_byte_size(const char* format);
  *                       read buffer-specific                      *
  *******************************************************************/
 
-struct br_buffer*
-br_buf_new(void);
+struct br_buffer {
+    uint8_t *data;
+    unsigned pos;
+    unsigned size;
+};
 
-void
-br_buf_free(struct br_buffer *buf);
+static inline struct br_buffer*
+br_buf_new(void)
+{
+    struct br_buffer *buf = malloc(sizeof(struct br_buffer));
+    buf->data = NULL;
+    buf->pos = 0;
+    buf->size = 0;
+    return buf;
+}
+
+static inline void
+br_buf_free(struct br_buffer *buf)
+{
+    free(buf->data);
+    free(buf);
+}
 
 static inline int
 br_buf_empty(const struct br_buffer *buf)
@@ -1420,20 +1435,104 @@ br_buf_empty(const struct br_buffer *buf)
 void
 br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size);
 
-int
-br_buf_getc(struct br_buffer *buf);
+static inline int
+br_buf_getc(struct br_buffer *buf)
+{
+    if (buf->pos < buf->size) {
+        return buf->data[buf->pos++];
+    } else {
+        return EOF;
+    }
+}
 
 unsigned
 br_buf_read(struct br_buffer *buf, uint8_t *data, unsigned size);
 
-void
-br_buf_getpos(const struct br_buffer *buf, unsigned *pos);
+static inline void
+br_buf_getpos(const struct br_buffer *buf, unsigned *pos)
+{
+    *pos = buf->pos;
+}
 
-void
-br_buf_setpos(struct br_buffer *buf, unsigned pos);
+static inline void
+br_buf_setpos(struct br_buffer *buf, unsigned pos)
+{
+    buf->pos = pos;
+}
 
 int
 br_buf_fseek(struct br_buffer *buf, long position, int whence);
+
+/*******************************************************************
+ *                       write buffer-specific                     *
+ *******************************************************************/
+
+struct bw_buffer {
+    unsigned pos;         /*the current position in the buffer*/
+    unsigned max_pos;     /*the farthest written data*/
+    unsigned buffer_size; /*the total buffer size*/
+    uint8_t* buffer;      /*the buffer data itself*/
+};
+
+static inline struct bw_buffer*
+bw_buf_new(void)
+{
+    struct bw_buffer* buf = malloc(sizeof(struct bw_buffer));
+    buf->pos = buf->max_pos = buf->buffer_size = 0;
+    buf->buffer = NULL;
+    return buf;
+}
+
+static inline void
+bw_buf_free(struct bw_buffer* buf)
+{
+    free(buf->buffer);
+    free(buf);
+}
+
+static inline int
+bw_buf_putc(int c, struct bw_buffer* buf)
+{
+    if (buf->pos == buf->buffer_size) {
+        buf->buffer_size += 4096;
+        buf->buffer = realloc(buf->buffer, buf->buffer_size);
+    }
+    buf->buffer[buf->pos++] = (uint8_t)c;
+    buf->max_pos = MAX(buf->max_pos, buf->pos);
+    return c;
+}
+
+void
+bw_buf_write(struct bw_buffer* buf, const uint8_t *data, unsigned data_size);
+
+static inline void
+bw_buf_getpos(const struct bw_buffer* buf, unsigned *pos)
+{
+    *pos = buf->pos;
+}
+
+/*returns 0 on a successful seek, EOF if a seek error occurs
+  (usually if one sets a position on a buffer that's been reset)*/
+static inline int
+bw_buf_setpos(struct bw_buffer* buf, unsigned pos)
+{
+    if (pos <= buf->max_pos) {
+        buf->pos = pos;
+        return 0;
+    } else {
+        return EOF;
+    }
+}
+
+static inline unsigned
+bw_buf_size(const struct bw_buffer* buf) {
+    return buf->max_pos;
+}
+
+static inline void
+bw_buf_reset(struct bw_buffer* buf) {
+    buf->pos = buf->max_pos = 0;
+}
 
 /*******************************************************************
  *                       bw_pos_stack handlers                     *

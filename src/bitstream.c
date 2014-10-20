@@ -1492,7 +1492,7 @@ bw_open_recorder(bs_endianness endianness)
     bs->endianness = endianness;
     bs->type = BW_RECORDER;
 
-    bs->output.buffer = buf_new();
+    bs->output.recorder = bw_buf_new();
     bs->buffer_size = 0;
     bs->buffer = 0;
 
@@ -1536,6 +1536,7 @@ bw_open_recorder(bs_endianness endianness)
     bs->reset = bw_reset_r;
     bs->copy = bw_copy_r;
     bs->split = bw_split_r;
+    bs->data = bw_data_r;
     bs->close_internal_stream = bw_close_internal_stream_r;
     bs->free = bw_free_r;
     bs->close = bw_close_r;
@@ -1640,9 +1641,9 @@ FUNC_WRITE_BITS_BE(bw_write_bits_e_be,
 FUNC_WRITE_BITS_LE(bw_write_bits_e_le,
                    unsigned int, ext_putc, bs->output.external)
 FUNC_WRITE_BITS_BE(bw_write_bits_r_be,
-                   unsigned int, buf_putc, bs->output.buffer)
+                   unsigned int, bw_buf_putc, bs->output.recorder)
 FUNC_WRITE_BITS_LE(bw_write_bits_r_le,
-                   unsigned int, buf_putc, bs->output.buffer)
+                   unsigned int, bw_buf_putc, bs->output.recorder)
 
 
 void
@@ -1700,9 +1701,9 @@ FUNC_WRITE_BITS_BE(bw_write_bits64_e_be,
 FUNC_WRITE_BITS_LE(bw_write_bits64_e_le,
                    uint64_t, ext_putc, bs->output.external)
 FUNC_WRITE_BITS_BE(bw_write_bits64_r_be,
-                   uint64_t, buf_putc, bs->output.buffer)
+                   uint64_t, bw_buf_putc, bs->output.recorder)
 FUNC_WRITE_BITS_LE(bw_write_bits64_r_le,
-                   uint64_t, buf_putc, bs->output.buffer)
+                   uint64_t, bw_buf_putc, bs->output.recorder)
 
 void
 bw_write_bits64_c(BitstreamWriter* bs, unsigned int count, uint64_t value)
@@ -1967,7 +1968,7 @@ bw_write_bytes_r(BitstreamWriter* bs, const uint8_t* bytes,
         struct bs_callback* callback;
 
         /*stream is byte aligned, so perform optimized write*/
-        buf_write(bs->output.buffer, bytes, count);
+        bw_buf_write(bs->output.recorder, bytes, count);
 
         /*perform callbacks on the written bytes*/
         for (callback = bs->callbacks;
@@ -2119,13 +2120,7 @@ bw_getpos_f(BitstreamWriter *bs)
 {
     bw_pos_t* pos;
 
-    if (!bw_byte_aligned_f_e_r(bs)) {
-        /*this is probably bad news because we're getting a partial
-          position in the stream*/
-        fprintf(stderr,
-                "*** Error: setpos on stream that's not byte-aligned");
-        abort();
-    }
+    assert(bw_byte_aligned_f_e_r(bs));
 
     pos = malloc(sizeof(bw_pos_t));
     pos->writer = bs;
@@ -2141,13 +2136,7 @@ bw_getpos_e(BitstreamWriter *bs)
     bw_pos_t* pos;
     void* ext_pos;
 
-    if (!bw_byte_aligned_f_e_r(bs)) {
-        /*this is probably bad news because we're getting a partial
-          position in the stream*/
-        fprintf(stderr,
-                "*** Error: setpos on stream that's not byte-aligned");
-        abort();
-    }
+    assert(bw_byte_aligned_f_e_r(bs));
 
     if ((ext_pos = ext_getpos_w(output)) == NULL) {
         /*some error getting position*/
@@ -2165,9 +2154,15 @@ bw_getpos_e(BitstreamWriter *bs)
 bw_pos_t*
 bw_getpos_r(BitstreamWriter *bs)
 {
-    /*FIXME - implement this properly*/
-    bw_abort(bs);
-    return NULL;
+    bw_pos_t* pos;
+
+    assert(bw_byte_aligned_f_e_r(bs));
+
+    pos = malloc(sizeof(bw_pos_t));
+    pos->writer = bs;
+    bw_buf_getpos(bs->output.recorder, &pos->position.recorder);
+    pos->del = bw_pos_del_r;
+    return pos;
 }
 
 bw_pos_t*
@@ -2181,16 +2176,9 @@ bw_getpos_c(BitstreamWriter *bs)
 void
 bw_setpos_f(BitstreamWriter *bs, const bw_pos_t* pos)
 {
-    if (pos->writer != bs) {
-        bw_abort(bs);
-    }
-    if (!bw_byte_aligned_f_e_r(bs)) {
-        /*this is certainly bad news because we're losing
-          unwritten bytes before performing a jump*/
-        fprintf(stderr,
-                "*** Error: setpos on stream that's not byte-aligned");
-        abort();
-    }
+    assert(pos->writer == bs);
+    assert(bw_byte_aligned_f_e_r(bs));
+
     fsetpos(bs->output.file, &(pos->position.file));
 }
 
@@ -2198,16 +2186,10 @@ void
 bw_setpos_e(BitstreamWriter *bs, const bw_pos_t* pos)
 {
     struct bw_external_output* output = bs->output.external;
-    if (pos->writer != bs) {
-        bw_abort(bs);
-    }
-    if (!bw_byte_aligned_f_e_r(bs)) {
-        /*this is certainly bad news because we're losing
-          unwritten bytes before performing a jump*/
-        fprintf(stderr,
-                "*** Error: setpos on stream that's not byte-aligned");
-        abort();
-    }
+
+    assert(pos->writer == bs);
+    assert(bw_byte_aligned_f_e_r(bs));
+
     if (ext_setpos_w(output, pos->position.external.pos)) {
         bw_abort(bs);
     }
@@ -2216,8 +2198,14 @@ bw_setpos_e(BitstreamWriter *bs, const bw_pos_t* pos)
 void
 bw_setpos_r(BitstreamWriter *bs, const bw_pos_t* pos)
 {
-    /*FIXME - implement this properly*/
-    bw_abort(bs);
+    assert(pos->writer == bs);
+    assert(bw_byte_aligned_f_e_r(bs));
+
+    if (bw_buf_setpos(bs->output.recorder, pos->position.recorder)) {
+        /*this may happen if someone resets the stream
+          and then tries to setpos afterward*/
+        bw_abort(bs);
+    }
 }
 
 void
@@ -2337,7 +2325,7 @@ void
 bw_free_r(BitstreamRecorder* bs)
 {
     /*deallocate buffer*/
-    buf_close(bs->output.buffer);
+    bw_buf_free(bs->output.recorder);
 
     /*perform additional deallocations on rest of struct*/
     bw_free_f((BitstreamWriter*)bs);
@@ -2370,14 +2358,14 @@ bw_close_r(BitstreamRecorder* bs)
 unsigned int
 bw_bits_written_r(const BitstreamRecorder* bs)
 {
-    return (unsigned int)((buf_window_size(bs->output.buffer) * 8) +
+    return (unsigned int)(bw_buf_size(bs->output.recorder) * 8 +
                           bs->buffer_size);
 }
 
 unsigned int
 bw_bytes_written_r(const BitstreamRecorder* bs)
 {
-    return bs->bits_written(bs) / 8;
+    return bw_buf_size(bs->output.recorder);
 }
 
 void
@@ -2385,7 +2373,7 @@ bw_reset_r(BitstreamRecorder* bs)
 {
     bs->buffer = 0;
     bs->buffer_size = 0;
-    buf_reset(bs->output.buffer);
+    bw_buf_reset(bs->output.recorder);
 }
 
 
@@ -2394,9 +2382,7 @@ void
 bw_copy_r(const BitstreamRecorder* bs, BitstreamWriter* target)
 {
     /*dump all the bytes from our internal buffer*/
-    target->write_bytes(target,
-                        buf_window_start(bs->output.buffer),
-                        buf_window_size(bs->output.buffer));
+    target->write_bytes(target, bs->data(bs), bs->bytes_written(bs));
 
     /*then dump remaining bits with a partial write() call*/
     if (bs->buffer_size > 0) {
@@ -2413,36 +2399,50 @@ bw_split_r(const BitstreamRecorder* bs,
            BitstreamWriter* target,
            BitstreamWriter* remainder)
 {
-    const uint8_t* buffer = buf_window_start(bs->output.buffer);
-    const unsigned buffer_size = buf_window_size(bs->output.buffer);
-    const unsigned to_target = MIN(bytes, buffer_size);
+    const BitstreamWriter* writer = (BitstreamWriter*)bs;
 
-    /*first, dump up to "total_bytes" from source to "target"
-      if available*/
-    if (target != NULL) {
-        target->write_bytes(target, buffer, to_target);
-    }
+    const unsigned data_size = bs->bytes_written(bs);
+    const unsigned to_target = MIN(bytes, data_size);
+    const unsigned to_remainder = data_size - to_target;
 
-    if (remainder != NULL) {
-        if (remainder != (BitstreamWriter*)bs) {
-            /*then, dump the remaining bytes from source to "remaining"
-              if it is a separate writer*/
-            const unsigned to_remainder = buffer_size - to_target;
+    const uint8_t* data = bs->data(bs);
+    const struct {
+        unsigned int size;
+        unsigned int value;
+    } partial = {bs->buffer_size,
+                 bs->buffer & ((1 << bs->buffer_size) - 1)};
 
-            remainder->write_bytes(remainder,
-                                   buffer + to_target,
-                                   to_remainder);
-
-            if (bs->buffer_size > 0) {
-                remainder->write(
-                    remainder,
-                    bs->buffer_size,
-                    bs->buffer & ((1 << bs->buffer_size) - 1));
-            }
-        } else {
-            /*if remaining is the same as source,
-              remove bytes from beginning of buffer*/
-            remainder->output.buffer->window_start += to_target;
+    if ((writer == target) && (writer == remainder)) {
+        /*nothing to do!*/
+    } else if (writer == target) {
+        /*copy tail of writer to "remainder" (if any) and shorten recorder*/
+        if (remainder) {
+            remainder->write_bytes(remainder, data + to_target, to_remainder);
+            remainder->write(remainder, partial.size, partial.value);
+        }
+        target->buffer_size = 0;
+        target->buffer = 0;
+        target->output.recorder->max_pos = to_target;
+        target->output.recorder->pos = MIN(target->output.recorder->pos,
+                                           target->output.recorder->max_pos);
+    } else if (writer == remainder) {
+        /*copy head of writer to "target" (if any) and shift recorder down*/
+        if (target) {
+            target->write_bytes(target, data, to_target);
+        }
+        memmove(remainder->output.recorder->buffer,
+                data + to_target,
+                to_remainder);
+        remainder->output.recorder->pos -= to_target;
+        remainder->output.recorder->max_pos -= to_target;
+    } else {
+        /*copy head to "target" and remainder to "remainder" (if any)*/
+        if (target) {
+            target->write_bytes(target, data, to_target);
+        }
+        if (remainder) {
+            remainder->write_bytes(remainder, data + to_target, to_remainder);
+            remainder->write(remainder, partial.size, partial.value);
         }
     }
 
@@ -2450,6 +2450,11 @@ bw_split_r(const BitstreamRecorder* bs,
 }
 
 
+const uint8_t*
+bw_data_r(const BitstreamRecorder* bs)
+{
+    return bs->output.recorder->buffer;
+}
 
 void
 bw_abort(BitstreamWriter *bs)
@@ -2494,12 +2499,6 @@ __bw_etry(BitstreamWriter *bs, const char *file, int lineno)
     }
 }
 
-
-unsigned
-bw_read(BitstreamWriter* source, uint8_t* buffer, unsigned bytes)
-{
-    return buf_read(source->output.buffer, buffer, bytes);
-}
 
 void
 recorder_swap(BitstreamRecorder **a, BitstreamRecorder **b)
@@ -2703,23 +2702,6 @@ FUNC_CALL_CALLBACKS(bw_call_callbacks, BitstreamWriter)
  *                       read buffer-specific                      *
  *******************************************************************/
 
-struct br_buffer*
-br_buf_new(void)
-{
-    struct br_buffer *buf = malloc(sizeof(struct br_buffer));
-    buf->data = NULL;
-    buf->pos = 0;
-    buf->size = 0;
-    return buf;
-}
-
-void
-br_buf_free(struct br_buffer *buf)
-{
-    free(buf->data);
-    free(buf);
-}
-
 void
 br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size)
 {
@@ -2727,17 +2709,6 @@ br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size)
     buf->data = realloc(buf->data, new_size);
     memcpy(buf->data + buf->size, data, size);
     buf->size = new_size;
-}
-
-
-int
-br_buf_getc(struct br_buffer *buf)
-{
-    if (buf->pos < buf->size) {
-        return buf->data[buf->pos++];
-    } else {
-        return EOF;
-    }
 }
 
 
@@ -2749,19 +2720,6 @@ br_buf_read(struct br_buffer *buf, uint8_t *data, unsigned size)
     memcpy(data, buf->data + buf->pos, to_read);
     buf->pos += to_read;
     return to_read;
-}
-
-
-void
-br_buf_getpos(const struct br_buffer *buf, unsigned *pos)
-{
-    *pos = buf->pos;
-}
-
-void
-br_buf_setpos(struct br_buffer *buf, unsigned pos)
-{
-    buf->pos = pos;
 }
 
 int
@@ -2807,6 +2765,23 @@ br_buf_fseek(struct br_buffer *buf, long position, int whence)
     }
 }
 
+/*******************************************************************
+ *                       write buffer-specific                     *
+ *******************************************************************/
+
+
+void
+bw_buf_write(struct bw_buffer* buf, const uint8_t *data, unsigned data_size)
+{
+    const unsigned available_bytes = buf->buffer_size - buf->pos;
+    if (available_bytes < data_size) {
+        buf->buffer_size += (data_size - available_bytes);
+        buf->buffer = realloc(buf->buffer, buf->buffer_size);
+    }
+    memcpy(buf->buffer + buf->pos, data, data_size);
+    buf->pos += data_size;
+    buf->max_pos = MAX(buf->max_pos, buf->pos);
+}
 
 void
 bw_pos_stack_push(struct bw_pos_stack** stack, bw_pos_t* pos)
@@ -3234,8 +3209,6 @@ void func_add_one(uint8_t byte, int* value);
 void func_add_two(uint8_t byte, int* value);
 void func_mult_three(uint8_t byte, int* value);
 
-void test_buffer();
-
 int main(int argc, char* argv[]) {
     int fd;
     FILE* temp_file;
@@ -3253,7 +3226,6 @@ int main(int argc, char* argv[]) {
                                               {0, 3, 4}};
     br_huffman_table_t *be_table;
     br_huffman_table_t *le_table;
-    struct bs_buffer* buf;
 
     new_action.sa_handler = sigabort_cleanup;
     sigemptyset(&new_action.sa_mask);
@@ -3452,11 +3424,6 @@ int main(int argc, char* argv[]) {
     test_edge_cases();
 
     fclose(temp_file);
-
-    /*test buffer*/
-    buf = buf_new();
-    test_buffer(buf);
-    buf_close(buf);
 
     return 0;
 }
@@ -6109,79 +6076,6 @@ void func_add_two(uint8_t byte, int* value)
 void func_mult_three(uint8_t byte, int* value)
 {
     *value *= 3;
-}
-
-void test_buffer(struct bs_buffer *buf)
-{
-    struct bs_buffer *buf2 = buf_new();
-    uint8_t temp1[4] = {1, 2, 3, 4};
-    uint8_t temp2[4];
-    unsigned i;
-    unsigned data_size;
-
-    /*ensure reads from an empty buffer return nothing*/
-    assert(buf_window_size(buf) == 0);
-    assert(buf_getc(buf) == EOF);
-    assert(buf_getc(buf) == EOF);
-    assert(buf_read(buf, temp1, 1) == 0);
-
-    /*try some simple buf_putc/buf_getc pairs*/
-    buf_putc(1, buf);
-    buf_putc(2, buf);
-    assert(buf_getc(buf) == 1);
-    buf_putc(3, buf);  /*may shift window down to make room*/
-    assert(buf_getc(buf) == 2);
-    assert(buf_getc(buf) == 3);
-    assert(buf_window_size(buf) == 0);
-
-    /*try some simple buf_write/buf_read pairs*/
-    for (i = 0; i < 5; i++) {
-        buf_write(buf, temp1, i);
-        assert(buf_window_size(buf) == i);
-        assert(memcmp(buf_window_start(buf), temp1, i) == 0);
-        assert(buf_read(buf, temp2, i) == i);
-        assert(memcmp(temp1, temp2, (size_t)i) == 0);
-        assert(buf_window_size(buf) == 0);
-    }
-
-    /*try a low-level resize using buf_resize() and buf_window_end*/
-    buf_putc(0, buf);
-    buf_resize(buf, 4);
-    memcpy(buf_window_end(buf), temp1, 4);
-    buf->window_end += 4;
-    for (i = 0; i < 5; i++) {
-        assert(buf_getc(buf) == i);
-    }
-    assert(buf_window_size(buf) == 0);
-
-    /*try a buf_extend to combine a couple of buffers*/
-    for (i = 0; i < 4; i++) {
-        buf_putc(i, buf);
-    }
-    buf_extend(buf, buf2);
-    buf_reset(buf);
-    for (i = 4; i < 8; i++) {
-        buf_putc(i, buf);
-    }
-    buf_extend(buf, buf2);
-    assert(buf_window_size(buf2) == 8);
-    for (i = 0; i < 8; i++) {
-        assert(buf_getc(buf2) == i);
-    }
-
-    /*toggle rewindability and test buf_getpos/buf_setpos*/
-    buf_reset(buf);
-    data_size = buf->data_size;
-
-    /*no matter how many new bytes are added,
-      the window size shouldn't get any larger*/
-    for (i = 0; i < 10000; i++) {
-        buf_putc(i % 256, buf);
-        assert(buf_getc(buf) == (i % 256));
-        assert(buf->data_size == data_size);
-    }
-
-    buf_close(buf2);
 }
 
 void

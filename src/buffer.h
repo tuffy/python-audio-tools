@@ -89,8 +89,7 @@ buf_window_end(const struct bs_buffer *stream)
 
 /*resize buffer to fit at least "additional_bytes", if necessary
 
-  this may alter where window_start and window_end point to
-  unless the stream has been set to be rewindable*/
+  this may alter where window_start and window_end point to*/
 void
 buf_resize(struct bs_buffer *stream, unsigned additional_bytes);
 
@@ -151,30 +150,6 @@ buf_skip(struct bs_buffer *stream, unsigned data_size);
   appends "data_size" bytes from "data" to stream starting at "window_end"*/
 void
 buf_write(struct bs_buffer *stream, const uint8_t *data, unsigned data_size);
-
-/*places the current position of the buffer in "pos"
-
-  Subsequent calls to buf_write may render that position invalid
-  unless the stream has been set to be rewindable.*/
-static inline void
-buf_getpos(struct bs_buffer *stream, buf_pos_t *pos)
-{
-    *pos = stream->window_start;
-}
-
-/*sets the current position of the buffer to that of "pos"*/
-static inline void
-buf_setpos(struct bs_buffer *stream, buf_pos_t pos)
-{
-    stream->window_start = pos;
-}
-
-/*analagous to fseek
-  note that writing more data to the buffer may render
-  seek points invalid unless rewindable is true
-  returns 0 on success, nonzero on failure*/
-int
-buf_fseek(struct bs_buffer *stream, long position, int whence);
 
 /*appends unconsumed data in "source" to "target"*/
 static inline void

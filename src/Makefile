@@ -16,18 +16,19 @@ huffman \
 bitstream \
 ttaenc \
 ttadec \
-aobdec
+aobdec \
+opusenc
 
 all: $(BINARIES)
 
 clean:
 	rm -f $(BINARIES) $(OBJS)
 
-flacdec: $(OBJS) decoders/flac.c decoders/flac.h flac_crc.o md5.o
-	$(CC) $(FLAGS) -o flacdec decoders/flac.c $(OBJS) flac_crc.o md5.o -DSTANDALONE -DEXECUTABLE
+flacdec: $(OBJS) decoders/flac.c decoders/flac.h flac_crc.o buffer.o md5.o
+	$(CC) $(FLAGS) -o flacdec decoders/flac.c $(OBJS) flac_crc.o buffer.o md5.o -DSTANDALONE -DEXECUTABLE
 
-oggflacdec: $(OBJS) decoders/oggflac.c decoders/oggflac.h flac.o flac_crc.o md5.o ogg.o ogg_crc.o
-	$(CC) $(FLAGS) -o oggflacdec decoders/oggflac.c $(OBJS) flac.o flac_crc.o md5.o ogg.o ogg_crc.o -DSTANDALONE
+oggflacdec: $(OBJS) decoders/oggflac.c decoders/oggflac.h flac.o flac_crc.o md5.o ogg.o ogg_crc.o buffer.o
+	$(CC) $(FLAGS) -o oggflacdec decoders/oggflac.c $(OBJS) flac.o flac_crc.o md5.o ogg.o ogg_crc.o buffer.o -DSTANDALONE
 
 wvdec: $(OBJS) decoders/wavpack.c decoders/wavpack.h md5.o
 	$(CC) $(FLAGS) -o wvdec decoders/wavpack.c $(OBJS) md5.o -DSTANDALONE
@@ -35,8 +36,8 @@ wvdec: $(OBJS) decoders/wavpack.c decoders/wavpack.h md5.o
 alacdec: $(OBJS) decoders/alac.c decoders/alac.h
 	$(CC) $(FLAGS) -o alacdec decoders/alac.c $(OBJS) -DSTANDALONE
 
-shndec: $(OBJS) decoders/shn.c decoders/shn.h
-	$(CC) $(FLAGS) -o shndec decoders/shn.c $(OBJS) -DSTANDALONE -lm
+shndec: $(OBJS) decoders/shn.c decoders/shn.h buffer.o
+	$(CC) $(FLAGS) -o shndec decoders/shn.c $(OBJS) buffer.o -DSTANDALONE -lm
 
 ttadec: $(OBJS) decoders/tta.c decoders/tta.h
 	$(CC) $(FLAGS) -o ttadec decoders/tta.c $(OBJS) -DSTANDALONE
@@ -47,8 +48,8 @@ flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o
 alacenc: $(OBJS) encoders/alac.c encoders/alac.h
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c $(OBJS) -DSTANDALONE -lm
 
-shnenc: $(OBJS) encoders/shn.c encoders/shn.h
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c $(OBJS) -DSTANDALONE -lm
+shnenc: $(OBJS) encoders/shn.c encoders/shn.h buffer.o
+	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c $(OBJS) buffer.o -DSTANDALONE -lm
 
 wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o
 	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o $(OBJS) -DSTANDALONE
@@ -56,8 +57,8 @@ wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o
 ttaenc: $(OBJS) encoders/tta.c encoders/tta.h
 	$(CC) $(FLAGS) -o ttaenc encoders/tta.c $(OBJS) -DSTANDALONE
 
-aobdec: decoders/aob.c decoders/aob.h $(OBJS) mlp.o aobpcm.o
-	$(CC) $(FLAGS) -o aobdec decoders/aob.c $(OBJS) mlp.o aobpcm.o -DSTANDALONE -lm
+aobdec: decoders/aob.c decoders/aob.h $(OBJS) mlp.o aobpcm.o buffer.o
+	$(CC) $(FLAGS) -o aobdec decoders/aob.c $(OBJS) mlp.o aobpcm.o buffer.o -DSTANDALONE -lm
 
 # mlpdec: decoders/mlp.c decoders/mlp.h array.o bitstream.o
 # 	$(CC) $(FLAGS) -o mlpdec decoders/mlp.c array.o bitstream.o -DSTANDALONE
@@ -113,11 +114,11 @@ buffer.o: buffer.c buffer.h
 func_io.o: func_io.c func_io.h
 	$(CC) $(FLAGS) -c func_io.c
 
-bitstream.a: bitstream.o huffman.o buffer.o func_io.o
-	$(AR) -r $@ bitstream.o huffman.o buffer.o func_io.o
+bitstream.a: bitstream.o huffman.o func_io.o
+	$(AR) -r $@ bitstream.o huffman.o func_io.o
 
-bitstream: bitstream.c bitstream.h huffman.o buffer.o func_io.o
-	$(CC) $(FLAGS) bitstream.c huffman.o buffer.o func_io.o -DEXECUTABLE -DSTANDALONE -DDEBUG -o $@
+bitstream: bitstream.c bitstream.h huffman.o func_io.o
+	$(CC) $(FLAGS) bitstream.c huffman.o func_io.o -DEXECUTABLE -DSTANDALONE -DDEBUG -o $@
 
 array: array.c array.h
 	$(CC) $(FLAGS) array.c -DEXECUTABLE -o $@

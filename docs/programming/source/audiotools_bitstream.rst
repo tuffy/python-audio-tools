@@ -257,7 +257,7 @@ into a larger binary file stream.
    of the given buffer size.
    This means the position of the file is likely to be not as far along
    as one might expect given the number of bits already written.
-   The BitstreamWriters's mark and rewind methods
+   The BitstreamWriters's getpos and setpos methods
    will handle buffering correctly and are preferable
    to intermingling BitstreamWriter and ``file`` operations.
 
@@ -385,42 +385,22 @@ into a larger binary file stream.
 
    Removes and returns the most recently added function from the callback stack.
 
-.. method:: BitstreamWriter.mark([mark_id])
+.. method:: BitstreamWriter.getpos()
 
-   Pushes the stream's current position onto a mark stack
-   with the given optional mark ID.
-   That position may be returned to with calls to :meth:`rewind`.
+   Returns a :class:`BitstreamWriterPosition` object
+   of the stream's current position.
+   May raise :exc:`IOError` if the stream is not byte-aligned or
+   an error occurs getting the position.
 
-.. warning::
+.. method:: BitstreamWriter.setpos(position)
 
-   Unlike with :class:`BitstreamReader` where marks can be placed
-   anywhere, a :class:`BitstreamWriter` requires the stream
-   to be byte-aligned before marks can be placed.
-   Otherwise it will raise :exc:`IOError`.
-
-.. method:: BitstreamWriter.has_mark([mark_id])
-
-   Returns ``True`` if the given mark ID is currently in the stream.
-
-.. method:: BitstreamWriter.rewind([mark_id])
-
-   Returns the streams's position to the latest mark
-   with the given ID.
-   This has no effect on the mark stack itself.
-
-.. warning::
-
-   Unlike with :class:`BitstreamReader` in which a placed mark
-   can be returned to anytime, a :class:`BitstreamWriter` requires
-   the stream to be byte-aligned before a rewind can be performed.
-   Otherwise it will raise :exc:`IOError`.
-
-.. method:: BitstreamWriter.unmark([mark_id])
-
-   Removes the most recently marked position from the mark stack
-   with the given mark ID.
-   This has no effect on the stream's current position
-   and the stream is not required to be byte-aligned.
+   Given a :class:`BitstreamWriterPosition` object,
+   sets the stream to that position.
+   The position must be one returned by this object's
+   :meth:`BitstreamWriter.getpos` method;
+   one cannot apply a position from one writer to a different one.
+   May raise :exc:`IOError` if the stream is not byte-aligned or
+   an error occurs setting the position.
 
 .. method:: BitstreamWriter.close()
 
@@ -558,6 +538,23 @@ bits or bytes, for possible output into a :class:`BitstreamWriter`.
 .. method:: BitstreamRecorder.pop_callback()
 
    Removes and returns the most recently added function from the callback stack.
+
+.. method:: BitstreamRecorder.getpos()
+
+   Returns a :class:`BitstreamWriterPosition` object
+   of the stream's current position.
+   May raise :exc:`IOError` if the stream is not byte-aligned or
+   an error occurs getting the position.
+
+.. method:: BitstreamRecorder.setpos(position)
+
+   Given a :class:`BitstreamWriterPosition` object,
+   sets the stream to that position.
+   The position must be one returned by this object's
+   :meth:`BitstreamRecorder.getpos` method;
+   one cannot apply a position from one writer to a different one.
+   May raise :exc:`IOError` if the stream is not byte-aligned or
+   an error occurs setting the position.
 
 .. method:: BitstreamRecorder.close()
 

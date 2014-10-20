@@ -660,12 +660,17 @@ int main(int argc, char* argv[]) {
                  block_size);
 
     /*issue initial VERBATIM command with header data*/
-    write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM);
-    write_unsigned(writer, VERBATIM_SIZE, header->bytes_written(header));
-    while (header->bytes_written(header))
-        write_unsigned(writer,
-                       VERBATIM_BYTE_SIZE,
-                       (uint8_t)buf_getc(header->output.buffer));
+    if (header->bytes_written(header)) {
+        const unsigned header_size = header->bytes_written(header);
+        const uint8_t* header_data = header->data(header);
+        unsigned i;
+
+        write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM);
+        write_unsigned(writer, VERBATIM_SIZE, header_size);
+        for (i = 0; i < header_size; i++) {
+            write_unsigned(writer, VERBATIM_BYTE_SIZE, header_data[i]);
+        }
+    }
 
     /*process PCM frames*/
     if (encode_audio(writer, pcmreader, 1, block_size))
@@ -673,12 +678,15 @@ int main(int argc, char* argv[]) {
 
     /*if there's footer data, issue a VERBATIM command for it*/
     if (footer->bytes_written(footer)) {
+        const unsigned footer_size = footer->bytes_written(footer);
+        const uint8_t* footer_data = footer->data(footer);
+        unsigned i;
+
         write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM);
         write_unsigned(writer, VERBATIM_SIZE, footer->bytes_written(footer));
-        while (footer->bytes_written(footer))
-            write_unsigned(writer,
-                           VERBATIM_BYTE_SIZE,
-                           (uint8_t)buf_getc(footer->output.buffer));
+        for (i = 0; i < footer_size; i++) {
+            write_unsigned(writer, VERBATIM_BYTE_SIZE, footer_data[i]);
+        }
     }
 
     /*issue QUIT command*/

@@ -1216,8 +1216,6 @@ ALACEncoder_encode(encoders_ALACEncoder *self, PyObject *args)
     pcm_FrameList* framelist;
     unsigned channel;
     aa_int* channels = self->channels;
-    unsigned bytes_written;
-    PyObject *string;
 
     if (!PyArg_ParseTuple(args, "O!", self->framelist_type, &framelist))
         return NULL;
@@ -1244,13 +1242,9 @@ ALACEncoder_encode(encoders_ALACEncoder *self, PyObject *args)
                    &(self->encoder), channels);
 
     /*convert output buffer to Python string and return it*/
-    bytes_written = self->output_buffer->bytes_written(self->output_buffer);
-    string = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)bytes_written);
-    bw_read((BitstreamWriter*)(self->output_buffer),
-            (uint8_t*)PyBytes_AS_STRING(string),
-            bytes_written);
-
-    return string;
+    return PyBytes_FromStringAndSize(
+        (char *)self->output_buffer->data(self->output_buffer),
+        (Py_ssize_t)self->output_buffer->bytes_written(self->output_buffer));
 }
 
 
