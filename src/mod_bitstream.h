@@ -328,14 +328,15 @@ typedef struct {
     bw_huffman_table_t* bw_table;
 } bitstream_HuffmanTree;
 
+static PyObject*
+HuffmanTree_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+
 int
 HuffmanTree_init(bitstream_HuffmanTree *self, PyObject *args);
 
 void
 HuffmanTree_dealloc(bitstream_HuffmanTree *self);
 
-static PyObject*
-HuffmanTree_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
 PyTypeObject bitstream_HuffmanTreeType = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -387,6 +388,14 @@ typedef struct {
     br_pos_t *pos;
 } bitstream_BitstreamReaderPosition;
 
+static PyObject*
+BitstreamReaderPosition_new(PyTypeObject *type, PyObject *args,
+                            PyObject *kwds);
+
+int
+BitstreamReaderPosition_init(bitstream_BitstreamReaderPosition *self,
+                             PyObject *args);
+
 void
 BitstreamReaderPosition_dealloc(bitstream_BitstreamReaderPosition *self);
 
@@ -410,7 +419,7 @@ PyTypeObject bitstream_BitstreamReaderPositionType = {
     0,                         /*tp_getattro*/
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
-    0,                         /*tp_flags*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
     "BitstreamReaderPosition", /* tp_doc */
     0,                         /* tp_traverse */
     0,                         /* tp_clear */
@@ -426,9 +435,9 @@ PyTypeObject bitstream_BitstreamReaderPositionType = {
     0,                         /* tp_descr_get */
     0,                         /* tp_descr_set */
     0,                         /* tp_dictoffset */
-    0,                         /* tp_init */
+    (initproc)BitstreamReaderPosition_init, /* tp_init */
     0,                         /* tp_alloc */
-    0,                         /* tp_new */
+    BitstreamReaderPosition_new, /* tp_new */
 };
 
 PyObject*
@@ -944,6 +953,14 @@ typedef struct {
     bw_pos_t *pos;
 } bitstream_BitstreamWriterPosition;
 
+static PyObject*
+BitstreamWriterPosition_new(PyTypeObject *type, PyObject *args,
+                            PyObject *kwds);
+
+int
+BitstreamWriterPosition_init(bitstream_BitstreamWriterPosition *self,
+                             PyObject *args);
+
 void
 BitstreamWriterPosition_dealloc(bitstream_BitstreamWriterPosition *self);
 
@@ -967,7 +984,7 @@ PyTypeObject bitstream_BitstreamWriterPositionType = {
     0,                         /*tp_getattro*/
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
-    0,                         /*tp_flags*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
     "BitstreamWriterPosition", /* tp_doc */
     0,                         /* tp_traverse */
     0,                         /* tp_clear */
@@ -983,9 +1000,9 @@ PyTypeObject bitstream_BitstreamWriterPositionType = {
     0,                         /* tp_descr_get */
     0,                         /* tp_descr_set */
     0,                         /* tp_dictoffset */
-    0,                         /* tp_init */
+    (initproc)BitstreamWriterPosition_init, /* tp_init */
     0,                         /* tp_alloc */
-    0,                         /* tp_new */
+    BitstreamWriterPosition_new, /* tp_new */
 };
 
 /*given a BitstreamReader, format string and list object

@@ -47,6 +47,7 @@ MOD_INIT(bitstream)
     if (PyType_Ready(&bitstream_HuffmanTreeType) < 0)
         return MOD_ERROR_VAL;
 
+    bitstream_BitstreamReaderPositionType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&bitstream_BitstreamReaderPositionType) < 0)
         return MOD_ERROR_VAL;
 
@@ -58,6 +59,7 @@ MOD_INIT(bitstream)
     if (PyType_Ready(&bitstream_BitstreamRecorderType) < 0)
         return MOD_ERROR_VAL;
 
+    bitstream_BitstreamWriterPositionType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&bitstream_BitstreamWriterPositionType) < 0)
         return MOD_ERROR_VAL;
 
@@ -812,27 +814,8 @@ BitstreamReader_close(bitstream_BitstreamReader *self, PyObject *args)
 static PyObject*
 BitstreamReader_getpos(bitstream_BitstreamReader *self, PyObject *args)
 {
-    PyTypeObject *type = &bitstream_BitstreamReaderPositionType;
-    br_pos_t* pos;
-    bitstream_BitstreamReaderPosition* pos_obj;
-
-    /*get position from internal reader*/
-    if (!setjmp(*br_try(self->bitstream))) {
-        pos = self->bitstream->getpos(self->bitstream);
-        br_etry(self->bitstream);
-    } else {
-        /*raise IOError if a problem occurs getting the position*/
-        br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "unable to get current position");
-        return NULL;
-    }
-
-    /*otherwise, allocate new position object and populate it*/
-    pos_obj = (bitstream_BitstreamReaderPosition *)type->tp_alloc(type, 0);
-    pos_obj->pos = pos;
-
-    /*then return fresh position object*/
-    return (PyObject *)pos_obj;
+    return PyObject_CallFunction(
+        (PyObject*)&bitstream_BitstreamReaderPositionType, "O", self);
 }
 
 static PyObject*
@@ -1476,13 +1459,55 @@ HuffmanTree_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     return (PyObject *)self;
 }
 
+static PyObject*
+BitstreamReaderPosition_new(PyTypeObject *type, PyObject *args,
+                            PyObject *kwds)
+{
+    bitstream_BitstreamReaderPosition *self;
+
+    self = (bitstream_BitstreamReaderPosition *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+int
+BitstreamReaderPosition_init(bitstream_BitstreamReaderPosition *self,
+                             PyObject *args)
+{
+    bitstream_BitstreamReader *reader_obj;
+    BitstreamReader *reader;
+    self->pos = NULL;
+
+    if (PyArg_ParseTuple(args, "O!",
+                         &bitstream_BitstreamReaderType,
+                         &reader_obj)) {
+        reader = reader_obj->bitstream;
+    } else {
+        return -1;
+    }
+
+    /*get position from reader*/
+    if (!setjmp(*br_try(reader))) {
+        self->pos = reader->getpos(reader);
+        br_etry(reader);
+        return 0;
+    } else {
+        /*some I/O error occurred getting position*/
+        br_etry(reader);
+        PyErr_SetString(PyExc_IOError, "I/O error getting position");
+        return -1;
+    }
+}
+
 void
 BitstreamReaderPosition_dealloc(bitstream_BitstreamReaderPosition *self)
 {
     /*since the position contains a copy of the "free" function
       needed to free the object returned by getpos,
       this position object can be safely freed after its parent reader*/
-    self->pos->del(self->pos);
+    if (self->pos) {
+        self->pos->del(self->pos);
+    }
 
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -2240,33 +2265,8 @@ static PyObject*
 BitstreamWriter_getpos(bitstream_BitstreamWriter *self,
                        PyObject *args)
 {
-    PyTypeObject *type = &bitstream_BitstreamWriterPositionType;
-    bw_pos_t* pos;
-    bitstream_BitstreamWriterPosition* pos_obj;
-    BitstreamWriter* bitstream = self->bitstream;
-
-    /*ensure stream is byte-aligned before getting position*/
-    if (!bitstream->byte_aligned(bitstream)) {
-        PyErr_SetString(PyExc_IOError, "stream must be byte-aligned");
-        return NULL;
-    }
-
-    if (!setjmp(*bw_try(bitstream))) {
-        pos = bitstream->getpos(bitstream);
-        bw_etry(bitstream);
-    } else {
-        /*raise IOError if a problem occurs getting the position*/
-        bw_etry(bitstream);
-        PyErr_SetString(PyExc_IOError, "unable to get current position");
-        return NULL;
-    }
-
-    /*otherwise, allocate new position object and populate it*/
-    pos_obj = (bitstream_BitstreamWriterPosition *)type->tp_alloc(type, 0);
-    pos_obj->pos = pos;
-
-    /*rethrn return fresh position object*/
-    return (PyObject *)pos_obj;
+    return PyObject_CallFunction(
+        (PyObject*)&bitstream_BitstreamWriterPositionType, "O", self);
 }
 
 static PyObject*
@@ -2652,14 +2652,13 @@ BitstreamRecorder_reset(bitstream_BitstreamRecorder *self,
 static BitstreamWriter*
 internal_writer(PyObject *writer)
 {
-    bitstream_BitstreamWriter* writer_obj;
-    bitstream_BitstreamRecorder* recorder_obj;
-
     if (Py_TYPE(writer) == &bitstream_BitstreamWriterType) {
-        writer_obj = (bitstream_BitstreamWriter*)writer;
+        bitstream_BitstreamWriter* writer_obj =
+            (bitstream_BitstreamWriter*)writer;
         return writer_obj->bitstream;
     } else if (Py_TYPE(writer) == &bitstream_BitstreamRecorderType) {
-        recorder_obj = (bitstream_BitstreamRecorder*)writer;
+        bitstream_BitstreamRecorder* recorder_obj =
+            (bitstream_BitstreamRecorder*)writer;
         return (BitstreamWriter*)recorder_obj->bitstream;
     } else {
         return NULL;
@@ -2810,34 +2809,8 @@ static PyObject*
 BitstreamRecorder_getpos(bitstream_BitstreamRecorder *self,
                          PyObject *args)
 {
-    PyTypeObject *type = &bitstream_BitstreamWriterPositionType;
-    bw_pos_t* pos;
-    bitstream_BitstreamWriterPosition* pos_obj;
-    BitstreamWriter* bitstream = (BitstreamWriter*)self->bitstream;
-
-    /*ensure stream is byte-aligned before getting position*/
-    if (!bitstream->byte_aligned(bitstream)) {
-        PyErr_SetString(PyExc_IOError, "stream must be byte-aligned");
-        return NULL;
-    }
-
-    if (!setjmp(*bw_try(bitstream))) {
-        /*this doesn't fail currently, but it doesn't hurt to check*/
-        pos = bitstream->getpos(bitstream);
-        bw_etry(bitstream);
-    } else {
-        /*raise IOError if a problem occurs getting the position*/
-        bw_etry(bitstream);
-        PyErr_SetString(PyExc_IOError, "unable to get current position");
-        return NULL;
-    }
-
-    /*otherwise, allocate new position object and populate it*/
-    pos_obj = (bitstream_BitstreamWriterPosition *)type->tp_alloc(type, 0);
-    pos_obj->pos = pos;
-
-    /*rethrn return fresh position object*/
-    return (PyObject *)pos_obj;
+    return PyObject_CallFunction(
+        (PyObject*)&bitstream_BitstreamWriterPositionType, "O", self);
 }
 
 static PyObject*
@@ -2964,13 +2937,58 @@ BitstreamWriter_callback(uint8_t byte, PyObject *callback)
     }
 }
 
+static PyObject*
+BitstreamWriterPosition_new(PyTypeObject *type, PyObject *args,
+                            PyObject *kwds)
+{
+    bitstream_BitstreamWriterPosition *self;
+
+    self = (bitstream_BitstreamWriterPosition *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+int
+BitstreamWriterPosition_init(bitstream_BitstreamWriterPosition *self,
+                             PyObject *args)
+{
+    PyObject *writer_obj;
+    BitstreamWriter *writer;
+
+    self->pos = NULL;
+
+    if (!PyArg_ParseTuple(args, "O", &writer_obj))
+        return -1;
+    if ((writer = internal_writer(writer_obj)) == NULL) {
+        PyErr_SetString(
+            PyExc_TypeError,
+            "argument must be BitstreamWriter or BitstreamRecorder");
+        return -1;
+    }
+    if (!writer->byte_aligned(writer)) {
+        PyErr_SetString(PyExc_IOError, "stream must be byte-aligned");
+        return -1;
+    }
+    if (!setjmp(*bw_try(writer))) {
+        self->pos = writer->getpos(writer);
+        bw_etry(writer);
+        return 0;
+    } else {
+        bw_etry(writer);
+        PyErr_SetString(PyExc_IOError, "I/O error getting current position");
+        return -1;
+    }
+}
+
 void
 BitstreamWriterPosition_dealloc(bitstream_BitstreamWriterPosition *self)
 {
     /*since the position contains a copy of the "free" function
       needed to free the object returned by getpos,
       this position object can be safely freed after its parent reader*/
-    self->pos->del(self->pos);
+    if (self->pos) {
+        self->pos->del(self->pos);
+    }
 
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
