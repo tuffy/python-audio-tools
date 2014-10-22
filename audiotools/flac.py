@@ -1710,6 +1710,12 @@ class FlacAudio(WaveContainer, AiffContainer):
                     new_vorbiscomment[
                         u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = []
 
+                # update CDTOC from our current VORBIS_COMMENT block, if any
+                try:
+                    new_vorbiscomment[u"CDTOC"] = old_vorbiscomment[u"CDTOC"]
+                except KeyError:
+                    new_vorbiscomment[u"CDTOC"] = []
+
                 old_metadata.replace_blocks(Flac_VORBISCOMMENT.BLOCK_ID,
                                             [new_vorbiscomment])
             else:
@@ -1729,6 +1735,9 @@ class FlacAudio(WaveContainer, AiffContainer):
                 if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
                     new_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
                         u"0x%.4X" % (self.channel_mask())]
+
+                # remove CDTOC from new VORBIS_COMMENT block
+                new_vorbiscomment[u"CDTOC"] = []
 
                 old_metadata.add_block(new_vorbiscomment)
         else:
@@ -1762,17 +1771,27 @@ class FlacAudio(WaveContainer, AiffContainer):
         Raises IOError if an error occurs setting the cuesheet"""
 
         if (cuesheet is not None):
+            # overwrite old cuesheet (if any) with new block
             metadata = self.get_metadata()
-            if (metadata is not None):
-                metadata.add_block(
-                    Flac_CUESHEET.converted(
-                        cuesheet,
-                        self.total_frames(),
-                        self.sample_rate(),
-                        (self.sample_rate() == 44100) and
-                        (self.channels() == 2) and
-                        (self.bits_per_sample() == 16)))
-                self.update_metadata(metadata)
+            metadata.replace_blocks(
+                Flac_CUESHEET.BLOCK_ID,
+                [Flac_CUESHEET.converted(
+                     cuesheet,
+                     self.total_frames(),
+                     self.sample_rate(),
+                     (self.sample_rate() == 44100) and
+                     (self.channels() == 2) and
+                     (self.bits_per_sample() == 16))])
+
+            # wipe out any CDTOC tag
+            try:
+                vorbiscomment = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+                if (u"CDTOC" in vorbiscomment):
+                    del(vorbiscomment[u"CDTOC"])
+            except IndexError:
+                pass
+
+            self.update_metadata(metadata)
         else:
             self.delete_cuesheet()
 
@@ -1782,15 +1801,28 @@ class FlacAudio(WaveContainer, AiffContainer):
         Raises IOError if a problem occurs when reading the file"""
 
         metadata = self.get_metadata()
-        if (metadata is not None):
-            try:
-                cuesheet = metadata.get_block(Flac_CUESHEET.BLOCK_ID)
-                cuesheet.set_track(self)
-                return cuesheet
-            except IndexError:
-                return None
-        else:
-            return None
+
+        # first, check for a CUESHEET block
+        try:
+            cuesheet = metadata.get_block(Flac_CUESHEET.BLOCK_ID)
+            cuesheet.set_track(self)
+            return cuesheet
+        except IndexError:
+            pass
+
+        # then, check for a CDTOC tag
+        try:
+            vorbiscomment = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+            if (u"CDTOC" in vorbiscomment):
+                from audiotools.cdtoc import CDTOC
+                try:
+                    return CDTOC.from_unicode(vorbiscomment[u"CDTOC"][0])
+                except ValueError:
+                    pass
+        except IndexError:
+            pass
+
+        return None
 
     def delete_cuesheet(self):
         """deletes embedded Sheet object, if any
@@ -1798,9 +1830,17 @@ class FlacAudio(WaveContainer, AiffContainer):
         Raises IOError if a problem occurs when updating the file"""
 
         metadata = self.get_metadata()
-        if (metadata is not None):
-            metadata.replace_blocks(Flac_CUESHEET.BLOCK_ID, [])
-            self.update_metadata(metadata)
+
+        # wipe out any CUESHEET blocks
+        metadata.replace_blocks(Flac_CUESHEET.BLOCK_ID, [])
+
+        # then erase any CDTOC tags
+        try:
+            vorbiscomment = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+            del(vorbiscomment[u"CDTOC"])
+        except IndexError:
+            pass
+        self.update_metadata(metadata)
 
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""

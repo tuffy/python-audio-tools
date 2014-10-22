@@ -134,10 +134,18 @@ if (__name__ == '__main__'):
                 cuesheet = file.get_cuesheet()
                 if (cuesheet is not None):
                     msg.output(_.LAB_TRACKINFO_CUESHEET)
+                    lengths = {}  # track_number -> length fraction
                     indexes = {}  # track_number -> {index_number -> offset}
                     isrcs = {}    # track_number -> ISRC unicode
                     index_numbers = set()
                     for track in cuesheet:
+                        track_length = cuesheet.track_length(track.number())
+                        if (track_length is not None):
+                            lengths[track.number()] = track_length
+                        else:
+                            lengths[track.number()] = \
+                                (file.seconds_length() -
+                                 track.index(1).offset())
                         track_indexes = {}
                         for index in track:
                             track_indexes[index.number()] = index.offset()
@@ -151,6 +159,8 @@ if (__name__ == '__main__'):
                     row = table.row()
                     row.add_column(u"  ")
                     row.add_column(_.LAB_TRACKINFO_CUESHEET_TRACK, "right")
+                    row.add_column(u"  ")
+                    row.add_column(_.LAB_TRACKINFO_CUESHEET_LENGTH, "right")
                     for i in index_numbers:
                         row.add_column(u"  ")
                         row.add_column(
@@ -160,6 +170,11 @@ if (__name__ == '__main__'):
                         row = table.row()
                         row.add_column(u"")
                         row.add_column(u"%d" % (t), "right")
+                        row.add_column(u"")
+                        length = int(lengths[t])
+                        row.add_column(u"%d:%2.2d" % (length // 60,
+                                                      length % 60),
+                                       "right")
                         track_indexes = indexes[t]
                         for i in index_numbers:
                             row.add_column(u"")

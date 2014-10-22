@@ -5093,6 +5093,133 @@ class test_wavpack_cuesheet(test_flac_cuesheet):
         pass
 
 
+class TestCDTOC(unittest.TestCase):
+    @LIB_CUESHEET
+    def test_round_trip(self):
+        from audiotools.cdtoc import CDTOC
+        from audiotools import Sheet
+        from fractions import Fraction
+
+        tocs = [u"A+96+4975+99F4+E600+130AB+16D98+1A538+" +
+                u"1EC41+22DE4+27579+2C6D2",
+                u"A+2373+85AC+D381+124BC+15A95+1A7CA+" +
+                u"2112E+25BC7+2A3B6+3001B+39DC8",
+                u"D+96+49F3+8A23+C240+10991+1491C+18F27+1DBD8+" +
+                u"216CC+25C00+2ACA3+2F41F+33D59+382D4+44C3D",
+                u"B+908C+F7F7+14708+1A8BC+206F8+27294+2C51B+" +
+                u"31A48+3862F+3D89D+44661+4A29C+X96"]
+
+        lead_outs = [181820, 236850, 281511, 303622]
+
+        for (toc, lead_out) in zip(tocs, lead_outs):
+            cdtoc = CDTOC.from_unicode(toc)
+            self.assertEqual(cdtoc.__unicode__(), toc)
+            sheet = Sheet.converted(cdtoc)
+            self.assertEqual(cdtoc, sheet)
+            cdtoc2 = CDTOC.converted(sheet, Fraction(lead_out, 75))
+            self.assertEqual(cdtoc2, cdtoc)
+            self.assertEqual(cdtoc2.__unicode__(), toc)
+
+    @LIB_CUESHEET
+    def test_flac(self):
+        from audiotools import Sheet, SheetTrack, SheetIndex
+        from audiotools.flac import Flac_CUESHEET
+        from fractions import Fraction
+
+        with tempfile.NamedTemporaryFile(suffix=".flac") as temp_file:
+            temp_track = audiotools.FlacAudio.from_pcm(
+                temp_file.name,
+                EXACT_SILENCE_PCM_Reader(44100 * 13),
+                total_pcm_frames=44100 * 13)
+
+            # check malformed CDTOC tag
+            self.assertIsNone(temp_track.get_cuesheet())
+            metadata = temp_track.get_metadata()
+            comment = metadata.get_block(4)
+            comment[u"CDTOC"] = [u"INVALID"]
+            temp_track.update_metadata(metadata)
+            self.assertEqual(temp_track.get_metadata().get_block(4)[u"CDTOC"],
+                             [u"INVALID"])
+            self.assertIsNone(temp_track.get_cuesheet())
+
+            # check CDTOC tag
+            metadata = temp_track.get_metadata()
+            comment = metadata.get_block(4)
+            comment[u"CDTOC"] = [u"3+E1+177+2A3+465"]
+            temp_track.update_metadata(metadata)
+            cuesheet = temp_track.get_cuesheet()
+            self.assertIsNotNone(cuesheet)
+            self.assertEqual(cuesheet.pre_gap(), 1)
+            self.assertEqual(cuesheet.track(1).index(1).offset(), 1)
+            self.assertEqual(cuesheet.track_length(1), 2)
+            self.assertEqual(cuesheet.track(2).index(1).offset(), 3)
+            self.assertEqual(cuesheet.track_length(2), 4)
+            self.assertEqual(cuesheet.track(3).index(1).offset(), 7)
+            self.assertEqual(cuesheet.track_length(3), 6)
+
+            # ensure CUESHEET block takes precedence over tag in get_cuesheet
+            new_sheet = Sheet([SheetTrack(1, [SheetIndex(0, Fraction(0, 1)),
+                                              SheetIndex(1, Fraction(1, 1))]),
+                               SheetTrack(2, [SheetIndex(1, Fraction(4, 1))]),
+                               SheetTrack(3, [SheetIndex(1, Fraction(6, 1))])])
+
+            metadata = temp_track.get_metadata()
+            metadata.replace_blocks(
+                5,
+                [Flac_CUESHEET.converted(new_sheet,
+                                         temp_track.total_frames(),
+                                         temp_track.sample_rate())])
+            temp_track.update_metadata(metadata)
+            metadata = temp_track.get_metadata()
+            self.assertTrue(metadata.has_block(5))
+            self.assertEqual(metadata.get_block(4)[u"CDTOC"],
+                             [u"3+E1+177+2A3+465"])
+            cuesheet = temp_track.get_cuesheet()
+            self.assertIsNotNone(cuesheet)
+            self.assertEqual(cuesheet.pre_gap(), 1)
+            self.assertEqual(cuesheet.track(1).index(1).offset(), 1)
+            self.assertEqual(cuesheet.track_length(1), 3)
+            self.assertEqual(cuesheet.track(2).index(1).offset(), 4)
+            self.assertEqual(cuesheet.track_length(2), 2)
+            self.assertEqual(cuesheet.track(3).index(1).offset(), 6)
+            self.assertEqual(cuesheet.track_length(3), 7)
+
+            # set_cuesheet overwrites block and wipes out tag
+            new_sheet2 = Sheet([SheetTrack(1, [SheetIndex(1, Fraction(0, 1))]),
+                                SheetTrack(2, [SheetIndex(1, Fraction(5, 1))])])
+            temp_track.set_cuesheet(new_sheet2)
+            metadata = temp_track.get_metadata()
+            self.assertEqual(len(metadata.get_blocks(5)), 1)
+            vorbiscomment = metadata.get_block(4)
+            self.assertRaises(KeyError,
+                              vorbiscomment.__getitem__,
+                              u"CDTOC")
+            cuesheet = temp_track.get_cuesheet()
+            self.assertIsNotNone(cuesheet)
+            self.assertEqual(cuesheet.pre_gap(), 0)
+            self.assertEqual(cuesheet.track(1).index(1).offset(), 0)
+            self.assertEqual(cuesheet.track_length(1), 5)
+            self.assertEqual(cuesheet.track(2).index(1).offset(), 5)
+            self.assertEqual(cuesheet.track_length(2), 8)
+
+            # delete_cuesheet wipes out both block and tag
+            metadata = temp_track.get_metadata()
+            metadata.get_block(4)[u"CDTOC"] = [u"3+E1+177+2A3+465"]
+            metadata.replace_blocks(
+                5,
+                [Flac_CUESHEET.converted(new_sheet,
+                                         temp_track.total_frames(),
+                                         temp_track.sample_rate())])
+            temp_track.update_metadata(metadata)
+            temp_track.delete_cuesheet()
+            self.assertIsNone(temp_track.get_cuesheet())
+            metadata = temp_track.get_metadata()
+            self.assertFalse(metadata.has_block(5))
+            self.assertRaises(KeyError,
+                              metadata.get_block(4).__getitem__,
+                              u"CDTOC")
+
+
 class TestMultiChannel(unittest.TestCase):
     def setUp(self):
         # these support the full range of ChannelMasks
