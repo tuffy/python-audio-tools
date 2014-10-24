@@ -64,19 +64,7 @@ static PyObject*
 brpy_read_unsigned(BitstreamReader *br, unsigned bits);
 
 static PyObject*
-brpy_read_unsigned_be(BitstreamReader *br, unsigned bits);
-
-static PyObject*
-brpy_read_unsigned_le(BitstreamReader *br, unsigned bits);
-
-static PyObject*
 brpy_read_signed(BitstreamReader *br, unsigned bits);
-
-static PyObject*
-brpy_read_signed_be(BitstreamReader *br, unsigned bits);
-
-static PyObject*
-brpy_read_signed_le(BitstreamReader *br, unsigned bits);
 
 /*reads byte_count bytes from reader to buffer
   returns 0 on success, 1 if a read error occurs with PyErr set accordingly*/

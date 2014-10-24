@@ -510,6 +510,7 @@ class audiotools_pcmconverter(Extension):
                                     "src/bitstream.c",
                                     "src/buffer.c",
                                     "src/func_io.c",
+                                    "src/mini-gmp.c",
                                     "src/samplerate/samplerate.c",
                                     "src/samplerate/src_sinc.c",
                                     "src/samplerate/src_zoh.c",
@@ -525,7 +526,8 @@ class audiotools_replaygain(Extension):
                                     "src/array.c",
                                     "src/bitstream.c",
                                     "src/buffer.c",
-                                    "src/func_io.c"])
+                                    "src/func_io.c",
+                                    "src/mini-gmp.c"])
 
 
 class audiotools_decoders(Extension):
@@ -539,6 +541,7 @@ class audiotools_decoders(Extension):
                    "src/bitstream.c",
                    "src/buffer.c",
                    "src/func_io.c",
+                   "src/mini-gmp.c",
                    "src/huffman.c",
                    "src/decoders/flac.c",
                    "src/decoders/oggflac.c",
@@ -644,6 +647,7 @@ class audiotools_encoders(Extension):
                    "src/bitstream.c",
                    "src/buffer.c",
                    "src/func_io.c",
+                   "src/mini-gmp.c",
                    "src/common/md5.c",
                    "src/encoders/flac.c",
                    "src/common/flac_crc.c",
@@ -755,6 +759,7 @@ class audiotools_bitstream(Extension):
                                     "src/bitstream.c",
                                     "src/buffer.c",
                                     "src/func_io.c",
+                                    "src/mini-gmp.c",
                                     "src/huffman.c"])
 
 
@@ -767,6 +772,7 @@ class audiotools_ogg(Extension):
                                     "src/mod_ogg.c",
                                     "src/bitstream.c",
                                     "src/func_io.c",
+                                    "src/mini-gmp.c",
                                     "src/buffer.c"])
 
 

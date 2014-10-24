@@ -56,13 +56,15 @@ const struct read_unary read_unary_table_le[0x200][2] =
     ;
 
 
-BitstreamReader*
-br_open(FILE *f, bs_endianness endianness)
+/*returns a base BitstreamReader with many fields filled in
+  and the rest to be filled in by the final implementation*/
+static BitstreamReader*
+__base_bitstreamreader__(bs_endianness endianness)
 {
     BitstreamReader *bs = malloc(sizeof(BitstreamReader));
     bs->endianness = endianness;
-    bs->type = BR_FILE;
-    bs->input.file = f;
+    /*bs->type = ???*/
+    /*bs->input.??? = ???*/
     bs->state = 0;
     bs->callbacks = NULL;
     bs->exceptions = NULL;
@@ -70,31 +72,35 @@ br_open(FILE *f, bs_endianness endianness)
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        bs->read = br_read_bits_f_be;
+        /*bs->read = ???*/
         bs->read_signed = br_read_signed_bits_be;
-        bs->read_64 = br_read_bits64_f_be;
+        /*bs->read_64 = ???*/
         bs->read_signed_64 = br_read_signed_bits64_be;
-        bs->skip = br_skip_bits_f_be;
+        /*bs->read_bigint = ???*/
+        bs->read_signed_bigint = br_read_signed_bits_bigint_be;
+        /*bs->skip = ???*/
         bs->unread = br_unread_bit_be;
-        bs->read_unary = br_read_unary_f_be;
-        bs->skip_unary = br_skip_unary_f_be;
-        bs->set_endianness = br_set_endianness_f_be;
+        /*bs->read_unary = ???*/
+        /*bs->skip_unary = ???*/
+        /*bs->set_endianness = ???*/
         break;
     case BS_LITTLE_ENDIAN:
-        bs->read = br_read_bits_f_le;
+        /*bs->read = ???*/
         bs->read_signed = br_read_signed_bits_le;
-        bs->read_64 = br_read_bits64_f_le;
+        /*bs->read_64 = ???*/
         bs->read_signed_64 = br_read_signed_bits64_le;
-        bs->skip = br_skip_bits_f_le;
+        /*bs->read_bigint = ???*/
+        bs->read_signed_bigint = br_read_signed_bits_bigint_le;
+        /*bs->skip = ???*/
         bs->unread = br_unread_bit_le;
-        bs->read_unary = br_read_unary_f_le;
-        bs->skip_unary = br_skip_unary_f_le;
-        bs->set_endianness = br_set_endianness_f_le;
+        /*bs->read_unary = ???*/
+        /*bs->skip_unary = ???*/
+        /*bs->set_endianness = ???*/
         break;
     }
 
-    bs->read_huffman_code = br_read_huffman_code_f;
-    bs->read_bytes = br_read_bytes_f;
+    /*bs->read_huffman_code = ???*/
+    /*bs->read_bytes = ???*/
     bs->skip_bytes = br_skip_bytes;
     bs->parse = br_parse;
     bs->byte_aligned = br_byte_aligned;
@@ -105,15 +111,58 @@ br_open(FILE *f, bs_endianness endianness)
     bs->pop_callback = br_pop_callback;
     bs->call_callbacks = br_call_callbacks;
 
+    /*bs->getpos = ???*/
+    /*bs->setpos = ???*/
+    /*bs->seek = ???*/
+
+    bs->substream = br_substream;
+
+    /*bs->close_internal_stream = ???*/
+    /*bs->free = ???*/
+    bs->close = br_close;
+
+    return bs;
+}
+
+
+BitstreamReader*
+br_open(FILE *f, bs_endianness endianness)
+{
+    BitstreamReader *bs = __base_bitstreamreader__(endianness);
+    bs->type = BR_FILE;
+    bs->input.file = f;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        bs->read = br_read_bits_f_be;
+        bs->read_64 = br_read_bits64_f_be;
+        bs->read_bigint = br_read_bits_bigint_f_be;
+        bs->skip = br_skip_bits_f_be;
+        bs->read_unary = br_read_unary_f_be;
+        bs->skip_unary = br_skip_unary_f_be;
+        bs->set_endianness = br_set_endianness_f_be;
+        break;
+    case BS_LITTLE_ENDIAN:
+        bs->read = br_read_bits_f_le;
+        bs->read_64 = br_read_bits64_f_le;
+        bs->read_bigint = br_read_bits_bigint_f_le;
+        bs->skip = br_skip_bits_f_le;
+        bs->read_unary = br_read_unary_f_le;
+        bs->skip_unary = br_skip_unary_f_le;
+        bs->set_endianness = br_set_endianness_f_le;
+        break;
+    }
+
+    bs->read_huffman_code = br_read_huffman_code_f;
+    bs->read_bytes = br_read_bytes_f;
+
     bs->getpos = br_getpos_f;
     bs->setpos = br_setpos_f;
     bs->seek = br_seek_f;
 
-    bs->substream = br_substream;
 
     bs->close_internal_stream = br_close_internal_stream_f;
     bs->free = br_free_f;
-    bs->close = br_close;
 
     return bs;
 }
@@ -124,35 +173,26 @@ br_open_buffer(const uint8_t *buffer,
                unsigned buffer_size,
                bs_endianness endianness)
 {
-    BitstreamReader *bs = malloc(sizeof(BitstreamReader));
-    bs->endianness = endianness;
+    BitstreamReader *bs = __base_bitstreamreader__(endianness);
     bs->type = BR_BUFFER;
     bs->input.buffer = br_buf_new();
     br_buf_extend(bs->input.buffer, buffer, buffer_size);
-    bs->state = 0;
-    bs->callbacks = NULL;
-    bs->exceptions = NULL;
-    bs->exceptions_used = NULL;
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
         bs->read = br_read_bits_b_be;
-        bs->read_signed = br_read_signed_bits_be;
         bs->read_64 = br_read_bits64_b_be;
-        bs->read_signed_64 = br_read_signed_bits64_be;
+        bs->read_bigint = br_read_bits_bigint_b_be;
         bs->skip = br_skip_bits_b_be;
-        bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_b_be;
         bs->skip_unary = br_skip_unary_b_be;
         bs->set_endianness = br_set_endianness_b_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_b_le;
-        bs->read_signed = br_read_signed_bits_le;
         bs->read_64 = br_read_bits64_b_le;
-        bs->read_signed_64 = br_read_signed_bits64_le;
+        bs->read_bigint = br_read_bits_bigint_b_le;
         bs->skip = br_skip_bits_b_le;
-        bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_b_le;
         bs->skip_unary = br_skip_unary_b_le;
         bs->set_endianness = br_set_endianness_b_le;
@@ -161,25 +201,13 @@ br_open_buffer(const uint8_t *buffer,
 
     bs->read_huffman_code = br_read_huffman_code_b;
     bs->read_bytes = br_read_bytes_b;
-    bs->skip_bytes = br_skip_bytes;
-    bs->parse = br_parse;
-    bs->byte_aligned = br_byte_aligned;
-    bs->byte_align = br_byte_align;
-
-    bs->add_callback = br_add_callback;
-    bs->push_callback = br_push_callback;
-    bs->pop_callback = br_pop_callback;
-    bs->call_callbacks = br_call_callbacks;
 
     bs->getpos = br_getpos_b;
     bs->setpos = br_setpos_b;
     bs->seek = br_seek_b;
 
-    bs->substream = br_substream;
-
     bs->close_internal_stream = br_close_internal_stream_b;
     bs->free = br_free_b;
-    bs->close = br_close;
 
     return bs;
 }
@@ -196,8 +224,7 @@ br_open_external(void* user_data,
                  ext_close_f close,
                  ext_free_f free)
 {
-    BitstreamReader *bs = malloc(sizeof(BitstreamReader));
-    bs->endianness = endianness;
+    BitstreamReader *bs = __base_bitstreamreader__(endianness);
     bs->type = BR_EXTERNAL;
     bs->input.external = ext_open_r(user_data,
                                     buffer_size,
@@ -208,30 +235,22 @@ br_open_external(void* user_data,
                                     seek,
                                     close,
                                     free);
-    bs->state = 0;
-    bs->callbacks = NULL;
-    bs->exceptions = NULL;
-    bs->exceptions_used = NULL;
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
         bs->read = br_read_bits_e_be;
-        bs->read_signed = br_read_signed_bits_be;
         bs->read_64 = br_read_bits64_e_be;
-        bs->read_signed_64 = br_read_signed_bits64_be;
+        bs->read_bigint = br_read_bits_bigint_e_be;
         bs->skip = br_skip_bits_e_be;
-        bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_e_be;
         bs->skip_unary = br_skip_unary_e_be;
         bs->set_endianness = br_set_endianness_e_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_e_le;
-        bs->read_signed = br_read_signed_bits_le;
         bs->read_64 = br_read_bits64_e_le;
-        bs->read_signed_64 = br_read_signed_bits64_le;
+        bs->read_bigint = br_read_bits_bigint_e_le;
         bs->skip = br_skip_bits_e_le;
-        bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_e_le;
         bs->skip_unary = br_skip_unary_e_le;
         bs->set_endianness = br_set_endianness_e_le;
@@ -240,25 +259,13 @@ br_open_external(void* user_data,
 
     bs->read_huffman_code = br_read_huffman_code_e;
     bs->read_bytes = br_read_bytes_e;
-    bs->skip_bytes = br_skip_bytes;
-    bs->parse = br_parse;
-    bs->byte_aligned = br_byte_aligned;
-    bs->byte_align = br_byte_align;
-
-    bs->add_callback = br_add_callback;
-    bs->push_callback = br_push_callback;
-    bs->pop_callback = br_pop_callback;
-    bs->call_callbacks = br_call_callbacks;
 
     bs->setpos = br_setpos_e;
     bs->getpos = br_getpos_e;
     bs->seek = br_seek_e;
 
-    bs->substream = br_substream;
-
     bs->close_internal_stream = br_close_internal_stream_e;
     bs->free = br_free_e;
-    bs->close = br_close;
 
     return bs;
 }
@@ -422,6 +429,198 @@ br_read_signed_bits64_le(BitstreamReader* bs, unsigned int count)
         return unsigned_value;
     } else {
         return unsigned_value - (1ll << (count - 1));
+    }
+}
+
+#define FUNC_READ_BITS_BIGINT_BE(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG) \
+    void                                                              \
+    FUNC_NAME(BitstreamReader* bs, unsigned int count, mpz_t value)   \
+    {                                                                 \
+        struct read_bits result = {0, 0, bs->state};                  \
+        mpz_t result_value;                                           \
+        mpz_init(result_value);                                       \
+        mpz_set_ui(value, 0);                                         \
+                                                                      \
+        while (count > 0) {                                           \
+            if (result.state == 0) {                                  \
+                const int byte = BYTE_FUNC(BYTE_FUNC_ARG);            \
+                if (byte != EOF) {                                    \
+                    struct bs_callback* callback;                     \
+                    result.state = NEW_STATE(byte);                   \
+                    for (callback = bs->callbacks;                    \
+                         callback != NULL;                            \
+                         callback = callback->next)                   \
+                        callback->callback((uint8_t)byte,             \
+                                           callback->data);           \
+                } else {                                              \
+                    mpz_clear(result_value);                          \
+                    br_abort(bs);                                     \
+                }                                                     \
+            }                                                         \
+                                                                      \
+            result =                                                  \
+                read_bits_table_be[result.state][MIN(count, 8) - 1];  \
+                                                                      \
+            mpz_set_ui(result_value, result.value);                   \
+                                                                      \
+            /*value <<= result.value_size*/                           \
+            mpz_mul_2exp(value, value, result.value_size);            \
+                                                                      \
+            /*value |= result_value*/                                 \
+            mpz_ior(value, value, result_value);                      \
+                                                                      \
+            count -= result.value_size;                               \
+        }                                                             \
+                                                                      \
+        bs->state = result.state;                                     \
+        mpz_clear(result_value);                                      \
+    }
+FUNC_READ_BITS_BIGINT_BE(br_read_bits_bigint_f_be, fgetc,
+                         bs->input.file)
+FUNC_READ_BITS_BIGINT_BE(br_read_bits_bigint_b_be, br_buf_getc,
+                         bs->input.buffer)
+FUNC_READ_BITS_BIGINT_BE(br_read_bits_bigint_e_be, ext_getc,
+                         bs->input.external)
+
+#define FUNC_READ_BITS_BIGINT_LE(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG) \
+    void                                                              \
+    FUNC_NAME(BitstreamReader* bs, unsigned int count, mpz_t value)   \
+    {                                                                 \
+        struct read_bits result = {0, 0, bs->state};                  \
+        register unsigned bit_offset = 0;                             \
+        mpz_t result_value;                                           \
+        mpz_init(result_value);                                       \
+        mpz_set_ui(value, 0);                                         \
+                                                                      \
+        while (count > 0) {                                           \
+            if (result.state == 0) {                                  \
+                const int byte = BYTE_FUNC(BYTE_FUNC_ARG);            \
+                if (byte != EOF) {                                    \
+                    struct bs_callback* callback;                     \
+                    result.state = NEW_STATE(byte);                   \
+                    for (callback = bs->callbacks;                    \
+                         callback != NULL;                            \
+                         callback = callback->next)                   \
+                         callback->callback((uint8_t)byte,            \
+                                            callback->data);          \
+                } else {                                              \
+                    mpz_clear(result_value);                          \
+                    br_abort(bs);                                     \
+                }                                                     \
+            }                                                         \
+                                                                      \
+            result =                                                  \
+                read_bits_table_le[result.state][MIN(count, 8) - 1];  \
+                                                                      \
+            mpz_set_ui(result_value, result.value);                   \
+                                                                      \
+            /*result_value <<= bit_offset*/                           \
+            mpz_mul_2exp(result_value, result_value, bit_offset);     \
+                                                                      \
+            /*value |= result_value*/                                 \
+            mpz_ior(value, value, result_value);                      \
+                                                                      \
+            count -= result.value_size;                               \
+            bit_offset += result.value_size;                          \
+        }                                                             \
+                                                                      \
+        bs->state = result.state;                                     \
+        mpz_clear(result_value);                                      \
+    }
+FUNC_READ_BITS_BIGINT_LE(br_read_bits_bigint_f_le, fgetc,
+                         bs->input.file)
+FUNC_READ_BITS_BIGINT_LE(br_read_bits_bigint_b_le, br_buf_getc,
+                         bs->input.buffer)
+FUNC_READ_BITS_BIGINT_LE(br_read_bits_bigint_e_le, ext_getc,
+                         bs->input.external)
+
+void
+br_read_bits_bigint_c(BitstreamReader* bs,
+                      unsigned int count,
+                      mpz_t value)
+{
+    br_abort(bs);
+}
+
+void
+br_read_signed_bits_bigint_be(BitstreamReader* bs,
+                              unsigned int count,
+                              mpz_t value)
+{
+    if (!bs->read(bs, 1)) {
+        /*unsigned value*/
+
+        bs->read_bigint(bs, count - 1, value);
+    } else {
+        /*signed value*/
+
+        mpz_t unsigned_value;
+        mpz_t to_subtract;
+
+        mpz_init(unsigned_value);
+        if (!setjmp(*br_try(bs))) {
+            bs->read_bigint(bs, count - 1, unsigned_value);
+            br_etry(bs);
+        } else {
+            /*be sure to free unsigned_value before re-raising error*/
+            br_etry(bs);
+            mpz_clear(unsigned_value);
+            br_abort(bs);
+        }
+
+        /*value = unsigned_value - (1 << (count - 1))*/
+
+        /*to_subtract = 1*/
+        mpz_init_set_ui(to_subtract, 1);
+
+        /*to_subtract <<= (count - 1)*/
+        mpz_mul_2exp(to_subtract, to_subtract, count - 1);
+
+        /*value = unsigned_value - to_subtract*/
+        mpz_sub(value, unsigned_value, to_subtract);
+
+        mpz_clear(unsigned_value);
+        mpz_clear(to_subtract);
+    }
+}
+
+void
+br_read_signed_bits_bigint_le(BitstreamReader* bs,
+                              unsigned int count,
+                              mpz_t value)
+{
+    mpz_t unsigned_value;
+    mpz_init(unsigned_value);
+
+    if (!setjmp(*br_try(bs))) {
+        bs->read_bigint(bs, count - 1, unsigned_value);
+
+        if (!bs->read(bs, 1)) {
+            /*unsigned value*/
+
+            mpz_set(value, unsigned_value);
+        } else {
+            /*signed value*/
+            mpz_t to_subtract;
+
+            /*to_subtract = 1*/
+            mpz_init_set_ui(to_subtract, 1);
+
+            /*to_subtract <<= (count - 1)*/
+            mpz_mul_2exp(to_subtract, to_subtract, count - 1);
+
+            /*value = unsigned_value - to_subtract*/
+            mpz_sub(value, unsigned_value, to_subtract);
+
+            mpz_clear(to_subtract);
+        }
+        br_etry(bs);
+        mpz_clear(unsigned_value);
+    } else {
+        /*be sure to free unsigned value before re-raising error*/
+        br_etry(bs);
+        mpz_clear(unsigned_value);
+        br_abort(bs);
     }
 }
 
@@ -651,18 +850,42 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit)
 }
 
 
-void
-br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
+static void
+__br_set_endianness_be__(BitstreamReader* bs, bs_endianness endianness)
 {
     bs->endianness = endianness;
     bs->state = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
-        bs->read = br_read_bits_f_le;
         bs->read_signed = br_read_signed_bits_le;
-        bs->read_64 = br_read_bits64_f_le;
         bs->read_signed_64 = br_read_signed_bits64_le;
-        bs->skip = br_skip_bits_f_le;
+        bs->read_signed_bigint = br_read_signed_bits_bigint_le;
         bs->unread = br_unread_bit_le;
+    }
+}
+
+static void
+__br_set_endianness_le__(BitstreamReader* bs, bs_endianness endianness)
+{
+
+    bs->endianness = endianness;
+    bs->state = 0;
+    if (endianness == BS_BIG_ENDIAN) {
+        bs->read_signed = br_read_signed_bits_be;
+        bs->read_signed_64 = br_read_signed_bits64_be;
+        bs->read_signed_bigint = br_read_signed_bits_bigint_be;
+        bs->unread = br_unread_bit_be;
+    }
+}
+
+void
+br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
+{
+    __br_set_endianness_be__(bs, endianness);
+    if (endianness == BS_LITTLE_ENDIAN) {
+        bs->read = br_read_bits_f_le;
+        bs->read_64 = br_read_bits64_f_le;
+        bs->read_bigint = br_read_bits_bigint_f_le;
+        bs->skip = br_skip_bits_f_le;
         bs->read_unary = br_read_unary_f_le;
         bs->skip_unary = br_skip_unary_f_le;
         bs->set_endianness = br_set_endianness_f_le;
@@ -672,15 +895,12 @@ br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
 void
 br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness)
 {
-    bs->endianness = endianness;
-    bs->state = 0;
+    __br_set_endianness_le__(bs, endianness);
     if (endianness == BS_BIG_ENDIAN) {
         bs->read = br_read_bits_f_be;
-        bs->read_signed = br_read_signed_bits_be;
         bs->read_64 = br_read_bits64_f_be;
-        bs->read_signed_64 = br_read_signed_bits64_be;
+        bs->read_bigint = br_read_bits_bigint_f_be;
         bs->skip = br_skip_bits_f_be;
-        bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_f_be;
         bs->skip_unary = br_skip_unary_f_be;
         bs->set_endianness = br_set_endianness_f_be;
@@ -690,15 +910,12 @@ br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness)
 void
 br_set_endianness_b_be(BitstreamReader *bs, bs_endianness endianness)
 {
-    bs->endianness = endianness;
-    bs->state = 0;
+    __br_set_endianness_be__(bs, endianness);
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->read = br_read_bits_b_le;
-        bs->read_signed = br_read_signed_bits_le;
         bs->read_64 = br_read_bits64_b_le;
-        bs->read_signed_64 = br_read_signed_bits64_le;
+        bs->read_bigint = br_read_bits_bigint_b_le;
         bs->skip = br_skip_bits_b_le;
-        bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_b_le;
         bs->skip_unary = br_skip_unary_b_le;
         bs->set_endianness = br_set_endianness_b_le;
@@ -708,15 +925,12 @@ br_set_endianness_b_be(BitstreamReader *bs, bs_endianness endianness)
 void
 br_set_endianness_b_le(BitstreamReader *bs, bs_endianness endianness)
 {
-    bs->endianness = endianness;
-    bs->state = 0;
+    __br_set_endianness_le__(bs, endianness);
     if (endianness == BS_BIG_ENDIAN) {
         bs->read = br_read_bits_b_be;
-        bs->read_signed = br_read_signed_bits_be;
         bs->read_64 = br_read_bits64_b_be;
-        bs->read_signed_64 = br_read_signed_bits64_be;
+        bs->read_bigint = br_read_bits_bigint_b_be;
         bs->skip = br_skip_bits_b_be;
-        bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_b_be;
         bs->skip_unary = br_skip_unary_b_be;
         bs->set_endianness = br_set_endianness_b_be;
@@ -726,15 +940,12 @@ br_set_endianness_b_le(BitstreamReader *bs, bs_endianness endianness)
 void
 br_set_endianness_e_be(BitstreamReader *bs, bs_endianness endianness)
 {
-    bs->endianness = endianness;
-    bs->state = 0;
+    __br_set_endianness_be__(bs, endianness);
     if (endianness == BS_LITTLE_ENDIAN) {
         bs->read = br_read_bits_e_le;
-        bs->read_signed = br_read_signed_bits_le;
         bs->read_64 = br_read_bits64_e_le;
-        bs->read_signed_64 = br_read_signed_bits64_le;
+        bs->read_bigint = br_read_bits_bigint_e_le;
         bs->skip = br_skip_bits_e_le;
-        bs->unread = br_unread_bit_le;
         bs->read_unary = br_read_unary_e_le;
         bs->skip_unary = br_skip_unary_e_le;
         bs->set_endianness = br_set_endianness_e_le;
@@ -744,15 +955,12 @@ br_set_endianness_e_be(BitstreamReader *bs, bs_endianness endianness)
 void
 br_set_endianness_e_le(BitstreamReader *bs, bs_endianness endianness)
 {
-    bs->endianness = endianness;
-    bs->state = 0;
+    __br_set_endianness_le__(bs, endianness);
     if (endianness == BS_BIG_ENDIAN) {
         bs->read = br_read_bits_e_be;
-        bs->read_signed = br_read_signed_bits_be;
         bs->read_64 = br_read_bits64_e_be;
-        bs->read_signed_64 = br_read_signed_bits64_be;
+        bs->read_bigint = br_read_bits_bigint_e_be;
         bs->skip = br_skip_bits_e_be;
-        bs->unread = br_unread_bit_be;
         bs->read_unary = br_read_unary_e_be;
         bs->skip_unary = br_skip_unary_e_be;
         bs->set_endianness = br_set_endianness_e_be;
@@ -1195,6 +1403,7 @@ br_close_methods(BitstreamReader* bs)
     /*swap read methods with closed methods that generate read errors*/
     bs->read = br_read_bits_c;
     bs->read_64 = br_read_bits64_c;
+    bs->read_bigint = br_read_bits_bigint_c;
     bs->skip = br_skip_bits_c;
     bs->unread = br_unread_bit_c;
     bs->read_unary = br_read_unary_c;
@@ -3440,9 +3649,12 @@ void test_big_endian_reader(BitstreamReader* reader,
                             br_huffman_table_t table[]) {
     int bit;
     uint8_t sub_data[2];
+    mpz_t value;
     br_pos_t *pos1;
     br_pos_t *pos2;
     br_pos_t *pos3;
+
+    mpz_init(value);
 
     /*check the bitstream reader
       against some known big-endian values*/
@@ -3460,6 +3672,18 @@ void test_big_endian_reader(BitstreamReader* reader,
     assert(reader->read_64(reader, 5) == 0x07);
     assert(reader->read_64(reader, 3) == 0x5);
     assert(reader->read_64(reader, 19) == 0x53BC1);
+
+    reader->setpos(reader, pos1);
+    reader->read_bigint(reader, 2, value);
+    assert(mpz_get_ui(value) == 0x2);
+    reader->read_bigint(reader, 3, value);
+    assert(mpz_get_ui(value) == 0x6);
+    reader->read_bigint(reader, 5, value);
+    assert(mpz_get_ui(value) == 0x07);
+    reader->read_bigint(reader, 3, value);
+    assert(mpz_get_ui(value) == 0x5);
+    reader->read_bigint(reader, 19, value);
+    assert(mpz_get_ui(value) == 0x53BC1);
 
     reader->setpos(reader, pos1);
     assert(reader->read(reader, 2) == 0x2);
@@ -3520,6 +3744,18 @@ void test_big_endian_reader(BitstreamReader* reader,
     assert(reader->read_signed_64(reader, 5) == 7);
     assert(reader->read_signed_64(reader, 3) == -3);
     assert(reader->read_signed_64(reader, 19) == -181311);
+
+    reader->setpos(reader, pos1);
+    reader->read_signed_bigint(reader, 2, value);
+    assert(mpz_get_si(value) == -2);
+    reader->read_signed_bigint(reader, 3, value);
+    assert(mpz_get_si(value) == -2);
+    reader->read_signed_bigint(reader, 5, value);
+    assert(mpz_get_si(value) == 7);
+    reader->read_signed_bigint(reader, 3, value);
+    assert(mpz_get_si(value) == -3);
+    reader->read_signed_bigint(reader, 19, value);
+    assert(mpz_get_si(value) == -181311);
 
     reader->setpos(reader, pos1);
     assert(reader->read_unary(reader, 0) == 1);
@@ -3709,6 +3945,8 @@ void test_big_endian_reader(BitstreamReader* reader,
 
     reader->setpos(reader, pos1);
     pos1->del(pos1);
+
+    mpz_clear(value);
 }
 
 void test_big_endian_parse(BitstreamReader* reader) {
@@ -3831,9 +4069,12 @@ void test_little_endian_reader(BitstreamReader* reader,
                                br_huffman_table_t table[]) {
     int bit;
     uint8_t sub_data[2];
+    mpz_t value;
     br_pos_t* pos1;
     br_pos_t* pos2;
     br_pos_t* pos3;
+
+    mpz_init(value);
 
     /*check the bitstream reader
       against some known little-endian values*/
@@ -3851,6 +4092,18 @@ void test_little_endian_reader(BitstreamReader* reader,
     assert(reader->read_64(reader, 5) == 13);
     assert(reader->read_64(reader, 3) == 3);
     assert(reader->read_64(reader, 19) == 395743);
+
+    reader->setpos(reader, pos1);
+    reader->read_bigint(reader, 2, value);
+    assert(mpz_get_ui(value) == 1);
+    reader->read_bigint(reader, 3, value);
+    assert(mpz_get_ui(value) == 4);
+    reader->read_bigint(reader, 5, value);
+    assert(mpz_get_ui(value) == 13);
+    reader->read_bigint(reader, 3, value);
+    assert(mpz_get_ui(value) == 3);
+    reader->read_bigint(reader, 19, value);
+    assert(mpz_get_ui(value) == 395743);
 
     reader->setpos(reader, pos1);
     assert(reader->read(reader, 2) == 0x1);
@@ -3911,6 +4164,18 @@ void test_little_endian_reader(BitstreamReader* reader,
     assert(reader->read_signed_64(reader, 5) == 13);
     assert(reader->read_signed_64(reader, 3) == 3);
     assert(reader->read_signed_64(reader, 19) == -128545);
+
+    reader->setpos(reader, pos1);
+    reader->read_signed_bigint(reader, 2, value);
+    assert(mpz_get_si(value) == 1);
+    reader->read_signed_bigint(reader, 3, value);
+    assert(mpz_get_si(value) == -4);
+    reader->read_signed_bigint(reader, 5, value);
+    assert(mpz_get_si(value) == 13);
+    reader->read_signed_bigint(reader, 3, value);
+    assert(mpz_get_si(value) == 3);
+    reader->read_signed_bigint(reader, 19, value);
+    assert(mpz_get_si(value) == -128545);
 
     reader->setpos(reader, pos1);
     assert(reader->read_unary(reader, 0) == 1);
@@ -4099,6 +4364,7 @@ void test_little_endian_reader(BitstreamReader* reader,
 
     reader->setpos(reader, pos1);
     pos1->del(pos1);
+    mpz_clear(value);
 }
 
 void test_little_endian_parse(BitstreamReader* reader) {

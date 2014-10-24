@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <limits.h>
 #include "func_io.h"
+#include "mini-gmp.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -160,6 +161,22 @@ typedef struct BitstreamReader_s {
       in the current endian format up to 64 bits wide*/
     int64_t
     (*read_signed_64)(struct BitstreamReader_s* bs, unsigned int count);
+
+    /*reads "count" number of unsigned bits from the current stream
+      to the given "value" in the current endian format
+      "value" must have been initialized previously*/
+    void
+    (*read_bigint)(struct BitstreamReader_s* bs,
+                   unsigned int count,
+                   mpz_t value);
+
+    /*reads "count" number of signed bits from the current stream
+      to the given "value" in the current endian format
+      "value" must have been initialized previous*/
+    void
+    (*read_signed_bigint)(struct BitstreamReader_s* bs,
+                          unsigned int count,
+                          mpz_t value);
 
     /*skips "count" number of bits from the current stream as if read
 
@@ -460,6 +477,47 @@ int64_t
 br_read_signed_bits64_be(BitstreamReader* bs, unsigned int count);
 int64_t
 br_read_signed_bits64_le(BitstreamReader* bs, unsigned int count);
+
+
+/*bs->read_bigint(bs, count, value)  methods*/
+void
+br_read_bits_bigint_f_be(BitstreamReader* bs,
+                         unsigned int count,
+                         mpz_t value);
+void
+br_read_bits_bigint_f_le(BitstreamReader* bs,
+                         unsigned int count,
+                         mpz_t value);
+void
+br_read_bits_bigint_b_be(BitstreamReader* bs,
+                         unsigned int count,
+                         mpz_t value);
+void
+br_read_bits_bigint_b_le(BitstreamReader* bs,
+                         unsigned int count,
+                         mpz_t value);
+void
+br_read_bits_bigint_e_be(BitstreamReader* bs,
+                         unsigned int count,
+                         mpz_t value);
+void
+br_read_bits_bigint_e_le(BitstreamReader* bs,
+                         unsigned int count,
+                         mpz_t value);
+void
+br_read_bits_bigint_c(BitstreamReader* bs,
+                      unsigned int count,
+                      mpz_t value);
+
+/*bs->read_signed_bigint(bs, count, value)  methods*/
+void
+br_read_signed_bits_bigint_be(BitstreamReader* bs,
+                              unsigned int count,
+                              mpz_t value);
+void
+br_read_signed_bits_bigint_le(BitstreamReader* bs,
+                              unsigned int count,
+                              mpz_t value);
 
 
 /*bs->skip(bs, count)  methods*/

@@ -114,11 +114,14 @@ buffer.o: buffer.c buffer.h
 func_io.o: func_io.c func_io.h
 	$(CC) $(FLAGS) -c func_io.c
 
-bitstream.a: bitstream.o huffman.o func_io.o
-	$(AR) -r $@ bitstream.o huffman.o func_io.o
+mini-gmp.o: mini-gmp.c mini-gmp.h
+	$(CC) $(FLAGS) -c mini-gmp.c
 
-bitstream: bitstream.c bitstream.h huffman.o func_io.o
-	$(CC) $(FLAGS) bitstream.c huffman.o func_io.o -DEXECUTABLE -DSTANDALONE -DDEBUG -o $@
+bitstream.a: bitstream.o huffman.o func_io.o mini-gmp.o
+	$(AR) -r $@ bitstream.o huffman.o func_io.o mini-gmp.o
+
+bitstream: bitstream.c bitstream.h huffman.o func_io.o mini-gmp.o
+	$(CC) $(FLAGS) bitstream.c huffman.o func_io.o mini-gmp.o -DEXECUTABLE -DSTANDALONE -DDEBUG -o $@
 
 array: array.c array.h
 	$(CC) $(FLAGS) array.c -DEXECUTABLE -o $@
