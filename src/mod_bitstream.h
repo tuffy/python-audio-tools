@@ -51,9 +51,6 @@ PyMethodDef module_methods[] = {
     {NULL}
 };
 
-typedef PyObject* (*read_object_f)(BitstreamReader *br,
-                                   unsigned bits);
-
 /*the BitstreamReader object
   a simple wrapper around our Bitstream reading struct*/
 
@@ -61,16 +58,19 @@ typedef struct {
     PyObject_HEAD
 
     BitstreamReader* bitstream;
-    int little_endian;
-    read_object_f read_unsigned;
-    read_object_f read_signed;
 } bitstream_BitstreamReader;
+
+static PyObject*
+brpy_read_unsigned(BitstreamReader *br, unsigned bits);
 
 static PyObject*
 brpy_read_unsigned_be(BitstreamReader *br, unsigned bits);
 
 static PyObject*
 brpy_read_unsigned_le(BitstreamReader *br, unsigned bits);
+
+static PyObject*
+brpy_read_signed(BitstreamReader *br, unsigned bits);
 
 static PyObject*
 brpy_read_signed_be(BitstreamReader *br, unsigned bits);
@@ -462,16 +462,10 @@ bitstream_format_byte_size(PyObject *dummy, PyObject *args)
     return Py_BuildValue("I", bs_format_byte_size(format_string));
 }
 
-typedef int (*write_object_f)(BitstreamWriter *bw,
-                              unsigned bits,
-                              PyObject *value);
-
 typedef struct {
     PyObject_HEAD
 
     BitstreamWriter* bitstream;
-    write_object_f write_unsigned;
-    write_object_f write_signed;
 } bitstream_BitstreamWriter;
 
 static PyObject*
@@ -499,10 +493,16 @@ static int
 is_positive(PyObject *value);
 
 static int
+bwpy_write_unsigned(BitstreamWriter *bw, unsigned bits, PyObject *value);
+
+static int
 bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value);
 
 static int
 bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value);
+
+static int
+bwpy_write_signed(BitstreamWriter *bw, unsigned bits, PyObject *value);
 
 static int
 bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value);
@@ -694,8 +694,6 @@ typedef struct {
     PyObject_HEAD
 
     BitstreamRecorder* bitstream;
-    write_object_f write_unsigned;
-    write_object_f write_signed;
 } bitstream_BitstreamRecorder;
 
 static PyObject*
@@ -1010,8 +1008,6 @@ PyTypeObject bitstream_BitstreamWriterPositionType = {
   returns 0 on success, 1 on failure (with PyErr set)*/
 int
 bitstream_parse(BitstreamReader* stream,
-                read_object_f read_unsigned,
-                read_object_f read_signed,
                 const char* format,
                 PyObject* values);
 
@@ -1020,8 +1016,6 @@ bitstream_parse(BitstreamReader* stream,
   returns 0 on success, 1 on failure (with PyErr set)*/
 int
 bitstream_build(BitstreamWriter* stream,
-                write_object_f write_unsigned,
-                write_object_f write_signed,
                 const char* format,
                 PyObject* iterator);
 

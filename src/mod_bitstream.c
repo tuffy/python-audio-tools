@@ -91,6 +91,39 @@ MOD_INIT(bitstream)
 }
 
 static PyObject*
+brpy_read_unsigned(BitstreamReader *br, unsigned bits)
+{
+    if (!setjmp(*br_try(br))) {
+        if (bits <= (sizeof(unsigned int) * 8)) {
+            /*if bits are small enough, first try regular read*/
+            const unsigned result = br->read(br, bits);
+            br_etry(br);
+            return Py_BuildValue("I", result);
+        } else if (bits <= (sizeof(uint64_t) * 8)) {
+            /*or try read_64*/
+            const uint64_t result = br->read_64(br, bits);
+            br_etry(br);
+            return Py_BuildValue("K", result);
+        } else {
+            /*before punting read to one of the (slow) bigint-based reads
+              based on the stream's endianness*/
+            PyObject *result;
+            if (br->endianness == BS_BIG_ENDIAN) {
+                result = brpy_read_unsigned_be(br, bits);
+            } else {
+                result = brpy_read_unsigned_le(br, bits);
+            }
+            br_etry(br);
+            return result;
+        }
+    } else {
+        br_etry(br);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
+}
+
+static PyObject*
 brpy_read_unsigned_be(BitstreamReader *br, unsigned bits)
 {
     const unsigned buffer_size = sizeof(unsigned) * 8;
@@ -101,36 +134,36 @@ brpy_read_unsigned_be(BitstreamReader *br, unsigned bits)
         unsigned result;
         PyObject *shift;
         PyObject *shifted;
+        PyObject *result_obj;
+        PyObject *prepended;
 
         /*perform actual reading from stream*/
         if (!setjmp(*br_try(br))) {
             result = br->read(br, bits_to_read);
             br_etry(br);
         } else {
+            /*ensure accumulator gets freed before re-raising error*/
             br_etry(br);
             Py_DECREF(accumulator);
-            PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-            return NULL;
+            br_abort(br);
+            result = 0;  /*to suppress compiler warning*/
         }
 
-        /*prepend bits to accumulator*/
+        /*prepend bits to accumulator via:
+          accumulator = (accumulator << shift) | result*/
         shift = PyInt_FromLong(bits_to_read);
         shifted = PyNumber_Lshift(accumulator, shift);
+        result_obj = Py_BuildValue("I", result);
+        prepended = PyNumber_Or(shifted, result_obj);
+
+        /*this presumes the math routines work without errors*/
+
         Py_DECREF(shift);
+        Py_DECREF(shifted);
+        Py_DECREF(result_obj);
         Py_DECREF(accumulator);
-        if (shifted == NULL) {
-            return NULL;
-        } else {
-            PyObject *result_obj = Py_BuildValue("I", result);
-            PyObject *prepended = PyNumber_Or(shifted, result_obj);
-            Py_DECREF(result_obj);
-            Py_DECREF(shifted);
-            if (prepended == NULL) {
-                return NULL;
-            } else {
-                accumulator = prepended;
-            }
-        }
+
+        accumulator = prepended;
 
         /*deduct count from remaining bits*/
         bits -= bits_to_read;
@@ -149,54 +182,53 @@ brpy_read_unsigned_le(BitstreamReader *br, unsigned bits)
     while (bits > 0) {
         const unsigned bits_to_read = bits > buffer_size ? buffer_size : bits;
         unsigned result;
-        PyObject *bits_to_read_obj;
-        PyObject *next_shift;
+
         PyObject *result_obj;
         PyObject *shifted;
+        PyObject *appended;
+
+        PyObject *bits_to_read_obj;
+        PyObject *next_shift;
 
         /*perform actual reading from stream*/
         if (!setjmp(*br_try(br))) {
             result = br->read(br, bits_to_read);
             br_etry(br);
         } else {
+            /*ensure accumulator and shift are freed
+              before re-raising exception*/
             br_etry(br);
             Py_DECREF(accumulator);
             Py_DECREF(shift);
-            PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-            return NULL;
+            br_abort(br);
+            result = 0;  /*to suppress compiler warning*/
         }
 
-        /*append bits to accumulator*/
+        /*append bits to accumulator via:
+          accumulator = (result << shift) | accumulator*/
         result_obj = Py_BuildValue("I", result);
         shifted = PyNumber_Lshift(result_obj, shift);
-        Py_DECREF(result_obj);
-        if (shifted == NULL) {
-            Py_DECREF(accumulator);
-            Py_DECREF(shift);
-            return NULL;
-        } else {
-            PyObject *appended = PyNumber_Or(shifted, accumulator);
-            Py_DECREF(shifted);
-            Py_DECREF(accumulator);
-            if (appended == NULL) {
-                Py_DECREF(shift);
-                return NULL;
-            } else {
-                accumulator = appended;
-            }
-        }
+        appended = PyNumber_Or(shifted, accumulator);
 
-        /*increment shift for next read*/
+        /*this presumes the math routines work without errors*/
+
+        Py_DECREF(result_obj);
+        Py_DECREF(shifted);
+        Py_DECREF(accumulator);
+
+        accumulator = appended;
+
+        /*increment shift for next read via:
+          shift = shift + bits_to_read*/
         bits_to_read_obj = PyInt_FromLong(bits_to_read);
         next_shift = PyNumber_Add(shift, bits_to_read_obj);
+
+        /*this also presumes the math routines work without errors*/
+
         Py_DECREF(bits_to_read_obj);
         Py_DECREF(shift);
-        if (next_shift == NULL) {
-            Py_DECREF(accumulator);
-            return NULL;
-        } else {
-            shift = next_shift;
-        }
+
+        shift = next_shift;
 
         /*deduct count from remaining bits*/
         bits -= bits_to_read;
@@ -207,23 +239,50 @@ brpy_read_unsigned_le(BitstreamReader *br, unsigned bits)
 }
 
 static PyObject*
-brpy_read_signed_be(BitstreamReader *br, unsigned bits)
+brpy_read_signed(BitstreamReader *br, unsigned bits)
 {
-    unsigned sign_bit;
-    PyObject* unsigned_value;
-
-    /*read sign bit*/
     if (!setjmp(*br_try(br))) {
-        sign_bit = br->read(br, 1);
-        br_etry(br);
+        if (bits <= (sizeof(int) * 8)) {
+            /*if bits are small enough, first try regular read*/
+            const int result = br->read_signed(br, bits);
+            br_etry(br);
+            return Py_BuildValue("i", result);
+        } else if (bits <= (sizeof(uint64_t) * 8)) {
+            /*or try read_64*/
+            const int64_t result = br->read_signed_64(br, bits);
+            br_etry(br);
+            return Py_BuildValue("L", result);
+        } else {
+            /*before punting read to one of the (slow) bigint-based reads
+              based on the stream's endianness*/
+            PyObject *result;
+            if (br->endianness == BS_BIG_ENDIAN) {
+                result = brpy_read_signed_be(br, bits);
+            } else {
+                result = brpy_read_signed_le(br, bits);
+            }
+            br_etry(br);
+            return result;
+        }
     } else {
         br_etry(br);
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
+}
+
+static PyObject*
+brpy_read_signed_be(BitstreamReader *br, unsigned bits)
+{
+    /*I/O errors handled by brpy_read_signed()*/
+
+    /*read sign bit*/
+    const unsigned sign_bit = br->read(br, 1);
 
     /*read unsigned value*/
-    if ((unsigned_value = brpy_read_unsigned_be(br, bits - 1)) == NULL) {
+    PyObject* unsigned_value = brpy_read_unsigned_be(br, bits - 1);
+
+    if (!unsigned_value) {
         /*pass exception to caller*/
         return NULL;
     }
@@ -235,35 +294,30 @@ brpy_read_signed_be(BitstreamReader *br, unsigned bits)
         /*otherwise, convert unsigned value to signed via:
           signed = unsigned - (1 << (bits - 1))
         */
-        PyObject *one;
-        PyObject *shift;
-        PyObject *shifted;
-        PyObject *signed_value;
+        PyObject *one = PyInt_FromLong(1);
+        PyObject *shift = PyInt_FromLong(bits - 1);
+        PyObject *shifted = PyNumber_Lshift(one, shift);
+        PyObject *signed_value = PyNumber_Subtract(unsigned_value, shifted);
 
-        one = PyInt_FromLong(1);
-        shift = PyInt_FromLong(bits - 1);
-        shifted = PyNumber_Lshift(one, shift);
+        /*this presumses the math routines work without errors*/
+
         Py_DECREF(one);
         Py_DECREF(shift);
-        if (shifted == NULL) {
-            Py_DECREF(unsigned_value);
-            return NULL;
-        }
-        signed_value = PyNumber_Subtract(unsigned_value, shifted);
-        Py_DECREF(unsigned_value);
         Py_DECREF(shifted);
-        return signed_value; /*may be NULL if subtraction failed somehow*/
+        Py_DECREF(unsigned_value);
+
+        return signed_value;
     }
 }
 
 static PyObject*
 brpy_read_signed_le(BitstreamReader *br, unsigned bits)
 {
-    PyObject* unsigned_value;
+    /*read unsigned value*/
+    PyObject* unsigned_value = brpy_read_unsigned_le(br, bits - 1);
     unsigned sign_bit;
 
-    /*read unsigned value*/
-    if ((unsigned_value = brpy_read_unsigned_le(br, bits - 1)) == NULL) {
+    if (!unsigned_value) {
         /*pass exception to caller*/
         return NULL;
     }
@@ -273,10 +327,11 @@ brpy_read_signed_le(BitstreamReader *br, unsigned bits)
         sign_bit = br->read(br, 1);
         br_etry(br);
     } else {
+        /*ensure unsigned_value gets freed before re-raising error*/
         br_etry(br);
         Py_DECREF(unsigned_value);
-        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-        return NULL;
+        br_abort(br);
+        sign_bit = 0;  /*to suppress compiler warning*/
     }
 
     if (sign_bit == 0) {
@@ -286,24 +341,19 @@ brpy_read_signed_le(BitstreamReader *br, unsigned bits)
         /*otherwise, convert unsigned value to signed via:
           signed = unsigned - (1 << (bits - 1))
         */
-        PyObject *one;
-        PyObject *shift;
-        PyObject *shifted;
-        PyObject *signed_value;
+        PyObject *one = PyInt_FromLong(1);
+        PyObject *shift = PyInt_FromLong(bits - 1);
+        PyObject *shifted = PyNumber_Lshift(one, shift);
+        PyObject *signed_value = PyNumber_Subtract(unsigned_value, shifted);
 
-        one = PyInt_FromLong(1);
-        shift = PyInt_FromLong(bits - 1);
-        shifted = PyNumber_Lshift(one, shift);
+        /*this presumes the math routines work without errors*/
+
         Py_DECREF(one);
         Py_DECREF(shift);
-        if (shifted == NULL) {
-            Py_DECREF(unsigned_value);
-            return NULL;
-        }
-        signed_value = PyNumber_Subtract(unsigned_value, shifted);
-        Py_DECREF(unsigned_value);
         Py_DECREF(shifted);
-        return signed_value; /*may be NULL if subtraction failed somehow*/
+        Py_DECREF(unsigned_value);
+
+        return signed_value;
     }
 }
 
@@ -319,7 +369,7 @@ BitstreamReader_read(bitstream_BitstreamReader *self, PyObject *args)
         return NULL;
     }
 
-    return self->read_unsigned(self->bitstream, (unsigned)count);
+    return brpy_read_unsigned(self->bitstream, (unsigned)count);
 }
 
 static PyObject*
@@ -334,7 +384,7 @@ BitstreamReader_read_signed(bitstream_BitstreamReader *self, PyObject *args)
         return NULL;
     }
 
-    return self->read_signed(self->bitstream, (unsigned)count);
+    return brpy_read_signed(self->bitstream, (unsigned)count);
 }
 
 static PyObject*
@@ -777,27 +827,20 @@ static PyObject*
 BitstreamReader_set_endianness(bitstream_BitstreamReader *self,
                                PyObject *args)
 {
+    int little_endian;
 
-    if (!PyArg_ParseTuple(args, "i", &(self->little_endian)))
+    if (!PyArg_ParseTuple(args, "i", &little_endian))
         return NULL;
 
-    if ((self->little_endian != 0) && (self->little_endian != 1)) {
+    if ((little_endian != 0) && (little_endian != 1)) {
         PyErr_SetString(PyExc_ValueError,
                     "endianness must be 0 (big-endian) or 1 (little-endian)");
         return NULL;
     }
 
     self->bitstream->set_endianness(self->bitstream,
-                                    self->little_endian ?
+                                    little_endian ?
                                     BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-
-    if (self->little_endian) {
-        self->read_unsigned = brpy_read_unsigned_le;
-        self->read_signed = brpy_read_signed_le;
-    } else {
-        self->read_unsigned = brpy_read_unsigned_be;
-        self->read_signed = brpy_read_signed_be;
-    }
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -1136,17 +1179,7 @@ BitstreamReader_substream(bitstream_BitstreamReader *self, PyObject *args)
         br_etry(self->bitstream);
 
         obj = (bitstream_BitstreamReader *)type->tp_alloc(type, 0);
-        obj->little_endian = self->little_endian;
         obj->bitstream = substream;
-
-        if (self->little_endian) {
-            obj->read_unsigned = brpy_read_unsigned_le;
-            obj->read_signed = brpy_read_signed_le;
-        } else {
-            obj->read_unsigned = brpy_read_unsigned_be;
-            obj->read_signed = brpy_read_signed_be;
-        }
-
         return (PyObject *)obj;
     } else {
         br_etry(self->bitstream);
@@ -1167,8 +1200,6 @@ BitstreamReader_parse(bitstream_BitstreamReader *self, PyObject *args)
         PyObject *values = PyList_New(0);
 
         if (!bitstream_parse(self->bitstream,
-                             self->read_unsigned,
-                             self->read_signed,
                              format,
                              values)) {
             return values;
@@ -1195,13 +1226,14 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
                      PyObject *args)
 {
     PyObject *file_obj;
+    int little_endian;
     int buffer_size = 4096;
 
     self->bitstream = NULL;
 
     if (!PyArg_ParseTuple(args, "Oi|i",
                           &file_obj,
-                          &(self->little_endian),
+                          &little_endian,
                           &buffer_size)) {
         return -1;
     } else if (buffer_size <= 0) {
@@ -1223,7 +1255,7 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
           an unsigned int, which isn't the case yet*/
         self->bitstream = br_open_buffer((uint8_t*)buffer,
                                          (unsigned)length,
-                                         self->little_endian ?
+                                         little_endian ?
                                          BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
     } else {
         /*store a reference to the Python object so that it doesn't decref
@@ -1232,7 +1264,7 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
 
         self->bitstream = br_open_external(
             file_obj,
-            self->little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
+            little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
             (unsigned)buffer_size,
             (ext_read_f)br_read_python,
             (ext_setpos_f)bs_setpos_python,
@@ -1241,14 +1273,6 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
             (ext_seek_f)bs_fseek_python,
             (ext_close_f)bs_close_python,
             (ext_free_f)bs_free_python_decref);
-    }
-
-    if (self->little_endian) {
-        self->read_unsigned = brpy_read_unsigned_le;
-        self->read_signed = brpy_read_signed_le;
-    } else {
-        self->read_unsigned = brpy_read_unsigned_be;
-        self->read_signed = brpy_read_signed_be;
     }
 
     return 0;
@@ -1545,14 +1569,6 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
         (ext_close_f)bs_close_python,
         (ext_free_f)bs_free_python_decref);
 
-    if (little_endian) {
-        self->write_unsigned = bwpy_write_unsigned_le;
-        self->write_signed = bwpy_write_signed_le;
-    } else {
-        self->write_unsigned = bwpy_write_unsigned_be;
-        self->write_signed = bwpy_write_signed_be;
-    }
-
     return 0;
 }
 
@@ -1727,6 +1743,42 @@ FUNC_VALIDATE_RANGE(bw_validate_signed_range,
                     bwpy_max_signed,
                     "signed")
 
+static int
+bwpy_write_unsigned(BitstreamWriter *bw, unsigned bits, PyObject *value)
+{
+    if (!bw_validate_unsigned_range(bits, value))
+        return 1;
+
+    if (!setjmp(*bw_try(bw))) {
+        if (bits <= (sizeof(unsigned int) * 8)) {
+            /*value should fit in an unsigned int*/
+            const unsigned long u_value = PyLong_AsUnsignedLong(value);
+            bw->write(bw, bits, (unsigned)u_value);
+            bw_etry(bw);
+            return 0;
+        } else if (bits <= (sizeof(uint64_t) * 8)) {
+            /*value should fit in a uint64_t*/
+            const unsigned long long u_value = PyLong_AsUnsignedLongLong(value);
+            bw->write_64(bw, bits, (uint64_t)u_value);
+            bw_etry(bw);
+            return 0;
+        } else {
+            /*value is too large, so punt to (slow) bigint-based writer*/
+            int result;
+            if (bw->endianness == BS_BIG_ENDIAN) {
+                result = bwpy_write_unsigned_be(bw, bits, value);
+            } else {
+                result = bwpy_write_unsigned_le(bw, bits, value);
+            }
+            bw_etry(bw);
+            return result;
+        }
+    } else {
+        bw_etry(bw);
+        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
+        return 1;
+    }
+}
 
 static int
 bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
@@ -1772,14 +1824,7 @@ bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
         buffer = (unsigned)masked_value;
 
         /*write the value itself*/
-        if (!setjmp(*bw_try(bw))) {
-            bw->write(bw, bits_to_write, buffer);
-            bw_etry(bw);
-        } else {
-            bw_etry(bw);
-            PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-            return 1;
-        }
+        bw->write(bw, bits_to_write, buffer);
 
         /*decrement the count*/
         bits -= bits_to_write;
@@ -1829,9 +1874,10 @@ bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
             bw->write(bw, bits_to_write, buffer);
             bw_etry(bw);
         } else {
+            /*free reference to value before re-raising exception*/
             bw_etry(bw);
-            PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-            return 1;
+            Py_DECREF(value);
+            bw_abort(bw);
         }
 
         /*shift out the written bits*/
@@ -1864,19 +1910,50 @@ is_positive(PyObject *value)
 }
 
 static int
-bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
+bwpy_write_signed(BitstreamWriter *bw, unsigned bits, PyObject *value)
 {
-    const int positive = is_positive(value);
+    /*ensure value fits in range*/
+    if (!bw_validate_signed_range(bits, value))
+        return 1;
 
-    /*write sign bit first*/
     if (!setjmp(*bw_try(bw))) {
-        bw->write(bw, 1, positive ? 0 : 1);
-        bw_etry(bw);
+        if (bits <= (sizeof(int) * 8)) {
+            /*value should fit in a signed int*/
+            const long i_value = PyInt_AsLong(value);
+            bw->write_signed(bw, bits, (int)i_value);
+            bw_etry(bw);
+            return 0;
+        } else if (bits <= (sizeof(int64_t) * 8)) {
+            /*value should fit in an int64_t*/
+            const long long i_value = PyLong_AsLongLong(value);
+            bw->write_signed_64(bw, bits, (int64_t)i_value);
+            bw_etry(bw);
+            return 0;
+        } else {
+            /*value is too large, so punt to (slow) bigint-based writer*/
+            int result;
+            if (bw->endianness == BS_BIG_ENDIAN) {
+                result = bwpy_write_signed_be(bw, bits, value);
+            } else {
+                result = bwpy_write_signed_le(bw, bits, value);
+            }
+            bw_etry(bw);
+            return result;
+        }
     } else {
         bw_etry(bw);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return 1;
     }
+}
+
+static int
+bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
+{
+    const int positive = is_positive(value);
+
+    /*write sign bit first*/
+    bw->write(bw, 1, positive ? 0 : 1);
 
     if (positive) {
         /*positive number*/
@@ -1934,15 +2011,8 @@ bwpy_write_signed_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
     }
 
     /*write sign bit last*/
-    if (!setjmp(*bw_try(bw))) {
-        bw->write(bw, 1, positive ? 0 : 1);
-        bw_etry(bw);
-        return 0;
-    } else {
-        bw_etry(bw);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
-        return 1;
-    }
+    bw->write(bw, 1, positive ? 0 : 1);
+    return 0;
 }
 
 void
@@ -1994,7 +2064,7 @@ BitstreamWriter_write(bitstream_BitstreamWriter *self, PyObject *args)
 
     if (!bw_validate_unsigned_range((unsigned)count, value)) {
         return NULL;
-    } else if (self->write_unsigned(self->bitstream, (unsigned)count, value)) {
+    } else if (bwpy_write_unsigned(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2017,7 +2087,7 @@ BitstreamWriter_write_signed(bitstream_BitstreamWriter *self, PyObject *args)
 
     if (!bw_validate_signed_range((unsigned)count, value)) {
         return NULL;
-    } else if (self->write_signed(self->bitstream, (unsigned)count, value)) {
+    } else if (bwpy_write_signed(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2145,8 +2215,6 @@ BitstreamWriter_build(bitstream_BitstreamWriter *self, PyObject *args)
     } else if ((iterator = PyObject_GetIter(values)) == NULL) {
         return NULL;
     } else if (bitstream_build(self->bitstream,
-                               self->write_unsigned,
-                               self->write_signed,
                                format,
                                iterator)) {
         Py_DECREF(iterator);
@@ -2191,14 +2259,6 @@ BitstreamWriter_set_endianness(bitstream_BitstreamWriter *self,
     self->bitstream->set_endianness(
                     self->bitstream,
                     little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-
-    if (little_endian) {
-        self->write_unsigned = bwpy_write_unsigned_le;
-        self->write_signed = bwpy_write_signed_le;
-    } else {
-        self->write_unsigned = bwpy_write_unsigned_be;
-        self->write_signed = bwpy_write_signed_be;
-    }
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -2367,9 +2427,9 @@ BitstreamRecorder_write(bitstream_BitstreamRecorder *self,
 
     if (!bw_validate_unsigned_range((unsigned)count, value)) {
         return NULL;
-    } else if (self->write_unsigned((BitstreamWriter*)self->bitstream,
-                                    (unsigned)count,
-                                    value)) {
+    } else if (bwpy_write_unsigned((BitstreamWriter*)self->bitstream,
+                                   (unsigned)count,
+                                   value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2394,9 +2454,9 @@ BitstreamRecorder_write_signed(bitstream_BitstreamRecorder *self,
 
     if (!bw_validate_signed_range((unsigned)count, value)) {
         return NULL;
-    } else if (self->write_signed((BitstreamWriter*)self->bitstream,
-                                  (unsigned)count,
-                                  value)) {
+    } else if (bwpy_write_signed((BitstreamWriter*)self->bitstream,
+                                 (unsigned)count,
+                                 value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2536,8 +2596,6 @@ BitstreamRecorder_build(bitstream_BitstreamRecorder *self,
     } else if ((iterator = PyObject_GetIter(values)) == NULL) {
         return NULL;
     } else if (bitstream_build((BitstreamWriter*)self->bitstream,
-                               self->write_unsigned,
-                               self->write_signed,
                                format,
                                iterator)) {
         Py_DECREF(iterator);
@@ -2584,14 +2642,6 @@ BitstreamRecorder_set_endianness(bitstream_BitstreamRecorder *self,
 
     writer->set_endianness(writer,
                            little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-
-    if (little_endian) {
-        self->write_unsigned = bwpy_write_unsigned_le;
-        self->write_signed = bwpy_write_signed_le;
-    } else {
-        self->write_unsigned = bwpy_write_unsigned_be;
-        self->write_signed = bwpy_write_signed_be;
-    }
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -2893,14 +2943,6 @@ BitstreamRecorder_init(bitstream_BitstreamRecorder *self,
     self->bitstream = bw_open_recorder(little_endian ?
                                        BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
-    if (little_endian) {
-        self->write_unsigned = bwpy_write_unsigned_le;
-        self->write_signed = bwpy_write_signed_le;
-    } else {
-        self->write_unsigned = bwpy_write_unsigned_be;
-        self->write_signed = bwpy_write_signed_be;
-    }
-
     return 0;
 }
 
@@ -3015,13 +3057,7 @@ bitstream_parse_func(PyObject *dummy, PyObject *args)
                 (unsigned)data_length,
                 is_little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
         PyObject* values = PyList_New(0);
-        if (!bitstream_parse(stream,
-                             is_little_endian ?
-                             brpy_read_unsigned_le : brpy_read_unsigned_be,
-                             is_little_endian ?
-                             brpy_read_signed_le : brpy_read_signed_be,
-                             format,
-                             values)) {
+        if (!bitstream_parse(stream, format, values)) {
             stream->close(stream);
             return values;
         } else {
@@ -3046,20 +3082,12 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
         return NULL;
     } else {
         BitstreamRecorder* stream;
-        write_object_f write_unsigned;
-        write_object_f write_signed;
         if (is_little_endian) {
             stream = bw_open_recorder(BS_LITTLE_ENDIAN);
-            write_unsigned = bwpy_write_unsigned_le;
-            write_signed = bwpy_write_signed_le;
         } else {
             stream = bw_open_recorder(BS_BIG_ENDIAN);
-            write_unsigned = bwpy_write_unsigned_be;
-            write_signed = bwpy_write_signed_be;
         }
         if (!bitstream_build((BitstreamWriter*)stream,
-                             write_unsigned,
-                             write_signed,
                              format,
                              iterator)) {
             PyObject* data = PyBytes_FromStringAndSize(
@@ -3078,8 +3106,6 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
 
 int
 bitstream_parse(BitstreamReader* stream,
-                read_object_f read_unsigned,
-                read_object_f read_signed,
                 const char* format,
                 PyObject* values)
 {
@@ -3094,7 +3120,7 @@ bitstream_parse(BitstreamReader* stream,
         case BS_INST_UNSIGNED:
         case BS_INST_UNSIGNED64:
             for (; times; times--) {
-                PyObject *py_value = read_unsigned(stream, size);
+                PyObject *py_value = brpy_read_unsigned(stream, size);
                 if (py_value != NULL) {
                     /*append read object to list*/
                     const int append_ok = PyList_Append(values, py_value);
@@ -3116,7 +3142,7 @@ bitstream_parse(BitstreamReader* stream,
                 return 1;
             }
             for (; times; times--) {
-                PyObject *py_value = read_signed(stream, size);
+                PyObject *py_value = brpy_read_signed(stream, size);
                 if (py_value != NULL) {
                     /*append read object to list*/
                     const int append_ok = PyList_Append(values, py_value);
@@ -3186,8 +3212,6 @@ bitstream_parse(BitstreamReader* stream,
 
 int
 bitstream_build(BitstreamWriter* stream,
-                write_object_f write_unsigned,
-                write_object_f write_signed,
                 const char* format,
                 PyObject* iterator)
 {
@@ -3243,7 +3267,7 @@ bitstream_build(BitstreamWriter* stream,
                     }
 
                     /*perform actual write*/
-                    result = write_unsigned(stream, size, py_value);
+                    result = bwpy_write_unsigned(stream, size, py_value);
                     Py_DECREF(py_value);
                     if (result) {
                         Py_DECREF(min_value);
@@ -3306,7 +3330,7 @@ bitstream_build(BitstreamWriter* stream,
                     }
 
                     /*perform actual write*/
-                    result = write_signed(stream, size, py_value);
+                    result = bwpy_write_signed(stream, size, py_value);
                     Py_DECREF(py_value);
                     if (result) {
                         Py_DECREF(min_value);
