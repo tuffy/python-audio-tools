@@ -40,7 +40,7 @@
 #endif
 
 /*a jump table state value which must be at least 9 bits wide*/
-typedef int state_t;
+typedef uint16_t state_t;
 
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_BUFFER, BR_EXTERNAL} br_type;
@@ -582,17 +582,11 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit);
 
 /*bs->set_endianness(bs, endianness)  methods*/
 void
-br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness);
+br_set_endianness_f(BitstreamReader *bs, bs_endianness endianness);
 void
-br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness);
+br_set_endianness_b(BitstreamReader *bs, bs_endianness endianness);
 void
-br_set_endianness_b_be(BitstreamReader *bs, bs_endianness endianness);
-void
-br_set_endianness_b_le(BitstreamReader *bs, bs_endianness endianness);
-void
-br_set_endianness_e_be(BitstreamReader *bs, bs_endianness endianness);
-void
-br_set_endianness_e_le(BitstreamReader *bs, bs_endianness endianness);
+br_set_endianness_e(BitstreamReader *bs, bs_endianness endianness);
 void
 br_set_endianness_c(BitstreamReader *bs, bs_endianness endianness);
 
@@ -885,6 +879,17 @@ struct bw_pos_stack {
                        unsigned int count,                  \
                        int64_t value);                      \
                                                             \
+    /*writes the given value as "count" number of unsigned bits*/ \
+    void                                                    \
+    (*write_bigint)(struct BitstreamWriter_s* bs,           \
+                    unsigned int count,                     \
+                    const mpz_t value);                     \
+                                                            \
+    void                                                    \
+    (*write_signed_bigint)(struct BitstreamWriter_s* bs,    \
+                           unsigned int count,              \
+                           const mpz_t value);              \
+                                                            \
     /*writes "value" number of non stop bits to the current stream*/ \
     /*followed by a single stop bit*/                                \
     void                                                    \
@@ -912,38 +917,38 @@ struct bw_pos_stack {
                    const uint8_t* bytes,                    \
                    unsigned int byte_count);                \
                                                             \
-    /*takes a format string,*/                                               \
+    /*takes a format string,*/                              \
     /*peforms the indicated write operations with prefixed numeric lengths*/ \
-    /*using the values from the given arguments*/                            \
-    /*where the format actions are*/                                         \
-                                                                             \
-    /*| format | action          | argument     |*/                          \
-    /*|--------+-----------------+--------------|*/                          \
-    /*| u      | write           | unsigned int |*/                          \
-    /*| s      | write_signed    | int          |*/                          \
-    /*| U      | write_64        | uint64_t     |*/                          \
-    /*| S      | write_signed_64 | int64_t      |*/                          \
-    /*| p      | skip            | N/A          |*/                          \
-    /*| P      | skip_bytes      | N/A          |*/                          \
-    /*| b      | write_bytes     | uint8_t*     |*/                          \
-    /*| a      | byte_align      | N/A          |*/                          \
-                                                                             \
-    /*For example, one could write a 32 bit header as follows:*/             \
-                                                                             \
-    /*unsigned int arg1; //  2 unsigned bits*/                               \
-    /*unsigned int arg2; //  3 unsigned bits*/                               \
-    /*int arg3;          //  5 signed bits */                                \
-    /*unsigned int arg4; //  3 unsigned bits*/                               \
-    /*uint64_t arg5;     // 19 unsigned bits*/                               \
-                                                                             \
+    /*using the values from the given arguments*/           \
+    /*where the format actions are*/                        \
+                                                            \
+    /*| format | action          | argument     |*/         \
+    /*|--------+-----------------+--------------|*/         \
+    /*| u      | write           | unsigned int |*/         \
+    /*| s      | write_signed    | int          |*/         \
+    /*| U      | write_64        | uint64_t     |*/         \
+    /*| S      | write_signed_64 | int64_t      |*/         \
+    /*| p      | skip            | N/A          |*/         \
+    /*| P      | skip_bytes      | N/A          |*/         \
+    /*| b      | write_bytes     | uint8_t*     |*/         \
+    /*| a      | byte_align      | N/A          |*/         \
+                                                            \
+    /*For example, one could write a 32 bit header as follows:*/ \
+                                                            \
+    /*unsigned int arg1; //  2 unsigned bits*/              \
+    /*unsigned int arg2; //  3 unsigned bits*/              \
+    /*int arg3;          //  5 signed bits */               \
+    /*unsigned int arg4; //  3 unsigned bits*/              \
+    /*uint64_t arg5;     // 19 unsigned bits*/              \
+                                                            \
     /*writer->build(writer, "2u3u5s3u19U", arg1, arg2, arg3, arg4, arg5);*/  \
-                                                                             \
-    /*the "*" format multiplies the next format by the given amount*/        \
-    /*For example, to write 4, signed 8 bit values:*/                        \
-                                                                             \
-    /*reader->parse(reader, "4* 8s", arg1, arg2, arg3, arg4);*/              \
-                                                                             \
-    /*this is designed to perform the inverse of BitstreamReader->parse()*/  \
+                                                            \
+    /*the "*" format multiplies the next format by the given amount*/ \
+    /*For example, to write 4, signed 8 bit values:*/       \
+                                                            \
+    /*reader->parse(reader, "4* 8s", arg1, arg2, arg3, arg4);*/ \
+                                                            \
+    /*this is designed to perform the inverse of BitstreamReader->parse()*/ \
     void                                                    \
     (*build)(struct BitstreamWriter_s* bs,                  \
              const char* format, ...);                      \
@@ -1210,6 +1215,52 @@ bw_write_signed_bits64_c(BitstreamWriter* bs, unsigned int count,
                          int64_t value);
 
 
+/*bs->write_bigint(bs, count, value)  methods*/
+void
+bw_write_bits_bigint_f_be(BitstreamWriter* bs,
+                          unsigned int count,
+                          const mpz_t value);
+void
+bw_write_bits_bigint_f_le(BitstreamWriter* bs,
+                          unsigned int count,
+                          const mpz_t value);
+void
+bw_write_bits_bigint_e_be(BitstreamWriter* bs,
+                          unsigned int count,
+                          const mpz_t value);
+void
+bw_write_bits_bigint_e_le(BitstreamWriter* bs,
+                          unsigned int count,
+                          const mpz_t value);
+void
+bw_write_bits_bigint_r_be(BitstreamWriter* bs,
+                          unsigned int count,
+                          const mpz_t value);
+void
+bw_write_bits_bigint_r_le(BitstreamWriter* bs,
+                          unsigned int count,
+                          const mpz_t value);
+void
+bw_write_bits_bigint_c(BitstreamWriter* bs,
+                       unsigned int count,
+                       const mpz_t value);
+
+
+/*bs->write_signed_bigint(bs, count, value)  methods*/
+void
+bw_write_signed_bits_bigint_f_e_r_be(BitstreamWriter* bs,
+                                     unsigned int count,
+                                     const mpz_t value);
+void
+bw_write_signed_bits_bigint_f_e_r_le(BitstreamWriter* bs,
+                                     unsigned int count,
+                                     const mpz_t value);
+void
+bw_write_signed_bits_bigint_c(BitstreamWriter* bs,
+                              unsigned int count,
+                              const mpz_t value);
+
+
 /*bs->write_unary(bs, stop_bit, value)  methods*/
 void
 bw_write_unary_f_e_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
@@ -1219,17 +1270,11 @@ bw_write_unary_c(BitstreamWriter* bs, int stop_bit, unsigned int value);
 
 /*bs->set_endianness(bs, endianness)  methods*/
 void
-bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness);
+bw_set_endianness_f(BitstreamWriter* bs, bs_endianness endianness);
 void
-bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness);
+bw_set_endianness_e(BitstreamWriter* bs, bs_endianness endianness);
 void
-bw_set_endianness_e_be(BitstreamWriter* bs, bs_endianness endianness);
-void
-bw_set_endianness_e_le(BitstreamWriter* bs, bs_endianness endianness);
-void
-bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness);
-void
-bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness);
+bw_set_endianness_r(BitstreamWriter* bs, bs_endianness endianness);
 void
 bw_set_endianness_c(BitstreamWriter* bs, bs_endianness endianness);
 

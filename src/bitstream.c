@@ -39,22 +39,21 @@ struct read_unary {
     state_t state;
 };
 
-const struct read_bits read_bits_table_be[0x200][8] =
+const static struct read_bits read_bits_table_be[0x200][8] =
 #include "read_bits_table_be.h"
     ;
 
-const struct read_bits read_bits_table_le[0x200][8] =
+const static struct read_bits read_bits_table_le[0x200][8] =
 #include "read_bits_table_le.h"
     ;
 
-const struct read_unary read_unary_table_be[0x200][2] =
+const static struct read_unary read_unary_table_be[0x200][2] =
 #include "read_unary_table_be.h"
     ;
 
-const struct read_unary read_unary_table_le[0x200][2] =
+const static struct read_unary read_unary_table_le[0x200][2] =
 #include "read_unary_table_le.h"
     ;
-
 
 /*returns a base BitstreamReader with many fields filled in
   and the rest to be filled in by the final implementation*/
@@ -82,7 +81,6 @@ __base_bitstreamreader__(bs_endianness endianness)
         bs->unread = br_unread_bit_be;
         /*bs->read_unary = ???*/
         /*bs->skip_unary = ???*/
-        /*bs->set_endianness = ???*/
         break;
     case BS_LITTLE_ENDIAN:
         /*bs->read = ???*/
@@ -95,10 +93,10 @@ __base_bitstreamreader__(bs_endianness endianness)
         bs->unread = br_unread_bit_le;
         /*bs->read_unary = ???*/
         /*bs->skip_unary = ???*/
-        /*bs->set_endianness = ???*/
         break;
     }
 
+    /*bs->set_endianness = ???*/
     /*bs->read_huffman_code = ???*/
     /*bs->read_bytes = ???*/
     bs->skip_bytes = br_skip_bytes;
@@ -140,7 +138,6 @@ br_open(FILE *f, bs_endianness endianness)
         bs->skip = br_skip_bits_f_be;
         bs->read_unary = br_read_unary_f_be;
         bs->skip_unary = br_skip_unary_f_be;
-        bs->set_endianness = br_set_endianness_f_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_f_le;
@@ -149,10 +146,10 @@ br_open(FILE *f, bs_endianness endianness)
         bs->skip = br_skip_bits_f_le;
         bs->read_unary = br_read_unary_f_le;
         bs->skip_unary = br_skip_unary_f_le;
-        bs->set_endianness = br_set_endianness_f_le;
         break;
     }
 
+    bs->set_endianness = br_set_endianness_f;
     bs->read_huffman_code = br_read_huffman_code_f;
     bs->read_bytes = br_read_bytes_f;
 
@@ -186,7 +183,6 @@ br_open_buffer(const uint8_t *buffer,
         bs->skip = br_skip_bits_b_be;
         bs->read_unary = br_read_unary_b_be;
         bs->skip_unary = br_skip_unary_b_be;
-        bs->set_endianness = br_set_endianness_b_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_b_le;
@@ -195,10 +191,10 @@ br_open_buffer(const uint8_t *buffer,
         bs->skip = br_skip_bits_b_le;
         bs->read_unary = br_read_unary_b_le;
         bs->skip_unary = br_skip_unary_b_le;
-        bs->set_endianness = br_set_endianness_b_le;
         break;
     }
 
+    bs->set_endianness = br_set_endianness_b;
     bs->read_huffman_code = br_read_huffman_code_b;
     bs->read_bytes = br_read_bytes_b;
 
@@ -244,7 +240,6 @@ br_open_external(void* user_data,
         bs->skip = br_skip_bits_e_be;
         bs->read_unary = br_read_unary_e_be;
         bs->skip_unary = br_skip_unary_e_be;
-        bs->set_endianness = br_set_endianness_e_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_e_le;
@@ -253,10 +248,10 @@ br_open_external(void* user_data,
         bs->skip = br_skip_bits_e_le;
         bs->read_unary = br_read_unary_e_le;
         bs->skip_unary = br_skip_unary_e_le;
-        bs->set_endianness = br_set_endianness_e_le;
         break;
     }
 
+    bs->set_endianness = br_set_endianness_e;
     bs->read_huffman_code = br_read_huffman_code_e;
     bs->read_bytes = br_read_bytes_e;
 
@@ -851,122 +846,97 @@ br_skip_unary_c(BitstreamReader* bs, int stop_bit)
 
 
 static void
-__br_set_endianness_be__(BitstreamReader* bs, bs_endianness endianness)
+__br_set_endianness__(BitstreamReader* bs, bs_endianness endianness)
 {
     bs->endianness = endianness;
     bs->state = 0;
-    if (endianness == BS_LITTLE_ENDIAN) {
+    switch (endianness) {
+    case BS_LITTLE_ENDIAN:
         bs->read_signed = br_read_signed_bits_le;
         bs->read_signed_64 = br_read_signed_bits64_le;
         bs->read_signed_bigint = br_read_signed_bits_bigint_le;
         bs->unread = br_unread_bit_le;
-    }
-}
-
-static void
-__br_set_endianness_le__(BitstreamReader* bs, bs_endianness endianness)
-{
-
-    bs->endianness = endianness;
-    bs->state = 0;
-    if (endianness == BS_BIG_ENDIAN) {
+        break;
+    case BS_BIG_ENDIAN:
         bs->read_signed = br_read_signed_bits_be;
         bs->read_signed_64 = br_read_signed_bits64_be;
         bs->read_signed_bigint = br_read_signed_bits_bigint_be;
         bs->unread = br_unread_bit_be;
+        break;
     }
 }
 
 void
-br_set_endianness_f_be(BitstreamReader *bs, bs_endianness endianness)
+br_set_endianness_f(BitstreamReader *bs, bs_endianness endianness)
 {
-    __br_set_endianness_be__(bs, endianness);
-    if (endianness == BS_LITTLE_ENDIAN) {
+    __br_set_endianness__(bs, endianness);
+    switch (endianness) {
+    case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_f_le;
         bs->read_64 = br_read_bits64_f_le;
         bs->read_bigint = br_read_bits_bigint_f_le;
         bs->skip = br_skip_bits_f_le;
         bs->read_unary = br_read_unary_f_le;
         bs->skip_unary = br_skip_unary_f_le;
-        bs->set_endianness = br_set_endianness_f_le;
-    }
-}
-
-void
-br_set_endianness_f_le(BitstreamReader *bs, bs_endianness endianness)
-{
-    __br_set_endianness_le__(bs, endianness);
-    if (endianness == BS_BIG_ENDIAN) {
+        break;
+    case BS_BIG_ENDIAN:
         bs->read = br_read_bits_f_be;
         bs->read_64 = br_read_bits64_f_be;
         bs->read_bigint = br_read_bits_bigint_f_be;
         bs->skip = br_skip_bits_f_be;
         bs->read_unary = br_read_unary_f_be;
         bs->skip_unary = br_skip_unary_f_be;
-        bs->set_endianness = br_set_endianness_f_be;
+        break;
     }
 }
 
 void
-br_set_endianness_b_be(BitstreamReader *bs, bs_endianness endianness)
+br_set_endianness_b(BitstreamReader *bs, bs_endianness endianness)
 {
-    __br_set_endianness_be__(bs, endianness);
-    if (endianness == BS_LITTLE_ENDIAN) {
+    __br_set_endianness__(bs, endianness);
+    switch (endianness) {
+    case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_b_le;
         bs->read_64 = br_read_bits64_b_le;
         bs->read_bigint = br_read_bits_bigint_b_le;
         bs->skip = br_skip_bits_b_le;
         bs->read_unary = br_read_unary_b_le;
         bs->skip_unary = br_skip_unary_b_le;
-        bs->set_endianness = br_set_endianness_b_le;
-    }
-}
-
-void
-br_set_endianness_b_le(BitstreamReader *bs, bs_endianness endianness)
-{
-    __br_set_endianness_le__(bs, endianness);
-    if (endianness == BS_BIG_ENDIAN) {
+        break;
+    case BS_BIG_ENDIAN:
         bs->read = br_read_bits_b_be;
         bs->read_64 = br_read_bits64_b_be;
         bs->read_bigint = br_read_bits_bigint_b_be;
         bs->skip = br_skip_bits_b_be;
         bs->read_unary = br_read_unary_b_be;
         bs->skip_unary = br_skip_unary_b_be;
-        bs->set_endianness = br_set_endianness_b_be;
+        break;
     }
 }
 
 void
-br_set_endianness_e_be(BitstreamReader *bs, bs_endianness endianness)
+br_set_endianness_e(BitstreamReader *bs, bs_endianness endianness)
 {
-    __br_set_endianness_be__(bs, endianness);
-    if (endianness == BS_LITTLE_ENDIAN) {
+    __br_set_endianness__(bs, endianness);
+    switch (endianness) {
+    case BS_LITTLE_ENDIAN:
         bs->read = br_read_bits_e_le;
         bs->read_64 = br_read_bits64_e_le;
         bs->read_bigint = br_read_bits_bigint_e_le;
         bs->skip = br_skip_bits_e_le;
         bs->read_unary = br_read_unary_e_le;
         bs->skip_unary = br_skip_unary_e_le;
-        bs->set_endianness = br_set_endianness_e_le;
-    }
-}
-
-void
-br_set_endianness_e_le(BitstreamReader *bs, bs_endianness endianness)
-{
-    __br_set_endianness_le__(bs, endianness);
-    if (endianness == BS_BIG_ENDIAN) {
+        break;
+    case BS_BIG_ENDIAN:
         bs->read = br_read_bits_e_be;
         bs->read_64 = br_read_bits64_e_be;
         bs->read_bigint = br_read_bits_bigint_e_be;
         bs->skip = br_skip_bits_e_be;
         bs->read_unary = br_read_unary_e_be;
         bs->skip_unary = br_skip_unary_e_be;
-        bs->set_endianness = br_set_endianness_e_be;
+        break;
     }
 }
-
 
 void
 br_set_endianness_c(BitstreamReader *bs, bs_endianness endianness)
@@ -1591,17 +1561,20 @@ bw_open(FILE *f, bs_endianness endianness)
         bs->write_signed = bw_write_signed_bits_f_e_r_be;
         bs->write_64 = bw_write_bits64_f_be;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
-        bs->set_endianness = bw_set_endianness_f_be;
+        bs->write_bigint = bw_write_bits_bigint_f_be;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_f_le;
         bs->write_signed = bw_write_signed_bits_f_e_r_le;
         bs->write_64 = bw_write_bits64_f_le;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
-        bs->set_endianness = bw_set_endianness_f_le;
+        bs->write_bigint = bw_write_bits_bigint_f_le;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_le;
         break;
     }
 
+    bs->set_endianness = bw_set_endianness_f;
     bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
     bs->write_bytes = bw_write_bytes_f;
@@ -1661,17 +1634,20 @@ bw_open_external(void* user_data,
         bs->write_signed = bw_write_signed_bits_f_e_r_be;
         bs->write_64 = bw_write_bits64_e_be;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
-        bs->set_endianness = bw_set_endianness_e_be;
+        bs->write_bigint = bw_write_bits_bigint_e_be;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_e_le;
         bs->write_signed = bw_write_signed_bits_f_e_r_le;
         bs->write_64 = bw_write_bits64_e_le;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
-        bs->set_endianness = bw_set_endianness_e_le;
+        bs->write_bigint = bw_write_bits_bigint_e_le;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_le;
         break;
     }
 
+    bs->set_endianness = bw_set_endianness_e;
     bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
     bs->write_bytes = bw_write_bytes_e;
@@ -1715,17 +1691,20 @@ bw_open_recorder(bs_endianness endianness)
         bs->write_signed = bw_write_signed_bits_f_e_r_be;
         bs->write_64 = bw_write_bits64_r_be;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
-        bs->set_endianness = bw_set_endianness_r_be;
+        bs->write_bigint = bw_write_bits_bigint_r_be;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_r_le;
         bs->write_signed = bw_write_signed_bits_f_e_r_le;
         bs->write_64 = bw_write_bits64_r_le;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
-        bs->set_endianness = bw_set_endianness_r_le;
+        bs->write_bigint = bw_write_bits_bigint_r_le;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_le;
         break;
     }
 
+    bs->set_endianness = bw_set_endianness_r;
     bs->write_unary = bw_write_unary_f_e_r;
     bs->write_huffman_code = bw_write_huffman;
     bs->write_bytes = bw_write_bytes_r;
@@ -1759,6 +1738,8 @@ bw_open_recorder(bs_endianness endianness)
     FUNC_NAME(BitstreamWriter* bs, unsigned int count, VALUE_TYPE value) \
     {                                                                   \
         /* assert(value < (1l << count));  */                           \
+        register unsigned buffer = bs->buffer;                          \
+        register unsigned buffer_size = bs->buffer_size;                \
                                                                         \
         while (count > 0) {                                             \
             /*chop off up to 8 bits to write at a time*/                \
@@ -1767,16 +1748,16 @@ bw_open_recorder(bs_endianness endianness)
                 value >> (count - bits_to_write);                       \
                                                                         \
             /*new data is added to the buffer least-significant first*/ \
-            bs->buffer = (unsigned int)((bs->buffer << bits_to_write) | \
-                                        value_to_write);                \
-            bs->buffer_size += bits_to_write;                           \
+            buffer = (unsigned int)((buffer << bits_to_write) |         \
+                                    value_to_write);                    \
+            buffer_size += bits_to_write;                               \
                                                                         \
             /*if buffer is over 8 bits,*/                               \
             /*extract bits most-significant first*/                     \
             /*and remove them from the buffer*/                         \
-            if (bs->buffer_size >= 8) {                                 \
+            if (buffer_size >= 8) {                                     \
                 const unsigned byte =                                   \
-                    (bs->buffer >> (bs->buffer_size - 8)) & 0xFF;       \
+                    (buffer >> (buffer_size - 8)) & 0xFF;               \
                 if (BYTE_FUNC(byte, BYTE_FUNC_ARG) != EOF) {            \
                     struct bs_callback* callback;                       \
                                                                         \
@@ -1786,8 +1767,10 @@ bw_open_recorder(bs_endianness endianness)
                          callback->callback((uint8_t)byte,              \
                                             callback->data);            \
                                                                         \
-                    bs->buffer_size -= 8;                               \
+                    buffer_size -= 8;                                   \
                 } else {                                                \
+                    bs->buffer = buffer;                                \
+                    bs->buffer_size = buffer_size;                      \
                     bw_abort(bs);                                       \
                 }                                                       \
             }                                                           \
@@ -1796,6 +1779,8 @@ bw_open_recorder(bs_endianness endianness)
             value -= (value_to_write << (count - bits_to_write));       \
             count -= bits_to_write;                                     \
         }                                                               \
+        bs->buffer = buffer;                                            \
+        bs->buffer_size = buffer_size;                                  \
     }
 
 #define FUNC_WRITE_BITS_LE(FUNC_NAME, VALUE_TYPE, BYTE_FUNC, BYTE_FUNC_ARG) \
@@ -1803,6 +1788,8 @@ bw_open_recorder(bs_endianness endianness)
     FUNC_NAME(BitstreamWriter* bs, unsigned int count, VALUE_TYPE value) \
     {                                                                   \
         /* assert(value < (int64_t)(1LL << count)); */                  \
+        register unsigned buffer = bs->buffer;                          \
+        register unsigned buffer_size = bs->buffer_size;                \
                                                                         \
         while (count > 0) {                                             \
             /*chop off up to 8 bits to write at a time*/                \
@@ -1811,15 +1798,14 @@ bw_open_recorder(bs_endianness endianness)
                 value & ((1 << bits_to_write) - 1);                     \
                                                                         \
             /*new data is added to the buffer most-significant first*/  \
-            bs->buffer |= (unsigned int)(value_to_write <<              \
-                                         bs->buffer_size);              \
-            bs->buffer_size += bits_to_write;                           \
+            buffer |= (unsigned int)(value_to_write << buffer_size);    \
+            buffer_size += bits_to_write;                               \
                                                                         \
             /*if buffer is over 8 bits,*/                               \
             /*extract bits least-significant first*/                    \
             /*and remove them from the buffer*/                         \
-            if (bs->buffer_size >= 8) {                                 \
-                const unsigned byte = bs->buffer & 0xFF;                \
+            if (buffer_size >= 8) {                                     \
+                const unsigned byte = buffer & 0xFF;                    \
                 if (BYTE_FUNC(byte, BYTE_FUNC_ARG) != EOF) {            \
                     struct bs_callback* callback;                       \
                                                                         \
@@ -1828,9 +1814,11 @@ bw_open_recorder(bs_endianness endianness)
                          callback = callback->next)                     \
                          callback->callback((uint8_t)byte,              \
                                             callback->data);            \
-                    bs->buffer >>= 8;                                   \
-                    bs->buffer_size -= 8;                               \
+                    buffer >>= 8;                                       \
+                    buffer_size -= 8;                                   \
                 } else {                                                \
+                    bs->buffer = buffer;                                \
+                    bs->buffer_size = buffer_size;                      \
                     bw_abort(bs);                                       \
                 }                                                       \
             }                                                           \
@@ -1839,6 +1827,8 @@ bw_open_recorder(bs_endianness endianness)
             value >>= bits_to_write;                                    \
             count -= bits_to_write;                                     \
         }                                                               \
+        bs->buffer = buffer;                                            \
+        bs->buffer_size = buffer_size;                                  \
     }
 
 FUNC_WRITE_BITS_BE(bw_write_bits_f_be,
@@ -1961,6 +1951,254 @@ bw_write_signed_bits64_c(BitstreamWriter* bs, unsigned int count,
     bw_abort(bs);
 }
 
+#define FUNC_WRITE_BITS_BIGINT_BE(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG)  \
+    void                                                                \
+    FUNC_NAME(BitstreamWriter* bs, unsigned int count, const mpz_t value) \
+    {                                                                   \
+        register unsigned buffer = bs->buffer;                          \
+        register unsigned buffer_size = bs->buffer_size;                \
+        mpz_t temp_value;                                               \
+        mpz_t value_to_write;                                           \
+        mpz_init_set(temp_value, value);                                \
+        mpz_init(value_to_write);                                       \
+                                                                        \
+        assert(mpz_sgn(value) >= 0);                                    \
+        assert(mpz_sizeinbase(value, 2) <= count);                      \
+                                                                        \
+        while (count > 0) {                                             \
+            /*chop off up to 8 bits to write at a time*/                \
+            const int bits_to_write = count > 8 ? 8 : count;            \
+            /*value_to_write = temp_value >> (count - bits_to_write)*/  \
+            mpz_fdiv_q_2exp(value_to_write, temp_value,                 \
+                            count - bits_to_write);                     \
+                                                                        \
+            /*new data is added to the buffer least-significant first*/ \
+            buffer = (unsigned int)((buffer << bits_to_write) |         \
+                                    mpz_get_ui(value_to_write));        \
+            buffer_size += bits_to_write;                               \
+                                                                        \
+            /*if buffer is over 8 bits,*/                               \
+            /*extract bits most-significant first*/                     \
+            /*and remove them from the buffer*/                         \
+            if (buffer_size >= 8) {                                     \
+                const unsigned byte =                                   \
+                    (buffer >> (buffer_size - 8)) & 0xFF;               \
+                if (BYTE_FUNC(byte, BYTE_FUNC_ARG) != EOF) {            \
+                    struct bs_callback* callback;                       \
+                                                                        \
+                    for (callback = bs->callbacks;                      \
+                         callback != NULL;                              \
+                         callback = callback->next)                     \
+                         callback->callback((uint8_t)byte,              \
+                                            callback->data);            \
+                                                                        \
+                    buffer_size -= 8;                                   \
+                } else {                                                \
+                    bs->buffer = buffer;                                \
+                    bs->buffer_size = buffer_size;                      \
+                    mpz_clear(temp_value);                              \
+                    mpz_clear(value_to_write);                          \
+                    bw_abort(bs);                                       \
+                }                                                       \
+            }                                                           \
+                                                                        \
+            /*decrement the count and value*/                           \
+                                                                        \
+            /*value_to_write <<= (count - bits_to_write)*/              \
+            mpz_mul_2exp(value_to_write, value_to_write,                \
+                         count - bits_to_write);                        \
+            /*temp_value -= value_to_write*/                            \
+            mpz_sub(temp_value, temp_value, value_to_write);            \
+                                                                        \
+            count -= bits_to_write;                                     \
+        }                                                               \
+        bs->buffer = buffer;                                            \
+        bs->buffer_size = buffer_size;                                  \
+        mpz_clear(temp_value);                                          \
+        mpz_clear(value_to_write);                                      \
+    }
+FUNC_WRITE_BITS_BIGINT_BE(bw_write_bits_bigint_f_be, fputc,
+                          bs->output.file)
+FUNC_WRITE_BITS_BIGINT_BE(bw_write_bits_bigint_e_be, ext_putc,
+                          bs->output.external)
+FUNC_WRITE_BITS_BIGINT_BE(bw_write_bits_bigint_r_be, bw_buf_putc,
+                          bs->output.recorder)
+
+#define FUNC_WRITE_BITS_BIGINT_LE(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG) \
+    void                                                               \
+    FUNC_NAME(BitstreamWriter* bs, unsigned int count, const mpz_t value) \
+    {                                                                  \
+        register unsigned buffer = bs->buffer;                          \
+        register unsigned buffer_size = bs->buffer_size;                \
+        mpz_t temp_value;                                               \
+        mpz_t value_to_write;                                           \
+        mpz_t bitmask;                                                  \
+        mpz_init_set(temp_value, value);                                \
+        mpz_init(value_to_write);                                       \
+        mpz_init(bitmask);                                              \
+                                                                        \
+        assert(mpz_sgn(value) >= 0);                                    \
+        assert(mpz_sizeinbase(value, 2) <= count);                      \
+                                                                        \
+        while (count > 0) {                                             \
+            /*chop off up to 8 bits to write at a time*/                \
+                                                                        \
+            const int bits_to_write = count > 8 ? 8 : count;            \
+            /*bitmask = 1*/                                             \
+            mpz_set_ui(bitmask, 1);                                     \
+            /*bitmask <<= bits_to_write*/                               \
+            mpz_mul_2exp(bitmask, bitmask, bits_to_write);              \
+            /*bitmask -= 1*/                                            \
+            mpz_sub_ui(bitmask, bitmask, 1);                            \
+            /*value_to_write = temp_value & bitmask*/                   \
+            mpz_and(value_to_write, temp_value, bitmask);               \
+                                                                        \
+            /*new data is added to the buffer most-significant first*/  \
+            buffer |= (unsigned int)(mpz_get_ui(value_to_write) <<      \
+                                     buffer_size);                      \
+            buffer_size += bits_to_write;                               \
+                                                                        \
+            /*if buffer is over 8 bits,*/                               \
+            /*extract bits least-significant first*/                    \
+            /*and remove them from the buffer*/                         \
+            if (buffer_size >= 8) {                                     \
+                const unsigned byte = buffer & 0xFF;                    \
+                if (BYTE_FUNC(byte, BYTE_FUNC_ARG) != EOF) {            \
+                    struct bs_callback* callback;                       \
+                                                                        \
+                    for (callback = bs->callbacks;                      \
+                         callback != NULL;                              \
+                         callback = callback->next)                     \
+                         callback->callback((uint8_t)byte,              \
+                                            callback->data);            \
+                    buffer >>= 8;                                       \
+                    buffer_size -= 8;                                   \
+                } else {                                                \
+                    bs->buffer = buffer;                                \
+                    bs->buffer_size = buffer_size;                      \
+                    mpz_clear(temp_value);                              \
+                    mpz_clear(value_to_write);                          \
+                    mpz_clear(bitmask);                                 \
+                    bw_abort(bs);                                       \
+                }                                                       \
+            }                                                           \
+                                                                        \
+            /*decrement the count and value*/                           \
+                                                                        \
+            /*temp_value >>= bits_to_write*/                            \
+            mpz_fdiv_q_2exp(temp_value, temp_value, bits_to_write);     \
+                                                                        \
+            count -= bits_to_write;                                     \
+        }                                                               \
+        bs->buffer = buffer;                                            \
+        bs->buffer_size = buffer_size;                                  \
+        mpz_clear(temp_value);                                          \
+        mpz_clear(value_to_write);                                      \
+        mpz_clear(bitmask);                                             \
+    }
+FUNC_WRITE_BITS_BIGINT_LE(bw_write_bits_bigint_f_le, fputc,
+                          bs->output.file)
+FUNC_WRITE_BITS_BIGINT_LE(bw_write_bits_bigint_e_le, ext_putc,
+                          bs->output.external)
+FUNC_WRITE_BITS_BIGINT_LE(bw_write_bits_bigint_r_le, bw_buf_putc,
+                          bs->output.recorder)
+
+void
+bw_write_bits_bigint_c(BitstreamWriter* bs,
+                       unsigned int count,
+                       const mpz_t value)
+{
+    bw_abort(bs);
+}
+
+void
+bw_write_signed_bits_bigint_f_e_r_be(BitstreamWriter* bs,
+                                     unsigned int count,
+                                     const mpz_t value)
+{
+    if (mpz_sgn(value) >= 0) {
+        /*positive value*/
+        bs->write(bs, 1, 0);
+        bs->write_bigint(bs, count - 1, value);
+    } else {
+        /*negative value*/
+        mpz_t modifier;
+        mpz_t unsigned_value;
+        mpz_init(unsigned_value);
+
+        /*modifier = 1*/
+        mpz_init_set_ui(modifier, 1);
+
+        /*modifier <<= (count - 1)*/
+        mpz_mul_2exp(modifier, modifier, count - 1);
+
+        /*unsigned_value = modifier + value*/
+        mpz_add(unsigned_value, modifier, value);
+
+        mpz_clear(modifier);
+
+        if (!setjmp(*bw_try(bs))) {
+            bs->write(bs, 1, 1);
+            bs->write_bigint(bs, count - 1, unsigned_value);
+            bw_etry(bs);
+            mpz_clear(unsigned_value);
+        } else {
+            /*ensure unsigned_value is freed before re-raising error*/
+            bw_etry(bs);
+            mpz_clear(unsigned_value);
+            bw_abort(bs);
+        }
+    }
+}
+
+void
+bw_write_signed_bits_bigint_f_e_r_le(BitstreamWriter* bs,
+                                     unsigned int count,
+                                     const mpz_t value)
+{
+    if (mpz_sgn(value) >= 0) {
+        /*positive value*/
+        bs->write_bigint(bs, count - 1, value);
+        bs->write(bs, 1, 0);
+    } else {
+        /*negative value*/
+        mpz_t modifier;
+        mpz_t unsigned_value;
+        mpz_init(unsigned_value);
+
+        /*modifier = 1*/
+        mpz_init_set_ui(modifier, 1);
+
+        /*modifier <<= (count - 1)*/
+        mpz_mul_2exp(modifier, modifier, count - 1);
+
+        /*unsigned_value = modifier + value*/
+        mpz_add(unsigned_value, modifier, value);
+
+        mpz_clear(modifier);
+
+        if (!setjmp(*bw_try(bs))) {
+            bs->write_bigint(bs, count - 1, unsigned_value);
+            bs->write(bs, 1, 1);
+            bw_etry(bs);
+            mpz_clear(unsigned_value);
+        } else {
+            /*ensure unsigned_value is freed before re-raising error*/
+            bw_etry(bs);
+            mpz_clear(unsigned_value);
+            bw_abort(bs);
+        }
+    }
+}
+
+void
+bw_write_signed_bits_bigint_c(BitstreamWriter* bs,
+                              unsigned int count,
+                              const mpz_t value)
+{
+    bw_abort(bs);
+}
+
 
 #define UNARY_BUFFER_SIZE 30
 
@@ -1992,95 +2230,82 @@ bw_write_unary_c(BitstreamWriter* bs, int stop_bit, unsigned int value)
 
 
 void
-bw_set_endianness_f_be(BitstreamWriter* bs, bs_endianness endianness)
+bw_set_endianness_f(BitstreamWriter* bs, bs_endianness endianness)
 {
     bs->endianness = endianness;
     bs->buffer = 0;
     bs->buffer_size = 0;
-    if (endianness == BS_LITTLE_ENDIAN) {
+    switch (endianness) {
+    case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_f_le;
         bs->write_64 = bw_write_bits64_f_le;
         bs->write_signed = bw_write_signed_bits_f_e_r_le;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
-        bs->set_endianness = bw_set_endianness_f_le;
-    }
-}
-
-void
-bw_set_endianness_f_le(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->endianness = endianness;
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_BIG_ENDIAN) {
+        bs->write_bigint = bw_write_bits_bigint_f_le;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_le;
+        break;
+    case BS_BIG_ENDIAN:
         bs->write = bw_write_bits_f_be;
         bs->write_64 = bw_write_bits64_f_be;
         bs->write_signed = bw_write_signed_bits_f_e_r_be;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
-        bs->set_endianness = bw_set_endianness_f_be;
+        bs->write_bigint = bw_write_bits_bigint_f_be;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_be;
+        break;
     }
 }
 
 void
-bw_set_endianness_r_be(BitstreamWriter* bs, bs_endianness endianness)
+bw_set_endianness_e(BitstreamWriter* bs, bs_endianness endianness)
 {
     bs->endianness = endianness;
     bs->buffer = 0;
     bs->buffer_size = 0;
-    if (endianness == BS_LITTLE_ENDIAN) {
-        bs->write = bw_write_bits_r_le;
-        bs->write_64 = bw_write_bits64_r_le;
-        bs->write_signed = bw_write_signed_bits_f_e_r_le;
-        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
-        bs->set_endianness = bw_set_endianness_r_le;
-    }
-}
-
-void
-bw_set_endianness_r_le(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->endianness = endianness;
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_BIG_ENDIAN) {
-        bs->write = bw_write_bits_r_be;
-        bs->write_64 = bw_write_bits64_r_be;
-        bs->write_signed = bw_write_signed_bits_f_e_r_be;
-        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
-        bs->set_endianness = bw_set_endianness_r_be;
-    }
-}
-
-void
-bw_set_endianness_e_be(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->endianness = endianness;
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_LITTLE_ENDIAN) {
+    switch (endianness) {
+    case BS_LITTLE_ENDIAN:
         bs->write = bw_write_bits_e_le;
         bs->write_64 = bw_write_bits64_e_le;
         bs->write_signed = bw_write_signed_bits_f_e_r_le;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
-        bs->set_endianness = bw_set_endianness_e_le;
-    }
-}
-
-void
-bw_set_endianness_e_le(BitstreamWriter* bs, bs_endianness endianness)
-{
-    bs->endianness = endianness;
-    bs->buffer = 0;
-    bs->buffer_size = 0;
-    if (endianness == BS_BIG_ENDIAN) {
+        bs->write_bigint = bw_write_bits_bigint_e_le;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_le;
+        break;
+    case BS_BIG_ENDIAN:
         bs->write = bw_write_bits_e_be;
         bs->write_64 = bw_write_bits64_e_be;
         bs->write_signed = bw_write_signed_bits_f_e_r_be;
         bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
-        bs->set_endianness = bw_set_endianness_e_be;
+        bs->write_bigint = bw_write_bits_bigint_e_be;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_be;
+        break;
     }
 }
 
+void
+bw_set_endianness_r(BitstreamWriter* bs, bs_endianness endianness)
+{
+    bs->endianness = endianness;
+    bs->buffer = 0;
+    bs->buffer_size = 0;
+    switch (endianness) {
+    case BS_LITTLE_ENDIAN:
+        bs->write = bw_write_bits_r_le;
+        bs->write_64 = bw_write_bits64_r_le;
+        bs->write_signed = bw_write_signed_bits_f_e_r_le;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_le;
+        bs->write_bigint = bw_write_bits_bigint_r_le;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_le;
+        break;
+    case BS_BIG_ENDIAN:
+        bs->write = bw_write_bits_r_be;
+        bs->write_64 = bw_write_bits64_r_be;
+        bs->write_signed = bw_write_signed_bits_f_e_r_be;
+        bs->write_signed_64 = bw_write_signed_bits64_f_e_r_be;
+        bs->write_bigint = bw_write_bits_bigint_r_be;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_f_e_r_be;
+        break;
+    }
+}
 
 void
 bw_set_endianness_c(BitstreamWriter* bs, bs_endianness endianness)
@@ -2453,6 +2678,8 @@ bw_close_methods(BitstreamWriter* bs)
     bs->write_bytes = bw_write_bytes_c;
     bs->write_signed = bw_write_signed_bits_c;
     bs->write_signed_64 = bw_write_signed_bits64_c;
+    bs->write_bigint = bw_write_bits_bigint_c;
+    bs->write_signed_bigint = bw_write_signed_bits_bigint_c;
     bs->write_unary = bw_write_unary_c;
     bs->flush = bw_flush_r_c;
     bs->byte_aligned = bw_byte_aligned_c;
@@ -3330,6 +3557,11 @@ writer_perform_write_64(BitstreamWriter* writer, bs_endianness endianness);
 void
 writer_perform_write_signed_64(BitstreamWriter* writer,
                                bs_endianness endianness);
+void
+writer_perform_write_bigint(BitstreamWriter* writer, bs_endianness endianness);
+void
+writer_perform_write_signed_bigint(BitstreamWriter* writer,
+                                   bs_endianness endianness);
 void
 writer_perform_write_unary_0(BitstreamWriter* writer,
                              bs_endianness endianness);
@@ -4862,6 +5094,8 @@ test_writer(bs_endianness endianness) {
                             writer_perform_write_signed,
                             writer_perform_write_64,
                             writer_perform_write_signed_64,
+                            writer_perform_write_bigint,
+                            writer_perform_write_signed_bigint,
                             writer_perform_write_unary_0,
                             writer_perform_write_unary_1,
                             writer_perform_huffman,
@@ -5373,6 +5607,97 @@ writer_perform_write_signed_64(BitstreamWriter* writer,
         break;
     }
     assert(writer->byte_aligned(writer) == 1);
+}
+
+void
+writer_perform_write_bigint(BitstreamWriter* writer, bs_endianness endianness)
+{
+    mpz_t value;
+    mpz_init(value);
+    assert(writer->byte_aligned(writer) == 1);
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        mpz_set_ui(value, 2);
+        writer->write_bigint(writer, 2, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_ui(value, 6);
+        writer->write_bigint(writer, 3, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_ui(value, 7);
+        writer->write_bigint(writer, 5, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_ui(value, 5);
+        writer->write_bigint(writer, 3, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_ui(value, 342977);
+        writer->write_bigint(writer, 19, value);
+        break;
+    case BS_LITTLE_ENDIAN:
+        mpz_set_ui(value, 1);
+        writer->write_bigint(writer, 2, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_ui(value, 4);
+        writer->write_bigint(writer, 3, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_ui(value, 13);
+        writer->write_bigint(writer, 5, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_ui(value, 3);
+        writer->write_bigint(writer, 3, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_ui(value, 395743);
+        writer->write_bigint(writer, 19, value);
+        break;
+    }
+    assert(writer->byte_aligned(writer) == 1);
+    mpz_clear(value);
+}
+
+void
+writer_perform_write_signed_bigint(BitstreamWriter* writer,
+                                   bs_endianness endianness)
+{
+    mpz_t value;
+    mpz_init(value);
+
+    assert(writer->byte_aligned(writer) == 1);
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        mpz_set_si(value, -2);
+        writer->write_signed_bigint(writer, 2, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_si(value, -2);
+        writer->write_signed_bigint(writer, 3, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_si(value, 7);
+        writer->write_signed_bigint(writer, 5, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_si(value, -3);
+        writer->write_signed_bigint(writer, 3, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_si(value, -181311);
+        writer->write_signed_bigint(writer, 19, value);
+        break;
+    case BS_LITTLE_ENDIAN:
+        mpz_set_si(value, 1);
+        writer->write_signed_bigint(writer, 2, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_si(value, -4);
+        writer->write_signed_bigint(writer, 3, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_si(value, 13);
+        writer->write_signed_bigint(writer, 5, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_si(value, 3);
+        writer->write_signed_bigint(writer, 3, value);
+        assert(writer->byte_aligned(writer) == 0);
+        mpz_set_si(value, -128545);
+        writer->write_signed_bigint(writer, 19, value);
+        break;
+    }
+    assert(writer->byte_aligned(writer) == 1);
+
+    mpz_clear(value);
 }
 
 void

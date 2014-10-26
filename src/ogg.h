@@ -57,10 +57,6 @@ read_ogg_page(BitstreamReader *ogg_stream,
               struct ogg_page *page);
 
 void
-write_ogg_page_header(BitstreamWriter *ogg_stream,
-                      const struct ogg_page_header *header);
-
-void
 write_ogg_page(BitstreamWriter *ogg_stream,
                const struct ogg_page *page);
 

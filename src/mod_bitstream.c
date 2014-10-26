@@ -112,6 +112,7 @@ brpy_read_unsigned(BitstreamReader *br, unsigned bits)
 
             mpz_init(result);
 
+            /*perform read*/
             if (!setjmp(*br_try(br))) {
                 br->read_bigint(br, bits, result);
                 br_etry(br);
@@ -670,18 +671,21 @@ BitstreamReader_set_endianness(bitstream_BitstreamReader *self,
     if (!PyArg_ParseTuple(args, "i", &little_endian))
         return NULL;
 
-    if ((little_endian != 0) && (little_endian != 1)) {
-        PyErr_SetString(PyExc_ValueError,
-                    "endianness must be 0 (big-endian) or 1 (little-endian)");
+    switch (little_endian) {
+    case 0:
+        self->bitstream->set_endianness(self->bitstream, BS_BIG_ENDIAN);
+        Py_INCREF(Py_None);
+        return Py_None;
+    case 1:
+        self->bitstream->set_endianness(self->bitstream, BS_LITTLE_ENDIAN);
+        Py_INCREF(Py_None);
+        return Py_None;
+    default:
+        PyErr_SetString(
+            PyExc_ValueError,
+            "endianness must be 0 (big-endian) or 1 (little-endian)");
         return NULL;
     }
-
-    self->bitstream->set_endianness(self->bitstream,
-                                    little_endian ?
-                                    BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-
-    Py_INCREF(Py_None);
-    return Py_None;
 }
 
 static PyObject*
@@ -1420,55 +1424,6 @@ bw_close_internal_stream_python_file(BitstreamWriter* bs)
     bw_close_methods(bs);
 }
 
-/*this is essentially:
-  (1 << bits_to_write) - 1
-  implemented as operations on Python numberic objects
-  used by the write_unsigned() functions to eliminate
-  unneeded right-side bits*/
-static PyObject*
-bwpy_unsigned_mask(unsigned bits_to_write)
-{
-    PyObject *one;
-    PyObject *bits_to_write_obj;
-    PyObject *shifted;
-    PyObject *mask;
-
-    one = PyInt_FromLong(1);
-    bits_to_write_obj = PyInt_FromLong(bits_to_write);
-
-    if ((shifted = PyNumber_Lshift(one, bits_to_write_obj)) == NULL) {
-        Py_DECREF(one);
-        Py_DECREF(bits_to_write_obj);
-        return NULL;
-    } else {
-        Py_DECREF(bits_to_write_obj);
-    }
-    mask = PyNumber_Subtract(shifted, one); /*may return NULL*/
-    Py_DECREF(one);
-    Py_DECREF(shifted);
-    return mask;
-}
-
-/*this is essentially:
-  1 << (bits_to_write - 1)
-  implemented as operations on Python numeric objects
-  used by the write_signed() functions to
-  convert signed values to unsigned*/
-static PyObject*
-bwpy_signed_mask(unsigned bits_to_write)
-{
-    PyObject *bits;
-    PyObject *one;
-    PyObject *mask;
-
-    bits = PyInt_FromLong(bits_to_write - 1);
-    one = PyInt_FromLong(1);
-    mask = PyNumber_Lshift(one, bits); /*may return NULL*/
-    Py_DECREF(bits);
-    Py_DECREF(one);
-    return mask;
-}
-
 static PyObject*
 bwpy_min_unsigned(unsigned bits)
 {
@@ -1584,8 +1539,13 @@ FUNC_VALIDATE_RANGE(bw_validate_signed_range,
 static int
 bwpy_write_unsigned(BitstreamWriter *bw, unsigned bits, PyObject *value)
 {
-    if (!bw_validate_unsigned_range(bits, value))
+    if (bits == 0) {
+        /*do nothing*/
+        return 0;
+    }
+    if (!bw_validate_unsigned_range(bits, value)) {
         return 1;
+    }
 
     if (!setjmp(*bw_try(bw))) {
         if (bits <= (sizeof(unsigned int) * 8)) {
@@ -1596,155 +1556,49 @@ bwpy_write_unsigned(BitstreamWriter *bw, unsigned bits, PyObject *value)
             return 0;
         } else if (bits <= (sizeof(uint64_t) * 8)) {
             /*value should fit in a uint64_t*/
-            const unsigned long long u_value = PyLong_AsUnsignedLongLong(value);
+            const unsigned long long u_value =
+                PyLong_AsUnsignedLongLong(value);
             bw->write_64(bw, bits, (uint64_t)u_value);
             bw_etry(bw);
             return 0;
         } else {
-            /*value is too large, so punt to (slow) bigint-based writer*/
-            int result;
-            if (bw->endianness == BS_BIG_ENDIAN) {
-                result = bwpy_write_unsigned_be(bw, bits, value);
+            /*finally, try write_bigint*/
+
+            /*serialize long to string*/
+            PyObject *string_obj = PyNumber_ToBase(value, 10);
+
+            /*convert to mpz_t*/
+            mpz_t value;
+#if PY_MAJOR_VERSION >= 3
+            /*I hope this is NULL-terminated
+              since the documentation doesn't say*/
+            mpz_init_set_str(value, PyUnicode_AsUTF8(string_obj), 10);
+#else
+            mpz_init_set_str(value, PyString_AsString(string_obj), 10);
+#endif
+            Py_DECREF(string_obj);
+
+            /*perform write*/
+            if (!setjmp(*bw_try(bw))) {
+                bw->write_bigint(bw, bits, value);
+                bw_etry(bw);
+                mpz_clear(value);
             } else {
-                result = bwpy_write_unsigned_le(bw, bits, value);
+                /*ensure result gets cleared before re-raising error*/
+                bw_etry(bw);
+                mpz_clear(value);
+                bw_abort(bw);
             }
+
+            /*return sucess*/
             bw_etry(bw);
-            return result;
+            return 0;
         }
     } else {
         bw_etry(bw);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return 1;
     }
-}
-
-static int
-bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
-{
-    const unsigned buffer_size = MIN((sizeof(long) * 8) - 1,
-                                     sizeof(unsigned) * 8);
-
-    /*chop off up to "buffer_size" bits to write at a time*/
-    while (bits > 0) {
-        const unsigned bits_to_write = bits > buffer_size ? buffer_size : bits;
-        PyObject *shift;
-        PyObject *shifted;
-        PyObject *mask;
-        PyObject *masked;
-        long masked_value;
-        unsigned buffer;
-
-        /*shift out the unneeded left bits*/
-        shift = PyInt_FromLong((long)(bits - bits_to_write));
-        if ((shifted = PyNumber_Rshift(value, shift)) != NULL) {
-            Py_DECREF(shift);
-        } else {
-            Py_DECREF(shift);
-            return 1;
-        }
-
-        /*mask out the unneeded right bits*/
-        if ((mask = bwpy_unsigned_mask(bits_to_write)) == NULL)
-            return 1;
-        masked = PyNumber_And(shifted, mask);
-        Py_DECREF(mask);
-        Py_DECREF(shifted);
-        if (masked == NULL) {
-            return 1;
-        }
-
-        /*convert result from Python object to integer*/
-        masked_value = PyInt_AsLong(masked);
-        Py_DECREF(masked);
-        if ((masked_value == -1) && PyErr_Occurred()) {
-            return 1;
-        }
-        buffer = (unsigned)masked_value;
-
-        /*write the value itself*/
-        bw->write(bw, bits_to_write, buffer);
-
-        /*decrement the count*/
-        bits -= bits_to_write;
-    }
-
-    return 0;
-}
-
-static int
-bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
-{
-    const unsigned buffer_size = MIN((sizeof(long) * 8) - 1,
-                                     sizeof(unsigned) * 8);
-    Py_INCREF(value);
-
-    while (bits > 0) {
-        const unsigned bits_to_write = bits > buffer_size ? buffer_size : bits;
-        PyObject *mask;
-        PyObject *masked;
-        PyObject *shift;
-        PyObject *shifted;
-        long masked_value;
-        unsigned buffer;
-
-        /*extract initial bits from value*/
-        if ((mask = bwpy_unsigned_mask(bits_to_write)) == NULL) {
-            return 1;
-        }
-        masked = PyNumber_And(value, mask);
-        Py_DECREF(mask);
-        if (masked == NULL) {
-            Py_DECREF(value);
-            return 1;
-        }
-
-        /*converted result from Python object to integer*/
-        masked_value = PyInt_AsLong(masked);
-        Py_DECREF(masked);
-        if ((masked_value == -1) && PyErr_Occurred()) {
-            Py_DECREF(value);
-            return 1;
-        }
-        buffer = (unsigned)masked_value;
-
-        /*write the value itself*/
-        if (!setjmp(*bw_try(bw))) {
-            bw->write(bw, bits_to_write, buffer);
-            bw_etry(bw);
-        } else {
-            /*free reference to value before re-raising exception*/
-            bw_etry(bw);
-            Py_DECREF(value);
-            bw_abort(bw);
-        }
-
-        /*shift out the written bits*/
-        shift = PyInt_FromLong(bits_to_write);
-        shifted = PyNumber_Rshift(value, shift);
-        Py_DECREF(shift);
-        Py_DECREF(value);
-        if (shifted != NULL) {
-            value = shifted;
-        } else {
-            return 1;
-        }
-
-        /*decrement the count*/
-        bits -= bits_to_write;
-    }
-
-    Py_DECREF(value);
-
-    return 0;
-}
-
-static int
-is_positive(PyObject *value)
-{
-    PyObject *zero = PyInt_FromLong(0);
-    const int cmp_result = PyObject_RichCompareBool(value, zero, Py_GE);
-    Py_DECREF(zero);
-    return (cmp_result == 1);
 }
 
 static int
@@ -1768,89 +1622,43 @@ bwpy_write_signed(BitstreamWriter *bw, unsigned bits, PyObject *value)
             bw_etry(bw);
             return 0;
         } else {
-            /*value is too large, so punt to (slow) bigint-based writer*/
-            int result;
-            if (bw->endianness == BS_BIG_ENDIAN) {
-                result = bwpy_write_signed_be(bw, bits, value);
+            /*finally, try write_signed_bigint*/
+
+            /*serialize long to string*/
+            PyObject *string_obj = PyNumber_ToBase(value, 10);
+
+            /*convert to mpz_t*/
+            mpz_t value;
+#if PY_MAJOR_VERSION >= 3
+            /*I hope this is NULL-terminated
+              since the documentation doesn't say*/
+            mpz_init_set_str(value, PyUnicode_AsUTF8(string_obj), 10);
+#else
+            mpz_init_set_str(value, PyString_AsString(string_obj), 10);
+#endif
+            Py_DECREF(string_obj);
+
+            /*perform write*/
+            if (!setjmp(*bw_try(bw))) {
+                bw->write_signed_bigint(bw, bits, value);
+                bw_etry(bw);
+                mpz_clear(value);
             } else {
-                result = bwpy_write_signed_le(bw, bits, value);
+                /*ensure result gets cleared before re-raising error*/
+                bw_etry(bw);
+                mpz_clear(value);
+                bw_abort(bw);
             }
+
+            /*return sucess*/
             bw_etry(bw);
-            return result;
+            return 0;
         }
     } else {
         bw_etry(bw);
         PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return 1;
     }
-}
-
-static int
-bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value)
-{
-    const int positive = is_positive(value);
-
-    /*write sign bit first*/
-    bw->write(bw, 1, positive ? 0 : 1);
-
-    if (positive) {
-        /*positive number*/
-        return bwpy_write_unsigned_be(bw, bits - 1, value);
-    } else {
-        /*negative number*/
-        PyObject *mask;
-        PyObject *unsigned_value;
-
-        if ((mask = bwpy_signed_mask(bits)) == NULL)
-            return 1;
-        if ((unsigned_value = PyNumber_Add(mask, value)) != NULL) {
-            int result;
-
-            Py_DECREF(mask);
-            result = bwpy_write_unsigned_be(bw, bits - 1, unsigned_value);
-            Py_DECREF(unsigned_value);
-            return result;
-        } else {
-            Py_DECREF(mask);
-            return 1;
-        }
-    }
-}
-
-static int
-bwpy_write_signed_le(BitstreamWriter *bw, unsigned bits, PyObject *value)
-{
-    const int positive = is_positive(value);
-
-    if (positive) {
-        /*positive number*/
-        int result = bwpy_write_unsigned_le(bw, bits - 1, value);
-        if (result)
-            return result;
-    } else {
-        /*negative number*/
-        PyObject *mask;
-        PyObject *unsigned_value;
-
-        if ((mask = bwpy_signed_mask(bits)) == NULL)
-            return 1;
-        if ((unsigned_value = PyNumber_Add(mask, value)) != NULL) {
-            int result;
-
-            Py_DECREF(mask);
-            result = bwpy_write_unsigned_le(bw, bits - 1, unsigned_value);
-            Py_DECREF(unsigned_value);
-            if (result)
-                return result;
-        } else {
-            Py_DECREF(mask);
-            return 1;
-        }
-    }
-
-    /*write sign bit last*/
-    bw->write(bw, 1, positive ? 0 : 1);
-    return 0;
 }
 
 void
@@ -1923,9 +1731,7 @@ BitstreamWriter_write_signed(bitstream_BitstreamWriter *self, PyObject *args)
         return NULL;
     }
 
-    if (!bw_validate_signed_range((unsigned)count, value)) {
-        return NULL;
-    } else if (bwpy_write_signed(self->bitstream, (unsigned)count, value)) {
+    if (bwpy_write_signed(self->bitstream, (unsigned)count, value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2088,18 +1894,21 @@ BitstreamWriter_set_endianness(bitstream_BitstreamWriter *self,
     if (!PyArg_ParseTuple(args, "i", &little_endian))
         return NULL;
 
-    if ((little_endian != 0) && (little_endian != 1)) {
-        PyErr_SetString(PyExc_ValueError,
-                    "endianness must be 0 (big-endian) or 1 (little-endian)");
+    switch (little_endian) {
+    case 0:
+        self->bitstream->set_endianness(self->bitstream, BS_BIG_ENDIAN);
+        Py_INCREF(Py_None);
+        return Py_None;
+    case 1:
+        self->bitstream->set_endianness(self->bitstream, BS_LITTLE_ENDIAN);
+        Py_INCREF(Py_None);
+        return Py_None;
+    default:
+        PyErr_SetString(
+            PyExc_ValueError,
+            "endianness must be 0 (big-endian) or 1 (little-endian)");
         return NULL;
     }
-
-    self->bitstream->set_endianness(
-                    self->bitstream,
-                    little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-
-    Py_INCREF(Py_None);
-    return Py_None;
 }
 
 static PyObject*
@@ -2290,11 +2099,9 @@ BitstreamRecorder_write_signed(bitstream_BitstreamRecorder *self,
     }
 
 
-    if (!bw_validate_signed_range((unsigned)count, value)) {
-        return NULL;
-    } else if (bwpy_write_signed((BitstreamWriter*)self->bitstream,
-                                 (unsigned)count,
-                                 value)) {
+    if (bwpy_write_signed((BitstreamWriter*)self->bitstream,
+                          (unsigned)count,
+                          value)) {
         return NULL;
     } else {
         Py_INCREF(Py_None);
@@ -2472,17 +2279,21 @@ BitstreamRecorder_set_endianness(bitstream_BitstreamRecorder *self,
     if (!PyArg_ParseTuple(args, "i", &little_endian))
         return NULL;
 
-    if ((little_endian != 0) && (little_endian != 1)) {
-        PyErr_SetString(PyExc_ValueError,
-                    "endianness must be 0 (big-endian) or 1 (little-endian)");
+    switch (little_endian) {
+    case 0:
+        writer->set_endianness(writer, BS_BIG_ENDIAN);
+        Py_INCREF(Py_None);
+        return Py_None;
+    case 1:
+        writer->set_endianness(writer, BS_LITTLE_ENDIAN);
+        Py_INCREF(Py_None);
+        return Py_None;
+    default:
+        PyErr_SetString(
+            PyExc_ValueError,
+            "endianness must be 0 (big-endian) or 1 (little-endian)");
         return NULL;
     }
-
-    writer->set_endianness(writer,
-                           little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
-
-    Py_INCREF(Py_None);
-    return Py_None;
 }
 
 static PyObject*
@@ -3064,8 +2875,6 @@ bitstream_build(BitstreamWriter* stream,
         case BS_INST_UNSIGNED:
         case BS_INST_UNSIGNED64:
             {
-                PyObject *min_value = bwpy_min_unsigned(size);
-                PyObject *max_value = bwpy_max_unsigned(size);
                 for (; times; times--) {
                     PyObject *py_value = PyIter_Next(iterator);
                     int result;
@@ -3075,32 +2884,9 @@ bitstream_build(BitstreamWriter* stream,
 
                         if (!PyErr_Occurred()) {
                             /*iterator exhausted before values are consumed*/
-                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
+                            PyErr_SetString(PyExc_IndexError,
+                                            MISSING_VALUES);
                         }
-                        Py_DECREF(min_value);
-                        Py_DECREF(max_value);
-                        return 1;
-                    }
-
-                    /*ensure value is numeric*/
-                    if (!PyNumber_Check(py_value)) {
-                        PyErr_SetString(PyExc_TypeError,
-                                        "value is not a number");
-                        Py_DECREF(py_value);
-                        Py_DECREF(min_value);
-                        Py_DECREF(max_value);
-                        return 1;
-                    }
-
-                    /*ensure value is in the proper range*/
-                    if (!bwpy_in_range(min_value, py_value, max_value)) {
-                        PyErr_Format(PyExc_ValueError,
-                                     "value does not fit in %u unsigned %s",
-                                     size,
-                                     size != 1 ? "bits" : "bit");
-                        Py_DECREF(py_value);
-                        Py_DECREF(min_value);
-                        Py_DECREF(max_value);
                         return 1;
                     }
 
@@ -3108,25 +2894,15 @@ bitstream_build(BitstreamWriter* stream,
                     result = bwpy_write_unsigned(stream, size, py_value);
                     Py_DECREF(py_value);
                     if (result) {
-                        Py_DECREF(min_value);
-                        Py_DECREF(max_value);
                         return 1;
                     }
                 }
-                Py_DECREF(min_value);
-                Py_DECREF(max_value);
             }
             break;
         case BS_INST_SIGNED:
         case BS_INST_SIGNED64:
             {
-                PyObject *min_value;
-                PyObject *max_value;
-
-                if (size > 0) {
-                    min_value = bwpy_min_signed(size);
-                    max_value = bwpy_max_signed(size);
-                } else {
+                if (size == 0) {
                     PyErr_SetString(PyExc_ValueError, "size must be > 0");
                     return 1;
                 }
@@ -3139,10 +2915,9 @@ bitstream_build(BitstreamWriter* stream,
 
                         if (!PyErr_Occurred()) {
                             /*iterator exhausted before values are consumed*/
-                            PyErr_SetString(PyExc_IndexError, MISSING_VALUES);
+                            PyErr_SetString(PyExc_IndexError,
+                                            MISSING_VALUES);
                         }
-                        Py_DECREF(min_value);
-                        Py_DECREF(max_value);
                         return 1;
                     }
 
@@ -3151,19 +2926,6 @@ bitstream_build(BitstreamWriter* stream,
                         PyErr_SetString(PyExc_TypeError,
                                         "value is not a number");
                         Py_DECREF(py_value);
-                        Py_DECREF(min_value);
-                        Py_DECREF(max_value);
-                        return 1;
-                    }
-
-                    /*ensure value is in the proper range*/
-                    if (!bwpy_in_range(min_value, py_value, max_value)) {
-                        PyErr_Format(PyExc_ValueError,
-                                     "value does not fit in %u signed bits",
-                                     size);
-                        Py_DECREF(py_value);
-                        Py_DECREF(min_value);
-                        Py_DECREF(max_value);
                         return 1;
                     }
 
@@ -3171,13 +2933,9 @@ bitstream_build(BitstreamWriter* stream,
                     result = bwpy_write_signed(stream, size, py_value);
                     Py_DECREF(py_value);
                     if (result) {
-                        Py_DECREF(min_value);
-                        Py_DECREF(max_value);
                         return 1;
                     }
                 }
-                Py_DECREF(min_value);
-                Py_DECREF(max_value);
             }
             break;
         case BS_INST_SKIP:

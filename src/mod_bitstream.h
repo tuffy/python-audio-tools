@@ -478,25 +478,10 @@ static int
 bw_validate_signed_range(unsigned bits, PyObject *value);
 
 static int
-is_positive(PyObject *value);
-
-static int
 bwpy_write_unsigned(BitstreamWriter *bw, unsigned bits, PyObject *value);
 
 static int
-bwpy_write_unsigned_be(BitstreamWriter *bw, unsigned bits, PyObject *value);
-
-static int
-bwpy_write_unsigned_le(BitstreamWriter *bw, unsigned bits, PyObject *value);
-
-static int
 bwpy_write_signed(BitstreamWriter *bw, unsigned bits, PyObject *value);
-
-static int
-bwpy_write_signed_be(BitstreamWriter *bw, unsigned bits, PyObject *value);
-
-static int
-bwpy_write_signed_le(BitstreamWriter *bw, unsigned bits, PyObject *value);
 
 static PyObject*
 BitstreamWriter_write(bitstream_BitstreamWriter *self, PyObject *args);

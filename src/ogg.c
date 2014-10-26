@@ -120,7 +120,7 @@ read_ogg_page(BitstreamReader *ogg_stream,
 
 void
 write_ogg_page_header(BitstreamWriter *ogg_stream,
-                            const struct ogg_page_header *header)
+                      const struct ogg_page_header *header)
 {
     uint8_t i;
     struct bs_callback callback;
@@ -154,31 +154,57 @@ void
 write_ogg_page(BitstreamWriter *ogg_stream,
                const struct ogg_page *page)
 {
+    bw_pos_t *checksum_pos;
+    bw_pos_t *page_end;
     uint32_t checksum = 0;
-    BitstreamRecorder *temp = bw_open_recorder(BS_LITTLE_ENDIAN);
     uint8_t i;
 
-    /*attach checksum calculator to temporary stream*/
-    temp->add_callback((BitstreamWriter*)temp,
-                       (bs_callback_f)ogg_crc,
-                       &checksum);
+    /*attach checksum calculator to stream*/
+    ogg_stream->add_callback(ogg_stream,
+                             (bs_callback_f)ogg_crc,
+                             &checksum);
 
-    /*dump header and data to temporary stream*/
-    write_ogg_page_header((BitstreamWriter*)temp, &(page->header));
+    /*write page header*/
+    ogg_stream->write(ogg_stream, 32, page->header.magic_number);
+    ogg_stream->write(ogg_stream, 8, page->header.version);
+    ogg_stream->write(ogg_stream, 1, page->header.packet_continuation);
+    ogg_stream->write(ogg_stream, 1, page->header.stream_beginning);
+    ogg_stream->write(ogg_stream, 1, page->header.stream_end);
+    ogg_stream->write(ogg_stream, 5, 0);
+    ogg_stream->write_signed_64(ogg_stream, 64,
+                                page->header.granule_position);
+    ogg_stream->write(ogg_stream, 32, page->header.bitstream_serial_number);
+    ogg_stream->write(ogg_stream, 32, page->header.sequence_number);
+
+    /*the checksum field is *not* checksummed itself, naturally
+      those 4 bytes are treated as 0*/
+    checksum_pos = ogg_stream->getpos(ogg_stream);
+    ogg_stream->write(ogg_stream, 8, 0);
+    ogg_stream->write(ogg_stream, 8, 0);
+    ogg_stream->write(ogg_stream, 8, 0);
+    ogg_stream->write(ogg_stream, 8, 0);
+
+    ogg_stream->write(ogg_stream, 8, page->header.segment_count);
+    for (i = 0; i < page->header.segment_count; i++)
+        ogg_stream->write(ogg_stream, 8, page->header.segment_lengths[i]);
+
+    /*write segments*/
     for (i = 0; i < page->header.segment_count; i++) {
-        temp->write_bytes((BitstreamWriter*)temp,
-                          page->segment[i],
-                          page->header.segment_lengths[i]);
+        ogg_stream->write_bytes(ogg_stream,
+                                page->segment[i],
+                                page->header.segment_lengths[i]);
     }
 
-    /*output header, calculated checksum and the rest to actual stream*/
-    temp->split(temp, 22, ogg_stream, (BitstreamWriter*)temp);
-    ogg_stream->write(ogg_stream, 32, checksum);
-    temp->split(temp, 4, NULL, (BitstreamWriter*)temp);
-    temp->copy(temp, ogg_stream);
+    /*pop checksum calculator*/
+    ogg_stream->pop_callback(ogg_stream, NULL);
 
-    /*remove temporary stream*/
-    temp->close(temp);
+    /*go back and populate actual checksum*/
+    page_end = ogg_stream->getpos(ogg_stream);
+    ogg_stream->setpos(ogg_stream, checksum_pos);
+    checksum_pos->del(checksum_pos);
+    ogg_stream->write(ogg_stream, 32, checksum);
+    ogg_stream->setpos(ogg_stream, page_end);
+    page_end->del(page_end);
 }
 
 
