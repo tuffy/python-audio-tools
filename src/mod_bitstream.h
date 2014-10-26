@@ -751,10 +751,6 @@ BitstreamRecorder_copy(bitstream_BitstreamRecorder *self,
                        PyObject *args);
 
 static PyObject*
-BitstreamRecorder_split(bitstream_BitstreamRecorder *self,
-                        PyObject *args);
-
-static PyObject*
 BitstreamRecorder_getpos(bitstream_BitstreamRecorder *self,
                          PyObject *args);
 
@@ -824,12 +820,6 @@ PyMethodDef BitstreamRecorder_methods[] = {
      "copy(target)\n"
      "copies the written data to \"target\", which must be a\n"
      "BitstreamWriter or Recorder"},
-    {"split", (PyCFunction)BitstreamRecorder_split, METH_VARARGS,
-     "split(target, remainder, bytes)\n"
-     "copies the given number of written bytes to \"target\"\n"
-     "and the remaining bytes to \"remainder\"\n"
-     "where \"target\" and \"remainder\" must be a\n"
-     "BitstreamWriter, Recorder, or None"},
     {"build", (PyCFunction)BitstreamRecorder_build, METH_VARARGS,
      "build(format_string, [value1, value2, ...])\n"
      "where \"format_string\" maps to the calls:\n"
@@ -845,11 +835,13 @@ PyMethodDef BitstreamRecorder_methods[] = {
     {"swap", (PyCFunction)BitstreamRecorder_swap, METH_VARARGS,
      "swap(recorder)\n"
      "swaps our written data with that of another BitstreamRecorder"},
-    {"add_callback", (PyCFunction)BitstreamRecorder_add_callback, METH_VARARGS,
+    {"add_callback", (PyCFunction)BitstreamRecorder_add_callback,
+     METH_VARARGS,
      "add_callback(function)\n"
      "where \"function\" takes a single byte as an argument\n"
      "and is called upon each written byte to the stream"},
-    {"pop_callback", (PyCFunction)BitstreamRecorder_pop_callback, METH_NOARGS,
+    {"pop_callback", (PyCFunction)BitstreamRecorder_pop_callback,
+     METH_NOARGS,
      "pop_callback() -> function\n"
      "removes and returns the most recently added callback"},
     {"call_callbacks", (PyCFunction)BitstreamRecorder_call_callbacks,

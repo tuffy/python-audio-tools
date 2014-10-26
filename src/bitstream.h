@@ -1055,19 +1055,6 @@ typedef struct BitstreamRecorder_s {
     (*copy)(const struct BitstreamRecorder_s* bs,
             struct BitstreamWriter_s* target);
 
-    /*copies "bytes" from source to "target"
-      and remainder to "remaining"
-
-      both "target" and "remainder" may be NULL,
-      in which case that data is discarded
-
-      returns the total bytes actually transferred to "target"*/
-    unsigned
-    (*split)(const struct BitstreamRecorder_s* bs,
-             unsigned bytes,
-             struct BitstreamWriter_s* target,
-             struct BitstreamWriter_s* remainder);
-
     /*returns our internal buffer of data written so far
       not including any partial bytes
       use bytes_written() to determine this buffer's total size*/

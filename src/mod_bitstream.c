@@ -894,7 +894,8 @@ BitstreamReader_seek(bitstream_BitstreamReader *self, PyObject *args)
             } else {
                 /*I/O error when seeking*/
                 br_etry(stream);
-                PyErr_SetString(PyExc_IOError, "I/O error performing seek");
+                PyErr_SetString(PyExc_IOError,
+                                "I/O error performing seek");
                 goto error;
             }
 
@@ -909,7 +910,8 @@ BitstreamReader_seek(bitstream_BitstreamReader *self, PyObject *args)
                 } else {
                     /*I/O error when seeking*/
                     br_etry(stream);
-                    PyErr_SetString(PyExc_IOError, "I/O error performing seek");
+                    PyErr_SetString(PyExc_IOError,
+                                    "I/O error performing seek");
                     goto error;
                 }
             }
@@ -2389,57 +2391,6 @@ BitstreamRecorder_copy(bitstream_BitstreamRecorder *self,
         PyErr_SetString(PyExc_TypeError,
                         "argument must be a "
                         "BitstreamWriter or BitstreamRecorder");
-        return NULL;
-    }
-}
-
-static PyObject*
-BitstreamRecorder_split(bitstream_BitstreamRecorder *self,
-                        PyObject *args)
-{
-    PyObject* target_obj;
-    PyObject* remainder_obj;
-    BitstreamWriter* target;
-    BitstreamWriter* remainder;
-    int total_bytes;
-
-    if (!PyArg_ParseTuple(args, "OOi",
-                          &target_obj, &remainder_obj, &total_bytes)) {
-        return NULL;
-    } else if (total_bytes < 0) {
-        PyErr_SetString(PyExc_ValueError, "total_bytes must be >= 0");
-        return NULL;
-    }
-
-    if (target_obj == Py_None) {
-        target = NULL;
-    } else if ((target = internal_writer(target_obj)) == NULL) {
-        PyErr_SetString(PyExc_TypeError,
-                        "target argument must be None, a "
-                        "BitstreamWriter or BitstreamRecorder");
-        return NULL;
-    }
-
-    if (remainder_obj == Py_None) {
-        remainder = NULL;
-    } else if ((remainder = internal_writer(remainder_obj)) == NULL) {
-        PyErr_SetString(PyExc_TypeError,
-                        "remainder argument must be None, a "
-                        "BitstreamWriter or BitstreamRecorder");
-        return NULL;
-    }
-
-
-    if (!setjmp(*bw_try((BitstreamWriter*)self->bitstream))) {
-        total_bytes = self->bitstream->split(self->bitstream,
-                                             total_bytes,
-                                             target,
-                                             remainder);
-        bw_etry((BitstreamWriter*)self->bitstream);
-        return Py_BuildValue("I", total_bytes);
-    } else {
-        bw_etry((BitstreamWriter*)self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error writing stream");
         return NULL;
     }
 }

@@ -587,15 +587,6 @@ bits or bytes, for possible output into a :class:`BitstreamWriter`.
    Returns a binary string of recorded data,
    not including any partially written bytes.
 
-.. method:: BitstreamRecorder.split(target, remainder, bytes)
-
-   Copies the given number of recorded bytes to ``target``
-   and the remaining bytes to ``remainder``,
-   which are :class:`BitstreamWriter`, :class:`BitstreamRecorder`,
-   or ``None``.
-   It is possible for ``target`` or ``remainder`` to be
-   the same object as the recorder performing :meth:`BitstreamRecorder.split`.
-
 .. method:: BitstreamRecorder.reset()
 
    Erases all recorded data and resets the stream for fresh recording.
