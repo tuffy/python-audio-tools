@@ -62,9 +62,9 @@ typedef const mp_limb_t *mp_srcptr;
 
 typedef struct
 {
-  int _mp_alloc;		/* Number of *limbs* allocated and pointed
+  mp_size_t _mp_alloc;		/* Number of *limbs* allocated and pointed
 				   to by the _mp_d field.  */
-  int _mp_size;			/* abs(_mp_size) is the number of limbs the
+  mp_size_t _mp_size;			/* abs(_mp_size) is the number of limbs the
 				   last field points to.  If _mp_size is
 				   negative this is a negative number.  */
   mp_limb_t *_mp_d;		/* Pointer to the limbs.  */

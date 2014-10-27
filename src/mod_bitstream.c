@@ -1487,9 +1487,16 @@ static int
 bwpy_in_range(PyObject *min_value, PyObject *value, PyObject *max_value)
 {
     const int cmp_min = PyObject_RichCompareBool(min_value, value, Py_LE);
-    const int cmp_max = PyObject_RichCompareBool(value, max_value, Py_LE);
-
-    return (cmp_min == 1) && (cmp_max == 1);
+    if (cmp_min == -1) {
+        return -1;
+    } else {
+        const int cmp_max = PyObject_RichCompareBool(value, max_value, Py_LE);
+        if (cmp_max == -1) {
+            return -1;
+        } else {
+            return (cmp_min == 1) && (cmp_max == 1);
+        }
+    }
 }
 
 #define FUNC_VALIDATE_RANGE(FUNC_NAME, MIN_FUNC, MAX_FUNC, TYPE_STR) \
@@ -1497,6 +1504,7 @@ static int                                                           \
 FUNC_NAME(unsigned bits, PyObject *value) {                          \
     PyObject *min_value;                                             \
     PyObject *max_value;                                             \
+    int comparison;                                                  \
                                                                      \
     if (!PyNumber_Check(value)) {                                    \
         PyErr_SetString(PyExc_TypeError, "value is not a number");   \
@@ -1514,19 +1522,21 @@ FUNC_NAME(unsigned bits, PyObject *value) {                          \
         return 0;                                                    \
     }                                                                \
                                                                      \
-    if (!bwpy_in_range(min_value, value, max_value)) {               \
+    comparison = bwpy_in_range(min_value, value, max_value);         \
+    Py_DECREF(min_value);                                            \
+    Py_DECREF(max_value);                                            \
+                                                                     \
+    switch (comparison) {                                            \
+    case 1:                                                          \
+        return 1;                                                    \
+    case 0:                                                          \
         PyErr_Format(PyExc_ValueError,                               \
                      "value does not fit in %u " TYPE_STR " %s",     \
                      bits,                                           \
                      bits != 1 ? "bits" : "bit");                    \
-                                                                     \
-        Py_DECREF(min_value);                                        \
-        Py_DECREF(max_value);                                        \
         return 0;                                                    \
-    } else {                                                         \
-        Py_DECREF(min_value);                                        \
-        Py_DECREF(max_value);                                        \
-        return 1;                                                    \
+    default:                                                         \
+        return 0;                                                    \
     }                                                                \
 }
 FUNC_VALIDATE_RANGE(bw_validate_unsigned_range,
@@ -1552,17 +1562,31 @@ bwpy_write_unsigned(BitstreamWriter *bw, unsigned bits, PyObject *value)
     if (!setjmp(*bw_try(bw))) {
         if (bits <= (sizeof(unsigned int) * 8)) {
             /*value should fit in an unsigned int*/
-            const unsigned long u_value = PyLong_AsUnsignedLong(value);
-            bw->write(bw, bits, (unsigned)u_value);
-            bw_etry(bw);
-            return 0;
+            PyObject *long_obj = PyNumber_Long(value);
+            if (long_obj) {
+                const unsigned long u_value = PyLong_AsUnsignedLong(long_obj);
+                Py_DECREF(long_obj);
+                bw->write(bw, bits, (unsigned)u_value);
+                bw_etry(bw);
+                return 0;
+            } else {
+                bw_etry(bw);
+                return 1;
+            }
         } else if (bits <= (sizeof(uint64_t) * 8)) {
             /*value should fit in a uint64_t*/
-            const unsigned long long u_value =
-                PyLong_AsUnsignedLongLong(value);
-            bw->write_64(bw, bits, (uint64_t)u_value);
-            bw_etry(bw);
-            return 0;
+            PyObject *long_obj = PyNumber_Long(value);
+            if (long_obj) {
+                const unsigned long long u_value =
+                    PyLong_AsUnsignedLongLong(long_obj);
+                Py_DECREF(long_obj);
+                bw->write_64(bw, bits, (uint64_t)u_value);
+                bw_etry(bw);
+                return 0;
+            } else {
+                bw_etry(bw);
+                return 1;
+            }
         } else {
             /*finally, try write_bigint*/
 
