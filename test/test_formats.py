@@ -4178,7 +4178,8 @@ class FlacFileTest(TestForeignAiffChunks,
                                      CLEAN_FLAC_REORDERED_STREAMINFO,
                                      CLEAN_FLAC_POPULATE_MD5,
                                      CLEAN_FLAC_ADD_CHANNELMASK,
-                                     CLEAN_FLAC_FIX_SEEKTABLE)
+                                     CLEAN_FLAC_FIX_SEEKTABLE,
+                                     CLEAN_FLAC_ADD_SEEKTABLE)
 
         # check FLAC files with ID3 tags
         with open("flac-id3.flac", "rb") as f:
@@ -4260,6 +4261,24 @@ class FlacFileTest(TestForeignAiffChunks,
             self.assertTrue(
                 audiotools.pcm_cmp(track.to_pcm(), track2.to_pcm()))
 
+        # check FLAC files with no SEEKTABLE
+        track = audiotools.open("flac-noseektable.flac")
+        fixed = []
+        self.assertFalse(
+            track.get_metadata().has_block(
+                audiotools.flac.Flac_SEEKTABLE.BLOCK_ID))
+        fixes = track.clean()
+        self.assertEqual(fixes, [CLEAN_FLAC_ADD_SEEKTABLE])
+        with tempfile.NamedTemporaryFile(suffix=".flac") as temp:
+            fixes = track.clean(temp.name)
+            self.assertEqual(fixes, [CLEAN_FLAC_ADD_SEEKTABLE])
+            track2 = audiotools.open(temp.name)
+            self.assertTrue(
+                track2.get_metadata().has_block(
+                    audiotools.flac.Flac_SEEKTABLE.BLOCK_ID))
+            self.assertTrue(
+                audiotools.pcm_cmp(track.to_pcm(), track2.to_pcm()))
+
         # check 24bps/6ch FLAC files without WAVEFORMATEXTENSIBLE_CHANNEL_MASK
         for (path, mask) in [("flac-nomask1.flac", 0x3F),
                              ("flac-nomask2.flac", 0x3F),
@@ -4271,7 +4290,7 @@ class FlacFileTest(TestForeignAiffChunks,
                     no_blocks_file.flush()
                 track = audiotools.open(no_blocks_file.name)
                 metadata = track.get_metadata()
-                for block_id in range(1, 7):
+                for block_id in [1, 2, 4, 5, 6]:
                     metadata.replace_blocks(block_id, [])
                 track.update_metadata(metadata)
 
