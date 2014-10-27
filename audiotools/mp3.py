@@ -475,7 +475,7 @@ class MP3Audio(AudioFile):
                 (metadata, fixes) = metadata.clean()
                 return file_fixes + fixes
             else:
-                return []
+                return file_fixes
         else:
             # perform complete fix
             input_f = open(self.filename, "rb")
@@ -495,7 +495,7 @@ class MP3Audio(AudioFile):
                     new_track.update_metadata(metadata)
                 return file_fixes + fixes
             else:
-                return []
+                return file_fixes
 
     # places mp3file at the position of the next MP3 frame's start
     @classmethod

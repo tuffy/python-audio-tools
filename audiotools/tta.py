@@ -644,7 +644,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 (metadata, fixes) = metadata.clean()
                 return file_fixes + fixes
             else:
-                return []
+                return file_fixes
         else:
             # perform full fix
             input_f = open(self.filename, "rb")
@@ -664,7 +664,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                     new_track.update_metadata(metadata)
                 return file_fixes + fixes
             else:
-                return []
+                return file_fixes
 
 
 def write_header(writer,

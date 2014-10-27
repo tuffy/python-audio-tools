@@ -4350,7 +4350,7 @@ class AudioFile(object):
                 input_f.close()
                 output_f.close()
 
-            new_track = open(output_filename)
+            new_track = __open__(output_filename)
             metadata = self.get_metadata()
             if (metadata is not None):
                 (metadata, fixes) = metadata.clean()
