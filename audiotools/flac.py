@@ -735,7 +735,8 @@ class Flac_CUESHEET(Sheet):
         tracks is a list of Flac_CHESHEET_track objects"""
 
         assert(isinstance(catalog_number, bytes))
-        assert(isinstance(lead_in_samples, int))
+        assert(isinstance(lead_in_samples, int) or
+               isinstance(lead_in_samples, long))
         assert(is_cdda in {1, 0})
 
         self.__catalog_number__ = catalog_number
@@ -918,7 +919,7 @@ class Flac_CUESHEET_track(SheetTrack):
         pre_emphasis is 0 for no, 1 for yes
         index_points is a list of Flac_CUESHEET_index objects"""
 
-        assert(isinstance(offset, int))
+        assert(isinstance(offset, int) or isinstance(offset, long))
         assert(isinstance(number, int))
         assert(isinstance(ISRC, bytes))
         assert(track_type in {0, 1})
@@ -3351,3 +3352,104 @@ class OggFlacAudio(FlacAudio):
             return oggflac
         else:
             raise EncodingError(u"error encoding file with flac")
+
+    def clean(self, output_filename):
+        """cleans the file of known data and metadata problems
+
+        output_filename is an optional filename of the fixed file
+        if present, a new AudioFile is written to that path
+        otherwise, only a dry-run is performed and no new file is written
+
+        return list of fixes performed as Unicode strings
+
+        raises IOError if unable to write the file or its metadata
+        raises ValueError if the file has errors of some sort
+        """
+
+        import os.path
+
+        fixes_performed = []
+        with open(self.filename, "rb") as input_f:
+            # remove ID3 tags from before and after FLAC stream
+            stream_size = os.path.getsize(self.filename)
+
+            stream_offset = skip_id3v2_comment(input_f)
+            if (stream_offset > 0):
+                from audiotools.text import CLEAN_FLAC_REMOVE_ID3V2
+                fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V2)
+                stream_size -= stream_offset
+
+            try:
+                input_f.seek(-128, 2)
+                if (input_f.read(3) == b'TAG'):
+                    from audiotools.text import CLEAN_FLAC_REMOVE_ID3V1
+                    fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V1)
+                    stream_size -= 128
+            except IOError:
+                # file isn't 128 bytes long
+                pass
+
+            if (output_filename is not None):
+                with open(output_filename, "wb") as output_f:
+                    input_f.seek(stream_offset, 0)
+                    while (stream_size > 0):
+                        s = input_f.read(4096)
+                        if (len(s) > stream_size):
+                            s = s[0:stream_size]
+                        output_f.write(s)
+                        stream_size -= len(s)
+
+                output_track = self.__class__(output_filename)
+
+            metadata = self.get_metadata()
+            metadata_size = metadata.size()
+
+            # fix empty MD5SUM
+            if (self.__md5__ == b"\x00" * 16):
+                from hashlib import md5
+                from audiotools import transfer_framelist_data
+
+                md5sum = md5()
+                transfer_framelist_data(
+                    self.to_pcm(),
+                    md5sum.update,
+                    signed=True,
+                    big_endian=False)
+                metadata.get_block(
+                    Flac_STREAMINFO.BLOCK_ID).md5sum = md5sum.digest()
+                from audiotools.text import CLEAN_FLAC_POPULATE_MD5
+                fixes_performed.append(CLEAN_FLAC_POPULATE_MD5)
+
+            # fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
+            if (((self.channels() > 2) or
+                 (self.bits_per_sample() > 16))):
+                from audiotools.text import CLEAN_FLAC_ADD_CHANNELMASK
+
+                try:
+                    vorbis_comment = metadata.get_block(
+                        Flac_VORBISCOMMENT.BLOCK_ID)
+                except IndexError:
+                    from audiotools import VERSION
+
+                    vorbis_comment = Flac_VORBISCOMMENT(
+                        [], u"Python Audio Tools %s" % (VERSION))
+
+                if ((u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
+                     vorbis_comment.keys())):
+                    fixes_performed.append(CLEAN_FLAC_ADD_CHANNELMASK)
+                    vorbis_comment[
+                        u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
+                        [u"0x%.4X" % (int(self.channel_mask()))]
+
+                    metadata.replace_blocks(
+                        Flac_VORBISCOMMENT.BLOCK_ID,
+                        [vorbis_comment])
+
+            # fix remaining metadata problems
+            # which automatically shifts STREAMINFO to the right place
+            # (the message indicating the fix has already been output)
+            (metadata, metadata_fixes) = metadata.clean()
+            if (output_filename is not None):
+                output_track.update_metadata(metadata)
+
+            return fixes_performed + metadata_fixes

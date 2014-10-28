@@ -2405,8 +2405,10 @@ class PCMFileReader(PCMReader):
             return framelist
         elif (self.process is not None):
             if (self.process.wait() == 0):
+                self.process = None
                 return framelist
             else:
+                self.process = None
                 raise ValueError(u"subprocess exited with error")
         else:
             return framelist
@@ -2417,6 +2419,14 @@ class PCMFileReader(PCMReader):
         subsequent calls to read() raise ValueError"""
 
         self.file.close()
+        if (self.process is not None):
+            self.process.wait()
+            self.process = None
+
+    def __del__(self):
+        if (self.process is not None):
+            self.process.kill()
+            self.process = None
 
 
 class PCMReaderError(PCMReader):
@@ -4350,7 +4360,7 @@ class AudioFile(object):
                 input_f.close()
                 output_f.close()
 
-            new_track = __open__(output_filename)
+            new_track = open(output_filename)
             metadata = self.get_metadata()
             if (metadata is not None):
                 (metadata, fixes) = metadata.clean()

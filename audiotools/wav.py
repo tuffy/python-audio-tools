@@ -370,7 +370,8 @@ def wave_header(sample_rate,
     assert(isinstance(channels, int))
     assert(isinstance(channel_mask, int))
     assert(isinstance(bits_per_sample, int))
-    assert(isinstance(total_pcm_frames, int))
+    assert(isinstance(total_pcm_frames, int) or
+           isinstance(total_pcm_frames, long))
 
     header = BitstreamRecorder(True)
 
