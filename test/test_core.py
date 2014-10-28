@@ -5782,9 +5782,53 @@ class Test_FreeDB(unittest.TestCase):
 class Test_MusicBrainz(Test_FreeDB):
     @LIB_MUSICBRAINZ
     def test_testcd(self):
-        # not sure if there is a MusicBrainz test disc
+        # test disc constructed from MusicBrainz's documentation
 
-        self.assertTrue(True)
+        from audiotools.musicbrainz import DiscID
+        from audiotools.freedb import DiscID as FDiscID
+        from audiotools.cdio import CDDAReader
+        from audiotools import read_sheet
+        from shutil import rmtree
+
+        testdir = tempfile.mkdtemp()
+        try:
+            # dump CD image to temporary directory
+            with open(os.path.join(testdir, "CDImage.cue"), "wb") as f:
+                f.write(b'FILE "CDImage.bin" BINARY\n  ' +
+                        b'TRACK 01 AUDIO\nINDEX 01 00:00:00\n  ' +
+                        b'TRACK 02 AUDIO\n    INDEX 01 03:22:63\n  ' +
+                        b'TRACK 03 AUDIO\n    INDEX 01 07:08:64\n  ' +
+                        b'TRACK 04 AUDIO\n    INDEX 01 10:19:17\n  ' +
+                        b'TRACK 05 AUDIO\n    INDEX 01 14:03:39\n  ' +
+                        b'TRACK 06 AUDIO\n    INDEX 01 17:51:14\n')
+
+            with open(os.path.join(testdir, "CDImage.bin"), "wb") as f:
+                f.write(b"\x00" * 224173824)
+
+            # ensure DiscID works with CDDAReader
+            cddareader = CDDAReader(os.path.join(testdir, "CDImage.cue"))
+
+            discid = DiscID.from_cddareader(cddareader)
+
+            self.assertEqual(discid.__unicode__(),
+                             u"49HHV7Eb8UKF3aQiNmu1GR8vKTY-")
+
+            self.assertEqual(FDiscID.from_cddareader(cddareader).__unicode__(),
+                             u"3404F606")
+
+            # ensure DiscID works with cuesheet + length
+            discid = DiscID.from_sheet(
+                sheet=read_sheet(os.path.join(testdir, "CDImage.cue")),
+                total_pcm_frames=224173824 // 4,
+                sample_rate=44100)
+
+            self.assertEqual(discid.__unicode__(),
+                             u"49HHV7Eb8UKF3aQiNmu1GR8vKTY-")
+
+            self.assertEqual(FDiscID.from_cddareader(cddareader).__unicode__(),
+                             u"3404F606")
+        finally:
+            rmtree(testdir)
 
     @LIB_MUSICBRAINZ
     def test_discid(self):
