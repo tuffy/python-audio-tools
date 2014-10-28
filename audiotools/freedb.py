@@ -28,10 +28,14 @@ def digit_sum(i):
 
 
 class DiscID(object):
-    def __init__(self, offsets, total_length, track_count):
+    def __init__(self, offsets, total_length, track_count, playable_length):
         """offsets is a list of track offsets, in CD frames
         total_length is the total length of the disc, in seconds
-        track_count is the total number of tracks on the disc"""
+        track_count is the total number of tracks on the disc
+        playable_length is the playable length of the disc, in seconds
+
+        the first three items are for generating the hex disc ID itself
+        while the last is for performing queries"""
 
         assert(len(offsets) == track_count)
         for o in offsets:
@@ -40,17 +44,28 @@ class DiscID(object):
         self.offsets = offsets
         self.total_length = total_length
         self.track_count = track_count
+        self.playable_length = playable_length
 
     @classmethod
     def from_cddareader(cls, cddareader):
         """given a CDDAReader object, returns a DiscID for that object"""
 
+        def offset(sector):
+            # the HOWTO implies sectors should be lopped off, like:
+            # t = ((cdtoc[tot_trks].min * 60) + cdtoc[tot_trks].sec) -
+            #     ((cdtoc[0].min * 60) + cdtoc[0].sec);
+            minutes = sector // 75 // 60
+            seconds = sector // 75 % 60
+            return minutes * 60 + seconds
+
         offsets = cddareader.track_offsets
+
         return cls(offsets=[(offsets[k] // 588) + 150 for k in
                             sorted(offsets.keys())],
-                   total_length=((cddareader.last_sector // 75) -
-                                 (cddareader.first_sector // 75)),
-                   track_count=len(offsets))
+                   total_length=(offset(cddareader.last_sector + 150 + 1) -
+                                 offset(cddareader.first_sector + 150)),
+                   track_count=len(offsets),
+                   playable_length=(cddareader.last_sector + 150 + 1) // 75)
 
     @classmethod
     def from_tracks(cls, tracks):
@@ -61,9 +76,12 @@ class DiscID(object):
         for track in tracks[0:-1]:
             offsets.append(offsets[-1] + track.cd_frames())
 
+        track_lengths = sum([t.cd_frames() for t in tracks]) // 75
+
         return cls(offsets=offsets,
-                   total_length=sum([t.cd_frames() for t in tracks]) // 75,
-                   track_count=len(tracks))
+                   total_length=track_lengths,
+                   track_count=len(tracks),
+                   playable_length=track_lengths)
 
     @classmethod
     def from_sheet(cls, sheet, total_pcm_frames, sample_rate):
@@ -76,14 +94,17 @@ class DiscID(object):
                             for t in sheet],
                    total_length=((total_pcm_frames // sample_rate) -
                                  int(sheet.track(1).index(1).offset())),
-                   track_count=len(sheet))
+                   track_count=len(sheet),
+                   playable_length=((total_pcm_frames + (sample_rate * 2)) //
+                                    sample_rate))
 
     def __repr__(self):
         return "DiscID(%s)" % \
             ", ".join(["%s=%s" % (attr, getattr(self, attr))
                        for attr in ["offsets",
                                     "total_length",
-                                    "track_count"]])
+                                    "track_count",
+                                    "playable_length"]])
 
     if (sys.version_info[0] >= 3):
         def __str__(self):
@@ -126,7 +147,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
                            *([disc_id.__unicode__(),
                               u"%d" % (disc_id.track_count)] +
                              [u"%d" % (o) for o in disc_id.offsets] +
-                             [u"%d" % (disc_id.total_length)]))
+                             [u"%d" % (disc_id.playable_length)]))
 
     line = next(query)
     response = RESPONSE.match(line)

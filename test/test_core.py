@@ -5609,14 +5609,12 @@ class Test_FreeDB(unittest.TestCase):
         dir = tempfile.mkdtemp()
         try:
             # dump cuesheet to temporary directory
-            f = open(os.path.join(dir, "CDImage.cue"), "wb")
-            f.write(cuesheet)
-            f.close()
+            with open(os.path.join(dir, "CDImage.cue"), "wb") as f:
+                f.write(cuesheet)
 
             # build CD image from track lengths
-            f = open(os.path.join(dir, "CDImage.bin"), "wb")
-            f.write(b"\x00" * 2 * 2 * sum(track_lengths))
-            f.close()
+            with open(os.path.join(dir, "CDImage.bin"), "wb") as f:
+                f.write(b"\x00" * 2 * 2 * sum(track_lengths))
 
             # open disc image with CDDAReader
             cddareader = CDDAReader(os.path.join(dir, "CDImage.cue"))
@@ -5692,6 +5690,49 @@ class Test_FreeDB(unittest.TestCase):
             rmtree(dir)
 
     @LIB_FREEDB
+    def test_testcd(self):
+        from audiotools import read_sheet
+        from audiotools.freedb import DiscID
+        from audiotools.cdio import CDDAReader
+        from shutil import rmtree
+
+        # use the official FreeDB test disc to verify ID calculation
+
+        testdir = tempfile.mkdtemp()
+        try:
+            # dump CD image to temporary directory
+
+            with open(os.path.join(testdir, "CDImage.cue"), "wb") as f:
+                f.write(b"FILE \"CDImage.bin\" BINARY\r\n" +
+                        b"TRACK 01 AUDIO\r\nINDEX 00 00:00:00\r\n" +
+                        b"INDEX 01 00:01:71\r\n")
+
+            with open(os.path.join(testdir, "CDImage.bin"), "wb") as f:
+                f.write(b"\x00" * 60328800)
+
+            # ensure DiscID works from CDDAReader
+            discid = DiscID.from_cddareader(
+               CDDAReader(os.path.join(testdir, "CDImage.cue")))
+
+            self.assertEqual(discid.__unicode__(), u"03015501")
+            self.assertEqual(discid.track_count, 1)
+            self.assertEqual(discid.offsets, [296])
+            self.assertEqual(discid.playable_length, 344)
+
+            # ensure DiscID works from cuesheet + length
+            discid = DiscID.from_sheet(
+                sheet=read_sheet(os.path.join(testdir, "CDImage.cue")),
+                total_pcm_frames=60328800 // 4,
+                sample_rate=44100)
+
+            self.assertEqual(discid.__unicode__(), u"03015501")
+            self.assertEqual(discid.track_count, 1)
+            self.assertEqual(discid.offsets, [296])
+            self.assertEqual(discid.playable_length, 344)
+        finally:
+            rmtree(testdir)
+
+    @LIB_FREEDB
     def test_discid(self):
         from audiotools.freedb import DiscID
 
@@ -5740,6 +5781,12 @@ class Test_FreeDB(unittest.TestCase):
 
 class Test_MusicBrainz(Test_FreeDB):
     @LIB_MUSICBRAINZ
+    def test_testcd(self):
+        # not sure if there is a MusicBrainz test disc
+
+        self.assertTrue(True)
+
+    @LIB_MUSICBRAINZ
     def test_discid(self):
         from audiotools.musicbrainz import DiscID
 
@@ -5787,6 +5834,12 @@ class Test_MusicBrainz(Test_FreeDB):
 
 
 class Test_Accuraterip(Test_FreeDB):
+    @LIB_ACCURATERIP
+    def test_testcd(self):
+        # not sure if there is an AccurateRip test disc
+
+        self.assertTrue(True)
+
     @LIB_ACCURATERIP
     def test_discid(self):
         from audiotools.accuraterip import DiscID
@@ -6172,7 +6225,8 @@ class Test_Accuraterip(Test_FreeDB):
         freedb_disc_id = FDiscID(
             offsets=offsets,
             total_length=3482,
-            track_count=31)
+            track_count=31,
+            playable_length=3482)
 
         disc_id = DiscID(
             track_numbers=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
@@ -6341,7 +6395,8 @@ class Test_Lookup(unittest.TestCase):
                      191270, 192018, 204988, 207135, 215425, 216103,
                      235200, 236023, 251335, 252838],
             total_length=3482,
-            track_count=31)
+            track_count=31,
+            playable_length=3482)
         musicbrainz_disc_id = MDiscID(
             first_track_number=1,
             last_track_number=31,
