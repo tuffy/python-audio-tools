@@ -388,8 +388,8 @@ if (__name__ == '__main__'):
             audiotools.open_files(args, messenger=msg, sorted=False),
             key=lambda t: t.total_frames())
 
-        if ((sum([t.total_frames() for t in audiofiles[0:-1]]) !=
-             audiofiles[-1].total_frames())):
+        if (sum(t.total_frames() for t in audiofiles[0:-1]) !=
+            audiofiles[-1].total_frames()):
             msg.output(_.USAGE_TRACKCMP_CDIMAGE)
             sys.exit(1)
 

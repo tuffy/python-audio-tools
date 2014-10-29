@@ -40,11 +40,10 @@ def open_file(filename):
     # this is much like audiotools.open
     # except that file init errors fail differently
 
-    f = open(filename, "rb")
-    try:
+    with open(filename, "rb") as f:
         audio_class = audiotools.file_type(f)
-        if (((audio_class is not None) and
-             (audio_class.available(audiotools.BIN)))):
+        if ((audio_class is not None) and
+            (audio_class.available(audiotools.BIN))):
             class_name = audio_class.NAME
             try:
                 return audio_class(filename)
@@ -52,8 +51,6 @@ def open_file(filename):
                 return FailedAudioFile(class_name, filename, err)
         else:
             raise audiotools.UnsupportedFile(filename)
-    finally:
-        f.close()
 
 
 def get_tracks(args, queued_files, accept_list=None):
@@ -632,8 +629,8 @@ if (__name__ == '__main__'):
 
         if (sys.stdout.isatty()):
             filename_max = (msg.terminal_size(sys.stdout)[1] -
-                            (sum([c.minimum_width() for c in
-                                  table.__rows__[1].__columns__[1:]])))
+                            sum(c.minimum_width() for c in
+                                table.__rows__[1].__columns__[1:]))
         else:
             # effectively no maximum
             filename_max = 2 ** 32

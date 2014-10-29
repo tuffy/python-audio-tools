@@ -100,6 +100,7 @@ if (__name__ == '__main__'):
                  "rate": audiotools.khz(file.sample_rate()),
                  "bits": file.bits_per_sample(),
                  "filename": audiotools.Filename(file.filename)})
+
         if (not options.no_metadata):
             metadata = file.get_metadata()
             if (not options.low_level):

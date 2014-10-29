@@ -94,7 +94,7 @@ def split_raw(progress, source_filename,
         # remove partially split file, if any
         try:
             os.unlink(str(destination_filename))
-        except OSerror:
+        except OSError:
             pass
     finally:
         f.close()

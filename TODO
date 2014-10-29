@@ -7097,7 +7097,7 @@
     - [X] audiotools._ogg
     - [X] audiotools._accuraterip
     - [X] audiotools.output
-*** TODO Update Python modules
+*** DONE Update Python modules
 **** DONE audiotools
      - [X] __init__
      - [X] accuraterip
@@ -7133,28 +7133,28 @@
      - [X] __init__
      - [X] tokrules
      - [X] yaccrules
-*** TODO Update utilities
+*** DONE Update utilities
     - [X] audiotools-config
-    - [ ] cd2track
-    - [ ] cdinfo
-    - [ ] cdplay
-    - [ ] coverdump
-    - [ ] covertag
-    - [ ] coverview
-    - [ ] dvda2track
-    - [ ] dvdainfo
-    - [ ] track2cd
-    - [ ] track2track
-    - [ ] trackcat
-    - [ ] trackcmp
-    - [ ] trackinfo
-    - [ ] tracklength
-    - [ ] tracklint
-    - [ ] trackplay
-    - [ ] trackrename
-    - [ ] tracksplit
-    - [ ] tracktag
-    - [ ] trackverify
+    - [X] cd2track
+    - [X] cdinfo
+    - [X] cdplay
+    - [X] coverdump
+    - [X] covertag
+    - [X] coverview
+    - [X] dvda2track
+    - [X] dvdainfo
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
 *** TODO Update Python-based decoders
     - [ ] alac
     - [ ] flac

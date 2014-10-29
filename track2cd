@@ -77,14 +77,15 @@ def CD_reader_size(audiofile):
                                     44100, 2, 0x3, 16).read,
             pcm_frames.append)
         return (PCMBuffer(pcm_frames, 44100, 2, 0x3, 16),
-                sum([f.frames for f in pcm_frames]))
+                sum(f.frames for f in pcm_frames))
 
 
 class PCMBuffer(object):
     def __init__(self, pcm_frames,
                  sample_rate, channels, channel_mask, bits_per_sample):
-        self.pcm_frames = pcm_frames[:]
-        self.pcm_frames.reverse()
+        from collections import deque
+
+        self.pcm_frames = deque(pcm_frames)
         self.sample_rate = sample_rate
         self.channels = channels
         self.channel_mask = channel_mask
@@ -93,7 +94,7 @@ class PCMBuffer(object):
     def read(self, frames):
         if (self.pcm_frames is not None):
             try:
-                return self.pcm_frames.pop(-1)
+                return self.pcm_frames.popleft()
             except IndexError:
                 from audiotools.pcm import empty_framelist
                 return empty_framelist(self.channels, self.bits_per_sample)
@@ -381,15 +382,11 @@ if (__name__ == '__main__'):
         progress.clear_rows()
 
         os.chdir(os.path.dirname(tempwav.name))
-        cdrdao_args = [audiotools.BIN["cdrdao"], "write"]
 
-        cdrdao_args.append("--device")
-        cdrdao_args.append(options.dev)
-
-        cdrdao_args.append("--speed")
-        cdrdao_args.append(str(options.speed))
-
-        cdrdao_args.append(tempcue.name)
+        cdrdao_args = [audiotools.BIN["cdrdao"], "write",
+                       "--device", options.dev,
+                       "--speed", str(options.speed),
+                       tempcue.name]
 
         if (options.verbosity != 'quiet'):
             subprocess.call(cdrdao_args)
@@ -412,18 +409,11 @@ if (__name__ == '__main__'):
             msg.info(_.ERR_GET_CDRECORD)
             sys.exit(1)
 
-        exec_args = [audiotools.BIN['cdrecord']]
-
-        exec_args.append("-pad")
-
-        exec_args.append("-speed")
-        exec_args.append(str(options.speed))
-
-        exec_args.append("-dev")
-        exec_args.append(options.dev)
-
-        exec_args.append("-dao")
-        exec_args.append("-audio")
+        exec_args = [audiotools.BIN['cdrecord'],
+                     "-pad",
+                     "-speed", str(options.speed),
+                     "-dev", options.dev,
+                     "-dao", "-audio"]
 
         temp_pool = []
         wave_files = []
@@ -516,4 +506,3 @@ if (__name__ == '__main__'):
         for (fd, f) in temp_pool:
             os.close(fd)
             os.unlink(f)
-        del(temp_pool)

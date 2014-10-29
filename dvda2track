@@ -347,7 +347,7 @@ if (__name__ == '__main__'):
     encoded = []
     pcmreader = title.to_pcm()
     replay_gain = audiotools.ReplayGainCalculator(title.sample_rate)
-    for (i, pts_ticks) in enumerate([t.pts_length for t in title]):
+    for (i, pts_ticks) in enumerate(t.pts_length for t in title):
         pcmreader.next_track(pts_ticks)
         pcm_frames = pcmreader.pcm_frames
 

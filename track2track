@@ -159,8 +159,7 @@ if (audiotools.ui.AVAILABLE):
 
             # ensure there's at least one set of choices per album
             # and all have the same number of tracks
-            for (a, choice_labels) in zip(metadata_choices,
-                                          track_labels):
+            for (a, choice_labels) in zip(metadata_choices, track_labels):
                 assert(len(a) > 0)
                 for c in a:
                     assert(len(c) == len(choice_labels))

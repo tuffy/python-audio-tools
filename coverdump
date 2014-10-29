@@ -103,10 +103,10 @@ if (__name__ == '__main__'):
         # ensure our input file isn't the same
         # as any of the proposed files to extract
         # (this sounds crazy,
-        # but there's no technical reason one's audio file
-        # can't be named "front_cover.jpg"
-        # even if it's not a JPEG
-        # so we have to be sure it's not going to be overwritten)
+        #  but there's no technical reason one's audio file
+        #  can't be named "front_cover.jpg"
+        #  even if it's not a JPEG
+        #  so we have to be sure it's not going to be overwritten)
         if (input_filename in
             [output_filename for
              (image, output_filename) in output_images]):

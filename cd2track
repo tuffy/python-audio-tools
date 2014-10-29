@@ -540,7 +540,7 @@ if (__name__ == '__main__'):
     for track_number in tracks_to_rip:
         row = table.row()
 
-        #first output the filename
+        # first output the filename
         row.add_column(u"%d" % (track_number), "right")
 
         # then output the 7 log fields
