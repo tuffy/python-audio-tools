@@ -82,7 +82,7 @@ class DiscID(object):
                                     "lead_out_offset",
                                     "offsets"]])
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -150,11 +150,11 @@ def get_node(parent, *nodes):
     indicating a path, returns the node at the end of that path
     or raises KeyError if any node in the path cannot be found"""
 
-    if (len(nodes) == 0):
+    if len(nodes) == 0:
         return parent
     else:
         for child in parent.childNodes:
-            if (hasattr(child, "tagName") and (child.tagName == nodes[0])):
+            if hasattr(child, "tagName") and (child.tagName == nodes[0]):
                 return get_node(child, *nodes[1:])
         else:
             raise KeyError(nodes[0])
@@ -172,7 +172,7 @@ def text(node):
     """given a minidom leaf node element,
     returns its data as a unicode string"""
 
-    if (node.firstChild is not None):
+    if node.firstChild is not None:
         return node.firstChild.data
     else:
         return u""
@@ -192,7 +192,7 @@ def artist(artist_credit):
         except KeyError:
             artists.append(u"")
         # <name-credit> may contain a "joinphrase" attribute
-        if (name_credit.hasAttribute(u"joinphrase")):
+        if name_credit.hasAttribute(u"joinphrase"):
             artists.append(name_credit.getAttribute(u"joinphrase"))
     return u"".join(artists)
 
@@ -306,14 +306,14 @@ def parse_release(release, disc_id):
             recording = get_node(track, u"recording")
 
             # <recording> may contain a <title>
-            if (track_name is None):
+            if track_name is None:
                 try:
                     track_name = text(get_node(recording, u"title"))
                 except KeyError:
                     track_name = None
 
             # <recording> may contain <artist-credit>
-            if (track_artist is None):
+            if track_artist is None:
                 try:
                     track_artist = artist(get_node(recording,
                                                    u"artist-credit"))
@@ -322,7 +322,7 @@ def parse_release(release, disc_id):
         except KeyError:
             # no <recording> in <track>
 
-            if (track_artist is None):
+            if track_artist is None:
                 track_artist = album_artist
 
         # <track> may contain a <position>

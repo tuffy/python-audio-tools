@@ -56,15 +56,15 @@ class CDTOC(Sheet):
         audio_track_addresses = [int(i, 16) for i in items[1:1 + track_count]]
         remaining_items = items[1 + track_count:]
 
-        if (len(remaining_items) == 1):
+        if len(remaining_items) == 1:
             # all audio tracks
             lead_out_address = int(remaining_items[0], 16)
             return cls([CDTOC_Track(i, address) for (i, address) in
                        enumerate(audio_track_addresses, 1)],
                        lead_out_address)
-        elif (len(remaining_items) == 2):
+        elif len(remaining_items) == 2:
             # might be CDExtra or Data+Audio
-            if (remaining_items[1].startswith(u"X")):
+            if remaining_items[1].startswith(u"X"):
                 # Data+Audio
                 lead_out_address = int(remaining_items[0], 16)
                 data_track_address = int(remaining_items[1][1:], 16)
@@ -96,16 +96,16 @@ class CDTOC(Sheet):
 
         sheet_tracks = list(sheet)
         is_audio = [t.is_audio() for t in sheet_tracks]
-        if (False not in is_audio):
+        if False not in is_audio:
             # all tracks are audio, so not CDExtra or Data+Audio
             return cls([CDTOC_Track.converted(t) for t in sheet_tracks],
                        int(seconds_length * 75) + 150)
-        elif ((not is_audio[0]) and (False not in is_audio[1:])):
+        elif (not is_audio[0]) and (False not in is_audio[1:]):
             # Data+Audio
             return CDTOC_DataAudio(
                 [CDTOC_Track.converted(t) for t in sheet_tracks],
                 int(seconds_length * 75) + 150)
-        elif ((False not in is_audio[0:-1]) and not is_audio[-1]):
+        elif (False not in is_audio[0:-1]) and not is_audio[-1]:
             # CDExtra
             return cls([CDTOC_Track.converted(t) for t in sheet_tracks],
                        int(seconds_length * 75) + 150)
@@ -125,7 +125,7 @@ class CDTOC(Sheet):
         may raise KeyError if the track is not found"""
 
         initial_track = self.track(track_number)
-        if (track_number < len(self)):
+        if track_number < len(self):
             next_track = self.track(track_number + 1)
             return (next_track.index(1).offset() -
                     initial_track.index(1).offset())
@@ -168,7 +168,7 @@ class CDTOC_Track(SheetTrack):
         is_audio determines whether the track contains audio data"""
 
         self.__number__ = number
-        if ((number == 1) and (address > 150)):
+        if (number == 1) and (address > 150):
             # add index point 0 as pre-gap
             self.__indexes__ = [CDTOC_Index(0, 150), CDTOC_Index(1, address)]
         else:

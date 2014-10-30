@@ -28,7 +28,7 @@ if PY3:
 try:
     import urwid
 
-    if (urwid.version.VERSION < (1, 0, 0)):
+    if urwid.version.VERSION < (1, 0, 0):
         raise ImportError()
 
     AVAILABLE = True
@@ -43,7 +43,7 @@ try:
             self.__key_map__ = {"enter": "down"}
 
         def keypress(self, size, key):
-            if (key == "ctrl k"):
+            if key == "ctrl k":
                 self.set_edit_text(u"")
             else:
                 return urwid.Edit.keypress(self, size,
@@ -59,7 +59,7 @@ try:
             self.__key_map__ = {"enter": "down"}
 
         def keypress(self, size, key):
-            if (key == "ctrl k"):
+            if key == "ctrl k":
                 self.set_edit_text(u"0")
             else:
                 return urwid.Edit.keypress(self, size,
@@ -82,8 +82,8 @@ try:
 
         def set_focus(self, part):
             urwid.Frame.set_focus(self, part)
-            if (self.focus_callback is not None):
-                if (self.focus_callback_arg is not None):
+            if self.focus_callback is not None:
+                if self.focus_callback_arg is not None:
                     self.focus_callback(self, part, self.focus_callback_arg)
                 else:
                     self.focus_callback(self, part)
@@ -91,7 +91,7 @@ try:
     def get_focus(widget):
         # something to smooth out the differences between Urwid versions
 
-        if (hasattr(widget, "get_focus") and callable(widget.get_focus)):
+        if hasattr(widget, "get_focus") and callable(widget.get_focus):
             return widget.get_focus()
         else:
             return widget.focus_part
@@ -184,9 +184,9 @@ try:
                                  footer=self.metadata_status)
 
         def page_changed(self, new_page):
-            if (new_page is self.metadata):
+            if new_page is self.metadata:
                 self.set_footer(self.metadata_status)
-            elif (new_page is self.options):
+            elif new_page is self.options:
                 self.options.set_metadatas(
                     list(self.metadata.populated_metadata()))
                 self.set_footer(self.options_status)
@@ -196,13 +196,13 @@ try:
             raise urwid.ExitMainLoop()
 
         def complete(self, button):
-            if (self.options.has_collisions):
+            if self.options.has_collisions:
                 from audiotools.text import ERR_OUTPUT_OUTPUTS_ARE_INPUT
                 self.options_status.set_text(ERR_OUTPUT_OUTPUTS_ARE_INPUT)
-            elif (self.options.has_duplicates):
+            elif self.options.has_duplicates:
                 from audiotools.text import ERR_OUTPUT_DUPLICATE_NAME
                 self.options_status.set_text(ERR_OUTPUT_DUPLICATE_NAME)
-            elif (self.options.has_errors):
+            elif self.options.has_errors:
                 from audiotools.text import ERR_OUTPUT_INVALID_FORMAT
                 self.options_status.set_text(ERR_OUTPUT_INVALID_FORMAT)
             else:
@@ -216,10 +216,10 @@ try:
             return self.__cancelled__
 
         def handle_text(self, i):
-            if (self.get_footer() is self.metadata_status):
-                if (i == 'f1'):
+            if self.get_footer() is self.metadata_status:
+                if i == 'f1':
                     self.metadata.select_previous_item()
-                elif (i == 'f2'):
+                elif i == 'f2':
                     self.metadata.select_next_item()
 
         def output_tracks(self):
@@ -335,7 +335,7 @@ try:
             output_filename = self.options.selected_options()[2]
 
             # ensure output filename isn't same as input filename
-            if (output_filename in self.input_filenames):
+            if output_filename in self.input_filenames:
                 from audiotools.text import ERR_OUTPUT_IS_INPUT
                 self.status.set_text(
                     ERR_OUTPUT_IS_INPUT % (output_filename,))
@@ -347,11 +347,11 @@ try:
             return self.__cancelled__
 
         def handle_text(self, i):
-            if (i == 'esc'):
+            if i == 'esc':
                 self.exit(None)
-            elif (i == 'f1'):
+            elif i == 'f1':
                 self.metadata.select_previous_item()
-            elif (i == 'f2'):
+            elif i == 'f2':
                 self.metadata.select_next_item()
 
         def output_track(self):
@@ -417,7 +417,7 @@ try:
             self.selected_match = self.edit_matches[0]
 
             # place selector at top only if there's more than one match
-            if (len(metadata_choices) > 1):
+            if len(metadata_choices) > 1:
                 # setup radio button for each possible match
                 matches = []
                 radios = [urwid.RadioButton(matches,
@@ -434,7 +434,7 @@ try:
                 # put radio buttons in pretty container
                 select_match = urwid.LineBox(urwid.ListBox(radios))
 
-                if (hasattr(select_match, "set_title")):
+                if hasattr(select_match, "set_title"):
                     select_match.set_title(LAB_SELECT_BEST_MATCH)
 
                 widgets = [("fixed",
@@ -452,26 +452,26 @@ try:
             urwid.Pile.__init__(self, widgets)
 
         def select_match(self, radio, selected, match):
-            if (selected):
+            if selected:
                 self.selected_match = self.edit_matches[match]
                 self.track_metadata.set_body(self.selected_match)
 
         def swiveled(self, radio_button, selected, swivel):
-            if (selected):
+            if selected:
                 from .text import (LAB_KEY_NEXT,
                                    LAB_KEY_PREVIOUS)
 
                 keys = []
-                if (radio_button.previous_radio_button() is not None):
+                if radio_button.previous_radio_button() is not None:
                     keys.extend([('key', u"F1"),
                                  LAB_KEY_PREVIOUS % (swivel.swivel_type)])
-                if (radio_button.next_radio_button() is not None):
-                    if (len(keys) > 0):
+                if radio_button.next_radio_button() is not None:
+                    if len(keys) > 0:
                         keys.append(u"   ")
                     keys.extend([('key', u"F2"),
                                  LAB_KEY_NEXT % (swivel.swivel_type)])
 
-                if (len(keys) > 0):
+                if len(keys) > 0:
                     self.status.set_text(keys)
                 else:
                     self.status.set_text(u"")
@@ -547,7 +547,7 @@ try:
 
             # populate the track_labels and metadata_edits lookup tables
             for (track_id, track_label, metadata) in tracks:
-                if (track_id not in self.metadata_edits):
+                if track_id not in self.metadata_edits:
                     track_labels.append((track_id, track_label))
                     self.metadata_edits[track_id] = TrackMetaData(
                         metadata=(metadata if metadata is not None
@@ -595,7 +595,7 @@ try:
                                      self.activate_swivel,
                                      swivel)
 
-                if (on_swivel_change is not None):
+                if on_swivel_change is not None:
                     urwid.connect_signal(radio,
                                          'change',
                                          on_swivel_change,
@@ -632,7 +632,7 @@ try:
                                      self.activate_swivel,
                                      swivel)
 
-                if (on_swivel_change is not None):
+                if on_swivel_change is not None:
                     urwid.connect_signal(radio,
                                          'change',
                                          on_swivel_change,
@@ -647,7 +647,7 @@ try:
                      ("weight", 1, urwid.Text(u""))]),
                 body=urwid.ListBox([]))
 
-            if (len(self.metadata_edits) != 1):
+            if len(self.metadata_edits) != 1:
                 # if more than one track, select track_name radio button
                 field_radios["track_name"].set_state(True)
             else:
@@ -655,7 +655,7 @@ try:
                 track_radios[track_labels[0][0]].set_state(True)
 
         def activate_swivel(self, radio_button, selected, swivel):
-            if (selected):
+            if selected:
                 self.selected_radio = radio_button
 
                 # add new entries according to swivel's values
@@ -684,12 +684,12 @@ try:
 
         def select_previous_item(self):
             previous_radio = self.selected_radio.previous_radio_button()
-            if (previous_radio is not None):
+            if previous_radio is not None:
                 previous_radio.set_state(True)
 
         def select_next_item(self):
             next_radio = self.selected_radio.next_radio_button()
-            if (next_radio is not None):
+            if next_radio is not None:
                 next_radio.set_state(True)
 
         def metadata(self):
@@ -718,7 +718,7 @@ try:
             for (current_radio,
                  previous_radio) in zip(self.ordered_group,
                                         [None] + self.ordered_group):
-                if (current_radio is self):
+                if current_radio is self:
                     return previous_radio
             else:
                 return None
@@ -727,7 +727,7 @@ try:
             for (current_radio,
                  next_radio) in zip(self.ordered_group,
                                     self.ordered_group[1:] + [None]):
-                if (current_radio is self):
+                if current_radio is self:
                     return next_radio
             else:
                 return None
@@ -770,7 +770,7 @@ try:
                  ("fixed", 4, self.checkbox)])
 
         def swap_link(self, checkbox, linked):
-            if (linked):
+            if linked:
                 # if nothing else linked in this checkbox group,
                 # set linked text to whatever the last unlinked text as
                 if ({cb.get_state() for cb in self.checkbox_group
@@ -787,12 +787,12 @@ try:
                 self.set_focus(2)
 
         def value(self):
-            if (self.checkbox.get_state()):
+            if self.checkbox.get_state():
                 widget = self.linked_widget
             else:
                 widget = self.unlinked_widget
 
-            if (hasattr(widget, "value") and callable(widget.value)):
+            if hasattr(widget, "value") and callable(widget.value):
                 return widget.value()
             elif (hasattr(widget, "get_edit_text") and
                   callable(widget.get_edit_text)):
@@ -808,7 +808,7 @@ try:
             self.metadata = metadata
             self.checkbox_groups = {}
             for field in metadata.FIELDS:
-                if (field not in metadata.INTEGER_FIELDS):
+                if field not in metadata.INTEGER_FIELDS:
                     value = getattr(metadata, field)
                     widget = DownEdit(edit_text=value if value is not None
                                       else u"")
@@ -817,7 +817,7 @@ try:
                     widget = DownIntEdit(default=value if value is not None
                                          else 0)
 
-                if (on_change is not None):
+                if on_change is not None:
                     urwid.connect_signal(widget, 'change', on_change)
                 setattr(self, field, widget)
                 self.checkbox_groups[field] = []
@@ -831,7 +831,7 @@ try:
             on_change is a callback for when the text field is modified"""
 
             for field in metadata.FIELDS:
-                if (field not in metadata.INTEGER_FIELDS):
+                if field not in metadata.INTEGER_FIELDS:
                     value = getattr(metadata, field)
                     widget = DownEdit(edit_text=value if value is not None
                                       else u"")
@@ -840,7 +840,7 @@ try:
                     widget = DownIntEdit(default=value if value is not None
                                          else 0)
 
-                if (on_change is not None):
+                if on_change is not None:
                     urwid.connect_signal(widget, 'change', on_change)
 
                 linked_widget = LinkedWidgets(
@@ -906,15 +906,15 @@ try:
         import os.path
 
         (base, remainder) = os.path.split(path)
-        if (os.path.isdir(base)):
+        if os.path.isdir(base):
             try:
                 candidate_dirs = [d for d in os.listdir(base)
                                   if (d.startswith(remainder) and
                                       os.path.isdir(os.path.join(base, d)))]
-                if (len(candidate_dirs) == 0):
+                if len(candidate_dirs) == 0:
                     # no possible matches to tab complete
                     return path
-                elif (len(candidate_dirs) == 1):
+                elif len(candidate_dirs) == 1:
                     # one possible match to tab complete
                     return os.path.join(base, candidate_dirs[0]) + os.sep
                 else:
@@ -937,17 +937,17 @@ try:
         import os.path
 
         (base, remainder) = os.path.split(path)
-        if (os.path.isdir(base)):
+        if os.path.isdir(base):
             try:
                 candidates = [f for f in os.listdir(base)
                               if f.startswith(remainder)]
-                if (len(candidates) == 0):
+                if len(candidates) == 0:
                     # no possible matches to tab complete
                     return path
-                elif (len(candidates) == 1):
+                elif len(candidates) == 1:
                     # one possible match to tab complete
                     path = os.path.join(base, candidates[0])
-                    if (os.path.isdir(path)):
+                    if os.path.isdir(path):
                         return path + os.sep
                     else:
                         return path
@@ -971,9 +971,9 @@ try:
         import os.path
 
         base = os.path.split(path.rstrip(os.sep))[0]
-        if (base == ''):
+        if base == '':
             return base
-        elif (not base.endswith(os.sep)):
+        elif not base.endswith(os.sep):
             return base + os.sep
         else:
             return base
@@ -996,7 +996,7 @@ try:
 
         def keypress(self, size, key):
             key = urwid.Pile.keypress(self, size, key)
-            if ((key == "esc") and (self.cancelled is not None)):
+            if (key == "esc") and (self.cancelled is not None):
                 self.cancelled()
                 return
             else:
@@ -1051,13 +1051,13 @@ try:
                 buttons.append(urwid.Button(label=l,
                                             on_press=self.select_button,
                                             user_data=(l, value)))
-                if (value == selected_value):
+                if value == selected_value:
                     selected_button = i
             pile = SelectButtons(buttons,
                                  selected_button,
                                  lambda: self._emit("close"))
             fill = urwid.Filler(pile)
-            if (label is not None):
+            if label is not None:
                 linebox = urwid.LineBox(fill, title=label)
             else:
                 linebox = urwid.LineBox(fill)
@@ -1096,7 +1096,7 @@ try:
             self.__user_data__ = None
             self.__label__ = label
 
-            if (selected_value is not None):
+            if selected_value is not None:
                 try:
                     (label, value) = [pair for pair in items
                                       if pair[1] == selected_value][0]
@@ -1130,8 +1130,8 @@ try:
         def make_selection(self, label, value):
             self.__select_button__.set_label(label)
             self.__selected_value__ = value
-            if (self.__on_change__ is not None):
-                if (self.__user_data__ is not None):
+            if self.__on_change__ is not None:
+                if self.__user_data__ is not None:
                     self.__on_change__(value, self.__user_data__)
                 else:
                     self.__on_change__(value)
@@ -1151,7 +1151,7 @@ try:
             urwid.Columns.__init__(self,
                                    [('weight', 1, self.edit),
                                     ('fixed', 10, BrowseDirectory(self.edit))])
-            if (on_change is not None):
+            if on_change is not None:
                 urwid.connect_signal(self.edit,
                                      'change',
                                      on_change,
@@ -1187,7 +1187,7 @@ try:
             FS_ENCODING = audiotools.FS_ENCODING
             import os.path
 
-            if (key == 'tab'):
+            if key == 'tab':
                 # only tab complete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = tab_complete(
@@ -1198,7 +1198,7 @@ try:
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
-            elif (key == 'ctrl w'):
+            elif key == 'ctrl w':
                 # only delete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = pop_directory(
@@ -1209,7 +1209,7 @@ try:
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
-            elif (key == 'ctrl k'):
+            elif key == 'ctrl k':
                 # delete entire line
                 self.set_edit_text(u"")
                 self.set_edit_pos(0)
@@ -1301,11 +1301,11 @@ try:
             import os.path
 
             def path_iter(path):
-                if (path == os.sep):
+                if path == os.sep:
                     yield path
                 else:
                     path = path.rstrip(os.sep)
-                    if (len(path) > 0):
+                    if len(path) > 0:
                         (head, tail) = os.path.split(path)
                         for part in path_iter(head):
                             yield part
@@ -1319,7 +1319,7 @@ try:
                 os.path.abspath(
                     os.path.expanduser(initial_directory))):
                 try:
-                    if (path_part == "/"):
+                    if path_part == "/":
                         node = topnode
                     else:
                         node = node.get_child_node(path_part)
@@ -1350,13 +1350,13 @@ try:
 
         def unhandled_input(self, size, input):
             input = urwid.TreeListBox.unhandled_input(self, size, input)
-            if (input == 'enter'):
-                if (self.directory_selected is not None):
+            if input == 'enter':
+                if self.directory_selected is not None:
                     self.directory_selected(self.selected_directory())
                 else:
                     return input
-            elif (input == 'esc'):
-                if (self.cancelled is not None):
+            elif input == 'esc':
+                if self.cancelled is not None:
                     self.cancelled()
                 else:
                     return input
@@ -1373,7 +1373,7 @@ try:
 
         def keypress(self, size, key):
             key = urwid.TreeWidget.keypress(self, size, key)
-            if (key == " "):
+            if key == " ":
                 self.expanded = not self.expanded
                 self.update_expanded_icon()
             else:
@@ -1401,7 +1401,7 @@ try:
             import os
             import os.path
 
-            if (path == os.sep):
+            if path == os.sep:
                 urwid.ParentNode.__init__(self,
                                           value=path,
                                           key=None,
@@ -1476,7 +1476,7 @@ try:
             import os.path
             FS_ENCODING = audiotools.FS_ENCODING
 
-            if (key == 'tab'):
+            if key == 'tab':
                 # only tab complete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = tab_complete(
@@ -1487,7 +1487,7 @@ try:
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
-            elif (key == 'ctrl w'):
+            elif key == 'ctrl w':
                 # only delete stuff before cursor
                 (prefix, suffix) = split_at_cursor(self)
                 new_prefix = pop_directory(
@@ -1498,7 +1498,7 @@ try:
 
                 self.set_edit_text(new_prefix + suffix)
                 self.set_edit_pos(len(new_prefix))
-            elif (key == 'ctrl k'):
+            elif key == 'ctrl k':
                 # delete entire line
                 self.set_edit_text(u"")
                 self.set_edit_pos(0)
@@ -1592,9 +1592,9 @@ try:
 
         def keypress(self, size, input):
             input = urwid.ListBox.keypress(self, size, input)
-            if (input == 'esc'):
+            if input == 'esc':
                 self.cancel()
-            elif (input == 'delete'):
+            elif input == 'delete':
                 self.output_format.set_edit_text(u"")
             else:
                 return input
@@ -1730,7 +1730,7 @@ try:
                             title=LAB_OUTPUT_OPTIONS))),
                        ('weight', 1, output_tracks_frame_linebox)]
 
-            if (extra_widgets is not None):
+            if extra_widgets is not None:
                 widgets.extend(extra_widgets)
 
             urwid.Pile.__init__(self, widgets)
@@ -1740,7 +1740,7 @@ try:
         def select_type(self, audio_class, default_quality=None):
             self.selected_class = audio_class
 
-            if (len(audio_class.COMPRESSION_MODES) < 2):
+            if len(audio_class.COMPRESSION_MODES) < 2:
                 # one audio quality for selected type
                 try:
                     quality = audio_class.COMPRESSION_MODES[0]
@@ -1751,7 +1751,7 @@ try:
             else:
                 # two or more audio qualities for selected type
                 qualities = audio_class.COMPRESSION_MODES
-                if (default_quality is not None):
+                if default_quality is not None:
                     default = [q for q in qualities if
                                q == default_quality][0]
                 else:
@@ -1789,14 +1789,14 @@ try:
             import os.path
 
             # get the output directory
-            if (output_directory is None):
+            if output_directory is None:
                 output_directory = self.output_directory.get_directory()
 
             # get selected audio format
             audio_class = self.selected_class
 
             # get current filename format
-            if (filename_format is None):
+            if filename_format is None:
                 output_format_text = self.output_format.get_edit_text()
                 if PY3:
                     filename_format = output_format_text
@@ -1826,10 +1826,10 @@ try:
                 self.has_collisions = False
                 self.has_duplicates = False
                 for path in self.output_filenames:
-                    if (path in input_filenames):
+                    if path in input_filenames:
                         collisions.add(path)
                         self.has_collisions = True
-                    elif (path in output_filenames):
+                    elif path in output_filenames:
                         collisions.add(path)
                         self.has_duplicates = True
                     else:
@@ -1838,7 +1838,7 @@ try:
                 # and populate output files list
                 for (filename, track) in zip(self.output_filenames,
                                              self.output_tracks):
-                    if (filename not in collisions):
+                    if filename not in collisions:
                         track.set_text(filename.__unicode__())
                     else:
                         track.set_text(("duplicate",
@@ -1872,7 +1872,7 @@ try:
             """metadatas is a list of MetaData objects
             (some of which may be None)"""
 
-            if (len(metadatas) != len(self.metadatas)):
+            if len(metadatas) != len(self.metadatas):
                 raise ValueError("new metadatas must have same count as old")
 
             self.metadatas = metadatas
@@ -1958,7 +1958,7 @@ try:
         def select_type(self, audio_class, default_quality=None):
             self.selected_class = audio_class
 
-            if (len(audio_class.COMPRESSION_MODES) < 2):
+            if len(audio_class.COMPRESSION_MODES) < 2:
                 # one audio quality for selected type
                 try:
                     quality = audio_class.COMPRESSION_MODES[0]
@@ -1969,7 +1969,7 @@ try:
             else:
                 # two or more audio qualities for selected type
                 qualities = audio_class.COMPRESSION_MODES
-                if (default_quality is not None):
+                if default_quality is not None:
                     default = [q for q in qualities if
                                q == default_quality][0]
                 else:
@@ -2009,7 +2009,7 @@ try:
 
             self.__body_pages__ = []
             for (i, widget) in enumerate(pages):
-                if (i == 0):
+                if i == 0:
                     previous_button = cancel_button
                 else:
                     previous_button = urwid.Button(
@@ -2019,7 +2019,7 @@ try:
                                    pages[i - 1],
                                    page_changed))
 
-                if (i == (len(pages) - 1)):
+                if i == (len(pages) - 1):
                     next_button = completion_button
                 else:
                     next_button = urwid.Button(
@@ -2045,7 +2045,7 @@ try:
         def set_page(self, button, user_data):
             (page_widget_index, base_widget, page_changed) = user_data
             self.set_body(self.__body_pages__[page_widget_index])
-            if (page_changed is not None):
+            if page_changed is not None:
                 page_changed(base_widget)
 
     class MappedButton(urwid.Button):
@@ -2130,16 +2130,16 @@ try:
             return (0, 0)
 
         def keypress(self, size, key):
-            if ((key == 'left') and (self.decrease_volume is not None)):
+            if (key == 'left') and (self.decrease_volume is not None):
                 self.decrease_volume()
-            elif ((key == 'right') and (self.increase_volume is not None)):
+            elif (key == 'right') and (self.increase_volume is not None):
                 self.increase_volume()
             else:
                 return key
 
         def render(self, size, focus=False):
             c = urwid.ProgressBar.render(self, size, focus)
-            if (focus):
+            if focus:
                 # create a new canvas so we can add a cursor
                 c = urwid.CompositeCanvas(c)
                 c.cursor = self.get_cursor_coords(size)
@@ -2218,14 +2218,14 @@ try:
 
         def keypress(self, size, key):
             key = urwid.Pile.keypress(self, size, key)
-            if (key == 'esc'):
-                if (self.closed_callback is not None):
+            if key == 'esc':
+                if self.closed_callback is not None:
                     self.closed_callback()
             else:
                 return key
 
         def change_output(self, radio_button, new_state, new_output):
-            if (new_state):
+            if new_state:
                 self.player.set_output(new_output)
                 self.volume_control.update()
 
@@ -2409,7 +2409,7 @@ try:
                 self.track_group[track_index + 1].set_state(True)
                 self.track_list_widget.set_focus(track_index + 1, "above")
             except IndexError:
-                if (len(self.track_group)):
+                if len(self.track_group):
                     self.track_group[0].set_state(True)
                     self.track_list_widget.set_focus(0, "above")
                     self.player.stop()
@@ -2417,7 +2417,7 @@ try:
         def previous_track(self, user_data=None):
             track_index = [g.state for g in self.track_group].index(True)
             try:
-                if (track_index == 0):
+                if track_index == 0:
                     raise IndexError()
                 else:
                     self.track_group[track_index - 1].set_state(True)
@@ -2452,8 +2452,8 @@ try:
             self.artist_name.set_text(artist_name if
                                       artist_name is not None
                                       else u"")
-            if (track_number is not None):
-                if (track_total is not None):
+            if track_number is not None:
+                if track_total is not None:
                     self.tracknum.set_text(LAB_X_OF_Y %
                                            (track_number,
                                             track_total))
@@ -2462,8 +2462,8 @@ try:
             else:
                 self.tracknum.set_text(u"")
 
-            if (album_number is not None):
-                if (album_total is not None):
+            if album_number is not None:
+                if album_total is not None:
                     self.albumnum_label.set_text(('label',
                                                   LAB_ALBUM_NUMBER + u" : "))
                     self.albumnum.set_text(LAB_X_OF_Y %
@@ -2493,7 +2493,7 @@ try:
 
             self.progress.set_completion(self.player.progress()[0])
             self.volume_control.update()
-            if (self.player.state() == PLAYER_PLAYING):
+            if self.player.state() == PLAYER_PLAYING:
                 self.play_pause_button.set_label(LAB_PAUSE_BUTTON)
             else:
                 self.play_pause_button.set_label(LAB_PLAY_BUTTON)
@@ -2501,7 +2501,7 @@ try:
         def play_pause(self, user_data):
             from audiotools.player import PLAYER_STOPPED
 
-            if (self.player.state() == PLAYER_STOPPED):
+            if self.player.state() == PLAYER_STOPPED:
                 self.player.play()
             else:
                 # there's a race condition here where the player's state
@@ -2515,13 +2515,13 @@ try:
             self.update_status()
 
         def handle_text(self, i):
-            if ((i == 'esc') or (i == 'q') or (i == 'Q')):
+            if (i == 'esc') or (i == 'q') or (i == 'Q'):
                 self.perform_exit()
-            elif ((i == 'n') or (i == 'N')):
+            elif (i == 'n') or (i == 'N'):
                 self.next_track()
-            elif ((i == 'p') or (i == 'P')):
+            elif (i == 'p') or (i == 'P'):
                 self.previous_track()
-            elif ((i == 's') or (i == 'S')):
+            elif (i == 's') or (i == 'S'):
                 self.stop()
 
         def perform_exit(self, *args):
@@ -2600,7 +2600,7 @@ def show_available_qualities(msg, audiotype):
                                  LAB_OUTPUT_QUALITY,
                                  ERR_NO_COMPRESSION_MODES)
 
-    if (len(audiotype.COMPRESSION_MODES) > 1):
+    if len(audiotype.COMPRESSION_MODES) > 1:
         msg.info(LAB_AVAILABLE_COMPRESSION_TYPES % (audiotype.NAME))
         msg.info(u"")
 
@@ -2622,7 +2622,7 @@ def show_available_qualities(msg, audiotype):
                                        audiotype.NAME))
                                    else None)),
                 "right")
-            if (mode in audiotype.COMPRESSION_DESCRIPTIONS):
+            if mode in audiotype.COMPRESSION_DESCRIPTIONS:
                 row.add_column(u" : ")
                 row.add_column(audiotype.COMPRESSION_DESCRIPTIONS[mode])
             else:
@@ -2648,7 +2648,7 @@ def select_metadata(metadata_choices, msg, use_default=False):
     # and all choices must have the same number of tracks
     assert(len(set(map(len, metadata_choices))) == 1)
 
-    if ((len(metadata_choices) == 1) or use_default):
+    if (len(metadata_choices) == 1) or use_default:
         return metadata_choices[0]
     else:
         choice = None
@@ -2730,9 +2730,9 @@ def process_output_options(metadata_choices,
                          output_class.track_name(str(input_filename),
                                                  metadata,
                                                  format_string)))
-        if (output_filename in __input__):
+        if output_filename in __input__:
             raise audiotools.OutputFileIsInput(output_filename)
-        elif (output_filename in __output__):
+        elif output_filename in __output__:
             raise audiotools.DuplicateOutputFile(output_filename)
         else:
             __output__.add(output_filename)
@@ -2820,7 +2820,7 @@ class PlayerTTY(object):
                     (frames_sent, frames_total) = self.progress()
                     output_line = self.progress_line(frames_sent, frames_total)
                     msg.ansi_clearline()
-                    if (len(output_line) > output_line_len):
+                    if len(output_line) > output_line_len:
                         output_line_len = len(output_line)
                         msg.partial_output(output_line)
                     else:
@@ -2830,13 +2830,13 @@ class PlayerTTY(object):
 
                     (r_list, w_list, x_list) = select.select([stdin.fileno()],
                                                              [], [], 1)
-                    if (len(r_list) > 0):
+                    if len(r_list) > 0:
                         char = os.read(stdin.fileno(), 1)
                         if (((char == b'q') or
                              (char == b'Q') or
                              (char == b'\x1B'))):
                             self.playing_finished = True
-                        elif (char == b' '):
+                        elif char == b' ':
                             self.toggle_play_pause()
                         elif ((char == b'n') or
                               (char == b'N')):

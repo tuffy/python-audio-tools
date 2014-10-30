@@ -35,7 +35,7 @@ def p_headers(t):
     '''headers : header
                | headers header'''
 
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = t[1] + [t[2]]
@@ -48,9 +48,9 @@ def p_header(t):
               | CATALOG STRING
               | header_cd_text'''
 
-    if (t[1] in ["CD_DA", "CD_ROM", "CD_ROM_XA"]):
+    if t[1] in ["CD_DA", "CD_ROM", "CD_ROM_XA"]:
         t[0] = ("type", t[1])
-    elif (t[1] == "CATALOG"):
+    elif t[1] == "CATALOG":
         t[0] = ("catalog", t[2])
     else:
         t[0] = ("cd_text", t[1])
@@ -73,7 +73,7 @@ def p_language_mappings(t):
     '''language_mappings : language_mapping
                          | language_mappings language_mapping'''
 
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = t[1] = [t[2]]
@@ -97,7 +97,7 @@ def p_language_blocks(t):
     '''language_blocks : language_block
                        | language_blocks language_block'''
 
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = t[1] + [t[2]]
@@ -114,7 +114,7 @@ def p_cd_text_items(t):
     '''cd_text_items : cd_text_item
                      | cd_text_items cd_text_item'''
 
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = t[1] + [t[2]]
@@ -145,7 +145,7 @@ def p_binary(t):
 def p_bytes(t):
     '''bytes : NUMBER
              | NUMBER COMMA bytes'''
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = [t[1]] + t[3]
@@ -155,7 +155,7 @@ def p_tracks(t):
     '''tracks : track
               | tracks track'''
 
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = t[1] + [t[2]]
@@ -167,7 +167,7 @@ def p_track(t):
 
     from audiotools.toc import TOCTrack
 
-    if (len(t) == 4):
+    if len(t) == 4:
         t[0] = TOCTrack(mode=t[2], flags=t[3])
     else:
         t[0] = TOCTrack(mode=t[2], flags=t[4], sub_channel_mode=t[3])
@@ -195,7 +195,7 @@ def p_track_flags(t):
     '''track_flags : track_flag
                    | track_flags track_flag'''
 
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = t[1] + [t[2]]
@@ -266,7 +266,7 @@ def p_track_file(t):
                   | FILE STRING start length
                   | AUDIOFILE STRING start length'''
     from audiotools.toc import TOCFlag_FILE
-    if (len(t) == 4):
+    if len(t) == 4:
         t[0] = TOCFlag_FILE(type=t[1],
                             filename=t[2],
                             start=t[3])
@@ -281,7 +281,7 @@ def p_track_start(t):
     '''track_flag : START
                   | START TIMESTAMP'''
     from audiotools.toc import TOCFlag_START
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = TOCFlag_START()
     else:
         from fractions import Fraction

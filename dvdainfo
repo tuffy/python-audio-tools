@@ -105,7 +105,7 @@ if (__name__ == '__main__'):
                      start_sector,
                      end_sector)) in enumerate(track.sectors()):
                 row = table.row()
-                if (i == 0):
+                if i == 0:
                     row.add_column(u"%d" % (title_num + 1), "right")
                     row.add_column(u" ")
                     row.add_column(u"%d" % (track_num + 1), "right")
@@ -129,7 +129,7 @@ if (__name__ == '__main__'):
                 row.add_column(u" ")
                 row.add_column(u"%d" % (end_sector - 1), "right")
                 row.add_column(u" ")
-                if (i == 0):
+                if i == 0:
                     row.add_column(u"%d" % (track.pts_length), "right")
                 else:
                     row.add_column(u" ")

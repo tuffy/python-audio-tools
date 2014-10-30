@@ -62,10 +62,10 @@ class VorbisAudio(AudioFile):
              checksum,
              segment_count) = ogg_reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
 
-            if (magic_number != b'OggS'):
+            if magic_number != b'OggS':
                 from audiotools.text import ERR_OGG_INVALID_MAGIC_NUMBER
                 raise InvalidVorbis(ERR_OGG_INVALID_MAGIC_NUMBER)
-            if (version != 0):
+            if version != 0:
                 from audiotools.text import ERR_OGG_INVALID_VERSION
                 raise InvalidVorbis(ERR_OGG_INVALID_VERSION)
 
@@ -84,16 +84,16 @@ class VorbisAudio(AudioFile):
              framing) = ogg_reader.parse(
                 "8u 6b 32u 8u 32u 32u 32u 32u 4u 4u 1u")
 
-            if (vorbis_type != 1):
+            if vorbis_type != 1:
                 from audiotools.text import ERR_VORBIS_INVALID_TYPE
                 raise InvalidVorbis(ERR_VORBIS_INVALID_TYPE)
-            if (header != b'vorbis'):
+            if header != b'vorbis':
                 from audiotools.text import ERR_VORBIS_INVALID_HEADER
                 raise InvalidVorbis(ERR_VORBIS_INVALID_HEADER)
-            if (version != 0):
+            if version != 0:
                 from audiotools.text import ERR_VORBIS_INVALID_VERSION
                 raise InvalidVorbis(ERR_VORBIS_INVALID_VERSION)
-            if (framing != 1):
+            if framing != 1:
                 from audiotools.text import ERR_VORBIS_INVALID_FRAMING_BIT
                 raise InvalidVorbis(ERR_VORBIS_INVALID_FRAMING_BIT)
 
@@ -115,38 +115,38 @@ class VorbisAudio(AudioFile):
     def channel_mask(self):
         """returns a ChannelMask object of this track's channel layout"""
 
-        if (self.channels() == 1):
+        if self.channels() == 1:
             return ChannelMask.from_fields(
                 front_center=True)
-        elif (self.channels() == 2):
+        elif self.channels() == 2:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True)
-        elif (self.channels() == 3):
+        elif self.channels() == 3:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True,
                 front_center=True)
-        elif (self.channels() == 4):
+        elif self.channels() == 4:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True,
                 back_left=True, back_right=True)
-        elif (self.channels() == 5):
+        elif self.channels() == 5:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True,
                 front_center=True,
                 back_left=True, back_right=True)
-        elif (self.channels() == 6):
+        elif self.channels() == 6:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True,
                 front_center=True,
                 back_left=True, back_right=True,
                 low_frequency=True)
-        elif (self.channels() == 7):
+        elif self.channels() == 7:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True,
                 front_center=True,
                 side_left=True, side_right=True,
                 back_center=True, low_frequency=True)
-        elif (self.channels() == 8):
+        elif self.channels() == 8:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True,
                 side_left=True, side_right=True,
@@ -214,7 +214,7 @@ class VorbisAudio(AudioFile):
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
-        if ((pcmreader.channels > 2) and (pcmreader.channels <= 8)):
+        if (pcmreader.channels > 2) and (pcmreader.channels <= 8):
             channel_mask = int(pcmreader.channel_mask)
             if ((channel_mask != 0) and
                 (channel_mask not in
@@ -227,7 +227,7 @@ class VorbisAudio(AudioFile):
                 from audiotools import UnsupportedChannelMask
                 raise UnsupportedChannelMask(filename, channel_mask)
 
-        if (total_pcm_frames is not None):
+        if total_pcm_frames is not None:
             from audiotools import CounterPCMReader
             pcmreader = CounterPCMReader(pcmreader)
         try:
@@ -267,12 +267,12 @@ class VorbisAudio(AudioFile):
         from audiotools.vorbiscomment import VorbisComment
         from audiotools.bitstream import BitstreamRecorder
 
-        if (metadata is None):
+        if metadata is None:
             return
-        elif (not isinstance(metadata, VorbisComment)):
+        elif not isinstance(metadata, VorbisComment):
             from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
-        elif (not os.access(self.filename, os.W_OK)):
+        elif not os.access(self.filename, os.W_OK):
             raise IOError(self.filename)
 
         original_ogg = PacketReader(PageReader(open(self.filename, "rb")))
@@ -340,7 +340,7 @@ class VorbisAudio(AudioFile):
 
         from audiotools.vorbiscomment import VorbisComment
 
-        if (metadata is None):
+        if metadata is None:
             return self.delete_metadata()
 
         metadata = VorbisComment.converted(metadata)
@@ -383,13 +383,13 @@ class VorbisAudio(AudioFile):
             comment = BitstreamReader(BytesIO(reader.read_packet()), True)
 
             (packet_type, packet_header) = comment.parse("8u 6b")
-            if ((packet_type == 3) and (packet_header == b'vorbis')):
+            if (packet_type == 3) and (packet_header == b'vorbis'):
                 vendor_string = \
                     comment.read_bytes(comment.read(32)).decode('utf-8')
                 comment_strings = [
                     comment.read_bytes(comment.read(32)).decode('utf-8')
                     for i in range(comment.read(32))]
-                if (comment.read(1) == 1):   # framing bit
+                if comment.read(1) == 1:   # framing bit
                     return VorbisComment(comment_strings, vendor_string)
                 else:
                     return None
@@ -445,11 +445,11 @@ class VorbisAudio(AudioFile):
 
         may raise IOError if unable to modify the file"""
 
-        if (replaygain is None):
+        if replaygain is None:
             return self.delete_replay_gain()
 
         vorbis_comment = self.get_metadata()
-        if (vorbis_comment is None):
+        if vorbis_comment is None:
             from audiotools.vorbiscomment import VorbisComment
             from audiotools import VERSION
 
@@ -474,7 +474,7 @@ class VorbisAudio(AudioFile):
         may raise IOError if unable to modify the file"""
 
         vorbis_comment = self.get_metadata()
-        if (vorbis_comment is not None):
+        if vorbis_comment is not None:
             for field in [u"REPLAYGAIN_TRACK_GAIN",
                           u"REPLAYGAIN_TRACK_PEAK",
                           u"REPLAYGAIN_ALBUM_GAIN",
@@ -541,26 +541,26 @@ class VorbisChannelMask(ChannelMask):
         """
 
         count = len(self)
-        if (count == 1):
+        if count == 1:
             return ["front_center"]
-        elif (count == 2):
+        elif count == 2:
             return ["front_left", "front_right"]
-        elif (count == 3):
+        elif count == 3:
             return ["front_left", "front_center", "front_right"]
-        elif (count == 4):
+        elif count == 4:
             return ["front_left", "front_right",
                     "back_left", "back_right"]
-        elif (count == 5):
+        elif count == 5:
             return ["front_left", "front_center", "front_right",
                     "back_left", "back_right"]
-        elif (count == 6):
+        elif count == 6:
             return ["front_left", "front_center", "front_right",
                     "back_left", "back_right", "low_frequency"]
-        elif (count == 7):
+        elif count == 7:
             return ["front_left", "front_center", "front_right",
                     "side_left", "side_right", "back_center",
                     "low_frequency"]
-        elif (count == 8):
+        elif count == 8:
             return ["front_left", "front_center", "front_right",
                     "side_left", "side_right",
                     "back_left", "back_right", "low_frequency"]

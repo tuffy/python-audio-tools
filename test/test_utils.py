@@ -49,7 +49,7 @@ def do_nothing(self):
 # which can be wrapped around individual tests as needed
 for section in parser.sections():
     for option in parser.options(section):
-        if (parser.getboolean(section, option)):
+        if parser.getboolean(section, option):
             vars()["%s_%s" % (section.upper(),
                               option.upper())] = lambda function: function
         else:
@@ -76,7 +76,7 @@ class UtilTest(unittest.TestCase):
         sub.stderr.close()
 
         returnval = sub.wait()
-        # if (returnval != 0):
+        # if returnval != 0:
         #     import sys
         #     from os import linesep
         #     sys.stderr.write(self.stdout.getvalue())
@@ -139,7 +139,7 @@ class audiotools_config(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["audiotools-config",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -198,7 +198,7 @@ class cd2track(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["cd2track",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -208,22 +208,22 @@ class cd2track(UtilTest):
     def populate_options(self, options):
         populated = ["--no-musicbrainz", "--no-freedb"]
         for option in options:
-            if (option == '-t'):
+            if option == '-t':
                 populated.append(option)
                 populated.append(self.type.NAME)
-            elif (option == '-q'):
+            elif option == '-q':
                 populated.append(option)
                 populated.append(self.quality)
-            elif (option == '-d'):
+            elif option == '-d':
                 populated.append(option)
                 populated.append(self.output_dir)
-            elif (option == '--format'):
+            elif option == '--format':
                 populated.append(option)
                 populated.append(self.format)
-            elif (option == '--album-number'):
+            elif option == '--album-number':
                 populated.append(option)
                 populated.append(str(8))
-            elif (option == '--album-total'):
+            elif option == '--album-total':
                 populated.append(option)
                 populated.append(str(9))
             else:
@@ -249,7 +249,7 @@ class cd2track(UtilTest):
                 self.clean_output_dirs()
                 options = self.populate_options(options)
 
-                if ("-t" in options):
+                if "-t" in options:
                     output_type = self.type
                 else:
                     output_type = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
@@ -271,20 +271,20 @@ class cd2track(UtilTest):
                                       "-c", self.cue_file] +
                                      options), 0)
 
-                if ("--format" in options):
+                if "--format" in options:
                     output_format = self.format
                 else:
                     output_format = None
 
-                if ("-d" in options):
+                if "-d" in options:
                     output_dir = self.output_dir
                 else:
                     output_dir = "."
 
                 base_metadata = audiotools.MetaData(track_total=3)
-                if ("--album-number" in options):
+                if "--album-number" in options:
                     base_metadata.album_number = 8
-                if ("--album-total" in options):
+                if "--album-total" in options:
                     base_metadata.album_total = 9
 
                 output_filenames = []
@@ -324,7 +324,7 @@ class cd2track(UtilTest):
                 # make sure metadata fits our expectations
                 for i in range(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
-                    if (metadata is not None):
+                    if metadata is not None:
                         self.assertEqual(metadata.track_name, None)
                         self.assertEqual(metadata.album_name, None)
                         self.assertEqual(metadata.artist_name, None)
@@ -332,12 +332,12 @@ class cd2track(UtilTest):
                         self.assertEqual(metadata.track_number, i + 1)
                         self.assertEqual(metadata.track_total, 3)
 
-                        if ("--album-number" in options):
+                        if "--album-number" in options:
                             self.assertEqual(metadata.album_number, 8)
                         else:
                             self.assertEqual(metadata.album_number, None)
 
-                        if ("--album-total" in options):
+                        if "--album-total" in options:
                             self.assertEqual(metadata.album_total, 9)
                         else:
                             self.assertEqual(metadata.album_total, None)
@@ -355,7 +355,7 @@ class cd2track(UtilTest):
 
         for (output_directory,
              format_string) in Possibilities(dirs, formats):
-            if (os.path.isdir(output_directory)):
+            if os.path.isdir(output_directory):
                 rmtree(output_directory)
 
             self.assertEqual(
@@ -374,29 +374,29 @@ class cd2track(UtilTest):
             self.assertEqual(sum([t.total_frames() for t in tracks]),
                              793800)
 
-            if (os.path.isdir(output_directory)):
+            if os.path.isdir(output_directory):
                 rmtree(output_directory)
 
     def populate_bad_options(self, options):
         populated = ["--no-musicbrainz", "--no-freedb"]
 
         for option in sorted(options):
-            if (option == '-t'):
+            if option == '-t':
                 populated.append(option)
                 populated.append("foo")
-            elif (option == '-q'):
+            elif option == '-q':
                 populated.append(option)
                 populated.append("bar")
-            elif (option == '-d'):
+            elif option == '-d':
                 populated.append(option)
                 populated.append(self.unwritable_dir)
-            elif (option == '--format'):
+            elif option == '--format':
                 populated.append(option)
                 populated.append("%(foo)s.%(suffix)s")
-            elif (option == '--album-number'):
+            elif option == '--album-number':
                 populated.append(option)
                 populated.append("foo")
-            elif (option == '--album-total'):
+            elif option == '--album-total':
                 populated.append(option)
                 populated.append("bar")
             else:
@@ -426,7 +426,7 @@ class cd2track(UtilTest):
 
                 options = self.populate_bad_options(options)
 
-                if ("-t" in options):
+                if "-t" in options:
                     self.assertEqual(
                         self.__run_app__(["cd2track", "-c", self.cue_file] +
                                          options),
@@ -448,27 +448,27 @@ class cd2track(UtilTest):
                                      options),
                     1)
 
-                if ("-q" in options):
+                if "-q" in options:
                     self.__check_error__(
                         ERR_UNSUPPORTED_COMPRESSION_MODE %
                         {"quality": "bar",
                          "type": audiotools.DEFAULT_TYPE})
                     continue
 
-                if ("--format" in options):
+                if "--format" in options:
                     self.__check_error__(
                         ERR_UNKNOWN_FIELD % ("foo"))
                     self.__check_info__(LAB_SUPPORTED_FIELDS)
                     for field in sorted(audiotools.MetaData.FIELDS +
                                         ("album_track_number", "suffix")):
-                        if (field == 'track_number'):
+                        if field == 'track_number':
                             self.__check_info__(u"%(track_number)2.2d")
                         else:
                             self.__check_info__(u"%%(%s)s" % (field))
                     self.__check_info__(u"%(basename)s")
                     continue
 
-                if ("-d" in options):
+                if "-d" in options:
                     output_path = os.path.join(
                         self.unwritable_dir,
                         output_type.track_name(
@@ -486,7 +486,7 @@ class cdinfo(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["cdinfo",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -499,7 +499,7 @@ class cdplay(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["cdplay",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -572,7 +572,7 @@ class coverdump(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["coverdump",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -586,10 +586,10 @@ class coverdump(UtilTest):
     def populate_options(self, options):
         populated = []
         for option in options:
-            if (option == "-d"):
+            if option == "-d":
                 populated.append(option)
                 populated.append(self.output_dir)
-            elif (option == "-p"):
+            elif option == "-p":
                 populated.append(option)
                 populated.append(self.prefix)
             else:
@@ -611,7 +611,7 @@ class coverdump(UtilTest):
                                       self.track1.filename] + options),
                     0)
 
-                if ("-d" in options):
+                if "-d" in options:
                     output_directory = self.output_dir
                 else:
                     output_directory = "."
@@ -619,7 +619,7 @@ class coverdump(UtilTest):
                 template = "%(prefix)s%(filename)s%(filenum)2.2d.%(suffix)s"
 
                 for (i, image) in enumerate(self.images1):
-                    if ("-p" in options):
+                    if "-p" in options:
                         output_filename = template % {
                             "prefix": "PREFIX_",
                             "filename": self.filename_types[image.type],
@@ -632,7 +632,7 @@ class coverdump(UtilTest):
                             "filenum": (i % 2) + 1,
                             "suffix": "png"}
 
-                    if ("-d" in options):
+                    if "-d" in options:
                         output_path = os.path.join(self.output_dir,
                                                    output_filename)
                     else:
@@ -653,7 +653,7 @@ class coverdump(UtilTest):
                                       self.track2.filename] + options),
                     0)
 
-                if ("-d" in options):
+                if "-d" in options:
                     output_directory = self.output_dir
                 else:
                     output_directory = "."
@@ -661,7 +661,7 @@ class coverdump(UtilTest):
                 template = "%(prefix)s%(filename)s.%(suffix)s"
 
                 for (i, image) in enumerate(self.images2):
-                    if ("-p" in options):
+                    if "-p" in options:
                         output_filename = template % {
                             "prefix": "PREFIX_",
                             "filename": self.filename_types[image.type],
@@ -672,7 +672,7 @@ class coverdump(UtilTest):
                             "filename": self.filename_types[image.type],
                             "suffix": "png"}
 
-                    if ("-d" in options):
+                    if "-d" in options:
                         output_path = os.path.join(self.output_dir,
                                                    output_filename)
                     else:
@@ -707,9 +707,9 @@ class coverdump(UtilTest):
         for (output_directory,
              file_path,
              prefix) in Possibilities(dirs, filenames, prefixes):
-            if (os.path.isdir(output_directory)):
+            if os.path.isdir(output_directory):
                 rmtree(output_directory)
-            if (os.path.isfile(file_path)):
+            if os.path.isfile(file_path):
                 os.unlink(file_path)
 
             track = audiotools.FlacAudio.from_pcm(
@@ -734,9 +734,9 @@ class coverdump(UtilTest):
                                  (prefix if prefix is not None else "") +
                                  "front_cover.jpg")), True)
 
-            if (os.path.isdir(output_directory)):
+            if os.path.isdir(output_directory):
                 rmtree(output_directory)
-            if (os.path.isfile(file_path)):
+            if os.path.isfile(file_path):
                 os.unlink(file_path)
 
     @UTIL_COVERDUMP
@@ -880,7 +880,7 @@ class covertag(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["covertag",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -892,19 +892,19 @@ class covertag(UtilTest):
         front_covers = [self.front_cover1.name, self.front_cover2.name]
 
         for option in sorted(options):
-            if (option == '--front-cover'):
+            if option == '--front-cover':
                 populated.append(option)
                 populated.append(front_covers.pop(0))
-            elif (option == '--back-cover'):
+            elif option == '--back-cover':
                 populated.append(option)
                 populated.append(self.back_cover.name)
-            elif (option == '--leaflet'):
+            elif option == '--leaflet':
                 populated.append(option)
                 populated.append(self.leaflet.name)
-            elif (option == '--media'):
+            elif option == '--media':
                 populated.append(option)
                 populated.append(self.media.name)
-            elif (option == '--other-image'):
+            elif option == '--other-image':
                 populated.append(option)
                 populated.append(self.other.name)
             else:
@@ -955,49 +955,49 @@ class covertag(UtilTest):
                 track.verify()
                 metadata = track.get_metadata()
 
-                if ('-r' in options):
-                    if (options.count('--front-cover') == 0):
+                if '-r' in options:
+                    if options.count('--front-cover') == 0:
                         self.assertEqual(metadata.front_covers(),
                                          [])
-                    elif (options.count('--front-cover') == 1):
+                    elif options.count('--front-cover') == 1:
                         self.assertEqual(metadata.front_covers(),
                                          [self.front_cover1_image])
-                    elif (options.count('--front-cover') == 2):
+                    elif options.count('--front-cover') == 2:
                         self.assertEqual(metadata.front_covers(),
                                          [self.front_cover1_image,
                                           self.front_cover2_image])
                 else:
-                    if (options.count('--front-cover') == 0):
+                    if options.count('--front-cover') == 0:
                         self.assertEqual(metadata.front_covers(),
                                          [self.image])
-                    elif (options.count('--front-cover') == 1):
+                    elif options.count('--front-cover') == 1:
                         self.assertEqual(metadata.front_covers(),
                                          [self.image,
                                           self.front_cover1_image])
-                    elif (options.count('--front-cover') == 2):
+                    elif options.count('--front-cover') == 2:
                         self.assertEqual(metadata.front_covers(),
                                          [self.image,
                                           self.front_cover1_image,
                                           self.front_cover2_image])
-                if ('--back-cover' in options):
+                if '--back-cover' in options:
                     self.assertEqual(metadata.back_covers(),
                                      [self.back_cover_image])
                 else:
                     self.assertEqual(metadata.back_covers(),
                                      [])
-                if ('--leaflet' in options):
+                if '--leaflet' in options:
                     self.assertEqual(metadata.leaflet_pages(),
                                      [self.leaflet_image])
                 else:
                     self.assertEqual(metadata.leaflet_pages(),
                                      [])
-                if ('--media' in options):
+                if '--media' in options:
                     self.assertEqual(metadata.media_images(),
                                      [self.media_image])
                 else:
                     self.assertEqual(metadata.media_images(),
                                      [])
-                if ('--other-image' in options):
+                if '--other-image' in options:
                     self.assertEqual(metadata.other_images(),
                                      [self.other_image])
                 else:
@@ -1024,9 +1024,9 @@ class covertag(UtilTest):
                         "--leaflet",
                         "--media",
                         "--other-image"], image_paths):
-            if (os.path.isfile(file_path)):
+            if os.path.isfile(file_path):
                 os.unlink(file_path)
-            if (os.path.isfile(image_path)):
+            if os.path.isfile(image_path):
                 os.unlink(image_path)
 
             track = audiotools.FlacAudio.from_pcm(
@@ -1044,9 +1044,9 @@ class covertag(UtilTest):
                 audiotools.open(file_path).get_metadata().images()[0].data,
                 TEST_COVER1)
 
-            if (os.path.isfile(file_path)):
+            if os.path.isfile(file_path):
                 os.unlink(file_path)
-            if (os.path.isfile(image_path)):
+            if os.path.isfile(image_path):
                 os.unlink(image_path)
 
 
@@ -1115,7 +1115,7 @@ class coverview(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["coverview",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -1141,7 +1141,7 @@ class dvda2track(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["dvda2track",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -1193,7 +1193,7 @@ class dvdainfo(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["dvdainfo",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -1226,7 +1226,7 @@ class track2cd(UtilTest):
     def setUp(self):
         # if the user has an ~/.audiotools.cfg file, save it and its mode
         self.audiotools_cfg_path = os.path.expanduser("~/.audiotools.cfg")
-        if (os.path.isfile(self.audiotools_cfg_path)):
+        if os.path.isfile(self.audiotools_cfg_path):
             with open(self.audiotools_cfg_path, "rb") as f:
                 self.audiotools_cfg = f.read()
             self.audiotools_cfg_mode = os.stat(
@@ -1276,7 +1276,7 @@ class track2cd(UtilTest):
             os.chmod(self.audiotools_cfg_path, self.audiotools_cfg_mode)
         else:
             # otherwise, remove any temporary file
-            if (os.path.isfile(self.audiotools_cfg_path)):
+            if os.path.isfile(self.audiotools_cfg_path):
                 os.unlink(self.audiotools_cfg_path)
 
         self.track1.close()
@@ -1287,7 +1287,7 @@ class track2cd(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["track2cd",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -1500,14 +1500,14 @@ class track2track(UtilTest):
         # and should support embedded metadata
         for self.input_format in [audiotools.ALACAudio,
                                   audiotools.AiffAudio]:
-            if (self.input_format is not audiotools.DEFAULT_TYPE):
+            if self.input_format is not audiotools.DEFAULT_TYPE:
                 break
 
         # output format shouldn't be the user's default, the input format
         # and should support embedded images and ReplayGain tags
         for self.output_format in [audiotools.FlacAudio,
                                    audiotools.WavPackAudio]:
-            if (self.input_format is not audiotools.DEFAULT_TYPE):
+            if self.input_format is not audiotools.DEFAULT_TYPE:
                 break
 
         self.input_dir = tempfile.mkdtemp()
@@ -1582,7 +1582,7 @@ class track2track(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["track2track",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -1593,28 +1593,28 @@ class track2track(UtilTest):
         populated = []
 
         for option in sorted(options):
-            if (option == '-t'):
+            if option == '-t':
                 populated.append(option)
                 populated.append(self.type)
-            elif (option == '-q'):
+            elif option == '-q':
                 populated.append(option)
                 populated.append(self.quality)
-            elif (option == '-d'):
+            elif option == '-d':
                 populated.append(option)
                 populated.append(self.output_dir)
-            elif (option == '--format'):
+            elif option == '--format':
                 populated.append(option)
                 populated.append(self.format)
-            elif (option == '-o'):
+            elif option == '-o':
                 populated.append(option)
                 populated.append(self.output_file.name)
-            elif (option == '--sample-rate'):
+            elif option == '--sample-rate':
                 populated.append(option)
                 populated.append(str(48000))
-            elif (option == '--channels'):
+            elif option == '--channels':
                 populated.append(option)
                 populated.append(str(1))
-            elif (option == '--bits-per-sample'):
+            elif option == '--bits-per-sample':
                 populated.append(option)
                 populated.append(str(8))
             else:
@@ -1626,31 +1626,31 @@ class track2track(UtilTest):
         populated = []
 
         for option in sorted(options):
-            if (option == '-t'):
+            if option == '-t':
                 populated.append(option)
                 populated.append("foo")
-            elif (option == '-q'):
+            elif option == '-q':
                 populated.append(option)
                 populated.append("bar")
-            elif (option == '-d'):
+            elif option == '-d':
                 populated.append(option)
                 populated.append(self.unwritable_dir)
-            elif (option == '--format'):
+            elif option == '--format':
                 populated.append(option)
                 populated.append("%(foo)s.%(suffix)s")
-            elif (option == '-o'):
+            elif option == '-o':
                 populated.append(option)
                 populated.append(self.unwritable_file)
-            elif (option == '-j'):
+            elif option == '-j':
                 populated.append(option)
                 populated.append(str(0))
-            elif (option == '--sample-rate'):
+            elif option == '--sample-rate':
                 populated.append(option)
                 populated.append(str(0))
-            elif (option == '--channels'):
+            elif option == '--channels':
                 populated.append(option)
                 populated.append(str(0))
-            elif (option == '--bits-per-sample'):
+            elif option == '--bits-per-sample':
                 populated.append(option)
                 populated.append(str(0))
             else:
@@ -1680,7 +1680,7 @@ class track2track(UtilTest):
                 options = self.populate_options(options) + \
                     ["-V", "normal", "-j", "1", self.track1.filename]
 
-                if (("-d" in options) and ("-o" in options)):
+                if ("-d" in options) and ("-o" in options):
                     # -d and -o trigger an error
 
                     self.assertEqual(
@@ -1689,13 +1689,13 @@ class track2track(UtilTest):
                     self.__check_info__(ERR_TRACK2TRACK_O_AND_D_SUGGESTION)
                     continue
 
-                if (("--format" in options) and ("-o" in options)):
+                if ("--format" in options) and ("-o" in options):
                     self.__queue_warning__(ERR_TRACK2TRACK_O_AND_FORMAT)
 
-                if ('-t' in options):
+                if '-t' in options:
                     output_class = audiotools.TYPE_MAP[
                         options[options.index('-t') + 1]]
-                elif ("-o" in options):
+                elif "-o" in options:
                     output_class = self.output_format
                 else:
                     output_class = audiotools.TYPE_MAP[
@@ -1712,16 +1712,16 @@ class track2track(UtilTest):
                          "type": output_class.NAME})
                     continue
 
-                if ('--format' in options):
+                if '--format' in options:
                     output_format = options[options.index('--format') + 1]
                 else:
                     output_format = None
 
                 metadata = self.track1.get_metadata()
 
-                if ("-o" in options):
+                if "-o" in options:
                     output_path = self.output_file.name
-                elif ("-d" in options):
+                elif "-d" in options:
                     output_path = os.path.join(
                         self.output_dir,
                         output_class.track_name("", metadata, output_format))
@@ -1734,7 +1734,7 @@ class track2track(UtilTest):
                     self.__run_app__(["track2track"] + options), 0)
                 self.assertTrue(os.path.isfile(output_path))
 
-                if ("-o" not in options):
+                if "-o" not in options:
                     self.__check_output__(
                         LAB_ENCODE %
                         {"source":
@@ -1755,7 +1755,7 @@ class track2track(UtilTest):
                     self.assertTrue(audiotools.pcm_cmp(self.track1.to_pcm(),
                                                        track2.to_pcm()))
 
-                if (track2.lossless()):
+                if track2.lossless():
                     self.assertEqual(
                         track2.sample_rate(),
                         44100 if ("--sample-rate" not in options) else 48000)
@@ -1766,14 +1766,14 @@ class track2track(UtilTest):
                         track2.bits_per_sample(),
                         16 if ("--bits-per-sample" not in options) else 8)
 
-                if (track2.get_metadata() is not None):
+                if track2.get_metadata() is not None:
                     self.assertEqual(track2.get_metadata(), metadata)
 
                     image = track2.get_metadata().images()[0]
                     self.assertEqual(image.width, self.cover.width)
                     self.assertEqual(image.height, self.cover.height)
 
-                if (output_class.supports_replay_gain()):
+                if output_class.supports_replay_gain():
                     if (("-o" not in options) and
                         audiotools.ADD_REPLAYGAIN and
                         ("--no-replay-gain" not in options)):
@@ -1798,9 +1798,9 @@ class track2track(UtilTest):
         for (output_directory,
              format_string,
              file_path) in Possibilities(dirs, formats, filenames):
-            if (os.path.isdir(output_directory)):
+            if os.path.isdir(output_directory):
                 rmtree(output_directory)
-            if (os.path.isfile(file_path)):
+            if os.path.isfile(file_path):
                 os.unlink(file_path)
 
             try:
@@ -1821,9 +1821,9 @@ class track2track(UtilTest):
                         audiotools.open(os.path.join(output_directory,
                                                      format_string)).to_pcm()))
             finally:
-                if (os.path.isdir(output_directory)):
+                if os.path.isdir(output_directory):
                     rmtree(output_directory)
-                if (os.path.isfile(file_path)):
+                if os.path.isfile(file_path):
                     os.unlink(file_path)
 
         filenames = [f if PY3 else f.encode("UTF-8") for f in
@@ -1836,9 +1836,9 @@ class track2track(UtilTest):
 
         for (file_path,
              output_path) in Possibilities(filenames, outputs):
-            if (os.path.isfile(output_path)):
+            if os.path.isfile(output_path):
                 os.unlink(output_path)
-            if (os.path.isfile(file_path)):
+            if os.path.isfile(file_path):
                 os.unlink(file_path)
             try:
                 track = audiotools.FlacAudio.from_pcm(
@@ -1854,9 +1854,9 @@ class track2track(UtilTest):
                         track.to_pcm(),
                         audiotools.open(output_path).to_pcm()))
             finally:
-                if (os.path.isfile(output_path)):
+                if os.path.isfile(output_path):
                     os.unlink(output_path)
-                if (os.path.isfile(file_path)):
+                if os.path.isfile(file_path):
                     os.unlink(file_path)
 
     @UTIL_TRACK2TRACK
@@ -1892,12 +1892,12 @@ class track2track(UtilTest):
                 options = self.populate_bad_options(options) + \
                     [self.broken_track1.filename]
 
-                if ("-t" in options):
+                if "-t" in options:
                     self.assertEqual(
                         self.__run_app__(["track2track"] + options),
                         2)
                     continue
-                elif ("-o" in options):
+                elif "-o" in options:
                     output_class = self.output_format
                 else:
                     output_class = audiotools.TYPE_MAP[
@@ -1907,58 +1907,58 @@ class track2track(UtilTest):
                     self.__run_app__(["track2track"] + options),
                     1)
 
-                if (("-o" in options) and ("-d" in options)):
+                if ("-o" in options) and ("-d" in options):
                     self.__check_error__(ERR_TRACK2TRACK_O_AND_D)
                     self.__check_info__(ERR_TRACK2TRACK_O_AND_D_SUGGESTION)
                     continue
 
-                if (("--format" in options) and ("-o" in options)):
+                if ("--format" in options) and ("-o" in options):
                     self.__queue_warning__(ERR_TRACK2TRACK_O_AND_FORMAT)
 
-                if ("-q" in options):
+                if "-q" in options:
                     self.__check_error__(
                         ERR_UNSUPPORTED_COMPRESSION_MODE %
                         {"quality": "bar",
                          "type": output_class.NAME})
                     continue
 
-                if ("--sample-rate" in options):
+                if "--sample-rate" in options:
                     self.__check_error__(ERR_INVALID_SAMPLE_RATE)
                     continue
 
-                if ("--channels" in options):
+                if "--channels" in options:
                     self.__check_error__(ERR_INVALID_CHANNEL_COUNT)
                     continue
 
-                if ("--bits-per-sample" in options):
+                if "--bits-per-sample" in options:
                     self.__check_error__(ERR_INVALID_BITS_PER_SAMPLE)
                     continue
 
-                if ("-j" in options):
+                if "-j" in options:
                     self.__check_error__(
                         ERR_INVALID_JOINT)
                     continue
 
-                if ("-o" in options):
+                if "-o" in options:
                     self.__check_error__(
                         u"[Errno 20] Not a directory: '%s'" %
                         (self.unwritable_file))
                     continue
 
-                if ("--format" in options):
+                if "--format" in options:
                     self.__check_error__(
                         ERR_UNKNOWN_FIELD % ("foo"))
                     self.__check_info__(LAB_SUPPORTED_FIELDS)
                     for field in sorted(audiotools.MetaData.FIELDS +
                                         ("album_track_number", "suffix")):
-                        if (field == 'track_number'):
+                        if field == 'track_number':
                             self.__check_info__(u"%(track_number)2.2d")
                         else:
                             self.__check_info__(u"%%(%s)s" % (field))
                     self.__check_info__(u"%(basename)s")
                     continue
 
-                if ("-d" in options):
+                if "-d" in options:
                     output_path = os.path.join(
                         self.unwritable_dir,
                         output_class.track_name(
@@ -2378,7 +2378,7 @@ class trackcat(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["trackcat",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -2389,16 +2389,16 @@ class trackcat(UtilTest):
         populated = []
 
         for option in options:
-            if (option == '-t'):
+            if option == '-t':
                 populated.append(option)
                 populated.append(type)
-            elif (option == '-q'):
+            elif option == '-q':
                 populated.append(option)
                 populated.append(quality)
-            elif (option == '--cue'):
+            elif option == '--cue':
                 populated.append(option)
                 populated.append(self.cuesheet.name)
-            elif (option == '-o'):
+            elif option == '-o':
                 populated.append(option)
                 populated.append(outfile)
             else:
@@ -2503,7 +2503,7 @@ class trackcat(UtilTest):
              outfile,
              count,
              options) in self.output_combinations(all_options):
-            if (os.path.isfile(outfile)):
+            if os.path.isfile(outfile):
                 f = open(outfile, "wb")
                 f.close()
 
@@ -2513,14 +2513,14 @@ class trackcat(UtilTest):
                                                     self.track3.filename]
 
             # check a few common errors
-            if ("-o" not in options):
+            if "-o" not in options:
                 self.assertEqual(self.__run_app__(["trackcat"] + options),
                                  1)
 
                 self.__check_error__(ERR_NO_OUTPUT_FILE)
                 continue
 
-            if ("-t" in options):
+            if "-t" in options:
                 output_format = audiotools.TYPE_MAP[type]
             else:
                 try:
@@ -2543,7 +2543,7 @@ class trackcat(UtilTest):
                      "type": output_format.NAME})
                 continue
 
-            if (outfile.startswith("/dev/")):
+            if outfile.startswith("/dev/"):
                 self.assertEqual(self.__run_app__(["trackcat"] + options),
                                  1)
                 self.__check_error__(
@@ -2566,7 +2566,7 @@ class trackcat(UtilTest):
 
             # check that metadata is merged properly
             metadata = new_track.get_metadata()
-            if (metadata is not None):
+            if metadata is not None:
                 self.assertEqual(metadata.track_name, None)
                 self.assertEqual(metadata.album_name, u"Album")
                 self.assertEqual(metadata.artist_name, u"Artist")
@@ -2610,11 +2610,11 @@ class trackcat(UtilTest):
                                              cuesheets):
 
             for input_filename in input_filenames:
-                if (os.path.isfile(input_filename)):
+                if os.path.isfile(input_filename):
                     os.unlink(input_filename)
-            if (os.path.isfile(output_path)):
+            if os.path.isfile(output_path):
                 os.unlink(output_path)
-            if ((cuesheet_file is not None) and os.path.isfile(cuesheet_file)):
+            if (cuesheet_file is not None) and os.path.isfile(cuesheet_file):
                 os.unlink(cuesheet_file)
 
             tracks = [audiotools.FlacAudio.from_pcm(
@@ -2622,7 +2622,7 @@ class trackcat(UtilTest):
                       for (input_filename, pcm_frames) in
                       zip(input_filenames, [220500, 264600, 308700])]
 
-            if (cuesheet_file is not None):
+            if cuesheet_file is not None:
                 with open(cuesheet_file, "wb") as f:
                     f.write(b'FILE "CDImage.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    ISRC JPPI00652340\r\n    INDEX 01 00:00:00\r\n  TRACK 02 AUDIO\r\n    ISRC JPPI00652349\r\n    INDEX 00 00:03:00\r\n    INDEX 01 00:05:00\r\n  TRACK 03 AUDIO\r\n    ISRC JPPI00652341\r\n    INDEX 00 00:9:00\r\n    INDEX 01 00:11:00\r\n')
 
@@ -2638,11 +2638,11 @@ class trackcat(UtilTest):
                     audiotools.open(output_path).to_pcm()))
 
             for input_filename in input_filenames:
-                if (os.path.isfile(input_filename)):
+                if os.path.isfile(input_filename):
                     os.unlink(input_filename)
-            if (os.path.isfile(output_path)):
+            if os.path.isfile(output_path):
                 os.unlink(output_path)
-            if ((cuesheet_file is not None) and os.path.isfile(cuesheet_file)):
+            if (cuesheet_file is not None) and os.path.isfile(cuesheet_file):
                 os.unlink(cuesheet_file)
 
 
@@ -2787,7 +2787,7 @@ class trackcmp(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["trackcmp",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -3064,9 +3064,9 @@ class trackcmp(UtilTest):
                    u'abc\xe0\xe7\xe8\u3041\u3044\u3046-2.flac']]
 
         for (file1, file2) in Possibilities(file1s, file2s):
-            if (os.path.isfile(file1)):
+            if os.path.isfile(file1):
                 os.unlink(file1)
-            if (os.path.isfile(file2)):
+            if os.path.isfile(file2):
                 os.unlink(file2)
 
             track1 = audiotools.FlacAudio.from_pcm(
@@ -3083,9 +3083,9 @@ class trackcmp(UtilTest):
             self.assertTrue(audiotools.pcm_cmp(track1.to_pcm(),
                                                track2.to_pcm()))
 
-            if (os.path.isfile(file1)):
+            if os.path.isfile(file1):
                 os.unlink(file1)
-            if (os.path.isfile(file2)):
+            if os.path.isfile(file2):
                 os.unlink(file2)
 
 
@@ -3130,7 +3130,7 @@ class trackinfo(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["trackinfo",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -3157,11 +3157,11 @@ class trackinfo(UtilTest):
 
                     # check the initial output line
                     line = self.stdout.readline()
-                    if ("-b" in options):
+                    if "-b" in options:
                         self.assertIsNotNone(
                             re.match(r'\s*\d+ kbps: %s\n' %
                                      (track.filename), line))
-                    elif ("-%" in options):
+                    elif "-%" in options:
                         self.assertIsNotNone(
                             re.match(r'\s*\d+%%: %s\n' %
                                      (track.filename), line))
@@ -3171,8 +3171,8 @@ class trackinfo(UtilTest):
                                      (track.filename), line))
 
                     # check metadata/low-level metadata if -n not present
-                    if ("-n" not in options):
-                        if ("-L" not in options):
+                    if "-n" not in options:
+                        if "-L" not in options:
                             for line in StringIO(
                                 track.get_metadata().__unicode__()):
                                 self.__check_output__(line.rstrip('\r\n'))
@@ -3180,14 +3180,14 @@ class trackinfo(UtilTest):
                             for line in StringIO(
                                 track.get_metadata().raw_info()):
                                 self.__check_output__(line.rstrip('\r\n'))
-                        if ("-C" in options):
+                        if "-C" in options:
                             self.__check_output__(u"")
                     else:
                         # no metadata display at all
                         pass
 
                     # check channel assignment if -C present
-                    if ("-C" in options):
+                    if "-C" in options:
                         self.__check_output__(LAB_TRACKINFO_CHANNELS)
                         self.__check_output__(
                             LAB_TRACKINFO_CHANNEL %
@@ -3205,7 +3205,7 @@ class trackinfo(UtilTest):
                       u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac']]
 
         for filename in filenames:
-            if (os.path.isfile(filename)):
+            if os.path.isfile(filename):
                 os.unlink(filename)
 
             track = audiotools.FlacAudio.from_pcm(
@@ -3215,7 +3215,7 @@ class trackinfo(UtilTest):
             self.assertEqual(
                 self.__run_app__(["trackinfo", filename]), 0)
 
-            if (os.path.isfile(filename)):
+            if os.path.isfile(filename):
                 os.unlink(filename)
 
 
@@ -3224,7 +3224,7 @@ class tracklength(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["tracklength",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -3401,7 +3401,7 @@ class tracklength(UtilTest):
                       u'abc\xe0\xe7\xe8\u3041\u3044\u3046.flac']]
 
         for filename in filenames:
-            if (os.path.isfile(filename)):
+            if os.path.isfile(filename):
                 os.unlink(filename)
 
             track = audiotools.FlacAudio.from_pcm(
@@ -3411,7 +3411,7 @@ class tracklength(UtilTest):
             self.assertEqual(
                 self.__run_app__(["tracklength", filename]), 0)
 
-            if (os.path.isfile(filename)):
+            if os.path.isfile(filename):
                 os.unlink(filename)
 
 
@@ -3420,7 +3420,7 @@ class tracklint(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["tracklint",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -3457,7 +3457,7 @@ class tracklint(UtilTest):
 
                 track.set_metadata(bad_vorbiscomment)
                 metadata = track.get_metadata()
-                if (isinstance(metadata, audiotools.FlacMetaData)):
+                if isinstance(metadata, audiotools.FlacMetaData):
                     metadata = metadata.get_block(
                         audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)
                 self.assertEqual(metadata, bad_vorbiscomment)
@@ -3835,7 +3835,7 @@ class tracklint(UtilTest):
                 audiotools.MetaData(
                     track_name=u"Track Name ",
                     track_number=1))
-            if (track.get_metadata() is not None):
+            if track.get_metadata() is not None:
                 # unwritable file
                 os.chmod(track_file.name, 0o400)
 
@@ -3942,7 +3942,7 @@ class tracklint(UtilTest):
                     track_number=1,
                     track_total=2)
                 track.set_metadata(metadata)
-                if (track.get_metadata() is not None):
+                if track.get_metadata() is not None:
                     orig_stat = os.stat(track.filename)
                     time.sleep(1)
 
@@ -3981,7 +3981,7 @@ class tracklint(UtilTest):
                     track_number=1,
                     track_total=2)
                 track.set_metadata(metadata)
-                if (track.get_metadata() is not None):
+                if track.get_metadata() is not None:
                     orig_stat = os.stat(track.filename)
                     time.sleep(1)
 
@@ -4018,7 +4018,7 @@ class tracklint(UtilTest):
             else:
                 input_filename = filename.encode("UTF-8")
 
-            if (os.path.isfile(input_filename)):
+            if os.path.isfile(input_filename):
                 os.unlink(input_filename)
 
             track = audiotools.FlacAudio.from_pcm(
@@ -4042,7 +4042,7 @@ class tracklint(UtilTest):
                 audiotools.open(input_filename).get_metadata().track_name,
                 u"Track Name")
 
-            if (os.path.isfile(input_filename)):
+            if os.path.isfile(input_filename):
                 os.unlink(input_filename)
 
 
@@ -4051,7 +4051,7 @@ class trackplay(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["trackplay",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -4093,7 +4093,7 @@ class trackrename(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["trackrename",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -4107,7 +4107,7 @@ class trackrename(UtilTest):
     def populate_options(self, options):
         populated = []
         for option in options:
-            if (option == '--format'):
+            if option == '--format':
                 populated.append(option)
                 populated.append(self.format)
             else:
@@ -4128,7 +4128,7 @@ class trackrename(UtilTest):
                         os.path.join(self.input_dir, name),
                         BLANK_PCM_Reader(1))
 
-                    if (metadata is not None):
+                    if metadata is not None:
                         track.set_metadata(metadata)
 
                     original_metadata = track.get_metadata()
@@ -4140,12 +4140,12 @@ class trackrename(UtilTest):
                         self.__run_app__(["trackrename", "-V", "normal",
                                           track.filename] + options), 0)
 
-                    if ("--format" in options):
+                    if "--format" in options:
                         output_format = self.format
                     else:
                         output_format = None
 
-                    if (metadata is not None):
+                    if metadata is not None:
                         base_metadata = metadata
                     else:
                         # track number via filename applies
@@ -4237,13 +4237,13 @@ class trackrename(UtilTest):
             self.__check_info__(LAB_SUPPORTED_FIELDS)
             for field in sorted(audiotools.MetaData.FIELDS +
                                 ("album_track_number", "suffix")):
-                if (field == 'track_number'):
+                if field == 'track_number':
                     self.__check_info__(u"%(track_number)2.2d")
                 else:
                     self.__check_info__(u"%%(%s)s" % (field))
             self.__check_info__(u"%(basename)s")
 
-            if (track.get_metadata() is not None):
+            if track.get_metadata() is not None:
                 os.chmod(tempdir, tempdir_stat & 0x7555)
 
                 self.assertEqual(
@@ -4281,9 +4281,9 @@ class trackrename(UtilTest):
 
         for (file_path,
              format_string) in Possibilities(filenames, format_strings):
-            if (os.path.isfile(file_path)):
+            if os.path.isfile(file_path):
                 os.unlink(file_path)
-            if (os.path.isfile(format_string)):
+            if os.path.isfile(format_string):
                 os.unlink(format_string)
 
             track = audiotools.FlacAudio.from_pcm(
@@ -4300,9 +4300,9 @@ class trackrename(UtilTest):
             self.assertFalse(os.path.isfile(file_path))
             self.assertTrue(os.path.isfile(format_string))
 
-            if (os.path.isfile(file_path)):
+            if os.path.isfile(file_path):
                 os.unlink(file_path)
-            if (os.path.isfile(format_string)):
+            if os.path.isfile(format_string):
                 os.unlink(format_string)
 
 
@@ -4382,7 +4382,7 @@ class tracksplit(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["tracksplit",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -4392,19 +4392,19 @@ class tracksplit(UtilTest):
     def populate_options(self, options):
         populated = ["--no-musicbrainz", "--no-freedb"]
         for option in sorted(options):
-            if (option == '-t'):
+            if option == '-t':
                 populated.append(option)
                 populated.append(self.type.NAME)
-            elif (option == '-q'):
+            elif option == '-q':
                 populated.append(option)
                 populated.append(self.quality)
-            elif (option == '-d'):
+            elif option == '-d':
                 populated.append(option)
                 populated.append(self.output_dir)
-            elif (option == '--format'):
+            elif option == '--format':
                 populated.append(option)
                 populated.append(self.format)
-            elif (option == '--cue'):
+            elif option == '--cue':
                 populated.append(option)
                 populated.append(self.cuesheet.name)
             else:
@@ -4428,7 +4428,7 @@ class tracksplit(UtilTest):
                 self.clean_output_dirs()
                 options = self.populate_options(options)
 
-                if ("-t" in options):
+                if "-t" in options:
                     output_type = audiotools.FlacAudio
                 else:
                     output_type = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
@@ -4446,7 +4446,7 @@ class tracksplit(UtilTest):
                          "type": output_type.NAME})
                     continue
 
-                if ("--cue" not in options):
+                if "--cue" not in options:
                     self.assertEqual(
                         self.__run_app__(["tracksplit", "-V", "normal",
                                           "--no-freedb", "--no-musicbrainz",
@@ -4461,12 +4461,12 @@ class tracksplit(UtilTest):
                                       "--no-freedb", "--no-musicbrainz",
                                       "--no-replay-gain"] +
                                      options + [track.filename]), 0)
-                if ("--format" in options):
+                if "--format" in options:
                     output_format = self.format
                 else:
                     output_format = None
 
-                if ("-d" in options):
+                if "-d" in options:
                     output_dir = self.output_dir
                 else:
                     output_dir = "."
@@ -4514,7 +4514,7 @@ class tracksplit(UtilTest):
                 # make sure metadata fits our expectations
                 for i in range(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
-                    if (metadata is not None):
+                    if metadata is not None:
                         self.assertEqual(metadata.track_name, None)
                         self.assertEqual(metadata.album_name, u"Album 1")
                         self.assertEqual(metadata.artist_name, u"Artist 1")
@@ -4526,12 +4526,12 @@ class tracksplit(UtilTest):
                         self.assertEqual(metadata.performer_name,
                                          u"Performer 1")
 
-                if ("--cue" in options):
+                if "--cue" in options:
                     for (i, ISRC) in enumerate([u"JPPI00652340",
                                                 u"JPPI00652349",
                                                 u"JPPI00652341"]):
                         metadata = output_tracks[i].get_metadata()
-                        if (metadata is not None):
+                        if metadata is not None:
                             self.assertEqual(metadata.ISRC, ISRC)
 
     @UTIL_TRACKSPLIT
@@ -4553,7 +4553,7 @@ class tracksplit(UtilTest):
                 self.clean_output_dirs()
                 options = self.populate_options(options)
 
-                if ("-t" in options):
+                if "-t" in options:
                     output_type = audiotools.FlacAudio
                 else:
                     output_type = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
@@ -4578,12 +4578,12 @@ class tracksplit(UtilTest):
                                       "--no-replay-gain"] +
                                      options + [track.filename]), 0)
 
-                if ("--format" in options):
+                if "--format" in options:
                     output_format = self.format
                 else:
                     output_format = None
 
-                if ("-d" in options):
+                if "-d" in options:
                     output_dir = self.output_dir
                 else:
                     output_dir = "."
@@ -4630,7 +4630,7 @@ class tracksplit(UtilTest):
                 # make sure metadata fits our expectations
                 for i in range(len(output_tracks)):
                     metadata = output_tracks[i].get_metadata()
-                    if (metadata is not None):
+                    if metadata is not None:
                         self.assertEqual(metadata.track_name, None)
                         self.assertEqual(metadata.album_name, u"Album 1")
                         self.assertEqual(metadata.artist_name, u"Artist 1")
@@ -4643,19 +4643,19 @@ class tracksplit(UtilTest):
                                          u"Performer 1")
 
                 # check ISRC data
-                if ("--cue" in options):
+                if "--cue" in options:
                     for (i, ISRC) in enumerate([u"JPPI00652340",
                                                 u"JPPI00652349",
                                                 u"JPPI00652341"]):
                         metadata = output_tracks[i].get_metadata()
-                        if (metadata is not None):
+                        if metadata is not None:
                             self.assertEqual(metadata.ISRC, ISRC)
                 else:
                     for (i, ISRC) in enumerate([u"ABCD00000001",
                                                 u"ABCD00000002",
                                                 u"ABCD00000003"]):
                         metadata = output_tracks[i].get_metadata()
-                        if (metadata is not None):
+                        if metadata is not None:
                             self.assertEqual(metadata.ISRC, ISRC)
 
     @UTIL_TRACKSPLIT
@@ -4683,11 +4683,11 @@ class tracksplit(UtilTest):
              output_directory,
              output_format) in Possibilities(filenames, cuesheets,
                                              dirs, formats):
-            if (os.path.isfile(input_filename)):
+            if os.path.isfile(input_filename):
                 os.unlink(input_filename)
-            if (os.path.isfile(cuesheet_file)):
+            if os.path.isfile(cuesheet_file):
                 os.unlink(cuesheet_file)
-            if (os.path.isdir(output_directory)):
+            if os.path.isdir(output_directory):
                 shutil.rmtree(output_directory)
 
             track = audiotools.FlacAudio.from_pcm(
@@ -4721,27 +4721,27 @@ class tracksplit(UtilTest):
                     track.to_pcm(),
                     audiotools.PCMCat([t.to_pcm() for t in tracks])))
 
-            if (os.path.isfile(input_filename)):
+            if os.path.isfile(input_filename):
                 os.unlink(input_filename)
-            if (os.path.isfile(cuesheet_file)):
+            if os.path.isfile(cuesheet_file):
                 os.unlink(cuesheet_file)
-            if (os.path.isdir(output_directory)):
+            if os.path.isdir(output_directory):
                 shutil.rmtree(output_directory)
 
     def populate_bad_options(self, options):
         populated = ["--no-musicbrainz", "--no-freedb"]
 
         for option in sorted(options):
-            if (option == '-t'):
+            if option == '-t':
                 populated.append(option)
                 populated.append("foo")
-            elif (option == '-q'):
+            elif option == '-q':
                 populated.append(option)
                 populated.append("bar")
-            elif (option == '-d'):
+            elif option == '-d':
                 populated.append(option)
                 populated.append(self.unwritable_dir)
-            elif (option == '--format'):
+            elif option == '--format':
                 populated.append(option)
                 populated.append("%(foo)s.%(suffix)s")
             else:
@@ -4799,7 +4799,7 @@ class tracksplit(UtilTest):
             for options in Combinations(all_options, count):
                 options = self.populate_bad_options(options)
 
-                if ("-t" in options):
+                if "-t" in options:
                     self.assertEqual(
                         self.__run_app__(["tracksplit", "-j", "1",
                                           track1.filename] +
@@ -4816,27 +4816,27 @@ class tracksplit(UtilTest):
                                      options),
                     1)
 
-                if ("-q" in options):
+                if "-q" in options:
                     self.__check_error__(
                         ERR_UNSUPPORTED_COMPRESSION_MODE %
                         {"quality": "bar",
                          "type": audiotools.DEFAULT_TYPE})
                     continue
 
-                if ("--format" in options):
+                if "--format" in options:
                     self.__check_error__(
                         ERR_UNKNOWN_FIELD % ("foo"))
                     self.__check_info__(LAB_SUPPORTED_FIELDS)
                     for field in sorted(audiotools.MetaData.FIELDS +
                                         ("album_track_number", "suffix")):
-                        if (field == 'track_number'):
+                        if field == 'track_number':
                             self.__check_info__(u"%(track_number)2.2d")
                         else:
                             self.__check_info__(u"%%(%s)s" % (field))
                     self.__check_info__(u"%(basename)s")
                     continue
 
-                if ("-d" in options):
+                if "-d" in options:
                     output_path = os.path.join(
                         self.unwritable_dir,
                         output_type.track_name(
@@ -4982,7 +4982,7 @@ class tracktag(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["tracktag",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:
@@ -4993,31 +4993,31 @@ class tracktag(UtilTest):
         populated = []
 
         for option in sorted(options):
-            if (option == '--name'):
+            if option == '--name':
                 populated.append(option)
                 populated.append("Name 3")
-            elif (option == '--artist'):
+            elif option == '--artist':
                 populated.append(option)
                 populated.append("Artist 3")
-            elif (option == '--album'):
+            elif option == '--album':
                 populated.append(option)
                 populated.append("Album 3")
-            elif (option == '--number'):
+            elif option == '--number':
                 populated.append(option)
                 populated.append("5")
-            elif (option == '--track-total'):
+            elif option == '--track-total':
                 populated.append(option)
                 populated.append("6")
-            elif (option == '--album-number'):
+            elif option == '--album-number':
                 populated.append(option)
                 populated.append("7")
-            elif (option == '--album-total'):
+            elif option == '--album-total':
                 populated.append(option)
                 populated.append("8")
-            elif (option == '--comment'):
+            elif option == '--comment':
                 populated.append(option)
                 populated.append("Comment 3")
-            elif (option == '--comment-file'):
+            elif option == '--comment-file':
                 populated.append(option)
                 populated.append(self.comment_file.name)
             else:
@@ -5073,70 +5073,70 @@ class tracktag(UtilTest):
                 track.verify()
                 metadata = track.get_metadata()
 
-                if ("--name" in options):
+                if "--name" in options:
                     self.assertEqual(metadata.track_name, u"Name 3")
-                elif ("-r" in options):
+                elif "-r" in options:
                     self.assertEqual(metadata.track_name, None)
                 else:
                     self.assertEqual(metadata.track_name, u"Name 1")
 
-                if ("--artist" in options):
+                if "--artist" in options:
                     self.assertEqual(metadata.artist_name, u"Artist 3")
-                elif ("-r" in options):
+                elif "-r" in options:
                     self.assertEqual(metadata.artist_name, None)
                 else:
                     self.assertEqual(metadata.artist_name, u"Artist 1")
 
-                if ("--album" in options):
+                if "--album" in options:
                     self.assertEqual(metadata.album_name, u"Album 3")
-                elif ("-r" in options):
+                elif "-r" in options:
                     self.assertEqual(metadata.album_name, None)
                 else:
                     self.assertEqual(metadata.album_name, u"Album 1")
 
-                if ("--number" in options):
+                if "--number" in options:
                     self.assertEqual(metadata.track_number, 5)
-                elif ("-r" in options):
+                elif "-r" in options:
                     self.assertEqual(metadata.track_number, None)
                 else:
                     self.assertEqual(metadata.track_number, 1)
 
-                if ("--track-total" in options):
+                if "--track-total" in options:
                     self.assertEqual(metadata.track_total, 6)
-                elif ("-r" in options):
+                elif "-r" in options:
                     self.assertEqual(metadata.track_total, None)
                 else:
                     self.assertEqual(metadata.track_total, 2)
 
-                if ("--album-number" in options):
+                if "--album-number" in options:
                     self.assertEqual(metadata.album_number, 7)
-                elif ("-r" in options):
+                elif "-r" in options:
                     self.assertEqual(metadata.album_number, None)
                 else:
                     self.assertEqual(metadata.album_number, 3)
 
-                if ("--album-total" in options):
+                if "--album-total" in options:
                     self.assertEqual(metadata.album_total, 8)
-                elif ("-r" in options):
+                elif "-r" in options:
                     self.assertEqual(metadata.album_total, None)
                 else:
                     self.assertEqual(metadata.album_total, 4)
 
-                if ("--comment-file" in options):
+                if "--comment-file" in options:
                     self.assertEqual(metadata.comment, u"Comment File")
-                elif ("--comment" in options):
+                elif "--comment" in options:
                     self.assertEqual(metadata.comment, u"Comment 3")
-                elif ("-r" in options):
+                elif "-r" in options:
                     self.assertEqual(metadata.comment, None)
                 else:
                     self.assertEqual(metadata.comment, u"Comment 1")
 
-                if ("-r" in options):
+                if "-r" in options:
                     self.assertEqual(metadata.ISRC, None)
                 else:
                     self.assertEqual(metadata.ISRC, u"ABCD00000000")
 
-                if ("--replay-gain" in options):
+                if "--replay-gain" in options:
                     self.assert_(track.replay_gain() is not None)
 
     @UTIL_TRACKTAG
@@ -5147,7 +5147,7 @@ class tracktag(UtilTest):
                                      RG_REPLAYGAIN_APPLIED_TO_ALBUM)
 
         for audio_class in audiotools.AVAILABLE_TYPES:
-            if (audio_class.supports_replay_gain()):
+            if audio_class.supports_replay_gain():
                 track_file = tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX)
 
@@ -5172,7 +5172,7 @@ class tracktag(UtilTest):
                                                track_number=1,
                                                track_total=2)
                 track.set_metadata(metadata)
-                if (track.get_metadata() is None):
+                if track.get_metadata() is None:
                     continue
 
                 self.assertEqual(
@@ -5233,7 +5233,7 @@ class tracktag(UtilTest):
              ("--comment", "comment")],
             unicode_values):
 
-            if (os.path.isfile(input_filename)):
+            if os.path.isfile(input_filename):
                 os.unlink(input_filename)
 
             track = audiotools.FlacAudio.from_pcm(
@@ -5249,10 +5249,10 @@ class tracktag(UtilTest):
 
             set_value = getattr(audiotools.open(input_filename).get_metadata(),
                                 attribute)
-            if (set_value is not None):
+            if set_value is not None:
                 self.assertEqual(set_value, unicode_value)
 
-            if (os.path.isfile(input_filename)):
+            if os.path.isfile(input_filename):
                 os.unlink(input_filename)
 
         input_filenames = [f if PY3 else f.encode("UTF-8") for f in
@@ -5266,9 +5266,9 @@ class tracktag(UtilTest):
         for (input_filename,
              comment_filename) in Possibilities(input_filenames,
                                                 comment_filenames):
-            if (os.path.isfile(input_filename)):
+            if os.path.isfile(input_filename):
                 os.unlink(input_filename)
-            if (os.path.isfile(comment_filename)):
+            if os.path.isfile(comment_filename):
                 os.unlink(comment_filename)
 
             track = audiotools.FlacAudio.from_pcm(
@@ -5287,9 +5287,9 @@ class tracktag(UtilTest):
                 audiotools.open(input_filename).get_metadata().comment,
                 u"Test Text")
 
-            if (os.path.isfile(input_filename)):
+            if os.path.isfile(input_filename):
                 os.unlink(input_filename)
-            if (os.path.isfile(comment_filename)):
+            if os.path.isfile(comment_filename):
                 os.unlink(comment_filename)
 
 
@@ -5414,7 +5414,7 @@ class tracktag_misc(UtilTest):
         def number_fields_values(fields, metadata_class):
             values = set([])
             for field in audiotools.MetaData.INTEGER_FIELDS:
-                if (field in fields):
+                if field in fields:
                     values.add(
                         (field,
                          audiotools.MetaData.INTEGER_FIELDS.index(field) + 1))
@@ -5426,7 +5426,7 @@ class tracktag_misc(UtilTest):
         def deleted_number_fields_values(fields, metadata_class):
             values = set([])
             for field in audiotools.MetaData.INTEGER_FIELDS:
-                if (field not in fields):
+                if field not in fields:
                     values.add(
                         (field,
                          audiotools.MetaData.INTEGER_FIELDS.index(field) + 1))
@@ -5497,9 +5497,9 @@ class tracktag_misc(UtilTest):
                                           track.filename]), 0)
                     new_track = audiotools.open(track.filename)
                     metadata = new_track.get_metadata()
-                    if (metadata is None):
+                    if metadata is None:
                         break
-                    elif (getattr(metadata, field_name) is not None):
+                    elif getattr(metadata, field_name) is not None:
                         self.assertEqual(getattr(metadata, field_name),
                                          u'foo')
 
@@ -5531,7 +5531,7 @@ class tracktag_misc(UtilTest):
                                 0)
                             metadata = audiotools.open(
                                 track.filename).get_metadata()
-                            if (metadata is None):
+                            if metadata is None:
                                 raise NoMetaData()
 
                             self.assertTrue(
@@ -5583,16 +5583,16 @@ class tracktag_misc(UtilTest):
     def populate_set_number_fields(self, fields):
         options = []
         for field in fields:
-            if (field == 'track_number'):
+            if field == 'track_number':
                 options.append('--number')
                 options.append(str(1))
-            elif (field == 'track_total'):
+            elif field == 'track_total':
                 options.append('--track-total')
                 options.append(str(2))
-            elif (field == 'album_number'):
+            elif field == 'album_number':
                 options.append('--album-number')
                 options.append(str(3))
-            elif (field == 'album_total'):
+            elif field == 'album_total':
                 options.append('--album-total')
                 options.append(str(4))
         return options
@@ -5600,13 +5600,13 @@ class tracktag_misc(UtilTest):
     def populate_delete_number_fields(self, fields):
         options = []
         for field in fields:
-            if (field == 'track_number'):
+            if field == 'track_number':
                 options.append('--remove-number')
-            elif (field == 'track_total'):
+            elif field == 'track_total':
                 options.append('--remove-track-total')
-            elif (field == 'album_number'):
+            elif field == 'album_number':
                 options.append('--remove-album-number')
-            elif (field == 'album_total'):
+            elif field == 'album_total':
                 options.append('--remove-album-total')
         return options
 
@@ -5616,7 +5616,7 @@ class trackverify(UtilTest):
     def test_version(self):
         self.assertEqual(self.__run_app__(["trackverify",
                                            "--version"]), 0)
-        if (PY3):
+        if PY3:
             self.__check_output__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
         else:

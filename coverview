@@ -33,7 +33,7 @@ def image_size(display_surface, image_surface):
 
     image_ratio = float(image_surface[0]) / float(image_surface[1])
 
-    if (image_ratio > display_ratio):  # image wider than display, when scaled
+    if image_ratio > display_ratio:  # image wider than display, when scaled
         new_width = display_surface[0]
         new_height = image_surface[1] / (float(image_surface[0]) /
                                          float(display_surface[0]))
@@ -80,7 +80,7 @@ try:
             self.draw_image()
 
         def draw_image(self):
-            if (self.full_pixbuf is None):
+            if self.full_pixbuf is None:
                 return
 
             (image_width,
@@ -212,7 +212,7 @@ try:
 
         def open(self, widget, data=None):
             response = self.file_dialog.run()
-            if (response == gtk.RESPONSE_OK):
+            if response == gtk.RESPONSE_OK:
                 filename = self.file_dialog.get_filename()
                 try:
                     self.set_metadata(
@@ -239,7 +239,7 @@ try:
                         buttons=gtk.BUTTONS_OK)
                     error.run()
                     error.destroy()
-            elif (response == gtk.RESPONSE_CANCEL):
+            elif response == gtk.RESPONSE_CANCEL:
                 pass
             self.file_dialog.hide()
 
@@ -299,10 +299,10 @@ try:
                               _.LAB_BITS_PER_PIXEL % (image.color_depth))
                 self.list.set(tree_iter, 5, image.mime_type.decode('ascii'))
 
-                if (first_image is None):
+                if first_image is None:
                     first_image = tree_iter
 
-            if (len(images) > 0):
+            if len(images) > 0:
                 self.list_widget.get_selection().select_iter(first_image)
                 self.image_selected()
             else:
@@ -310,7 +310,7 @@ try:
 
     def main_gtk(initial_audiofile=None):
         coverview = Coverview_Gtk()
-        if (initial_audiofile is not None):
+        if initial_audiofile is not None:
             coverview.set_filename(initial_audiofile.filename)
             coverview.set_metadata(initial_audiofile.get_metadata())
         gtk.main()
@@ -329,7 +329,7 @@ try:
     try:
         import _imaging as test
     except ImportError as err:
-        if (os.uname()[0].lower() == 'darwin'):
+        if os.uname()[0].lower() == 'darwin':
             print("""*** Unable to load Python Imaging Library.
 You may need to run Python in 32-bit mode in order for it to load correctly.
 If running a Bourne-like shell, try:
@@ -384,7 +384,7 @@ Consult "man python" for further details.
             self.path.config(text=path)
 
         def set_image_data(self, image):
-            if (image is None):
+            if image is None:
                 return
             else:
                 at_image = image.audiotools
@@ -484,7 +484,7 @@ Consult "man python" for further details.
                 parent=self.master,
                 title=_.LAB_CHOOSE_FILE)
 
-            if (len(new_file) > 0):
+            if len(new_file) > 0:
                 try:
                     self.set_metadata(new_file,
                                       audiotools.open(new_file).get_metadata())
@@ -502,7 +502,7 @@ Consult "man python" for further details.
             self.about_window.state("normal")
 
         def show_error(self, error):
-            if (self.photo_image_id is not None):
+            if self.photo_image_id is not None:
                 self.canvas.delete(self.photo_image_id)
             self.statusbar.clear_image_data()
             self.images.selection_clear(0, END)
@@ -525,8 +525,8 @@ Consult "man python" for further details.
             self.set_image(self.current_image)
 
         def set_image(self, image):
-            if (image is None):
-                if (self.photo_image_id is not None):
+            if image is None:
+                if self.photo_image_id is not None:
                     self.canvas.delete(self.photo_image_id)
                 self.statusbar.clear_image_data()
                 return
@@ -543,7 +543,7 @@ Consult "man python" for further details.
 
             self.photo_image = ImageTk.PhotoImage(resized_image)
 
-            if (self.photo_image_id is not None):
+            if self.photo_image_id is not None:
                 self.canvas.delete(self.photo_image_id)
 
             self.photo_image_id = self.canvas.create_image(
@@ -558,13 +558,13 @@ Consult "man python" for further details.
             self.images.selection_clear(0, END)
             self.images.delete(0, END)
             self.image_objects = []
-            if (metadata is not None):
+            if metadata is not None:
                 image_list = metadata.images()
                 for image in image_list:
                     self.images.insert(END, image.type_string())
                     self.image_objects.append(ImagePair_Tk(path, image))
 
-                if (len(image_list) > 0):
+                if len(image_list) > 0:
                     self.images.index(0)
                     self.images.selection_set(0)
                     self.current_image = self.image_objects[0]
@@ -580,7 +580,7 @@ Consult "man python" for further details.
         root = Tk()
 
         app = Coverview_Tkinter(root)
-        if (initial_audiofile is not None):
+        if initial_audiofile is not None:
             app.set_metadata(initial_audiofile.filename,
                              initial_audiofile.get_metadata())
 
@@ -599,14 +599,14 @@ if (__name__ == '__main__'):
                         action="version",
                         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    if (GTK_AVAILABLE):
+    if GTK_AVAILABLE:
         parser.add_argument('--no-gtk',
                             dest="no_gtk",
                             action='store_true',
                             default=False,
                             help=_.OPT_NO_GTK)
 
-    if (TKINTER_AVAILABLE):
+    if TKINTER_AVAILABLE:
         parser.add_argument('--no-tkinter',
                             dest="no_tkinter",
                             action='store_true',
@@ -627,8 +627,8 @@ if (__name__ == '__main__'):
     use_gtk = (hasattr(options, "no_gtk") and not options.no_gtk)
     use_tkinter = (hasattr(options, "no_tkinter") and not options.no_tkinter)
 
-    if (use_gtk):
-        if (len(args) > 0):
+    if use_gtk:
+        if len(args) > 0:
             try:
                 main_gtk(audiotools.open(args[0]))
             except audiotools.UnsupportedFile:
@@ -645,8 +645,8 @@ if (__name__ == '__main__'):
                 sys.exit(1)
         else:
             main_gtk(None)
-    elif (use_tkinter):
-        if (len(args) > 0):
+    elif use_tkinter:
+        if len(args) > 0:
             try:
                 main_tkinter(audiotools.open(args[0]))
             except audiotools.UnsupportedFile:

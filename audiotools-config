@@ -112,9 +112,9 @@ def display_defaults(config, msg):
 
         row.add_column(u" ")
 
-        if (len(audio_type.BINARIES) < 1):
+        if len(audio_type.BINARIES) < 1:
             row.add_column(u"")
-        elif (len(audio_type.BINARIES) < 2):
+        elif len(audio_type.BINARIES) < 2:
             row.add_column(audiotools.output_text(
                 label_string(audio_type.BINARIES[0]),
                 fg_color=("green" if
@@ -135,14 +135,14 @@ def display_defaults(config, msg):
 
         row.add_column(u" ")
 
-        if (len(audio_type.COMPRESSION_MODES) < 2):
+        if len(audio_type.COMPRESSION_MODES) < 2:
             row.add_column(u" ")
         else:
             quality = label_string(
                 config.get_default("Quality",
                                    audio_type.NAME,
                                    audio_type.DEFAULT_COMPRESSION))
-            if (quality in audio_type.COMPRESSION_DESCRIPTIONS):
+            if quality in audio_type.COMPRESSION_DESCRIPTIONS:
                 row.add_column(
                     u"%s - %s" %
                     (quality,
@@ -301,16 +301,16 @@ def apply_options(options, config):
     applies the options to the config"""
 
     # apply --verbose option
-    if (options.verbosity is not None):
+    if options.verbosity is not None:
         config.set_default("Defaults", "verbosity", options.verbosity)
 
     # apply transcoding options
-    if (options.filename_format is not None):
+    if options.filename_format is not None:
         config.set_default("Filenames", "format", options.filename_format)
 
-    if (options.quality is None):
+    if options.quality is None:
         # not setting no --quality value
-        if (options.type is None):
+        if options.type is None:
             # do nothing
             pass
         else:
@@ -318,7 +318,7 @@ def apply_options(options, config):
             config.set_default("System", "default_type", options.type)
     else:
         # setting new --quality value
-        if (options.type is None):
+        if options.type is None:
             # set new quality value for current default type
             AudioType = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
         else:
@@ -326,64 +326,64 @@ def apply_options(options, config):
             AudioType = audiotools.TYPE_MAP[options.type]
         config.set_default("Quality", AudioType.NAME, options.quality)
 
-    if (options.system_maximum_jobs is not None):
+    if options.system_maximum_jobs is not None:
         config.set_default("System", "maximum_jobs",
                            str(options.system_maximum_jobs))
 
     # apply CD lookup options
-    if (options.use_musicbrainz is not None):
+    if options.use_musicbrainz is not None:
         config.set_default("MusicBrainz", "service",
                            True if (options.use_musicbrainz == "yes")
                            else False)
 
-    if (options.musicbrainz_server is not None):
+    if options.musicbrainz_server is not None:
         config.set_default("MusicBrainz", "server", options.musicbrainz_server)
 
-    if (options.musicbrainz_port is not None):
+    if options.musicbrainz_port is not None:
         config.set_default("MusicBrainz", "port", options.musicbrainz_port)
 
-    if (options.use_freedb is not None):
+    if options.use_freedb is not None:
         config.set_default("FreeDB", "service",
                            True if (options.use_freedb == "yes")
                            else False)
 
-    if (options.freedb_server is not None):
+    if options.freedb_server is not None:
         config.set_default("FreeDB", "server", options.freedb_server)
 
-    if (options.freedb_port is not None):
+    if options.freedb_port is not None:
         config.set_default("FreeDB", "port", options.freedb_port)
 
     # apply ID3 options
-    if (options.id3v2_version is not None):
+    if options.id3v2_version is not None:
         config.set_default("ID3", "id3v2", options.id3v2_version)
 
-    if (options.id3v1_version is not None):
+    if options.id3v1_version is not None:
         config.set_default("ID3", "id3v1", options.id3v1_version)
 
-    if (options.id3_digit_padding is not None):
+    if options.id3_digit_padding is not None:
         config.set_default("ID3", "pad",
                            True if (options.id3_digit_padding == "yes")
                            else False)
 
     # apply ReplayGain options
-    if (options.add_replaygain is not None):
+    if options.add_replaygain is not None:
         config.set_default("ReplayGain", "add_by_default",
                            True if (options.add_replaygain == "yes")
                            else False)
 
     # apply system options
-    if (options.system_cdrom is not None):
+    if options.system_cdrom is not None:
         config.set_default("System", "cdrom", options.system_cdrom)
 
-    if (options.system_cdrom_read_offset is not None):
+    if options.system_cdrom_read_offset is not None:
         config.set_default("System", "cdrom_read_offset",
                            options.system_cdrom_read_offset)
 
-    if (options.system_cdrom_write_offset is not None):
+    if options.system_cdrom_write_offset is not None:
         config.set_default("System", "cdrom_write_offset",
                            options.system_cdrom_write_offset)
 
-    if (options.system_fs_encoding is not None):
+    if options.system_fs_encoding is not None:
         config.set_default("System", "fs_encoding", options.system_fs_encoding)
 
     # apply binaries options
@@ -394,7 +394,7 @@ def apply_options(options, config):
 
     for binary in bins:
         setting = getattr(options, "binary_" + binary)
-        if (setting is not None):
+        if setting is not None:
             config.set_default("Binaries", binary, setting)
 
 
@@ -420,7 +420,7 @@ if (__name__ == '__main__'):
 
     import audiotools.text as _
 
-    if (audiotools.ui.AVAILABLE):
+    if audiotools.ui.AVAILABLE:
         # setup widgets for interactive mode
 
         urwid = audiotools.ui.urwid
@@ -474,7 +474,7 @@ if (__name__ == '__main__'):
                 format_example = urwid.Text(markup=u"", wrap='clip')
 
                 for audio_type in audio_types:
-                    if (len(audio_type.COMPRESSION_MODES) < 2):
+                    if len(audio_type.COMPRESSION_MODES) < 2:
                         qualities = urwid.Text(u"")
                         no_modes = True
                     else:
@@ -645,7 +645,7 @@ if (__name__ == '__main__'):
                     config.set_default(section, option, 0)
 
             def change_default_format(self, radiobutton, new_state, user_data):
-                if (new_state):
+                if new_state:
                     (config, value, example_widget) = user_data
                     config.set_default("System", "default_type", value)
                     self.update_format_example(config, example_widget)
@@ -851,7 +851,7 @@ if (__name__ == '__main__'):
                                         id3v1_version_row])
 
             def change_choice(self, radiobutton, new_state, user_data):
-                if (new_state):
+                if new_state:
                     (config, section, option, value) = user_data
                     config.set_default(section, option, value)
 
@@ -986,7 +986,7 @@ if (__name__ == '__main__'):
                     footer=self.status)
 
             def change_choice(self, radiobutton, new_state, user_data):
-                if (new_state):
+                if new_state:
                     (config, section, option, value) = user_data
                     config.set_default(section, option, value)
 
@@ -1006,7 +1006,7 @@ if (__name__ == '__main__'):
                     config.set_default(section, option, 0)
 
             def handle_text(self, i):
-                if (i == 'esc'):
+                if i == 'esc':
                     self.__cancelled__ = True
                     raise urwid.ExitMainLoop()
 
@@ -1177,14 +1177,14 @@ if (__name__ == '__main__'):
 
     msg = audiotools.Messenger()
 
-    if (len(sys.argv) < 2):
+    if len(sys.argv) < 2:
         # no arguments at all so display current default
 
         display_defaults(audiotools.config, msg)
-    elif (options.interactive):
+    elif options.interactive:
         # update options interactively
 
-        if (not audiotools.ui.AVAILABLE):
+        if not audiotools.ui.AVAILABLE:
             audiotools.ui.not_available_message(msg)
             sys.exit(1)
         else:
@@ -1208,7 +1208,7 @@ if (__name__ == '__main__'):
                 sys.exit(1)
 
             # and apply options if widget isn't cancelled
-            if (not widget.cancelled()):
+            if not widget.cancelled():
                 configpath = os.path.expanduser('~/.audiotools.cfg')
                 try:
                     configfile = open(configpath, 'w')
@@ -1226,7 +1226,7 @@ if (__name__ == '__main__'):
         # update options non-interactively
 
         # verify --format is valid, if present
-        if (options.filename_format is not None):
+        if options.filename_format is not None:
             try:
                 audiotools.AudioFile.track_name(
                     file_path="",
@@ -1240,16 +1240,16 @@ if (__name__ == '__main__'):
                 sys.exit(1)
 
         # verify --type is valid, if present
-        if (options.type == 'help'):
+        if options.type == 'help':
             audiotools.ui.show_available_formats(msg)
             sys.exit(0)
-        elif (options.type is not None):
+        elif options.type is not None:
             AudioType = audiotools.TYPE_MAP[options.type]
         else:
             AudioType = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
 
         # verify --quality is valid for type, if present
-        if (options.quality == 'help'):
+        if options.quality == 'help':
             audiotools.ui.show_available_qualities(msg, AudioType)
             sys.exit(0)
         elif ((options.quality is not None) and

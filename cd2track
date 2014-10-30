@@ -212,24 +212,24 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger(options.verbosity == "quiet")
 
     # ensure interactive mode is available, if selected
-    if (options.interactive and (not audiotools.ui.AVAILABLE)):
+    if options.interactive and (not audiotools.ui.AVAILABLE):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
     # get the default AudioFile class we are converted to
-    if (options.type == 'help'):
+    if options.type == 'help':
         audiotools.ui.show_available_formats(msg)
         sys.exit(0)
     else:
         AudioType = audiotools.TYPE_MAP[options.type]
 
     # ensure the selected compression is compatible with that class
-    if (options.quality == 'help'):
+    if options.quality == 'help':
         audiotools.ui.show_available_qualities(msg, AudioType)
         sys.exit(0)
-    elif (options.quality is None):
+    elif options.quality is None:
         options.quality = audiotools.__default_quality__(AudioType.NAME)
-    elif (options.quality not in AudioType.COMPRESSION_MODES):
+    elif options.quality not in AudioType.COMPRESSION_MODES:
         msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
                   {"quality": options.quality,
                    "type": AudioType.NAME})
@@ -247,7 +247,7 @@ if (__name__ == '__main__'):
         sys.exit(-1)
 
     # only apply read_offset if cddareader is a physical drive
-    if (not cddareader.is_cd_image):
+    if not cddareader.is_cd_image:
         try:
             read_offset = audiotools.config.getint_default(
                 "System", "cdrom_read_offset", 0)
@@ -257,7 +257,7 @@ if (__name__ == '__main__'):
         read_offset = 0
 
     # set speed, if any
-    if (options.speed is not None):
+    if options.speed is not None:
         cddareader.set_speed(options.speed)
 
     # use CDDA object to query metadata services for metadata choices
@@ -276,12 +276,12 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     # update MetaData with command-line album-number/total, if given
-    if (options.album_number != 0):
+    if options.album_number != 0:
         for c in metadata_choices:
             for m in c:
                 m.album_number = options.album_number
 
-    if (options.album_total != 0):
+    if options.album_total != 0:
         for c in metadata_choices:
             for m in c:
                 m.album_total = options.album_total
@@ -296,18 +296,18 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     # determine tracks to be ripped
-    if (len(options.tracks) == 0):
+    if len(options.tracks) == 0:
         tracks_to_rip = list(sorted(track_offsets.keys()))
     else:
         tracks_to_rip = [t for t in options.tracks if
                          t in track_offsets.keys()]
 
-    if (len(tracks_to_rip) == 0):
+    if len(tracks_to_rip) == 0:
         # no tracks selected to rip, so do nothing
         sys.exit(0)
 
     # decide which metadata and output options use when extracting tracks
-    if (options.interactive):
+    if options.interactive:
         # pick options using interactive widget
         output_widget = audiotools.ui.OutputFiller(
             track_labels=[_.LAB_TRACK_X_OF_Y % (i, max(track_offsets.keys()))
@@ -338,7 +338,7 @@ if (__name__ == '__main__'):
             msg.info(audiotools.ui.xargs_suggestion(sys.argv))
             sys.exit(1)
 
-        if (not output_widget.cancelled()):
+        if not output_widget.cancelled():
             output_tracks = list(output_widget.output_tracks())
         else:
             sys.exit(0)
@@ -389,7 +389,7 @@ if (__name__ == '__main__'):
         track_length = track_lengths[track_number]
 
         # seek to indicated starting offset
-        if (track_offset > 0):
+        if track_offset > 0:
             seeked_offset = cddareader.seek(track_offset)
         else:
             seeked_offset = cddareader.seek(0)
@@ -530,7 +530,7 @@ if (__name__ == '__main__'):
     header = table.row()
     for (label, is_first) in [(label, i == 0) for (i, label) in
                               enumerate(header_list)]:
-        if (not is_first):
+        if not is_first:
             header.add_column(u" ")
         header.add_column(label, "right")
 
@@ -579,7 +579,7 @@ if (__name__ == '__main__'):
                           confidence_v2,
                           offset_v2)]:
             row.add_column(u"")
-            if ((confidence is None) or (confidence < 0)):
+            if (confidence is None) or (confidence < 0):
                 row.add_column(u"", "right")
             else:
                 row.add_column(u"%d" % (confidence), "right")

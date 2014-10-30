@@ -133,10 +133,10 @@ class MP3Audio(AudioFile):
                                mp3file.read(4))
 
             self.__samplerate__ = self.SAMPLE_RATE[mpeg_id][sample_rate]
-            if (self.__samplerate__ is None):
+            if self.__samplerate__ is None:
                 from audiotools.text import ERR_MP3_INVALID_SAMPLE_RATE
                 raise InvalidMP3(ERR_MP3_INVALID_SAMPLE_RATE)
-            if (channels in (0, 1, 2)):
+            if channels in (0, 1, 2):
                 self.__channels__ = 2
             else:
                 self.__channels__ = 1
@@ -231,7 +231,7 @@ class MP3Audio(AudioFile):
             compression = __default_quality__(cls.NAME)
 
         try:
-            if (total_pcm_frames is not None):
+            if total_pcm_frames is not None:
                 from audiotools import CounterPCMReader
                 pcmreader = CounterPCMReader(pcmreader)
 
@@ -289,7 +289,7 @@ class MP3Audio(AudioFile):
         from audiotools.id3v1 import ID3v1Comment
 
         with open(self.filename, "rb") as f:
-            if (f.read(3) == b"ID3"):
+            if f.read(3) == b"ID3":
                 id3v2 = read_id3v2_comment(self.filename)
 
                 try:
@@ -322,14 +322,14 @@ class MP3Audio(AudioFile):
         from audiotools.id3v1 import ID3v1Comment
         from audiotools.bitstream import BitstreamWriter
 
-        if (metadata is None):
+        if metadata is None:
             return
         elif (not (isinstance(metadata, ID3v2Comment) or
                    isinstance(metadata, ID3CommentPair) or
                    isinstance(metadata, ID3v1Comment))):
             from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
-        elif (not os.access(self.filename, os.W_OK)):
+        elif not os.access(self.filename, os.W_OK):
             raise IOError(self.filename)
 
         new_mp3 = TemporaryFile(self.filename)
@@ -344,14 +344,14 @@ class MP3Audio(AudioFile):
         old_mp3 = LimitedFileReader(old_mp3, data_end - data_start)
 
         # write id3v2 + data + id3v1 to file
-        if (isinstance(metadata, ID3CommentPair)):
+        if isinstance(metadata, ID3CommentPair):
             metadata.id3v2.build(BitstreamWriter(new_mp3, False))
             transfer_data(old_mp3.read, new_mp3.write)
             metadata.id3v1.build(new_mp3)
-        elif (isinstance(metadata, ID3v2Comment)):
+        elif isinstance(metadata, ID3v2Comment):
             metadata.build(BitstreamWriter(new_mp3, False))
             transfer_data(old_mp3.read, new_mp3.write)
-        elif (isinstance(metadata, ID3v1Comment)):
+        elif isinstance(metadata, ID3v1Comment):
             transfer_data(old_mp3.read, new_mp3.write)
             metadata.build(new_mp3)
 
@@ -372,7 +372,7 @@ class MP3Audio(AudioFile):
         from audiotools.id3 import ID3CommentPair
         from audiotools.id3v1 import ID3v1Comment
 
-        if (metadata is None):
+        if metadata is None:
             return self.delete_metadata()
 
         if (not (isinstance(metadata, ID3v2Comment) or
@@ -395,14 +395,14 @@ class MP3Audio(AudioFile):
                                                                 "id3v1",
                                                                 DEFAULT_ID3V1),
                                              DEFAULT_ID3V1)
-            if ((id3v2_class is not None) and (id3v1_class is not None)):
+            if (id3v2_class is not None) and (id3v1_class is not None):
                 self.update_metadata(
                     ID3CommentPair.converted(metadata,
                                              id3v2_class=id3v2_class,
                                              id3v1_class=id3v1_class))
-            elif (id3v2_class is not None):
+            elif id3v2_class is not None:
                 self.update_metadata(id3v2_class.converted(metadata))
-            elif (id3v1_class is not None):
+            elif id3v1_class is not None:
                 self.update_metadata(id3v1_class.converted(metadata))
             else:
                 return
@@ -423,7 +423,7 @@ class MP3Audio(AudioFile):
         # this works a lot like update_metadata
         # but without any new metadata to set
 
-        if (not os.access(self.filename, os.W_OK)):
+        if not os.access(self.filename, os.W_OK):
             raise IOError(self.filename)
 
         new_mp3 = TemporaryFile(self.filename)
@@ -463,15 +463,15 @@ class MP3Audio(AudioFile):
         from audiotools.text import CLEAN_REMOVE_DUPLICATE_ID3V2
 
         with open(self.filename, "rb") as f:
-            if (total_id3v2_comments(f) > 1):
+            if total_id3v2_comments(f) > 1:
                 file_fixes = [CLEAN_REMOVE_DUPLICATE_ID3V2]
             else:
                 file_fixes = []
 
-        if (output_filename is None):
+        if output_filename is None:
             # dry run only
             metadata = self.get_metadata()
-            if (metadata is not None):
+            if metadata is not None:
                 (metadata, fixes) = metadata.clean()
                 return file_fixes + fixes
             else:
@@ -488,9 +488,9 @@ class MP3Audio(AudioFile):
 
             new_track = open_audiofile(output_filename)
             metadata = self.get_metadata()
-            if (metadata is not None):
+            if metadata is not None:
                 (metadata, fixes) = metadata.clean()
-                if (len(file_fixes + fixes) > 0):
+                if len(file_fixes + fixes) > 0:
                     # only update metadata if fixes are actually performed
                     new_track.update_metadata(metadata)
                 return file_fixes + fixes
@@ -569,7 +569,7 @@ class MP3Audio(AudioFile):
         """
 
         mp3file.seek(-128, 2)
-        if (mp3file.read(3) == b'TAG'):
+        if mp3file.read(3) == b'TAG':
             mp3file.seek(-128, 2)
             return
         else:
@@ -588,14 +588,14 @@ class MP3Audio(AudioFile):
         """
 
         sample_rate = self.SAMPLE_RATE[mpeg_id][sample_rate]
-        if (sample_rate is None):
+        if sample_rate is None:
             from audiotools.text import ERR_MP3_INVALID_SAMPLE_RATE
             raise ValueError(ERR_MP3_INVALID_SAMPLE_RATE)
         bit_rate = self.BIT_RATE[mpeg_id][layer][bit_rate]
-        if (bit_rate is None):
+        if bit_rate is None:
             from audiotools.text import ERR_MP3_INVALID_BIT_RATE
             raise ValueError(ERR_MP3_INVALID_BIT_RATE)
-        if (layer == 3):  # layer I
+        if layer == 3:  # layer I
             return (((12 * bit_rate) // sample_rate) + pad) * 4
         else:             # layer II/III
             return ((144 * bit_rate) // sample_rate) + pad
@@ -691,7 +691,7 @@ class MP2Audio(MP3Audio):
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
-        if (pcmreader.sample_rate in (32000, 48000, 44100)):
+        if pcmreader.sample_rate in (32000, 48000, 44100):
             sample_rate = pcmreader.sample_rate
         else:
             sample_rate = [32000,
@@ -702,7 +702,7 @@ class MP2Audio(MP3Audio):
                                                  48000],
                                                 pcmreader.sample_rate)]
 
-        if (total_pcm_frames is not None):
+        if total_pcm_frames is not None:
             from audiotools import CounterPCMReader
             pcmreader = CounterPCMReader(pcmreader)
 

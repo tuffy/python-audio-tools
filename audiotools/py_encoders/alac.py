@@ -100,39 +100,39 @@ def encode_frameset(writer, pcmreader, options, frame):
     # assume frameset is stored in Wave order
     # which we'll convert to ALAC order
 
-    if (pcmreader.channels == 1):
+    if pcmreader.channels == 1:
         encode_frame(writer, pcmreader, options, [frame.channel(0)])
-    elif (pcmreader.channels == 2):
+    elif pcmreader.channels == 2:
         encode_frame(writer, pcmreader, options, [frame.channel(0),
                                                   frame.channel(1)])
-    elif (pcmreader.channels == 3):
+    elif pcmreader.channels == 3:
         for pair in [[frame.channel(2)],
                      [frame.channel(0), frame.channel(1)]]:
             encode_frame(writer, pcmreader, options, pair)
-    elif (pcmreader.channels == 4):
+    elif pcmreader.channels == 4:
         for pair in [[frame.channel(2)],
                      [frame.channel(0), frame.channel(1)],
                      [frame.channel(3)]]:
             encode_frame(writer, pcmreader, options, pair)
-    elif (pcmreader.channels == 5):
+    elif pcmreader.channels == 5:
         for pair in [[frame.channel(2)],
                      [frame.channel(0), frame.channel(1)],
                      [frame.channel(3), frame.channel(4)]]:
             encode_frame(writer, pcmreader, options, pair)
-    elif (pcmreader.channels == 6):
+    elif pcmreader.channels == 6:
         for pair in [[frame.channel(2)],
                      [frame.channel(0), frame.channel(1)],
                      [frame.channel(4), frame.channel(5)],
                      [frame.channel(3)]]:
             encode_frame(writer, pcmreader, options, pair)
-    elif (pcmreader.channels == 7):
+    elif pcmreader.channels == 7:
         for pair in [[frame.channel(2)],
                      [frame.channel(0), frame.channel(1)],
                      [frame.channel(4), frame.channel(5)],
                      [frame.channel(6)],
                      [frame.channel(3)]]:
             encode_frame(writer, pcmreader, options, pair)
-    elif (pcmreader.channels == 8):
+    elif pcmreader.channels == 8:
         for pair in [[frame.channel(2)],
                      [frame.channel(6), frame.channel(7)],
                      [frame.channel(0), frame.channel(1)],
@@ -159,14 +159,14 @@ def encode_frame(writer, pcmreader, options, channels):
                               options,
                               channels)
 
-    if (len(channels[0]) >= 10):
+    if len(channels[0]) >= 10:
         try:
             encode_compressed_frame(compressed_frame,
                                     pcmreader,
                                     options,
                                     channels)
 
-            if (compressed_frame.bits() < uncompressed_frame.bits()):
+            if compressed_frame.bits() < uncompressed_frame.bits():
                 compressed_frame.copy(writer)
             else:
                 uncompressed_frame.copy(writer)
@@ -178,13 +178,13 @@ def encode_frame(writer, pcmreader, options, channels):
 
 def encode_uncompressed_frame(writer, pcmreader, options, channels):
     writer.write(16, 0)                           # unusued
-    if (len(channels[0]) == options.block_size):  # has block size
+    if len(channels[0]) == options.block_size:  # has block size
         writer.write(1, 0)
     else:
         writer.write(1, 1)
     writer.write(2, 0)                            # no uncompressed LSBs
     writer.write(1, 1)                            # not compressed
-    if (len(channels[0]) != options.block_size):  # block size
+    if len(channels[0]) != options.block_size:  # block size
         writer.write(32, len(channels[0]))
 
     # write out uncompressed samples
@@ -198,7 +198,7 @@ class ResidualOverflow(Exception):
 
 
 def encode_compressed_frame(writer, pcmreader, options, channels):
-    if (pcmreader.bits_per_sample <= 16):
+    if pcmreader.bits_per_sample <= 16:
         uncompressed_LSBs = 0
         LSBs = []
     else:
@@ -215,7 +215,7 @@ def encode_compressed_frame(writer, pcmreader, options, channels):
                                for i in channel], 1, 16, True)
                     for channel in channels]
 
-    if (len(channels) == 1):
+    if len(channels) == 1:
         encode_non_interlaced_frame(writer,
                                     pcmreader,
                                     options,
@@ -253,13 +253,13 @@ def encode_non_interlaced_frame(writer, pcmreader, options,
     assert(len(channels) == 1)
 
     writer.write(16, 0)                           # unused
-    if (len(channels[0]) != options.block_size):  # has block size
+    if len(channels[0]) != options.block_size:  # has block size
         writer.write(1, 1)
     else:
         writer.write(1, 0)
     writer.write(2, uncompressed_LSBs)            # uncompressed LSBs
     writer.write(1, 0)                            # is compressed
-    if (len(channels[0]) != options.block_size):  # block size
+    if len(channels[0]) != options.block_size:  # block size
         writer.write(32, len(channels[0]))
     writer.write(8, 0)                            # interlacing shift
     writer.write(8, 0)                            # interlacing leftweight
@@ -271,7 +271,7 @@ def encode_non_interlaced_frame(writer, pcmreader, options,
                                                               sample_size,
                                                               channels[0])
     write_subframe_header(writer, LPC_coefficients)
-    if (uncompressed_LSBs > 0):
+    if uncompressed_LSBs > 0:
         for LSB in LSBs:
             writer.write(uncompressed_LSBs * 8, LSB)
     residual.copy(writer)
@@ -284,13 +284,13 @@ def encode_interlaced_frame(writer, pcmreader, options,
     assert(len(channels) == 2)
 
     writer.write(16, 0)                           # unused
-    if (len(channels[0]) != options.block_size):  # has block size
+    if len(channels[0]) != options.block_size:  # has block size
         writer.write(1, 1)
     else:
         writer.write(1, 0)
     writer.write(2, uncompressed_LSBs)            # uncompressed LSBs
     writer.write(1, 0)                            # is compressed
-    if (len(channels[0]) != options.block_size):  # block size
+    if len(channels[0]) != options.block_size:  # block size
         writer.write(32, len(channels[0]))
     writer.write(8, interlacing_shift)
     writer.write(8, interlacing_leftweight)
@@ -315,7 +315,7 @@ def encode_interlaced_frame(writer, pcmreader, options,
 
     write_subframe_header(writer, LPC_coefficients0)
     write_subframe_header(writer, LPC_coefficients1)
-    if (uncompressed_LSBs > 0):
+    if uncompressed_LSBs > 0:
         for LSB in LSBs:
             writer.write(uncompressed_LSBs * 8, LSB)
     residual0.copy(writer)
@@ -326,7 +326,7 @@ def correlate_channels(channel0, channel1,
                        interlacing_shift, interlacing_leftweight):
     assert(len(channel0) == len(channel1))
 
-    if (interlacing_leftweight > 0):
+    if interlacing_leftweight > 0:
         correlated0 = []
         correlated1 = []
         for i in range(len(channel0)):
@@ -350,7 +350,7 @@ def calculate_lpc_coefficients(pcmreader, options, sample_size, channel):
 
     assert(len(autocorrelated) == 9)
 
-    if (autocorrelated[0] != 0.0):
+    if autocorrelated[0] != 0.0:
         lp_coefficients = compute_lp_coefficients(autocorrelated)
 
         assert(len(lp_coefficients) == 8)
@@ -369,7 +369,7 @@ def calculate_lpc_coefficients(pcmreader, options, sample_size, channel):
         encode_residuals(residual_block4, options, sample_size, residuals4)
         encode_residuals(residual_block8, options, sample_size, residuals8)
 
-        if (residual_block4.bits() < residual_block8.bits()):
+        if residual_block4.bits() < residual_block8.bits():
             return (qlp_coefficients4, residual_block4)
         else:
             return (qlp_coefficients8, residual_block8)
@@ -389,11 +389,11 @@ def tukey_window(sample_count, alpha):
     window2 = (sample_count - 1) * (1 - (alpha // 2))
 
     for n in range(0, sample_count):
-        if (n <= window1):
+        if n <= window1:
             yield (0.5 *
                    (1 +
                     cos(pi * (((2 * n) / (alpha * (sample_count - 1))) - 1))))
-        elif (n <= window2):
+        elif n <= window2:
             yield 1.0
         else:
             yield (0.5 *
@@ -439,9 +439,9 @@ def quantize_coefficients(lp_coefficients, order):
 
 
 def sign_only(x):
-    if (x > 0):
+    if x > 0:
         return 1
-    elif (x == 0):
+    elif x == 0:
         return 0
     else:
         return -1
@@ -452,7 +452,7 @@ def truncate_bits(value, bits):
     truncated = value & ((1 << bits) - 1)
 
     # apply newly created sign bit
-    if (truncated & (1 << (bits - 1))):
+    if truncated & (1 << (bits - 1)):
         return truncated - (1 << bits)
     else:
         return truncated
@@ -464,7 +464,7 @@ def compute_residuals(sample_size, qlp_coefficients, channel):
     # first sample always copied verbatim
     residuals = [channel[0]]
 
-    if (len(qlp_coefficients) < 31):
+    if len(qlp_coefficients) < 31:
         for i in range(1, len(qlp_coefficients) + 1):
             residuals.append(truncate_bits(channel[i] - channel[i - 1],
                                            sample_size))
@@ -486,21 +486,21 @@ def compute_residuals(sample_size, qlp_coefficients, channel):
 
             residuals.append(residual)
 
-            if (residual > 0):
+            if residual > 0:
                 for j in range(len(qlp_coefficients)):
                     diff = base_sample - channel[i - len(qlp_coefficients) + j]
                     sign = sign_only(diff)
                     qlp_coefficients[len(qlp_coefficients) - j - 1] -= sign
                     residual -= ((diff * sign) >> QLP_SHIFT_NEEDED) * (j + 1)
-                    if (residual <= 0):
+                    if residual <= 0:
                         break
-            elif (residual < 0):
+            elif residual < 0:
                 for j in range(len(qlp_coefficients)):
                     diff = base_sample - channel[i - len(qlp_coefficients) + j]
                     sign = sign_only(diff)
                     qlp_coefficients[len(qlp_coefficients) - j - 1] += sign
                     residual -= ((diff * -sign) >> QLP_SHIFT_NEEDED) * (j + 1)
-                    if (residual >= 0):
+                    if residual >= 0:
                         break
     else:
         for sample in channel[1:]:
@@ -521,12 +521,12 @@ def encode_residuals(writer, options, sample_size, residuals):
 
     i = 0
     while (i < len(residuals)):
-        if (residuals[i] >= 0):
+        if residuals[i] >= 0:
             unsigned = residuals[i] * 2
         else:
             unsigned = (-residuals[i] * 2) - 1
 
-        if (unsigned >= 2 ** sample_size):
+        if unsigned >= 2 ** sample_size:
             raise ResidualOverflow()
 
         k = min(LOG2((history // 2 ** 9) + 3), options.maximum_K)
@@ -535,11 +535,11 @@ def encode_residuals(writer, options, sample_size, residuals):
 
         sign_modifier = 0
 
-        if (unsigned <= 0xFFFF):
+        if unsigned <= 0xFFFF:
             history += ((unsigned * options.history_multiplier) -
                         ((history * options.history_multiplier) // 2 ** 9))
             i += 1
-            if ((history < 128) and (i < len(residuals))):
+            if (history < 128) and (i < len(residuals)):
                 k = min(7 - LOG2(history) + ((history + 16) // 2 ** 6),
                         options.maximum_K)
                 zeroes = 0
@@ -547,7 +547,7 @@ def encode_residuals(writer, options, sample_size, residuals):
                     zeroes += 1
                     i += 1
                 encode_residual(writer, zeroes, k, 16)
-                if (zeroes < 65535):
+                if zeroes < 65535:
                     sign_modifier = 1
                 history = 0
         else:
@@ -559,13 +559,13 @@ def encode_residual(writer, unsigned, k, sample_size):
     MSB = unsigned // ((2 ** k) - 1)
     LSB = unsigned % ((2 ** k) - 1)
 
-    if (MSB > 8):
+    if MSB > 8:
         writer.write(9, 0x1FF)
         writer.write(sample_size, unsigned)
     else:
         writer.unary(0, MSB)
-        if (k > 1):
-            if (LSB > 0):
+        if k > 1:
+            if LSB > 0:
                 writer.write(k, LSB + 1)
             else:
                 writer.write(k - 1, 0)

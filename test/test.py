@@ -44,7 +44,7 @@ def do_nothing(self):
 # which can be wrapped around individual tests as needed
 for section in parser.sections():
     for option in parser.options(section):
-        if (parser.getboolean(section, option)):
+        if parser.getboolean(section, option):
             vars()["%s_%s" % (section.upper(),
                               option.upper())] = lambda function: function
         else:
@@ -56,7 +56,7 @@ def BLANK_PCM_Reader(length, sample_rate=44100, channels=2,
                      bits_per_sample=16, channel_mask=None):
     from audiotools.decoders import SameSample
 
-    if (channel_mask is None):
+    if channel_mask is None:
         channel_mask = int(audiotools.ChannelMask.from_channels(channels))
 
     return SameSample(sample=1,
@@ -73,7 +73,7 @@ class EXACT_RANDOM_PCM_Reader(object):
                  channel_mask=None):
         self.sample_rate = sample_rate
         self.channels = channels
-        if (channel_mask is None):
+        if channel_mask is None:
             self.channel_mask = \
                 int(audiotools.ChannelMask.from_channels(channels))
         else:
@@ -92,7 +92,7 @@ class EXACT_RANDOM_PCM_Reader(object):
         self.close()
 
     def read_opened(self, pcm_frames):
-        if (self.total_frames > 0):
+        if self.total_frames > 0:
             frames_to_read = min(pcm_frames, self.total_frames)
             frame = audiotools.pcm.FrameList(
                 os.urandom(frames_to_read *
@@ -136,7 +136,7 @@ def EXACT_BLANK_PCM_Reader(pcm_frames, sample_rate=44100, channels=2,
                            bits_per_sample=16, channel_mask=None):
     from audiotools.decoders import SameSample
 
-    if (channel_mask is None):
+    if channel_mask is None:
         channel_mask = int(audiotools.ChannelMask.from_channels(channels))
 
     return SameSample(sample=1,
@@ -151,7 +151,7 @@ def EXACT_SILENCE_PCM_Reader(pcm_frames, sample_rate=44100, channels=2,
                              bits_per_sample=16, channel_mask=None):
     from audiotools.decoders import SameSample
 
-    if (channel_mask is None):
+    if channel_mask is None:
         channel_mask = int(audiotools.ChannelMask.from_channels(channels))
 
     return SameSample(sample=0,
@@ -179,7 +179,7 @@ class MD5_Reader(audiotools.PCMReader):
                                         self.bits_per_sample)
 
     def reset(self):
-        if (hasattr(self.pcmreader, "reset")):
+        if hasattr(self.pcmreader, "reset"):
             self.pcmreader.reset()
         self.md5 = md5()
 
@@ -223,11 +223,11 @@ class Join_Reader(audiotools.PCMReader):
     # combines them into a single reader
     # a bit like PCMCat but across channels instead of PCM frames
     def __init__(self, pcm_readers, channel_mask):
-        if (len({r.sample_rate for r in pcm_readers}) != 1):
+        if len({r.sample_rate for r in pcm_readers}) != 1:
             raise ValueError("all readers must have the same sample rate")
-        if (len({r.bits_per_sample for r in pcm_readers}) != 1):
+        if len({r.bits_per_sample for r in pcm_readers}) != 1:
             raise ValueError("all readers must have the same bits per sample")
-        if ({r.channels for r in pcm_readers} != {1}):
+        if {r.channels for r in pcm_readers} != {1}:
             raise ValueError("all readers must be 1 channel")
         assert(isinstance(channel_mask, int))
 
@@ -282,7 +282,7 @@ class FrameCounter:
 # probstat does this better, but I don't want to require that
 # for something used only rarely
 def Combinations(items, n):
-    if (n == 0):
+    if n == 0:
         yield []
     else:
         for i in range(len(items)):
@@ -291,7 +291,7 @@ def Combinations(items, n):
 
 
 def Possibilities(*lists):
-    if (len(lists) == 0):
+    if len(lists) == 0:
         yield ()
     else:
         remainder = list(Possibilities(*lists[1:]))

@@ -36,7 +36,7 @@ def split(progress, source_audiofile, destination_filename,
 
         # if PCMReader has seek()
         # use it to reduce the amount of frames to skip
-        if (hasattr(pcmreader, "seek") and callable(pcmreader.seek)):
+        if hasattr(pcmreader, "seek") and callable(pcmreader.seek):
             pcm_frames_offset -= pcmreader.seek(pcm_frames_offset)
 
         destination_audiofile = destination_class.from_pcm(
@@ -50,7 +50,7 @@ def split(progress, source_audiofile, destination_filename,
             compression,
             total_pcm_frames)
 
-        if (metadata is not None):
+        if metadata is not None:
             destination_audiofile.set_metadata(metadata)
     except KeyboardInterrupt:
         # remove partially split file, if any
@@ -86,7 +86,7 @@ def split_raw(progress, source_filename,
             compression,
             total_pcm_frames)
 
-        if (metadata is not None):
+        if metadata is not None:
             destination_audiofile.set_metadata(metadata)
 
         return str(destination_filename)
@@ -231,26 +231,26 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger(options.verbosity == "quiet")
 
     # ensure interactive mode is available, if selected
-    if (options.interactive and (not audiotools.ui.AVAILABLE)):
+    if options.interactive and (not audiotools.ui.AVAILABLE):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
     # get the AudioFile class we are converted to
-    if (options.type == 'help'):
+    if options.type == 'help':
         audiotools.ui.show_available_formats(msg)
         sys.exit(0)
-    if (options.type is not None):
+    if options.type is not None:
         AudioType = audiotools.TYPE_MAP[options.type]
     else:
         AudioType = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
 
     # ensure the selected compression is compatible with that class
-    if (options.quality == 'help'):
+    if options.quality == 'help':
         audiotools.ui.show_available_qualities(msg, AudioType)
         sys.exit(0)
-    elif (options.quality is None):
+    elif options.quality is None:
         options.quality = audiotools.__default_quality__(AudioType.NAME)
-    elif (options.quality not in AudioType.COMPRESSION_MODES):
+    elif options.quality not in AudioType.COMPRESSION_MODES:
         msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
                   {"quality": options.quality,
                    "type": AudioType.NAME})
@@ -259,7 +259,7 @@ if (__name__ == '__main__'):
     audiofiles = audiotools.open_files([options.filename],
                                        sorted=False,
                                        messenger=msg)
-    if (len(audiofiles) != 1):
+    if len(audiofiles) != 1:
         msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
     else:
@@ -270,7 +270,7 @@ if (__name__ == '__main__'):
     base_directory = options.dir
     encoded_filenames = []
 
-    if (options.cuesheet is not None):
+    if options.cuesheet is not None:
         # grab the cuesheet we're using to split tracks
         # (this overrides an embedded cuesheet)
         try:
@@ -281,11 +281,11 @@ if (__name__ == '__main__'):
             sys.exit(1)
     else:
         cuesheet = audiofile.get_cuesheet()
-        if (cuesheet is None):
+        if cuesheet is None:
             msg.error(_.ERR_TRACKSPLIT_NO_CUESHEET)
             sys.exit(1)
 
-    if (not cuesheet.image_formatted()):
+    if not cuesheet.image_formatted():
         msg.error(_.ERR_CUE_INVALID_FORMAT)
         sys.exit(1)
 
@@ -297,13 +297,13 @@ if (__name__ == '__main__'):
 
     audiofile_size = audiofile.seconds_length()
 
-    if (cuesheet_lengths[-1] is None):
+    if cuesheet_lengths[-1] is None:
         # last track length unknown, so ensure there's enough room
         # based on the total size of the source
         last_track_size = (audiofile_size -
                            sum(cuesheet_lengths[0:-1]) -
                            cuesheet.pre_gap())
-        if (last_track_size >= 0):
+        if last_track_size >= 0:
             cuesheet_lengths.pop()
             cuesheet_lengths.append(last_track_size)
         else:
@@ -312,7 +312,7 @@ if (__name__ == '__main__'):
     else:
         # last track length is known, so ensure the size
         # of all lengths and the pre-gap is the same size as the source
-        if ((cuesheet.pre_gap() + sum(cuesheet_lengths)) != audiofile_size):
+        if (cuesheet.pre_gap() + sum(cuesheet_lengths)) != audiofile_size:
             msg.error(_.ERR_TRACKSPLIT_OVERLONG_CUESHEET)
             sys.exit(1)
 
@@ -338,7 +338,7 @@ if (__name__ == '__main__'):
     # populate any empty Album-level metadata fields
     # with those from original file, if any
     album_metadata = audiofile.get_metadata()
-    if (album_metadata is not None):
+    if album_metadata is not None:
         album_fields = {attr: field for (attr, field) in
                         album_metadata.filled_fields()
                         if (attr in {"album_name",
@@ -359,7 +359,7 @@ if (__name__ == '__main__'):
         for c in metadata_choices:
             for m in c:
                 for (attr, field) in m.empty_fields():
-                    if (attr in album_fields):
+                    if attr in album_fields:
                         setattr(m, attr, album_fields[attr])
 
     # populate any remaining metadata fields
@@ -381,18 +381,18 @@ if (__name__ == '__main__'):
                             getattr(cuesheet_metadata, attr))
 
     # update MetaData with command-line album-number/total, if given
-    if (options.album_number != 0):
+    if options.album_number != 0:
         for c in metadata_choices:
             for m in c:
                 m.album_number = options.album_number
 
-    if (options.album_total != 0):
+    if options.album_total != 0:
         for c in metadata_choices:
             for m in c:
                 m.album_total = options.album_total
 
     # decide which metadata and output options to use when splitting tracks
-    if (options.interactive):
+    if options.interactive:
         # pick choice using interactive widget
         output_widget = audiotools.ui.OutputFiller(
             track_labels=[_.LAB_TRACK_X_OF_Y % (i + 1, output_track_count)
@@ -422,7 +422,7 @@ if (__name__ == '__main__'):
             msg.info(audiotools.ui.xargs_suggestion(sys.argv))
             sys.exit(1)
 
-        if (not output_widget.cancelled()):
+        if not output_widget.cancelled():
             output_tracks = list(output_widget.output_tracks())
         else:
             sys.exit(0)
@@ -454,7 +454,7 @@ if (__name__ == '__main__'):
 
     queue = audiotools.ExecProgressQueue(msg)
 
-    if (audiofile.seekable()):
+    if audiofile.seekable():
         for (offset, length, (output_class,
                               output_filename,
                               output_quality,

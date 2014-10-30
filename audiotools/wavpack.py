@@ -28,9 +28,9 @@ class InvalidWavPack(InvalidFile):
 
 def __riff_chunk_ids__(data_size, data):
     (riff, size, wave) = data.parse("4b 32u 4b")
-    if (riff != b"RIFF"):
+    if riff != b"RIFF":
         return
-    elif (wave != b"WAVE"):
+    elif wave != b"WAVE":
         return
     else:
         data_size -= 12
@@ -38,10 +38,10 @@ def __riff_chunk_ids__(data_size, data):
     while (data_size > 0):
         (chunk_id, chunk_size) = data.parse("4b 32u")
         data_size -= 8
-        if ((chunk_size % 2) == 1):
+        if (chunk_size % 2) == 1:
             chunk_size += 1
         yield chunk_id
-        if (chunk_id != b"data"):
+        if chunk_id != b"data":
             data.skip_bytes(chunk_size)
             data_size -= chunk_size
 
@@ -128,7 +128,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         raises IOError if unable to read the file"""
 
         metadata = ApeTaggedAudio.get_metadata(self)
-        if (metadata is not None):
+        if metadata is not None:
             metadata.frame_count = self.total_frames()
         return metadata
 
@@ -141,11 +141,11 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         to avoid losing those chunks"""
 
         for (sub_header, nondecoder, data_size, data) in self.sub_blocks():
-            if ((sub_header == 1) and nondecoder):
+            if (sub_header == 1) and nondecoder:
                 if (set(__riff_chunk_ids__(data_size,
                                            data)) != {b"fmt ", b"data"}):
                     return True
-            elif ((sub_header == 2) and nondecoder):
+            elif (sub_header == 2) and nondecoder:
                 return True
         else:
             return False
@@ -164,12 +164,12 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         tail = None
 
         for (sub_block_id, nondecoder, data_size, data) in self.sub_blocks():
-            if ((sub_block_id == 1) and nondecoder):
+            if (sub_block_id == 1) and nondecoder:
                 head = data.read_bytes(data_size)
-            elif ((sub_block_id == 2) and nondecoder):
+            elif (sub_block_id == 2) and nondecoder:
                 tail = data.read_bytes(data_size)
 
-        if (head is not None):
+        if head is not None:
             return (head, tail if tail is not None else b"")
         else:
             raise ValueError("no wave header found")
@@ -225,7 +225,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             data_bytes_written = counter.bytes_written()
 
             # ensure output data size matches the "data" chunk's size
-            if (data_size != data_bytes_written):
+            if data_size != data_bytes_written:
                 from audiotools.text import ERR_WAV_TRUNCATED_DATA_CHUNK
                 raise EncodingError(ERR_WAV_TRUNCATED_DATA_CHUNK)
 
@@ -236,7 +236,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                 raise EncodingError(str(err))
 
             # ensure total size is correct
-            if ((len(header) + data_size + len(footer)) != total_size):
+            if (len(header) + data_size + len(footer)) != total_size:
                 from audiotools.text import ERR_WAV_INVALID_SIZE
                 raise EncodingError(ERR_WAV_INVALID_SIZE)
 
@@ -261,7 +261,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             try:
                 while (True):
                     (wvpk, block_size) = reader.parse("4b 32u 192p")
-                    if (wvpk == b"wvpk"):
+                    if wvpk == b"wvpk":
                         yield (block_size - 24,
                                reader.substream(block_size - 24))
                     else:
@@ -269,7 +269,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             except IOError:
                 return
 
-        if (reader is None):
+        if reader is None:
             from audiotools.bitstream import BitstreamReader
 
             with BitstreamReader(open(self.filename, "rb"), True) as reader:
@@ -294,14 +294,14 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                  actual_size_1_less,
                  large_block) = block_data.parse("5u 1u 1u 1u")
 
-                if (large_block):
+                if large_block:
                     sub_block_size = block_data.read(24)
                     block_size -= 4
                 else:
                     sub_block_size = block_data.read(8)
                     block_size -= 2
 
-                if (actual_size_1_less):
+                if actual_size_1_less:
                     yield (metadata_function,
                            nondecoder_data,
                            sub_block_size * 2 - 1,
@@ -331,11 +331,11 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
              sample_rate) = reader.parse(
                 "4b 64p 32u 64p 2u 1u 8p 1u 1u 5p 5p 4u 37p")
 
-            if (block_id != b"wvpk"):
+            if block_id != b"wvpk":
                 from audiotools.text import ERR_WAVPACK_INVALID_HEADER
                 raise InvalidWavPack(ERR_WAVPACK_INVALID_HEADER)
 
-            if (sample_rate != 0xF):
+            if sample_rate != 0xF:
                 self.__samplerate__ = WavPackAudio.SAMPLING_RATE[sample_rate]
             else:
                 # if unknown, pull from SAMPLE_RATE sub-block
@@ -343,7 +343,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                      nondecoder,
                      data_size,
                      data) in self.sub_blocks(reader):
-                    if ((block_id == 0x7) and nondecoder):
+                    if (block_id == 0x7) and nondecoder:
                         self.__samplerate__ = data.read(data_size * 8)
                         break
                 else:
@@ -356,8 +356,8 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
             self.__bitspersample__ = [8, 16, 24, 32][bits_per_sample]
             self.__total_frames__ = total_samples
 
-            if (initial_block and final_block):
-                if (mono_output):
+            if initial_block and final_block:
+                if mono_output:
                     self.__channels__ = 1
                     self.__channel_mask__ = ChannelMask(0x4)
                 else:
@@ -370,7 +370,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                      nondecoder,
                      data_size,
                      data) in self.sub_blocks(reader):
-                    if ((block_id == 0xD) and not nondecoder):
+                    if (block_id == 0xD) and not nondecoder:
                         self.__channels__ = data.read(8)
                         self.__channel_mask__ = ChannelMask(
                             data.read((data_size - 1) * 8))
@@ -382,7 +382,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                     fmt = self.fmt_chunk(reader)
                     compression_code = fmt.read(16)
                     self.__channels__ = fmt.read(16)
-                    if (compression_code == 1):
+                    if compression_code == 1:
                         # this is theoretically possible
                         # with very old .wav files,
                         # but shouldn't happen in practice
@@ -409,7 +409,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                                                         front_center=True,
                                                         low_frequency=True)
                              }.get(self.__channels__, ChannelMask(0))
-                    elif (compression_code == 0xFFFE):
+                    elif compression_code == 0xFFFE:
                         fmt.skip(128)
                         mask = fmt.read(32)
                         self.__channel_mask__ = ChannelMask(mask)
@@ -527,17 +527,17 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
              nondecoder,
              data_size,
              data) in self.sub_blocks(reader):
-            if ((block_id == 1) and nondecoder):
+            if (block_id == 1) and nondecoder:
                 (riff, wave) = data.parse("4b 32p 4b")
-                if ((riff != b"RIFF") or (wave != b"WAVE")):
+                if (riff != b"RIFF") or (wave != b"WAVE"):
                     from audiotools.text import ERR_WAVPACK_INVALID_FMT
                     raise InvalidWavPack(ERR_WAVPACK_INVALID_FMT)
                 else:
                     while (True):
                         (chunk_id, chunk_size) = data.parse("4b 32u")
-                        if (chunk_id == b"fmt "):
+                        if chunk_id == b"fmt ":
                             return data.substream(chunk_size)
-                        elif (chunk_id == b"data"):
+                        elif chunk_id == b"data":
                             from audiotools.text import ERR_WAVPACK_INVALID_FMT
                             raise InvalidWavPack(ERR_WAVPACK_INVALID_FMT)
                         else:
@@ -560,7 +560,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         metadata = self.get_metadata()
 
-        if ((metadata is not None) and (b'Cuesheet' in metadata.keys())):
+        if (metadata is not None) and (b'Cuesheet' in metadata.keys()):
             try:
                 return cue.read_cuesheet_string(
                     metadata[b'Cuesheet'].__unicode__())
@@ -583,11 +583,11 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         from audiotools.cue import write_cuesheet
         from audiotools.ape import ApeTag
 
-        if (cuesheet is None):
+        if cuesheet is None:
             return self.delete_cuesheet()
 
         metadata = self.get_metadata()
-        if (metadata is None):
+        if metadata is None:
             metadata = ApeTag([])
 
         cuesheet_data = BytesIO()
@@ -607,6 +607,6 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         Raises IOError if a problem occurs when updating the file"""
 
         metadata = self.get_metadata()
-        if ((metadata is not None) and (b'Cuesheet' in metadata)):
+        if (metadata is not None) and (b'Cuesheet' in metadata):
             del(metadata[b'Cuesheet'])
             self.update_metadata(metadata)

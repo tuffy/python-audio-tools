@@ -62,7 +62,7 @@ class DVDAudio(object):
             for aob_length in [os.path.getsize(titleset_aobs[key]) //
                                DVDAudio.SECTOR_SIZE
                                for key in sorted(titleset_aobs.keys())]:
-                if (len(self.aob_sectors) == 0):
+                if len(self.aob_sectors) == 0:
                     self.aob_sectors.append(
                         (0, aob_length))
                 else:
@@ -103,7 +103,7 @@ class DVDAudio(object):
                 False,
                 f.read(104))
 
-            if (identifier != b'DVDAUDIO-AMG'):
+            if identifier != b'DVDAUDIO-AMG':
                 from audiotools.text import ERR_DVDA_INVALID_AUDIO_TS
                 raise InvalidDVDA(ERR_DVDA_INVALID_AUDIO_TS)
 
@@ -135,7 +135,7 @@ class DVDAudio(object):
         with BitstreamReader(f, False) as ats_reader:
             # ensure the file's identifier is correct
             # which is all we care about from the first sector
-            if (ats_reader.read_bytes(12) != b'DVDAUDIO-ATS'):
+            if ats_reader.read_bytes(12) != b'DVDAUDIO-ATS':
                 from audiotools.text import ERR_DVDA_INVALID_ATS
                 raise InvalidDVDA(ERR_DVDA_INVALID_ATS % (titleset))
 
@@ -261,7 +261,7 @@ class DVDATitle(object):
         import os.path
         from audiotools.bitstream import BitstreamReader
 
-        if (len(self.tracks) == 0):
+        if len(self.tracks) == 0:
             return
 
         # Why is this post-init processing necessary?
@@ -276,9 +276,9 @@ class DVDATitle(object):
         titleset = re.compile("ATS_%2.2d_\\d\\.AOB" % (self.titleset))
         for aob_path in sorted([self.dvdaudio.files[key] for key in
                                 self.dvdaudio.files.keys()
-                                if (titleset.match(key))]):
+                                if titleset.match(key)]):
             aob_sectors = os.path.getsize(aob_path) // DVDAudio.SECTOR_SIZE
-            if (track_sector > aob_sectors):
+            if track_sector > aob_sectors:
                 track_sector -= aob_sectors
             else:
                 break
@@ -307,7 +307,7 @@ class DVDATitle(object):
              stuffing_length) = aob_reader.parse(
                 "32u 2u 3u 1u 15u 1u 15u 1u 9u 1u 22u 2u 5p 3u")
             aob_reader.skip_bytes(stuffing_length)
-            if (sync_bytes != 0x1BA):
+            if sync_bytes != 0x1BA:
                 from audiotools.text import ERR_DVDA_INVALID_AOB_SYNC
                 raise InvalidDVDA(ERR_DVDA_INVALID_AOB_SYNC)
             if (((marker1 != 1) or (marker2 != 1) or (marker3 != 1) or
@@ -322,7 +322,7 @@ class DVDATitle(object):
             (start_code,
              stream_id,
              packet_length) = aob_reader.parse("24u 8u 16u")
-            if (start_code != 1):
+            if start_code != 1:
                 from audiotools.text import ERR_DVDA_INVALID_AOB_START
                 raise InvalidDVDA(ERR_DVDA_INVALID_AOB_START)
             while (stream_id != 0xBD):
@@ -330,7 +330,7 @@ class DVDATitle(object):
                 (start_code,
                  stream_id,
                  packet_length) = aob_reader.parse("24u 8u 16u")
-                if (start_code != 1):
+                if start_code != 1:
                     from audiotools.text import ERR_DVDA_INVALID_AOB_START
                     raise InvalidDVDA(ERR_DVDA_INVALID_AOB_START)
 
@@ -338,7 +338,7 @@ class DVDATitle(object):
             (pad1_size,) = aob_reader.parse("16p 8u")
             aob_reader.skip_bytes(pad1_size)
             (stream_id, crc) = aob_reader.parse("8u 8u 8p")
-            if (stream_id == 0xA0):  # PCM
+            if stream_id == 0xA0:  # PCM
                 # read a PCM reader
                 (pad2_size,
                  first_audio_frame,
@@ -405,7 +405,7 @@ class DVDATitle(object):
                 "titleset": 1,
                 "start_sector": self.tracks[0].first_sector,
                 "end_sector": self.tracks[-1].last_sector}
-        if (self.dvdaudio.cdrom_device is not None):
+        if self.dvdaudio.cdrom_device is not None:
             args["cdrom"] = self.dvdaudio.cdrom_device
         return DVDA_Title(**args)
 
@@ -512,7 +512,7 @@ class DVDATrack(object):
                  end_sector)) in enumerate(self.dvdaudio.aob_sectors):
             aob_sectors = Rangeset(start_sector, end_sector)
             intersection = aob_sectors & track_sectors
-            if (len(intersection)):
+            if len(intersection):
                 yield (self.dvdaudio.files["ATS_%2.2d_%d.AOB" %
                                            (self.titleset, i + 1)],
                        intersection.start - start_sector,
@@ -548,13 +548,13 @@ class Rangeset(object):
         return int(self.end - self.start)
 
     def __getitem__(self, i):
-        if (i >= 0):
-            if (i < len(self)):
+        if i >= 0:
+            if i < len(self):
                 return self.start + i
             else:
                 raise IndexError(i)
         else:
-            if (-i - 1 < len(self)):
+            if (-i - 1) < len(self):
                 return self.end + i
             else:
                 raise IndexError(i)
@@ -563,7 +563,7 @@ class Rangeset(object):
         min_point = max(self.start, rangeset.start)
         max_point = min(self.end, rangeset.end)
 
-        if (min_point <= max_point):
+        if min_point <= max_point:
             return Rangeset(min_point, max_point)
         else:
             return Rangeset(0, 0)

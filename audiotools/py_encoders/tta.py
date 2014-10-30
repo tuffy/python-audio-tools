@@ -56,7 +56,7 @@ def encode_tta_frame(writer, bits_per_sample, framelist):
     writer.add_callback(frame_crc.update)
 
     # correlate channels
-    if (framelist.channels == 1):
+    if framelist.channels == 1:
         correlated = [list(framelist.channel(0))]
     else:
         correlated = correlate_channels([list(framelist.channel(i))
@@ -80,12 +80,12 @@ def encode_tta_frame(writer, bits_per_sample, framelist):
     for (i, pcm_frame) in enumerate(zip(*residuals)):
         for (c, residual) in enumerate(pcm_frame):
             # convert signed residual to unsigned
-            if (residual > 0):
+            if residual > 0:
                 unsigned = (residual * 2) - 1
             else:
                 unsigned = (-residual) * 2
 
-            if (unsigned < (2 ** k0[c])):
+            if unsigned < (2 ** k0[c]):
                 writer.unary(0, 0)
                 writer.write(k0[c], unsigned)
             else:
@@ -97,16 +97,16 @@ def encode_tta_frame(writer, bits_per_sample, framelist):
                 writer.write(k1[c], LSB)
 
                 sum1[c] += (shifted - (sum1[c] >> 4))
-                if (sum1[c] < (2 ** (k1[c] + 4))):
+                if sum1[c] < (2 ** (k1[c] + 4)):
                     k1[c] = max(k1[c] - 1, 0)
-                elif (sum1[c] > (2 ** (k1[c] + 5))):
+                elif sum1[c] > (2 ** (k1[c] + 5)):
                     k1[c] += 1
 
             # adjust sum0 and k0
             sum0[c] += unsigned - (sum0[c] >> 4)
-            if (sum0[c] < (2 ** (k0[c] + 4))):
+            if sum0[c] < (2 ** (k0[c] + 4)):
                 k0[c] = max(k0[c] - 1, 0)
-            elif (sum0[c] > (2 ** (k0[c] + 5))):
+            elif sum0[c] > (2 ** (k0[c] + 5)):
                 k0[c] += 1
 
     # byte-align frame
@@ -131,10 +131,10 @@ def correlate_channels(framelist):
 
     for c in range(channels):
         correlated_ch = []
-        if (c == (channels - 1)):
+        if c == (channels - 1):
             for i in range(pcm_frames):
                 # round toward zero
-                if (correlated[c - 1][i] >= 0):
+                if correlated[c - 1][i] >= 0:
                     correlated_ch.append(
                         framelist[c][i] - (correlated[c - 1][i] // 2))
                 else:
@@ -149,11 +149,11 @@ def correlate_channels(framelist):
 
 
 def fixed_predictor(bits_per_sample, correlated):
-    if (bits_per_sample == 8):
+    if bits_per_sample == 8:
         shift = 4
-    elif (bits_per_sample == 16):
+    elif bits_per_sample == 16:
         shift = 5
-    elif (bits_per_sample == 24):
+    elif bits_per_sample == 24:
         shift = 5
 
     predicted = [correlated[0]]
@@ -167,11 +167,11 @@ def fixed_predictor(bits_per_sample, correlated):
 
 
 def tta_filter(bps, predicted):
-    if (bps == 8):
+    if bps == 8:
         shift = 10
-    elif (bps == 16):
+    elif bps == 16:
         shift = 9
-    elif (bps == 24):
+    elif bps == 24:
         shift = 10
     round_ = (1 << (shift - 1))
 
@@ -182,12 +182,12 @@ def tta_filter(bps, predicted):
     dl = [0] * 8
 
     for i in range(0, len(predicted)):
-        if (i == 0):
+        if i == 0:
             residuals.append(predicted[i] + (round_ >> shift))
         else:
-            if (residuals[i - 1] < 0):
+            if residuals[i - 1] < 0:
                 qm = [m - x for (m, x) in zip(qm, dx)]
-            elif (residuals[i - 1] > 0):
+            elif residuals[i - 1] > 0:
                 qm = [m + x for (m, x) in zip(qm, dx)]
 
             sum_ = round_ + sum([l * m for (l, m) in zip(dl, qm)])

@@ -56,7 +56,7 @@ def audiofiles(paths, processed_filenames, unsupported_types, messenger):
 def update(track, messenger):
     from tempfile import mkstemp
 
-    if (not os.access(track.filename, os.R_OK | os.W_OK)):
+    if not os.access(track.filename, os.R_OK | os.W_OK):
         raise IOError(track.filename)
 
     # make temporary file alongside original
@@ -72,7 +72,7 @@ def update(track, messenger):
         os.unlink(temp_path)
         raise
 
-    if (len(fixes) > 0):
+    if len(fixes) > 0:
         # overwrite original with temporary file
         original_mode = os.stat(track.filename).st_mode
         os.rename(temp_path, track.filename)
@@ -117,7 +117,7 @@ if (__name__ == '__main__'):
     processed_filenames = set()
     unsupported_types = set()
 
-    if (options.fix):
+    if options.fix:
         for track in audiofiles(options.filenames,
                                 processed_filenames,
                                 unsupported_types,

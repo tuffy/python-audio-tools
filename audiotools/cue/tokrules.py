@@ -91,7 +91,7 @@ def t_NUMBER(t):
 
 def t_ID(t):
     r"[A-Z]+"
-    if (t.value in RESERVED.keys()):
+    if t.value in RESERVED.keys():
         t.type = RESERVED[t.value]
     else:
         t.type = "STRING"

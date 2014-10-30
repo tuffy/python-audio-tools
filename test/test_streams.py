@@ -44,7 +44,7 @@ class FrameListReader:
         self.samples = samples[:]
         self.sample_rate = sample_rate
         self.channels = channels
-        if (channel_mask is None):
+        if channel_mask is None:
             self.channel_mask = \
                 int(audiotools.ChannelMask.from_channels(channels))
         else:
@@ -88,7 +88,7 @@ class MD5Reader(audiotools.PCMReader):
         self.md5 = md5()
 
     def reset(self):
-        if (hasattr(self.pcmreader, "reset")):
+        if hasattr(self.pcmreader, "reset"):
             self.pcmreader.reset()
         self.md5 = md5()
 

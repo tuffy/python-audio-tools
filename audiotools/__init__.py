@@ -125,11 +125,11 @@ class __system_binaries__(object):
             return command
 
     def can_execute(self, command):
-        if (os.sep in command):
+        if os.sep in command:
             return os.access(command, os.X_OK)
         else:
             for path in os.environ.get('PATH', os.defpath).split(os.pathsep):
-                if (os.access(os.path.join(path, command), os.X_OK)):
+                if os.access(os.path.join(path, command), os.X_OK):
                     return True
             return False
 
@@ -157,12 +157,12 @@ FILENAME_FORMAT = config.get_default("Filenames", "format",
 
 FS_ENCODING = config.get_default("System", "fs_encoding",
                                  sys.getfilesystemencoding())
-if (FS_ENCODING is None):
+if FS_ENCODING is None:
     FS_ENCODING = 'UTF-8'
 
 VERBOSITY_LEVELS = ("quiet", "normal", "debug")
 DEFAULT_VERBOSITY = config.get_default("Defaults", "verbosity", "normal")
-if (DEFAULT_VERBOSITY not in VERBOSITY_LEVELS):
+if DEFAULT_VERBOSITY not in VERBOSITY_LEVELS:
     DEFAULT_VERBOSITY = "normal"
 
 DEFAULT_TYPE = config.get_default("System", "default_type", "wav")
@@ -261,7 +261,7 @@ FORMAT_FIELD_ORDER = (u"track_name",
 def __default_quality__(audio_type):
     quality = DEFAULT_QUALITY.get(audio_type, "")
     try:
-        if (quality not in TYPE_MAP[audio_type].COMPRESSION_MODES):
+        if quality not in TYPE_MAP[audio_type].COMPRESSION_MODES:
             return TYPE_MAP[audio_type].DEFAULT_COMPRESSION
         else:
             return quality
@@ -269,7 +269,7 @@ def __default_quality__(audio_type):
         return ""
 
 
-if (config.has_option("System", "maximum_jobs")):
+if config.has_option("System", "maximum_jobs"):
     MAX_JOBS = config.getint_default("System", "maximum_jobs", 1)
 else:
     try:
@@ -289,7 +289,7 @@ class Messenger(object):
 
         self.__stdout__ = sys.stdout
         self.__stderr__ = sys.stderr
-        if (silent):
+        if silent:
             self.__print__ = self.__print_silent__
         elif PY3:
             self.__print__ = self.__print_py3__
@@ -323,9 +323,9 @@ class Messenger(object):
         # we can't output unicode strings directly to streams
         # because non-TTYs will raise UnicodeEncodeErrors
         stream.write(string.encode("UTF-8", "replace"))
-        if (add_newline):
+        if add_newline:
             stream.write(os.linesep)
-        if (flush):
+        if flush:
             stream.flush()
 
     def __print_py3__(self, string, stream, add_newline, flush):
@@ -335,9 +335,9 @@ class Messenger(object):
 
         assert(isinstance(string, str))
         stream.write(string)
-        if (add_newline):
+        if add_newline:
             stream.write(os.linesep)
-        if (flush):
+        if flush:
             stream.flush()
 
     def output(self, s):
@@ -431,7 +431,7 @@ class Messenger(object):
         >>> msg.output(u"done")
         """
 
-        if (self.output_isatty()):
+        if self.output_isatty():
             self.partial_output((u"\u001B[0G" +  # move cursor to column 0
                                  # clear everything after cursor
                                  u"\u001B[0K"))
@@ -439,19 +439,19 @@ class Messenger(object):
     def ansi_uplines(self, lines):
         """moves the cursor up by the given number of lines"""
 
-        if (self.output_isatty()):
+        if self.output_isatty():
             self.partial_output(u"\u001B[%dA" % (lines))
 
     def ansi_cleardown(self):
         """clears the remainder of the screen from the cursor downward"""
 
-        if (self.output_isatty()):
+        if self.output_isatty():
             self.partial_output(u"\u001B[0J")
 
     def ansi_clearscreen(self):
         """clears the entire screen and moves cursor to upper left corner"""
 
-        if (self.output_isatty()):
+        if self.output_isatty():
             self.partial_output(u"\u001B[2J" + u"\u001B[1;1H")
 
     def terminal_size(self, fd):
@@ -478,7 +478,7 @@ def khz(hz):
 
     num = hz // 1000
     den = (hz % 1000) // 100
-    if (den == 0):
+    if den == 0:
         return u"%dkHz" % (num)
     else:
         return u"%d.%dkHz" % (num, den)
@@ -592,8 +592,8 @@ class output_text(tuple):
     def __open_codes__(cls, fg_color, bg_color, style):
         open_codes = []
 
-        if (fg_color is not None):
-            if (fg_color not in cls.COLORS):
+        if fg_color is not None:
+            if fg_color not in cls.COLORS:
                 raise ValueError("invalid fg_color %s" % (repr(fg_color)))
             else:
                 open_codes.append({"black": u"30",
@@ -605,8 +605,8 @@ class output_text(tuple):
                                    "cyan": u"36",
                                    "white": u"37"}[fg_color])
 
-        if (bg_color is not None):
-            if (bg_color not in cls.COLORS):
+        if bg_color is not None:
+            if bg_color not in cls.COLORS:
                 raise ValueError("invalid bg_color %s" % (repr(bg_color)))
             else:
                 open_codes.append({"black": u"40",
@@ -618,8 +618,8 @@ class output_text(tuple):
                                    "cyan": u"46",
                                    "white": u"47"}[bg_color])
 
-        if (style is not None):
-            if (style not in cls.STYLES):
+        if style is not None:
+            if style not in cls.STYLES:
                 raise ValueError("invalid style %s" % (repr(style)))
             else:
                 open_codes.append({"bold": u"1",
@@ -627,7 +627,7 @@ class output_text(tuple):
                                    "blink": u"5",
                                    "inverse": u"7"}[style])
 
-        if (len(open_codes) > 0):
+        if len(open_codes) > 0:
             return u"\u001B[%sm" % (u";".join(open_codes))
         else:
             return u""
@@ -636,20 +636,20 @@ class output_text(tuple):
     def __close_codes__(cls, fg_color, bg_color, style):
         close_codes = []
 
-        if (fg_color is not None):
-            if (fg_color not in cls.COLORS):
+        if fg_color is not None:
+            if fg_color not in cls.COLORS:
                 raise ValueError("invalid fg_color %s" % (repr(fg_color)))
             else:
                 close_codes.append(u"39")
 
-        if (bg_color is not None):
-            if (bg_color not in cls.COLORS):
+        if bg_color is not None:
+            if bg_color not in cls.COLORS:
                 raise ValueError("invalid bg_color %s" % (repr(bg_color)))
             else:
                 close_codes.append(u"49")
 
-        if (style is not None):
-            if (style not in cls.STYLES):
+        if style is not None:
+            if style not in cls.STYLES:
                 raise ValueError("invalid style %s" % (repr(style)))
             else:
                 close_codes.append({"bold": u"22",
@@ -657,7 +657,7 @@ class output_text(tuple):
                                     "blink": u"25",
                                     "inverse": u"27"}[style])
 
-        if (len(close_codes) > 0):
+        if len(close_codes) > 0:
             return u"\u001B[%sm" % (u";".join(close_codes))
         else:
             return u""
@@ -735,7 +735,7 @@ class output_text(tuple):
     def format(self, is_tty=False):
         """returns unicode text formatted depending on is_tty"""
 
-        if (is_tty and self.has_formatting()):
+        if is_tty and self.has_formatting():
             return u"%s%s%s" % (self[6], self[0], self[7])
         else:
             return self[0]
@@ -748,14 +748,14 @@ class output_text(tuple):
         due to double-width characters,
         the size of the string may be smaller than requested"""
 
-        if (display_characters < 0):
+        if display_characters < 0:
             raise ValueError("display characters must be >= 0")
 
         output_chars = []
         output_widths = []
 
         for (char, width) in self.char_widths():
-            if (width <= display_characters):
+            if width <= display_characters:
                 output_chars.append(char)
                 output_widths.append(width)
                 display_characters -= width
@@ -774,14 +774,14 @@ class output_text(tuple):
         due to double-width characters,
         the size of the string may be smaller than requested"""
 
-        if (display_characters < 0):
+        if display_characters < 0:
             raise ValueError("display characters must be >= 0")
 
         output_chars = []
         output_widths = []
 
         for (char, width) in reversed(list(self.char_widths())):
-            if (width <= display_characters):
+            if width <= display_characters:
                 output_chars.append(char)
                 output_widths.append(width)
                 display_characters -= width
@@ -804,7 +804,7 @@ class output_text(tuple):
         due to double-width characters,
         the first string may be smaller than requested"""
 
-        if (display_characters < 0):
+        if display_characters < 0:
             raise ValueError("display characters must be >= 0")
 
         head_chars = []
@@ -812,7 +812,7 @@ class output_text(tuple):
         tail_chars = []
         tail_widths = []
         for (char, width) in self.char_widths():
-            if (width <= display_characters):
+            if width <= display_characters:
                 head_chars.append(char)
                 head_widths.append(width)
                 display_characters -= width
@@ -831,7 +831,7 @@ class output_text(tuple):
 
         def join_iter(texts):
             for (i, text) in enumerate(texts):
-                if (i > 0):
+                if i > 0:
                     yield self
                 yield text
 
@@ -968,7 +968,7 @@ class output_list(output_text):
         # or on individual text items
         # but not both
 
-        if (is_tty and self.has_formatting()):
+        if is_tty and self.has_formatting():
             return u"%s%s%s" % (
                 self[5],
                 u"".join(t.format(False) for t in self[0]),
@@ -984,13 +984,13 @@ class output_list(output_text):
         due to double-width characters,
         the size of the string may be smaller than requested"""
 
-        if (display_characters < 0):
+        if display_characters < 0:
             raise ValueError("display characters must be >= 0")
 
         output_texts = []
 
         for text in self[0]:
-            if (len(text) <= display_characters):
+            if len(text) <= display_characters:
                 output_texts.append(text)
                 display_characters -= len(text)
             else:
@@ -1007,13 +1007,13 @@ class output_list(output_text):
         due to double-width characters,
         the size of the string may be smaller than requested"""
 
-        if (display_characters < 0):
+        if display_characters < 0:
             raise ValueError("display characters must be >= 0")
 
         output_texts = []
 
         for text in reversed(self[0]):
-            if (len(text) <= display_characters):
+            if len(text) <= display_characters:
                 output_texts.append(text)
                 display_characters -= len(text)
             else:
@@ -1032,17 +1032,17 @@ class output_list(output_text):
         the first string may be smaller than requested
         """
 
-        if (display_characters < 0):
+        if display_characters < 0:
             raise ValueError("display characters must be >= 0")
 
         head_texts = []
         tail_texts = []
 
         for text in self[0]:
-            if (len(text) <= display_characters):
+            if len(text) <= display_characters:
                 head_texts.append(text)
                 display_characters -= len(text)
-            elif (display_characters >= 0):
+            elif display_characters >= 0:
                 (head, tail) = text.split(display_characters)
                 head_texts.append(head)
                 tail_texts.append(tail)
@@ -1082,18 +1082,18 @@ class output_table(object):
     def format(self, is_tty=False):
         """yields one unicode formatted string per row depending on is_tty"""
 
-        if (len(self.__rows__) == 0):
+        if len(self.__rows__) == 0:
             # no rows, so do nothing
             return
 
         row_columns = {len(r) for r in self.__rows__ if not r.blank()}
 
-        if (len(row_columns) == 0):
+        if len(row_columns) == 0:
             # all rows are blank
             for row in self.__rows__:
                 # blank rows ignore column widths
                 yield row.format(None, is_tty)
-        elif (len(row_columns) == 1):
+        elif len(row_columns) == 1:
             column_widths = [
                 max(row.column_width(col) for row in self.__rows__)
                 for col in range(row_columns.pop())]
@@ -1173,11 +1173,11 @@ class output_table_row(output_table_divider):
 
         alignment may be 'left', 'center', 'right'"""
 
-        if (alignment not in {"left", "center", "right"}):
+        if alignment not in {"left", "center", "right"}:
             raise ValueError("alignment must be 'left', 'center', or 'right'")
-        if (colspan == 1):
+        if colspan == 1:
             self.__columns__.append(output_table_col(text, alignment))
-        elif (colspan > 1):
+        elif colspan > 1:
             accumulators = [output_table_multicol_accumulator()
                             for i in range(colspan - 1)]
             self.__columns__.extend(accumulators)
@@ -1193,16 +1193,16 @@ class output_table_col(object):
         alignment is 'left', 'center', or 'right'
         """
 
-        if (isinstance(text, output_text)):
+        if isinstance(text, output_text):
             self.__text__ = text
         else:
             self.__text__ = output_text(text)
 
-        if (alignment == "left"):
+        if alignment == "left":
             self.format = self.__format_left__
-        elif (alignment == "center"):
+        elif alignment == "center":
             self.format = self.__format_center__
-        elif (alignment == "right"):
+        elif alignment == "right":
             self.format = self.__format_right__
         else:
             raise ValueError("alignment must be 'left', 'center', or 'right'")
@@ -1212,9 +1212,9 @@ class output_table_col(object):
 
     def __format_left__(self, column_width, is_tty):
         padding = column_width - len(self.__text__)
-        if (padding > 0):
+        if padding > 0:
             return self.__text__.format(is_tty) + u" " * padding
-        elif (padding == 0):
+        elif padding == 0:
             return self.__text__.format(is_tty)
         else:
             truncated = self.__text__.head(column_width)
@@ -1225,11 +1225,11 @@ class output_table_col(object):
         left_padding = (column_width - len(self.__text__)) // 2
         right_padding = column_width - (left_padding + len(self.__text__))
 
-        if ((left_padding > 0) or (right_padding > 0)):
+        if (left_padding > 0) or (right_padding > 0):
             return (u" " * left_padding +
                     self.__text__.format(is_tty) +
                     u" " * right_padding)
-        elif ((left_padding == 0) and (right_padding == 0)):
+        elif (left_padding == 0) and (right_padding == 0):
             return self.__text__.format(is_tty)
         else:
             truncated = self.__text__.head(column_width)
@@ -1238,9 +1238,9 @@ class output_table_col(object):
 
     def __format_right__(self, column_width, is_tty):
         padding = column_width - len(self.__text__)
-        if (padding > 0):
+        if padding > 0:
             return u" " * padding + self.__text__.format(is_tty)
-        elif (padding == 0):
+        elif padding == 0:
             return self.__text__.format(is_tty)
         else:
             truncated = self.__text__.tail(column_width)
@@ -1295,7 +1295,7 @@ class ProgressDisplay(object):
 
         output_line is a unicode string"""
 
-        if (len(self.empty_slots) == 0):
+        if len(self.empty_slots) == 0:
             # no slots to reuse, so append new row
             index = len(self.progress_rows)
             row = ProgressRow(self, index, output_line)
@@ -1317,7 +1317,7 @@ class ProgressDisplay(object):
     def display_rows(self):
         """outputs the current state of all progress rows"""
 
-        if (sys.stdout.isatty()):
+        if sys.stdout.isatty():
             (screen_height,
              screen_width) = self.messenger.terminal_size(sys.stdout)
 
@@ -1330,7 +1330,7 @@ class ProgressDisplay(object):
     def clear_rows(self):
         """clears all previously displayed output rows, if any"""
 
-        if (sys.stdout.isatty() and (self.displayed_rows > 0)):
+        if sys.stdout.isatty() and (self.displayed_rows > 0):
             self.messenger.ansi_clearline()
             self.messenger.ansi_uplines(self.displayed_rows)
             self.messenger.ansi_cleardown()
@@ -1395,7 +1395,7 @@ class ProgressRow(object):
             split_point = 0
             time_remaining = u" --:--"
 
-        if (len(self.output_line) + len(time_remaining) > width):
+        if len(self.output_line) + len(time_remaining) > width:
             # truncate output line and append time remaining
             truncated = self.output_line.tail(
                 width - (len(time_remaining) + 1))
@@ -1440,7 +1440,7 @@ class SingleProgressDisplay(ProgressDisplay):
         """updates the output line with new current and total values"""
 
         now = self.time()
-        if ((now - self.last_updated) > 0.25):
+        if (now - self.last_updated) > 0.25:
             self.clear_rows()
             self.row.update(current, total)
             self.display_rows()
@@ -1463,7 +1463,7 @@ class ReplayGainProgressDisplay(ProgressDisplay):
 
         self.row = self.add_row(RG_ADDING_REPLAYGAIN)
 
-        if (sys.stdout.isatty()):
+        if sys.stdout.isatty():
             self.initial_message = self.initial_message_tty
             self.update = self.update_tty
             self.final_message = self.final_message_tty
@@ -1488,7 +1488,7 @@ class ReplayGainProgressDisplay(ProgressDisplay):
         """updates the current status of ReplayGain application"""
 
         now = self.time()
-        if ((now - self.last_updated) > 0.25):
+        if (now - self.last_updated) > 0.25:
             self.clear_rows()
             self.row.update(current, total)
             self.display_rows()
@@ -1616,10 +1616,10 @@ def file_type(file):
              atom_size,
              atom_type) = stsd.parse("8u 24p 32u 32u 4b")
 
-            if (atom_type == b"alac"):
+            if atom_type == b"alac":
                 # if first description is "alac" atom, it's an ALAC
                 return ALACAudio
-            elif (atom_type == b"mp4a"):
+            elif atom_type == b"mp4a":
                 # if first description is "mp4a" atom, it's M4A
                 return M4AAudio
             else:
@@ -1631,13 +1631,13 @@ def file_type(file):
         except IOError:
             # error reading atom, so unknown
             return None
-    elif ((header[0:4] == b"FORM") and (header[8:12] == b"AIFF")):
+    elif (header[0:4] == b"FORM") and (header[8:12] == b"AIFF"):
         return AiffAudio
-    elif (header[0:4] == b".snd"):
+    elif header[0:4] == b".snd":
         return AuAudio
-    elif (header[0:4] == b"fLaC"):
+    elif header[0:4] == b"fLaC":
         return FlacAudio
-    elif ((len(header) >= 4) and (header[0:1] == b"\xFF")):
+    elif (len(header) >= 4) and (header[0:1] == b"\xFF"):
         # possibly MP3 or MP2
 
         from audiotools.bitstream import parse
@@ -1677,21 +1677,21 @@ def file_type(file):
             # nothing else starts with an initial byte of 0xFF
             # so the file is unknown
             return None
-    elif (header[0:4] == b"OggS"):
+    elif header[0:4] == b"OggS":
         # possibly Ogg FLAC, Ogg Vorbis or Ogg Opus
-        if (header[0x1C:0x21] == b"\x7FFLAC"):
+        if header[0x1C:0x21] == b"\x7FFLAC":
             return OggFlacAudio
-        elif (header[0x1C:0x23] == b"\x01vorbis"):
+        elif header[0x1C:0x23] == b"\x01vorbis":
             return VorbisAudio
-        elif (header[0x1C:0x26] == b"OpusHead\x01"):
+        elif header[0x1C:0x26] == b"OpusHead\x01":
             return OpusAudio
         else:
             return None
-    elif (header[0:5] == b"ajkg\x02"):
+    elif header[0:5] == b"ajkg\x02":
         return ShortenAudio
-    elif (header[0:4] == b"wvpk"):
+    elif header[0:4] == b"wvpk":
         return WavPackAudio
-    elif ((header[0:4] == b"RIFF") and (header[8:12] == b"WAVE")):
+    elif (header[0:4] == b"RIFF") and (header[8:12] == b"WAVE"):
         return WaveAudio
     elif ((len(header) >= 10) and
           (header[0:3] == b"ID3") and
@@ -1717,7 +1717,7 @@ def file_type(file):
             return t
         else:
             return None
-    elif (header[0:4] == b"TTA1"):
+    elif header[0:4] == b"TTA1":
         return TrueAudio
     else:
         return None
@@ -1741,7 +1741,7 @@ def open(filename):
     f = __open__(filename, "rb")
     try:
         audio_class = file_type(f)
-        if ((audio_class is not None) and audio_class.available(BIN)):
+        if (audio_class is not None) and audio_class.available(BIN):
             return audio_class(filename)
         else:
             raise UnsupportedFile(filename)
@@ -1789,7 +1789,7 @@ class Filename(tuple):
         # under Python 2, filename should be a plain string
         # under Python 3, filename should be a unicode string
 
-        if (isinstance(filename, cls)):
+        if isinstance(filename, cls):
             return filename
         else:
             assert(isinstance(filename, str))
@@ -1847,12 +1847,12 @@ class Filename(tuple):
             (repr(self[0]), repr(self[1]), repr(self[2]))
 
     def __eq__(self, filename):
-        if (isinstance(filename, Filename)):
-            if (self.disk_file() and filename.disk_file()):
+        if isinstance(filename, Filename):
+            if self.disk_file() and filename.disk_file():
                 # both exist on disk,
                 # so they compare equally if st_dev and st_ino match
                 return (self[1] == filename[1]) and (self[2] == filename[2])
-            elif ((not self.disk_file()) and (not filename.disk_file())):
+            elif (not self.disk_file()) and (not filename.disk_file()):
                 # neither exist on disk,
                 # so they compare equally if their paths match
                 return self[0] == filename[0]
@@ -1867,7 +1867,7 @@ class Filename(tuple):
         return not self == filename
 
     def __hash__(self):
-        if (self.disk_file()):
+        if self.disk_file():
             return hash((None, self[1], self[2]))
         else:
             return hash((self[0], self[1], self[2]))
@@ -1921,28 +1921,28 @@ def open_files(filename_list, sorted=True, messenger=None,
     from audiotools.text import (ERR_DUPLICATE_FILE,
                                  ERR_OPEN_IOERROR)
 
-    if (opened_files is None):
+    if opened_files is None:
         opened_files = set()
-    if (unsupported_formats is None):
+    if unsupported_formats is None:
         unsupported_formats = set()
 
     to_return = []
 
     for filename in map(Filename, filename_list):
-        if (filename not in opened_files):
+        if filename not in opened_files:
             opened_files.add(filename)
         else:
-            if (no_duplicates):
+            if no_duplicates:
                 raise DuplicateFile(filename)
-            elif (warn_duplicates and (messenger is not None)):
+            elif warn_duplicates and (messenger is not None):
                 messenger.warning(ERR_DUPLICATE_FILE % (filename,))
 
         try:
             with __open__(str(filename), "rb") as f:
                 audio_class = file_type(f)
 
-            if (audio_class is not None):
-                if (audio_class.available(BIN)):
+            if audio_class is not None:
+                if audio_class.available(BIN):
                     # is a supported audio type with needed binaries
                     to_return.append(audio_class(str(filename)))
                 elif ((messenger is not None) and
@@ -1957,10 +1957,10 @@ def open_files(filename_list, sorted=True, messenger=None,
                 # not a support audio type
                 pass
         except IOError as err:
-            if (messenger is not None):
+            if messenger is not None:
                 messenger.warning(ERR_OPEN_IOERROR % (filename,))
         except InvalidFile as err:
-            if (messenger is not None):
+            if messenger is not None:
                 messenger.error(str(err))
 
     return (sorted_tracks(to_return) if sorted else to_return)
@@ -1976,7 +1976,7 @@ def open_directory(directory, sorted=True, messenger=None):
     """
 
     for (basedir, subdirs, filenames) in os.walk(directory):
-        if (sorted):
+        if sorted:
             subdirs.sort()
         for audiofile in open_files([os.path.join(basedir, filename)
                                      for filename in filenames],
@@ -1994,7 +1994,7 @@ def group_tracks(tracks):
     collection = {}
     for track in tracks:
         metadata = track.get_metadata()
-        if (metadata is not None):
+        if metadata is not None:
             collection.setdefault(
                 (metadata.album_number if
                  metadata.album_number is not None else
@@ -2005,7 +2005,7 @@ def group_tracks(tracks):
         else:
             collection.setdefault(None, []).append(track)
 
-    if (None in collection):
+    if None in collection:
         yield collection[None]
     for key in sorted([key for key in collection.keys() if key is not None]):
         yield collection[key]
@@ -2052,13 +2052,13 @@ def filename_to_type(path):
     """
 
     (path, ext) = os.path.splitext(path)
-    if (len(ext) > 0):
+    if len(ext) > 0:
         ext = ext[1:]   # remove the "."
         SUFFIX_MAP = {}
         for audio_type in TYPE_MAP.values():
             SUFFIX_MAP.setdefault(audio_type.SUFFIX, []).append(audio_type)
-        if (ext in SUFFIX_MAP.keys()):
-            if (len(SUFFIX_MAP[ext]) == 1):
+        if ext in SUFFIX_MAP.keys():
+            if len(SUFFIX_MAP[ext]) == 1:
                 return SUFFIX_MAP[ext][0]
             else:
                 raise AmbiguousAudioType(ext, SUFFIX_MAP[ext])
@@ -2231,7 +2231,7 @@ class ChannelMask(object):
         c = []
         for (mask, speaker) in sorted(self.MASK_TO_SPEAKER.items(),
                                       key=lambda pair: pair[0]):
-            if (getattr(self, speaker)):
+            if getattr(self, speaker):
                 c.append(speaker)
 
         return c
@@ -2257,7 +2257,7 @@ class ChannelMask(object):
         mask = cls(0)
 
         for (key, value) in fields.items():
-            if (key in cls.SPEAKER_TO_MASK.keys()):
+            if key in cls.SPEAKER_TO_MASK.keys():
                 setattr(mask, key, bool(value))
             else:
                 raise KeyError(key)
@@ -2271,9 +2271,9 @@ class ChannelMask(object):
         this is only valid for channel counts 1 and 2
         all other values trigger a ValueError"""
 
-        if (channel_count == 2):
+        if channel_count == 2:
             return cls(0x3)
-        elif (channel_count == 1):
+        elif channel_count == 1:
             return cls(0x4)
         else:
             raise ValueError("ambiguous channel assignment")
@@ -2401,10 +2401,10 @@ class PCMFileReader(PCMReader):
             self.bits_per_sample,
             self.big_endian,
             self.signed)
-        if (framelist.frames > 0):
+        if framelist.frames > 0:
             return framelist
-        elif (self.process is not None):
-            if (self.process.wait() == 0):
+        elif self.process is not None:
+            if self.process.wait() == 0:
                 self.process = None
                 return framelist
             else:
@@ -2419,12 +2419,12 @@ class PCMFileReader(PCMReader):
         subsequent calls to read() raise ValueError"""
 
         self.file.close()
-        if (self.process is not None):
+        if self.process is not None:
             self.process.wait()
             self.process = None
 
     def __del__(self):
-        if (self.process is not None):
+        if self.process is not None:
             self.process.kill()
             self.process = None
 
@@ -2456,7 +2456,7 @@ class PCMReaderError(PCMReader):
 
 
 def to_pcm_progress(audiofile, progress):
-    if (callable(progress)):
+    if callable(progress):
         return PCMReaderProgress(audiofile.to_pcm(),
                                  audiofile.total_frames(),
                                  progress)
@@ -2480,7 +2480,7 @@ class PCMReaderProgress(PCMReader):
         self.pcmreader = pcmreader
         self.current_frames = current_frames
         self.total_frames = total_frames
-        if (callable(progress)):
+        if callable(progress):
             self.progress = progress
         else:
             self.progress = lambda current_frames, total_frames: None
@@ -2589,17 +2589,17 @@ class ThreadedPCMReader(PCMReader):
         self.__finished__ = False
 
     def read(self, pcm_frames):
-        if (self.__closed__):
+        if self.__closed__:
             raise ValueError("stream is closed")
-        if (self.__finished__):
+        if self.__finished__:
             # previous read returned empty FrameList
             # so continue to return empty FrameLists
             from audiotools.pcm import empty_framelist
             return empty_framelist(self.channels, self.bits_per_sample)
 
         (error, value) = self.__queue__.get()
-        if (not error):
-            if (len(value) == 0):
+        if not error:
+            if len(value) == 0:
                 self.__finished__ = True
             return value
         else:
@@ -2702,7 +2702,7 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
         # so long as both framelists contain data
         while ((len(framelist1) > 0) and (len(framelist2) > 0)):
             # compare both entire framelists
-            if (framelist1 == framelist2):
+            if framelist1 == framelist2:
                 # if they both match, continue to the next pair
                 frame_number += framelist1.frames
                 framelist1 = reader1.read(FRAMELIST_SIZE)
@@ -2710,13 +2710,13 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
             else:
                 # if there's a mismatch, determine the exact frame
                 for i in range(min(framelist1.frames, framelist2.frames)):
-                    if (framelist1.frame(i) != framelist2.frame(i)):
+                    if framelist1.frame(i) != framelist2.frame(i):
                         return frame_number + i
                 else:
                     return frame_number + i
         else:
             # at least one framelist is empty
-            if ((len(framelist1) == 0) and (len(framelist2) == 0)):
+            if (len(framelist1) == 0) and (len(framelist2) == 0):
                 # if they're both empty, there's no mismatch
                 return None
             else:
@@ -2738,19 +2738,19 @@ class PCMCat(PCMReader):
         self.index = 0
         self.pcmreaders = list(pcmreaders)
 
-        if (len(self.pcmreaders) == 0):
+        if len(self.pcmreaders) == 0:
             from audiotools.text import ERR_NO_PCMREADERS
             raise ValueError(ERR_NO_PCMREADERS)
 
-        if (len({r.sample_rate for r in self.pcmreaders}) != 1):
+        if len({r.sample_rate for r in self.pcmreaders}) != 1:
             from audiotools.text import ERR_SAMPLE_RATE_MISMATCH
             raise ValueError(ERR_SAMPLE_RATE_MISMATCH)
 
-        if (len({r.channels for r in self.pcmreaders}) != 1):
+        if len({r.channels for r in self.pcmreaders}) != 1:
             from audiotools.text import ERR_CHANNEL_COUNT_MISMATCH
             raise ValueError(ERR_CHANNEL_COUNT_MISMATCH)
 
-        if (len({r.bits_per_sample for r in self.pcmreaders}) != 1):
+        if len({r.bits_per_sample for r in self.pcmreaders}) != 1:
             from audiotools.text import ERR_BPS_MISMATCH
             raise ValueError(ERR_BPS_MISMATCH)
 
@@ -2766,10 +2766,10 @@ class PCMCat(PCMReader):
 
         raises ValueError if any of the streams is mismatched"""
 
-        if (self.index < len(self.pcmreaders)):
+        if self.index < len(self.pcmreaders):
             # read a FrameList from the current PCMReader
             framelist = self.pcmreaders[self.index].read(pcm_frames)
-            if (len(framelist) > 0):
+            if len(framelist) > 0:
                 # if it has data, return it
                 return framelist
             else:
@@ -2818,7 +2818,7 @@ class BufferedPCMReader(PCMReader):
         # fill our buffer to at least "pcm_frames", possibly more
         while (self.buffer.frames < pcm_frames):
             frame = self.pcmreader.read(FRAMELIST_SIZE)
-            if (len(frame)):
+            if len(frame):
                 self.buffer += frame
             else:
                 break
@@ -2870,9 +2870,9 @@ class LimitedFileReader(object):
         self.__total_bytes__ = total_bytes
 
     def read(self, x):
-        if (self.__total_bytes__ > 0):
+        if self.__total_bytes__ > 0:
             s = self.__file__.read(x)
-            if (len(s) <= self.__total_bytes__):
+            if len(s) <= self.__total_bytes__:
                 self.__total_bytes__ -= len(s)
                 return s
             else:
@@ -2904,7 +2904,7 @@ class LimitedPCMReader(PCMReader):
         self.total_pcm_frames = total_pcm_frames
 
     def read(self, pcm_frames):
-        if (self.total_pcm_frames > 0):
+        if self.total_pcm_frames > 0:
             frame = self.pcmreader.read(min(pcm_frames, self.total_pcm_frames))
             self.total_pcm_frames -= frame.frames
             return frame
@@ -2934,25 +2934,25 @@ def PCMConverter(pcmreader,
     or invalid
     """
 
-    if (sample_rate <= 0):
+    if sample_rate <= 0:
         from audiotools.text import ERR_INVALID_SAMPLE_RATE
         raise ValueError(ERR_INVALID_SAMPLE_RATE)
-    elif (channels <= 0):
+    elif channels <= 0:
         from audiotools.text import ERR_INVALID_CHANNEL_COUNT
         raise ValueError(ERR_INVALID_CHANNEL_COUNT)
-    elif (bits_per_sample not in (8, 16, 24)):
+    elif bits_per_sample not in (8, 16, 24):
         from audiotools.text import ERR_INVALID_BITS_PER_SAMPLE
         raise ValueError(ERR_INVALID_BITS_PER_SAMPLE)
 
-    if ((channel_mask != 0) and (len(ChannelMask(channel_mask)) != channels)):
+    if (channel_mask != 0) and (len(ChannelMask(channel_mask)) != channels):
         # channel_mask is defined but has a different number of channels
         # than the channel count attribute
         from audiotools.text import ERR_CHANNEL_COUNT_MASK_MISMATCH
         raise ValueError(ERR_CHANNEL_COUNT_MASK_MISMATCH)
 
-    if (pcmreader.channels > channels):
-        if ((channels == 1) and (channel_mask in (0, 0x4))):
-            if (pcmreader.channels > 2):
+    if pcmreader.channels > channels:
+        if (channels == 1) and (channel_mask in (0, 0x4)):
+            if pcmreader.channels > 2:
                 # reduce channel count through downmixing
                 # followed by averaging
                 from .pcmconverter import (Averager, Downmixer)
@@ -2962,7 +2962,7 @@ def PCMConverter(pcmreader,
                 # so reduce channel count through averaging
                 from .pcmconverter import Averager
                 pcmreader = Averager(pcmreader)
-        elif ((channels == 2) and (channel_mask in (0, 0x3))):
+        elif (channels == 2) and (channel_mask in (0, 0x3)):
             # reduce channel count through downmixing
             from .pcmconverter import Downmixer
             pcmreader = Downmixer(pcmreader)
@@ -2971,7 +2971,7 @@ def PCMConverter(pcmreader,
             pcmreader = RemaskedPCMReader(pcmreader,
                                           channels,
                                           channel_mask)
-    elif (pcmreader.channels < channels):
+    elif pcmreader.channels < channels:
         # increase channel count by duplicating first channel
         # (this is usually just going from mono to stereo
         #  since there's no way to summon surround channels
@@ -2981,12 +2981,12 @@ def PCMConverter(pcmreader,
                                        [0] * (channels - pcmreader.channels),
                                        channel_mask)
 
-    if (pcmreader.sample_rate != sample_rate):
+    if pcmreader.sample_rate != sample_rate:
         # convert sample rate through resampling
         from .pcmconverter import Resampler
         pcmreader = Resampler(pcmreader, sample_rate)
 
-    if (pcmreader.bits_per_sample != bits_per_sample):
+    if pcmreader.bits_per_sample != bits_per_sample:
         # use bitshifts/dithering to adjust bits-per-sample
         from .pcmconverter import BPSConverter
         pcmreader = BPSConverter(pcmreader, bits_per_sample)
@@ -3018,7 +3018,7 @@ class ReplayGainCalculator:
         which can be used to calculate the ReplayGain
         for the contents of that reader"""
 
-        if (pcmreader.sample_rate != self.__replaygain__.sample_rate):
+        if pcmreader.sample_rate != self.__replaygain__.sample_rate:
             raise ValueError(
                 "sample rate mismatch, %d != %d" %
                 (pcmreader.sample_rate,
@@ -3056,13 +3056,13 @@ class ReplayGainCalculatorReader(PCMReader):
         self.__replaygain__.next_title()
 
     def title_gain(self):
-        if (self.__title_gain__ is not None):
+        if self.__title_gain__ is not None:
             return self.__title_gain__
         else:
             raise ValueError("cannot get title_gain before closing pcmreader")
 
     def title_peak(self):
-        if (self.__title_peak__ is not None):
+        if self.__title_peak__ is not None:
             return self.__title_peak__
         else:
             raise ValueError("cannot get title_peak before closing pcmreader")
@@ -3075,7 +3075,7 @@ def resampled_frame_count(initial_frame_count,
     and new sample rate, returns the new PCM frame count
     once the stream has been resampled"""
 
-    if (initial_sample_rate == new_sample_rate):
+    if initial_sample_rate == new_sample_rate:
         return initial_frame_count
     else:
         from decimal import (Decimal, ROUND_DOWN)
@@ -3092,7 +3092,7 @@ def calculate_replay_gain(tracks, progress=None):
 
     raises ValueError if a problem occurs during calculation"""
 
-    if (len(tracks) == 0):
+    if len(tracks) == 0:
         return
 
     from bisect import bisect
@@ -3174,7 +3174,7 @@ def make_dirs(destination_path):
     """
 
     dirname = os.path.dirname(destination_path)
-    if ((dirname != '') and (not os.path.isdir(dirname))):
+    if (dirname != '') and (not os.path.isdir(dirname)):
         os.makedirs(dirname)
 
 
@@ -3349,7 +3349,7 @@ class MetaData(object):
         MetaData.__setattr__(self, "album_total", album_total)
         MetaData.__setattr__(self, "comment", comment)
 
-        if (images is not None):
+        if images is not None:
             MetaData.__setattr__(self, "__images__", list(images))
         else:
             MetaData.__setattr__(self, "__images__", list())
@@ -3361,7 +3361,7 @@ class MetaData(object):
                 ",".join(["%s"] * (len(MetaData.FIELDS))))) % tuple(fields)
 
     def __delattr__(self, field):
-        if (field in self.FIELDS):
+        if field in self.FIELDS:
             MetaData.__setattr__(self, field, None)
         else:
             try:
@@ -3380,7 +3380,7 @@ class MetaData(object):
         which is not blank"""
 
         for (attr, field) in self.fields():
-            if (field is not None):
+            if field is not None:
                 yield (attr, field)
 
     def empty_fields(self):
@@ -3388,7 +3388,7 @@ class MetaData(object):
         which is blank"""
 
         for (attr, field) in self.fields():
-            if (field is None):
+            if field is None:
                 yield (attr, field)
 
     if PY3:
@@ -3404,19 +3404,19 @@ class MetaData(object):
         SEPARATOR = u" : "
 
         for attr in self.FIELD_ORDER:
-            if (attr == "track_number"):
+            if attr == "track_number":
                 # combine track number/track total into single field
                 track_number = self.track_number
                 track_total = self.track_total
-                if ((track_number is None) and (track_total is None)):
+                if (track_number is None) and (track_total is None):
                     # nothing to display
                     pass
-                elif ((track_number is not None) and (track_total is None)):
+                elif (track_number is not None) and (track_total is None):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
                     row.add_column(u"%d" % (track_number))
-                elif ((track_number is None) and (track_total is not None)):
+                elif (track_number is None) and (track_total is not None):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
@@ -3427,21 +3427,21 @@ class MetaData(object):
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
                     row.add_column(u"%d/%d" % (track_number, track_total))
-            elif (attr == "track_total"):
+            elif attr == "track_total":
                 pass
-            elif (attr == "album_number"):
+            elif attr == "album_number":
                 # combine album number/album total into single field
                 album_number = self.album_number
                 album_total = self.album_total
-                if ((album_number is None) and (album_total is None)):
+                if (album_number is None) and (album_total is None):
                     # nothing to display
                     pass
-                elif ((album_number is not None) and (album_total is None)):
+                elif (album_number is not None) and (album_total is None):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
                     row.add_column(u"%d" % (track_number))
-                elif ((album_number is None) and (album_total is not None)):
+                elif (album_number is None) and (album_total is not None):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
@@ -3452,9 +3452,9 @@ class MetaData(object):
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
                     row.add_column(u"%d/%d" % (album_number, album_total))
-            elif (attr == "album_total"):
+            elif attr == "album_total":
                 pass
-            elif (getattr(self, attr) is not None):
+            elif getattr(self, attr) is not None:
                 row = table.row()
                 row.add_column(self.FIELD_NAMES[attr], "right")
                 row.add_column(SEPARATOR)
@@ -3504,7 +3504,7 @@ class MetaData(object):
         class.  This way, AudioFiles can offload metadata conversions
         """
 
-        if (metadata is not None):
+        if metadata is not None:
             fields = {field: getattr(metadata, field)
                       for field in cls.FIELDS}
             fields["images"] = metadata.images()
@@ -3559,7 +3559,7 @@ class MetaData(object):
         METADATA_BLOCK_PICTURE block to the metadata)
         """
 
-        if (self.supports_images()):
+        if self.supports_images():
             self.__images__.append(image)
         else:
             from audiotools.text import ERR_PICTURES_UNSUPPORTED
@@ -3574,7 +3574,7 @@ class MetaData(object):
         remove that same METADATA_BLOCK_PICTURE block from the metadata)
         """
 
-        if (self.supports_images()):
+        if self.supports_images():
             self.__images__.pop(self.__images__.index(image))
         else:
             from audiotools.text import ERR_PICTURES_UNSUPPORTED
@@ -3715,7 +3715,7 @@ class Image(object):
                      type=type)
 
     def __eq__(self, image):
-        if (image is not None):
+        if image is not None:
             if hasattr(image, "data"):
                 return self.data == image.data
             else:
@@ -3756,7 +3756,7 @@ class ReplayGain(object):
              self.album_gain, self.album_peak)
 
     def __eq__(self, rg):
-        if (isinstance(rg, ReplayGain)):
+        if isinstance(rg, ReplayGain):
             return ((self.track_gain == rg.track_gain) and
                     (self.track_peak == rg.track_peak) and
                     (self.album_gain == rg.album_gain) and
@@ -3783,7 +3783,7 @@ class UnsupportedTracknameField(Exception):
         messenger.info(LAB_SUPPORTED_FIELDS)
         for field in sorted(MetaData.FIELDS +
                             ("album_track_number", "suffix")):
-            if (field == 'track_number'):
+            if field == 'track_number':
                 messenger.info(u"%(track_number)2.2d")
             else:
                 messenger.info(u"%%(%s)s" % (field))
@@ -3839,7 +3839,7 @@ class AudioFile(object):
                 self.filename)
 
     def __eq__(self, audiofile):
-        if (isinstance(audiofile, AudioFile)):
+        if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() == audiofile.__sort_key__())
         else:
             raise TypeError("cannot compare %s and %s" %
@@ -3849,35 +3849,35 @@ class AudioFile(object):
         return not self.__eq__(audiofile)
 
     def __lt__(self, audiofile):
-        if (isinstance(audiofile, AudioFile)):
+        if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() < audiofile.__sort_key__())
         else:
             raise TypeError("cannot compare %s and %s" %
                             (repr(self), repr(audiofile)))
 
     def __le__(self, audiofile):
-        if (isinstance(audiofile, AudioFile)):
+        if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() <= audiofile.__sort_key__())
         else:
             raise TypeError("cannot compare %s and %s" %
                             (repr(self), repr(audiofile)))
 
     def __gt__(self, audiofile):
-        if (isinstance(audiofile, AudioFile)):
+        if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() > audiofile.__sort_key__())
         else:
             raise TypeError("cannot compare %s and %s" %
                             (repr(self), repr(audiofile)))
 
     def __ge__(self, audiofile):
-        if (isinstance(audiofile, AudioFile)):
+        if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() >= audiofile.__sort_key__())
         else:
             raise TypeError("cannot compare %s and %s" %
                             (repr(self), repr(audiofile)))
 
     def __gt__(self, audiofile):
-        if (isinstance(audiofile, AudioFile)):
+        if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() > audiofile.__sort_key__())
         else:
             raise TypeError("cannot compare %s and %s" %
@@ -3926,7 +3926,7 @@ class AudioFile(object):
         # which assumes higher-level routines have
         # modified metadata properly
 
-        if (metadata is not None):
+        if metadata is not None:
             raise NotImplementedError()
         else:
             raise ValueError(ERR_FOREIGN_METADATA)
@@ -3979,7 +3979,7 @@ class AudioFile(object):
 
         from fractions import Fraction
 
-        if (self.sample_rate() > 0):
+        if self.sample_rate() > 0:
             return Fraction(self.total_frames(), self.sample_rate())
         else:
             # this shouldn't happen, but just in case
@@ -4087,18 +4087,18 @@ class AudioFile(object):
         assert((suffix is None) or isinstance(suffix, str))
 
         # handle defaults
-        if (format is None):
+        if format is None:
             format = FILENAME_FORMAT
-        if (suffix is None):
+        if suffix is None:
             suffix = cls.SUFFIX
 
         # convert arguments to unicode to simplify everything internally
-        if (PY2):
+        if PY2:
             format = format.decode("UTF-8", "replace")
             suffix = suffix.decode("UTF-8", "replace")
 
         # grab numeric arguments from MetaData, if any
-        if (track_metadata is not None):
+        if track_metadata is not None:
             track_number = (track_metadata.track_number
                             if track_metadata.track_number is not None
                             else 0)
@@ -4124,7 +4124,7 @@ class AudioFile(object):
                        u"album_total": album_total,
                        u"suffix": suffix}
 
-        if (album_number == 0):
+        if album_number == 0:
             format_dict[u"album_track_number"] = u"%2.2d" % (track_number)
         else:
             album_digits = len(str(album_total))
@@ -4134,7 +4134,7 @@ class AudioFile(object):
                 {u"album_digits": album_digits} %
                 (album_number, track_number))
 
-        if (PY2):
+        if PY2:
             format_dict[u"basename"] = os.path.splitext(
                 os.path.basename(file_path))[0].decode("UTF-8", "replace")
         else:
@@ -4144,17 +4144,17 @@ class AudioFile(object):
         # populate remainder of format dictionary
         # with fields from MetaData, if any
         for field in MetaData.FIELDS:
-            if (field in MetaData.INTEGER_FIELDS):
+            if field in MetaData.INTEGER_FIELDS:
                 continue
 
-            if (PY2):
+            if PY2:
                 field_name = field.decode("ascii")
             else:
                 field_name = field
 
-            if (track_metadata is not None):
+            if track_metadata is not None:
                 attr = getattr(track_metadata, field)
-                if (attr is None):
+                if attr is None:
                     attr = u""
             else:
                 attr = u""
@@ -4164,7 +4164,7 @@ class AudioFile(object):
 
         try:
             # apply format dictionary
-            if (PY2):
+            if PY2:
                 formatted_filename = (format % format_dict).encode("UTF-8",
                                                                    "replace")
             else:
@@ -4253,14 +4253,14 @@ class AudioFile(object):
                 framelist = decoder.read(FRAMELIST_SIZE)
                 while (len(framelist) > 0):
                     pcm_frame_count += framelist.frames
-                    if (progress is not None):
+                    if progress is not None:
                         progress(pcm_frame_count, total_frames)
                     framelist = decoder.read(FRAMELIST_SIZE)
             except (IOError, ValueError) as err:
                 raise InvalidFile(str(err))
 
-        if (self.lossless()):
-            if (pcm_frame_count == total_frames):
+        if self.lossless():
+            if pcm_frame_count == total_frames:
                 return True
             else:
                 raise InvalidFile("incorrect PCM frame count")
@@ -4273,7 +4273,7 @@ class AudioFile(object):
         to support format"""
 
         for command in cls.BINARIES:
-            if (not system_binaries.can_execute(system_binaries[command])):
+            if not system_binaries.can_execute(system_binaries[command]):
                 return False
         else:
             return True
@@ -4287,10 +4287,10 @@ class AudioFile(object):
         urls = cls.BINARY_URLS
         format_ = cls.NAME.decode('ascii')
 
-        if (len(binaries) == 0):
+        if len(binaries) == 0:
             # no binaries, so they can't be missing, so nothing to display
             pass
-        elif (len(binaries) == 1):
+        elif len(binaries) == 1:
             # one binary has only a single URL to display
             from audiotools.text import (ERR_PROGRAM_NEEDED,
                                          ERR_PROGRAM_DOWNLOAD_URL,
@@ -4315,7 +4315,7 @@ class AudioFile(object):
                 {"programs": u", ".join([u"\"%s\"" % (b.decode('ascii'))
                                          for b in binaries]),
                  "format": format_})
-            if (len({urls[b] for b in binaries}) == 1):
+            if len({urls[b] for b in binaries}) == 1:
                 # if they all come from one URL (like Vorbis tools)
                 # display only that URL
                 messenger.info(
@@ -4342,10 +4342,10 @@ class AudioFile(object):
         raises ValueError if the file has errors of some sort
         """
 
-        if (output_filename is None):
+        if output_filename is None:
             # dry run only
             metadata = self.get_metadata()
-            if (metadata is not None):
+            if metadata is not None:
                 (metadata, fixes) = metadata.clean()
                 return fixes
             else:
@@ -4362,7 +4362,7 @@ class AudioFile(object):
 
             new_track = open(output_filename)
             metadata = self.get_metadata()
-            if (metadata is not None):
+            if metadata is not None:
                 (metadata, fixes) = metadata.clean()
                 new_track.set_metadata(metadata)
                 return fixes
@@ -4544,7 +4544,7 @@ def read_sheet_string(sheet_string):
 
     assert(isinstance(sheet_string, str_type))
 
-    if (u"CD_DA" in sheet_string):
+    if u"CD_DA" in sheet_string:
         from audiotools.toc import read_tocfile_string
 
         return read_tocfile_string(sheet_string)
@@ -4584,12 +4584,12 @@ class Sheet(object):
 
     def __eq__(self, sheet):
         try:
-            if (self.get_metadata() != sheet.get_metadata()):
+            if self.get_metadata() != sheet.get_metadata():
                 return False
-            if (len(self) != len(sheet)):
+            if len(self) != len(sheet):
                 return False
             for (t1, t2) in zip(self, sheet):
-                if (t1 != t2):
+                if t1 != t2:
                     return False
             else:
                 return True
@@ -4606,7 +4606,7 @@ class Sheet(object):
         returns a SheetTrack object or raises KeyError if not found"""
 
         for track in self:
-            if (track_number == track.number()):
+            if track_number == track.number():
                 return track
         else:
             raise KeyError(track_number)
@@ -4616,7 +4616,7 @@ class Sheet(object):
         as a Fraction number of seconds"""
 
         indexes = self.track(1)
-        if ((indexes[0].number() == 0) and (indexes[1].number() == 1)):
+        if (indexes[0].number() == 0) and (indexes[1].number() == 1):
             return (indexes[1].offset() - indexes[0].offset())
         else:
             from fractions import Fraction
@@ -4640,7 +4640,7 @@ class Sheet(object):
         may raise KeyError if the track is not found"""
 
         initial_track = self.track(track_number)
-        if ((track_number + 1) in self.track_numbers()):
+        if (track_number + 1) in self.track_numbers():
             next_track = self.track(track_number + 1)
             return (next_track.index(1).offset() -
                     initial_track.index(1).offset())
@@ -4655,14 +4655,14 @@ class Sheet(object):
         initial_filename = None
         previous_index = None
         for track in self:
-            if (initial_filename is None):
+            if initial_filename is None:
                 initial_filename = track.filename()
-            elif (initial_filename != track.filename()):
+            elif initial_filename != track.filename():
                 return False
             for index in track:
-                if (previous_index is None):
+                if previous_index is None:
                     previous_index = index.offset()
-                elif (previous_index >= index.offset()):
+                elif previous_index >= index.offset():
                     return False
                 else:
                     previous_index = index.offset()
@@ -4749,7 +4749,7 @@ class SheetTrack(object):
         returns a SheetIndex object or raises KeyError if not found"""
 
         for sheet_index in self:
-            if (index_number == sheet_index.number()):
+            if index_number == sheet_index.number():
                 return sheet_index
         else:
             raise KeyError(index_number)
@@ -4760,13 +4760,13 @@ class SheetTrack(object):
                            "is_audio",
                            "pre_emphasis",
                            "copy_permitted"]:
-                if (getattr(self, method)() != getattr(sheet_track, method)()):
+                if getattr(self, method)() != getattr(sheet_track, method)():
                     return False
 
-            if (len(self) != len(sheet_track)):
+            if len(self) != len(sheet_track):
                 return False
             for (t1, t2) in zip(self, sheet_track):
-                if (t1 != t2):
+                if t1 != t2:
                     return False
             else:
                 return True
@@ -4893,7 +4893,7 @@ def PCMReaderWindow(pcmreader, initial_offset, pcm_frames, forward_close=True):
     if forward_close is True, calls to .close() are forwarded
     to the parent stream, otherwise the parent is left as-is"""
 
-    if (initial_offset == 0):
+    if initial_offset == 0:
         return PCMReaderHead(
             pcmreader=pcmreader,
             pcm_frames=pcm_frames,
@@ -4924,7 +4924,7 @@ class PCMReaderHead(PCMReader):
         to the parent stream, otherwise the parent is left as-is
         """
 
-        if (pcm_frames < 0):
+        if pcm_frames < 0:
             raise ValueError("invalid pcm_frames value")
 
         PCMReader.__init__(self,
@@ -4942,11 +4942,11 @@ class PCMReaderHead(PCMReader):
                                           self.pcm_frames)
 
     def read(self, pcm_frames):
-        if (self.pcm_frames > 0):
+        if self.pcm_frames > 0:
             # data left in window
             # so try to read an additional frame from PCMReader
             frame = self.pcmreader.read(pcm_frames)
-            if (frame.frames == 0):
+            if frame.frames == 0:
                 # no additional data in PCMReader,
                 # so return empty frames leftover in window
                 # and close window
@@ -4956,7 +4956,7 @@ class PCMReaderHead(PCMReader):
                                       True)
                 self.pcm_frames -= frame.frames
                 return frame
-            elif (frame.frames <= self.pcm_frames):
+            elif frame.frames <= self.pcm_frames:
                 # frame is shorter than remaining window,
                 # so shrink window and return frame unaltered
                 self.pcm_frames -= frame.frames
@@ -4976,7 +4976,7 @@ class PCMReaderHead(PCMReader):
         raise ValueError()
 
     def close(self):
-        if (self.forward_close):
+        if self.forward_close:
             self.pcmreader.close()
         self.read = self.read_closed
 
@@ -5013,20 +5013,20 @@ class PCMReaderDeHead(PCMReader):
                                             self.pcm_frames)
 
     def read(self, pcm_frames):
-        if (self.pcm_frames == 0):
+        if self.pcm_frames == 0:
             # no truncation or padding, so return framelists as-is
             return self.pcmreader.read(pcm_frames)
-        elif (self.pcm_frames > 0):
+        elif self.pcm_frames > 0:
             # remove PCM frames from beginning of stream
             # until all truncation is accounted for
             while (self.pcm_frames > 0):
                 frame = self.pcmreader.read(pcm_frames)
-                if (frame.frames == 0):
+                if frame.frames == 0:
                     # truncation longer than entire stream
                     # so don't try to truncate it any further
                     self.pcm_frames = 0
                     return frame
-                elif (frame.frames <= self.pcm_frames):
+                elif frame.frames <= self.pcm_frames:
                     self.pcm_frames -= frame.frames
                 else:
                     (head, tail) = frame.split(self.pcm_frames)
@@ -5051,7 +5051,7 @@ class PCMReaderDeHead(PCMReader):
         raise ValueError()
 
     def close(self):
-        if (self.forward_close):
+        if self.forward_close:
             self.pcmreader.close()
         self.read = self.read_closed
 
@@ -5064,7 +5064,7 @@ def most_numerous(item_list, empty_list=None, all_differ=None):
 
     counts = {}
 
-    if (len(item_list) == 0):
+    if len(item_list) == 0:
         return empty_list
 
     for item in item_list:
@@ -5073,7 +5073,7 @@ def most_numerous(item_list, empty_list=None, all_differ=None):
     (item,
      max_count) = sorted([(item, len(counts[item])) for item in counts.keys()],
                          key=lambda pair: pair[1])[-1]
-    if ((max_count < len(item_list)) and (max_count == 1)):
+    if (max_count < len(item_list)) and (max_count == 1):
         return all_differ
     else:
         return item
@@ -5108,7 +5108,7 @@ def metadata_lookup(musicbrainz_disc_id,
     matches = []
 
     # MusicBrainz takes precedence over FreeDB
-    if (use_musicbrainz):
+    if use_musicbrainz:
         import audiotools.musicbrainz as musicbrainz
         try:
             from urllib.request import HTTPError
@@ -5124,7 +5124,7 @@ def metadata_lookup(musicbrainz_disc_id,
         except (HTTPError, ExpatError):
             pass
 
-    if (use_freedb):
+    if use_freedb:
         import audiotools.freedb as freedb
         try:
             from urllib.request import HTTPError
@@ -5139,7 +5139,7 @@ def metadata_lookup(musicbrainz_disc_id,
         except (HTTPError, ValueError):
             pass
 
-    if (len(matches) == 0):
+    if len(matches) == 0:
         # no matches, so build a set of dummy metadata
         track_count = len(musicbrainz_disc_id.offsets)
         return [[MetaData(track_number=i, track_total=track_count)
@@ -5267,7 +5267,7 @@ def accuraterip_lookup(sorted_tracks,
     may raise urllib2.HTTPError if an error occurs querying the server
     """
 
-    if (len(sorted_tracks) == 0):
+    if len(sorted_tracks) == 0:
         return {}
     else:
         from audiotools.accuraterip import DiscID, perform_lookup
@@ -5308,7 +5308,7 @@ def output_progress(u, current, total):
     returns a u'[<current>/<total>]  <string>'  unicode string
     indicating the current progress"""
 
-    if (total > 1):
+    if total > 1:
         return u"[%%%d.d/%%d]  %%s" % (len(str(total))) % (current, total, u)
     else:
         return u
@@ -5357,7 +5357,7 @@ class ExecProgressQueue(object):
     def run(self, max_processes=1):
         """runs all the queued jobs"""
 
-        if ((max_processes == 1) or (len(self.__queued_jobs__) == 1)):
+        if (max_processes == 1) or (len(self.__queued_jobs__) == 1):
             return self.__run_serial__()
         else:
             return self.__run_parallel__(max_processes=max_processes)
@@ -5377,7 +5377,7 @@ class ExecProgressQueue(object):
               args,
               kwargs)) in enumerate(self.__queued_jobs__, 1):
             # add job to progress display, if any text to display
-            if (progress_text is not None):
+            if progress_text is not None:
                 progress_display = SingleProgressDisplay(self.messenger,
                                                          progress_text)
 
@@ -5395,7 +5395,7 @@ class ExecProgressQueue(object):
                 result = function(*args, **kwargs)
 
             # display any output message attached to job
-            if (callable(completion_output)):
+            if callable(completion_output):
                 output = completion_output(result)
             else:
                 output = completion_output
@@ -5439,7 +5439,7 @@ class ExecProgressQueue(object):
                 completion_output=completion_output)
 
             # add job to progress display, if any text to display
-            if (progress_text is not None):
+            if progress_text is not None:
                 self.__displayed_rows__[job.job_fd()] = \
                     progress_display.add_row(progress_text)
 
@@ -5460,7 +5460,7 @@ class ExecProgressQueue(object):
         # return values from the executed functions
         results = [None] * total_jobs
 
-        if (total_jobs == 0):
+        if total_jobs == 0:
             # nothing to do
             return results
 
@@ -5485,17 +5485,17 @@ class ExecProgressQueue(object):
 
                     (exception, result) = finished_job.result()
 
-                    if (not exception):
+                    if not exception:
                         # job completed successfully
 
                         # display any output message attached to job
                         completion_output = finished_job.completion_output
-                        if (callable(completion_output)):
+                        if callable(completion_output):
                             output = completion_output(result)
                         else:
                             output = completion_output
 
-                        if (output is not None):
+                        if output is not None:
                             progress_display.output_line(
                                 output_progress(output,
                                                 completed_job_number,
@@ -5517,11 +5517,11 @@ class ExecProgressQueue(object):
                     del(job_pool[job_fd])
 
                     # remove job from progress display, if present
-                    if (job_fd in self.__displayed_rows__):
+                    if job_fd in self.__displayed_rows__:
                         self.__displayed_rows__[job_fd].finish()
 
                     # add new jobs from the job queue, if any
-                    if (len(self.__queued_jobs__) > 0):
+                    if len(self.__queued_jobs__) > 0:
                         job = execute_next_job(progress_display)
                         job_pool[job.job_fd()] = job
 
@@ -5530,7 +5530,7 @@ class ExecProgressQueue(object):
 
                 # update progress rows with progress taken from shared memory
                 for job in job_pool.values():
-                    if (job.job_fd() in self.__displayed_rows__):
+                    if job.job_fd() in self.__displayed_rows__:
                         self.__displayed_rows__[job.job_fd()].update(
                             job.current(), job.total())
 
@@ -5546,7 +5546,7 @@ class ExecProgressQueue(object):
 
         # if any jobs have raised an exception,
         # re-raise it in the main process
-        if (self.__raised_exception__ is not None):
+        if self.__raised_exception__ is not None:
             raise self.__raised_exception__
         else:
             # otherwise, return results in the order they were queued
@@ -5705,7 +5705,7 @@ class TemporaryFile(object):
     def seek(self, offset, whence=None):
         """move to new file position"""
 
-        if (whence is not None):
+        if whence is not None:
             self.__temp_file__.seek(offset, whence)
         else:
             self.__temp_file__.seek(offset)
@@ -5778,5 +5778,5 @@ DEFAULT_QUALITY = {track_type.NAME:
                    for track_type in AVAILABLE_TYPES
                    if (len(track_type.COMPRESSION_MODES) > 1)}
 
-if (DEFAULT_TYPE not in TYPE_MAP.keys()):
+if DEFAULT_TYPE not in TYPE_MAP.keys():
     DEFAULT_TYPE = "wav"

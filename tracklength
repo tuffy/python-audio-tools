@@ -61,22 +61,22 @@ class FormatSummary(object):
                         "seconds": format_length % 60},
                        "right")
         row.add_column(u" ")
-        if (self.total_size > (2 ** 40)):
+        if self.total_size > (2 ** 40):
             # terabytes
             total_size = u"%sT" % \
                 ((self.total_size /
                   Decimal(2 ** 40)).quantize(Decimal("1.0")))
-        elif (self.total_size > (2 ** 30)):
+        elif self.total_size > (2 ** 30):
             # gigabytes
             total_size = u"%sG" % \
                 ((self.total_size /
                   Decimal(2 ** 30)).quantize(Decimal("1.0")))
-        elif (self.total_size > (2 ** 20)):
+        elif self.total_size > (2 ** 20):
             # megabytes
             total_size = u"%sM" % \
                 ((self.total_size /
                   Decimal(2 ** 20)).quantize(Decimal("1.0")))
-        elif (self.total_size > (2 ** 10)):
+        elif self.total_size > (2 ** 10):
             # kilobytes
             total_size = u"%sK" % \
                 ((self.total_size /
@@ -110,7 +110,7 @@ if (__name__ == '__main__'):
 
     try:
         for audio_file in audio_files(msg, options.filenames):
-            if (audio_file.NAME not in format_summaries.keys()):
+            if audio_file.NAME not in format_summaries.keys():
                 format_summaries[audio_file.NAME] = FormatSummary()
             format_summaries[audio_file.NAME].add(audio_file)
             total_summary.add(audio_file)
@@ -120,7 +120,7 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_CANCELLED)
         sys.exit(1)
 
-    if (total_summary.file_count > 0):
+    if total_summary.file_count > 0:
         table = audiotools.output_table()
 
         row = table.row()
@@ -138,7 +138,7 @@ if (__name__ == '__main__'):
             format_summaries[name].to_row(
                 name if audiotools.PY3 else name.decode("UTF-8"), table)
 
-        if (len(format_summaries.keys()) > 1):
+        if len(format_summaries.keys()) > 1:
             table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
             total_summary.to_row(_.LAB_TRACKLENGTH_FILE_TOTAL, table)
 

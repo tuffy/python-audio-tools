@@ -88,7 +88,7 @@ t_COMMA = r','
 
 def t_ID(t):
     r'[A-Z][A-Z0-9_]*'
-    if (t.value in RESERVED.keys()):
+    if t.value in RESERVED.keys():
         t.type = RESERVED[t.value]
     return t
 

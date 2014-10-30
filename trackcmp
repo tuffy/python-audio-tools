@@ -34,7 +34,7 @@ def cmp_files(progress, audiofile1, audiofile2):
     a negative value if some error occurs."""
 
     try:
-        if (os.path.samefile(audiofile1.filename, audiofile2.filename)):
+        if os.path.samefile(audiofile1.filename, audiofile2.filename):
             return (audiofile1.filename,
                     audiofile2.filename,
                     None)
@@ -63,14 +63,14 @@ def cmp_result(result, is_tty=False):
     assert(isinstance(path2, str))
     assert((mismatch is None) or isinstance(mismatch, int))
 
-    if (mismatch is None):
+    if mismatch is None:
         return ((_.LAB_TRACKCMP_CMP %
                  {"file1": audiotools.Filename(path1),
                   "file2": audiotools.Filename(path2)}) +
                 u" : " + audiotools.output_text(
                     _.LAB_TRACKCMP_OK,
                     fg_color="green").format(is_tty))
-    elif (mismatch >= 0):
+    elif mismatch >= 0:
         return ((_.LAB_TRACKCMP_CMP %
                  {"file1": audiotools.Filename(path1),
                   "file2": audiotools.Filename(path2)}) +
@@ -78,7 +78,7 @@ def cmp_result(result, is_tty=False):
                     _.LAB_TRACKCMP_MISMATCH %
                     {"frame_number": mismatch + 1},
                     fg_color="red").format(is_tty))
-    elif (mismatch == -1):
+    elif mismatch == -1:
         return ((_.LAB_TRACKCMP_CMP %
                  {"file1": audiotools.Filename(path1),
                   "file2": audiotools.Filename(path2)}) +
@@ -105,7 +105,7 @@ def image_compare(progress, image_audiofile, track_audiofile,
 
     # if image_pcmreader has seek(),
     # use it to reduce the amount of frames to skip
-    if (hasattr(image_pcmreader, "seek") and callable(image_pcmreader.seek)):
+    if hasattr(image_pcmreader, "seek") and callable(image_pcmreader.seek):
         pcm_frames_offset -= image_pcmreader.seek(pcm_frames_offset)
 
     try:
@@ -207,31 +207,31 @@ if (__name__ == '__main__'):
 
     args = [options.filename] + options.filenames
 
-    if (options.max_processes < 1):
+    if options.max_processes < 1:
         msg.error(_.ERR_INVALID_JOINT)
         sys.exit(1)
 
     check_function = audiotools.pcm_frame_cmp
 
-    if (len(args) == 2):
-        if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
+    if len(args) == 2:
+        if os.path.isfile(args[0]) and os.path.isfile(args[1]):
             # comparing two files
 
             audiofiles = audiotools.open_files(args,
                                                messenger=msg,
                                                sorted=False)
-            if (len(audiofiles) != 2):
+            if len(audiofiles) != 2:
                 msg.error(_.ERR_TRACKCMP_TYPE_MISMATCH)
                 sys.exit(1)
             else:
                 (path1, path2, mismatch) = cmp_files(None,
                                                      audiofiles[0],
                                                      audiofiles[1])
-                if (mismatch is not None):
+                if mismatch is not None:
                     msg.output(cmp_result((path1, path2, mismatch),
                                           msg.output_isatty()))
                     sys.exit(1)
-        elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
+        elif os.path.isdir(args[0]) and os.path.isdir(args[1]):
             # comparing two directories
 
             to_compare = []
@@ -290,7 +290,7 @@ if (__name__ == '__main__'):
                                        (files2, metadatas2)]:
                 for f in files.values():
                     m = f.get_metadata()
-                    if (m is not None):
+                    if m is not None:
                         metadatas.setdefault((m.track_number,
                                               m.album_number), []).append(f)
                     else:
@@ -346,7 +346,7 @@ if (__name__ == '__main__'):
             successes = len([r for r in results if r[2] is None])
             failures = len(results) - successes
 
-            if (not options.no_summary):
+            if not options.no_summary:
                 msg.output(_.LAB_TRACKCMP_RESULTS)
                 msg.output(u"")
 
@@ -370,7 +370,7 @@ if (__name__ == '__main__'):
                 for row in table.format(msg.output_isatty()):
                     msg.output(row)
 
-            if (failures > 0):
+            if failures > 0:
                 sys.exit(1)
         else:
             # comparison mismatch
@@ -382,7 +382,7 @@ if (__name__ == '__main__'):
                           _.LAB_TRACKCMP_TYPE_MISMATCH,
                           fg_color="red").format(msg.error_isatty()))
             sys.exit(1)
-    elif (len(args) > 2):
+    elif len(args) > 2:
         # possibly comparing disk image against tracks
         audiofiles = sorted(
             audiotools.open_files(args, messenger=msg, sorted=False),
@@ -407,7 +407,7 @@ if (__name__ == '__main__'):
 
         pcm_offset = 0
 
-        if (cd_image.seekable()):
+        if cd_image.seekable():
             for (i, track) in enumerate(tracks):
                 track_name = audiotools.Filename(track.filename)
                 queue.execute(

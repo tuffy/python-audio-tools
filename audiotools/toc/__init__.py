@@ -54,8 +54,8 @@ class TOCFile(Sheet):
         tracks = list(sheet)
         metadata = sheet.get_metadata()
 
-        if (metadata is not None):
-            if (metadata.catalog is not None):
+        if metadata is not None:
+            if metadata.catalog is not None:
                 catalog = metadata.catalog
             else:
                 catalog = None
@@ -84,10 +84,10 @@ class TOCFile(Sheet):
         """returns the TOCFile as a string"""
 
         output = [self.__type__, u""]
-        if (self.__catalog__ is not None):
+        if self.__catalog__ is not None:
             output.extend([u"CATALOG %s" % (format_string(self.__catalog__)),
                            u""])
-        if (self.__cd_text__ is not None):
+        if self.__cd_text__ is not None:
             output.append(self.__cd_text__.build())
         output.extend([track.build() for track in self.__tracks__])
 
@@ -100,13 +100,13 @@ class TOCFile(Sheet):
 
         from audiotools import MetaData
 
-        if ((self.__catalog__ is not None) and (self.__cd_text__ is not None)):
+        if (self.__catalog__ is not None) and (self.__cd_text__ is not None):
             metadata = self.__cd_text__.to_disc_metadata()
             metadata.catalog = self.__catalog__
             return metadata
-        elif (self.__catalog__ is not None):
+        elif self.__catalog__ is not None:
             return MetaData(catalog=self.__catalog__)
-        elif (self.__cd_text__ is not None):
+        elif self.__cd_text__ is not None:
             return self.__cd_text__.to_disc_metadata()
         else:
             return None
@@ -132,18 +132,18 @@ class TOCTrack(SheetTrack):
         file_start = None
         file_length = None
         for flag in flags:
-            if (isinstance(flag, TOCFlag_FILE)):
+            if isinstance(flag, TOCFlag_FILE):
                 file_start = flag.start()
                 file_length = flag.length()
-            elif (isinstance(flag, TOCFlag_START)):
-                if (flag.start() is not None):
+            elif isinstance(flag, TOCFlag_START):
+                if flag.start() is not None:
                     pre_gap = flag.start()
                 else:
                     pre_gap = file_length
-            elif (isinstance(flag, TOCFlag_INDEX)):
+            elif isinstance(flag, TOCFlag_INDEX):
                 indexes.append(flag.index())
 
-        if (pre_gap is None):
+        if pre_gap is None:
             # first index point is 1
             self.__indexes__ = ([SheetIndex(number=1, offset=file_start)] +
                                 [SheetIndex(number=i, offset=index)
@@ -165,20 +165,20 @@ class TOCTrack(SheetTrack):
 
         flags = []
 
-        if (metadata is not None):
-            if (metadata.ISRC is not None):
+        if metadata is not None:
+            if metadata.ISRC is not None:
                 flags.append(TOCFlag_ISRC(metadata.ISRC))
             cdtext = CDText.from_track_metadata(metadata)
-            if (cdtext is not None):
+            if cdtext is not None:
                 flags.append(cdtext)
 
-        if (sheettrack.copy_permitted()):
+        if sheettrack.copy_permitted():
             flags.append(TOCFlag_COPY(True))
 
-        if (sheettrack.pre_emphasis()):
+        if sheettrack.pre_emphasis():
             flags.append(TOCFlag_PRE_EMPHASIS(True))
 
-        if (len(sheettrack) > 0):
+        if len(sheettrack) > 0:
             if ((next_sheettrack is not None) and
                 (sheettrack.filename() == next_sheettrack.filename())):
                 length = (next_sheettrack[0].offset() -
@@ -193,7 +193,7 @@ class TOCTrack(SheetTrack):
                           sheettrack.filename()),
                 start=sheettrack[0].offset(),
                 length=length))
-            if (sheettrack[0].number() == 0):
+            if sheettrack[0].number() == 0:
                 # first index point is 0 so track contains pre-gap
                 flags.append(TOCFlag_START(sheettrack[1].offset() -
                                            sheettrack[0].offset()))
@@ -212,7 +212,7 @@ class TOCTrack(SheetTrack):
         or None if not found"""
 
         for flag in self.__flags__:
-            if (isinstance(flag, flag_class)):
+            if isinstance(flag, flag_class):
                 return flag
         else:
             return None
@@ -249,13 +249,13 @@ class TOCTrack(SheetTrack):
 
         isrc = self.first_flag(TOCFlag_ISRC)
         cd_text = self.first_flag(CDText)
-        if ((isrc is not None) and (cd_text is not None)):
+        if (isrc is not None) and (cd_text is not None):
             metadata = cd_text.to_track_metadata()
             metadata.ISRC = decode_string(isrc.isrc())
             return metadata
-        elif (cd_text is not None):
+        elif cd_text is not None:
             return cd_text.to_track_metadata()
-        elif (isrc is not None):
+        elif isrc is not None:
             return MetaData(ISRC=decode_string(isrc.isrc()))
         else:
             return None
@@ -264,7 +264,7 @@ class TOCTrack(SheetTrack):
         """returns SheetTrack's filename as a string"""
 
         filename = self.first_flag(TOCFlag_FILE)
-        if (filename is not None):
+        if filename is not None:
             return filename.filename()
         else:
             return u""
@@ -278,7 +278,7 @@ class TOCTrack(SheetTrack):
         """returns whether SheetTrack has pre-emphasis"""
 
         pre_emphasis = self.first_flag(TOCFlag_PRE_EMPHASIS)
-        if (pre_emphasis is not None):
+        if pre_emphasis is not None:
             return pre_emphasis.pre_emphasis()
         else:
             return False
@@ -287,7 +287,7 @@ class TOCTrack(SheetTrack):
         """returns whether copying is permitted"""
 
         copy = self.first_flag(TOCFlag_COPY)
-        if (copy is not None):
+        if copy is not None:
             return copy.copy()
         else:
             return False
@@ -400,7 +400,7 @@ class TOCFlag_FILE(TOCFlag):
         return self.__length__
 
     def build(self):
-        if (self.__length__ is None):
+        if self.__length__ is None:
             return u"%s %s %s" % (self.__type__,
                                   format_string(self.__filename__),
                                   format_timestamp(self.__start__))
@@ -422,7 +422,7 @@ class TOCFlag_START(TOCFlag):
         return self.__start__
 
     def build(self):
-        if (self.__start__ is None):
+        if self.__start__ is None:
             return u"START"
         else:
             return u"START %s" % (format_timestamp(self.__start__))
@@ -463,7 +463,7 @@ class CDText(object):
 
     def build(self):
         output = [u"CD_TEXT {"]
-        if (self.__language_map__ is not None):
+        if self.__language_map__ is not None:
             output.append(self.__language_map__.build())
             output.append(u"")
         output.extend([language.build() for language in self.__languages__])
@@ -483,19 +483,19 @@ class CDText(object):
     @classmethod
     def from_disc_metadata(cls, metadata):
         text_pairs = []
-        if (metadata is not None):
-            if (metadata.album_name is not None):
+        if metadata is not None:
+            if metadata.album_name is not None:
                 text_pairs.append((u"TITLE", metadata.album_name))
-            if (metadata.performer_name is not None):
+            if metadata.performer_name is not None:
                 text_pairs.append((u"PERFORMER", metadata.performer_name))
-            if (metadata.artist_name is not None):
+            if metadata.artist_name is not None:
                 text_pairs.append((u"SONGWRITER", metadata.artist_name))
-            if (metadata.composer_name is not None):
+            if metadata.composer_name is not None:
                 text_pairs.append((u"COMPOSER", metadata.composer_name))
-            if (metadata.comment is not None):
+            if metadata.comment is not None:
                 text_pairs.append((u"MESSAGE", metadata.comment))
 
-        if (len(text_pairs) > 0):
+        if len(text_pairs) > 0:
             return cls(languages=[CDTextLanguage(language_id=0,
                                                  text_pairs=text_pairs)],
                        language_map=CDTextLanguageMap([(0, u"EN")]))
@@ -516,20 +516,20 @@ class CDText(object):
     @classmethod
     def from_track_metadata(cls, metadata):
         text_pairs = []
-        if (metadata is not None):
-            if (metadata.track_name is not None):
+        if metadata is not None:
+            if metadata.track_name is not None:
                 text_pairs.append((u"TITLE", metadata.track_name))
-            if (metadata.performer_name is not None):
+            if metadata.performer_name is not None:
                 text_pairs.append((u"PERFORMER", metadata.performer_name))
-            if (metadata.artist_name is not None):
+            if metadata.artist_name is not None:
                 text_pairs.append((u"SONGWRITER", metadata.artist_name))
-            if (metadata.composer_name is not None):
+            if metadata.composer_name is not None:
                 text_pairs.append((u"COMPOSER", metadata.composer_name))
-            if (metadata.comment is not None):
+            if metadata.comment is not None:
                 text_pairs.append((u"MESSAGE", metadata.comment))
             # ISRC is handled in its own flag
 
-        if (len(text_pairs) > 0):
+        if len(text_pairs) > 0:
             return cls(languages=[CDTextLanguage(language_id=0,
                                                  text_pairs=text_pairs)])
         else:
@@ -551,7 +551,7 @@ class CDTextLanguage(object):
 
     def __getitem__(self, key):
         for (k, v) in self.__text_pairs__:
-            if (k == key):
+            if k == key:
                 return v
         else:
             raise KeyError(key)
@@ -559,7 +559,7 @@ class CDTextLanguage(object):
     def build(self):
         output = [u"LANGUAGE %d {" % (self.__id__)]
         for (key, value) in self.__text_pairs__:
-            if (key in {u"TOC_INFO1", u"TOC_INFO2", u"SIZE_INFO"}):
+            if key in {u"TOC_INFO1", u"TOC_INFO2", u"SIZE_INFO"}:
                 output.append(u"  %s %s" % (key, format_binary(value)))
             else:
                 output.append(u"  %s %s" % (key, format_string(value)))

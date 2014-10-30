@@ -75,17 +75,17 @@ class Encoding_Options(object):
         self.max_residual_partition_order = max_residual_partition_order
         self.max_rice_parameter = max_rice_parameter
 
-        if (block_size <= 192):
+        if block_size <= 192:
             self.qlp_precision = 7
-        elif (block_size <= 384):
+        elif block_size <= 384:
             self.qlp_precision = 8
-        elif (block_size <= 576):
+        elif block_size <= 576:
             self.qlp_precision = 9
-        elif (block_size <= 1152):
+        elif block_size <= 1152:
             self.qlp_precision = 10
-        elif (block_size <= 2304):
+        elif block_size <= 2304:
             self.qlp_precision = 11
-        elif (block_size <= 4608):
+        elif block_size <= 4608:
             self.qlp_precision = 12
         else:
             self.qlp_precision = 13
@@ -198,7 +198,7 @@ def encode_flac_frame(writer, pcmreader, options, frame_number, frame):
                         pcmreader.bits_per_sample + 1, difference)
 
         # write best header/subframes to disk
-        if (options.mid_side):
+        if options.mid_side:
             if ((left_subframe.bits() + right_subframe.bits()) <
                 min(left_subframe.bits() + difference_subframe.bits(),
                     difference_subframe.bits() + right_subframe.bits(),
@@ -211,7 +211,7 @@ def encode_flac_frame(writer, pcmreader, options, frame_number, frame):
                 write_frame_header(writer, pcmreader, frame_number, frame, 0x8)
                 left_subframe.copy(writer)
                 difference_subframe.copy(writer)
-            elif (right_subframe.bits() < average_subframe.bits()):
+            elif right_subframe.bits() < average_subframe.bits():
                 write_frame_header(writer, pcmreader, frame_number, frame, 0x9)
                 difference_subframe.copy(writer)
                 right_subframe.copy(writer)
@@ -264,10 +264,10 @@ def write_frame_header(writer, pcmreader, frame_number, frame,
                           8192: 13,
                           16384: 14,
                           32768: 15}.get(frame.frames, None)
-    if (encoded_block_size is None):
-        if (frame.frames <= 256):
+    if encoded_block_size is None:
+        if frame.frames <= 256:
             encoded_block_size = 6
-        elif (frame.frames <= 65536):
+        elif frame.frames <= 65536:
             encoded_block_size = 7
         else:
             encoded_block_size = 0
@@ -284,14 +284,14 @@ def write_frame_header(writer, pcmreader, frame_number, frame,
                            96000: 11,
                            176400: 2,
                            192000: 3}.get(pcmreader.sample_rate, None)
-    if (encoded_sample_rate is None):
+    if encoded_sample_rate is None:
         if ((((pcmreader.sample_rate % 1000) == 0) and
              (pcmreader.sample_rate <= 255000))):
             encoded_sample_rate = 12
         elif (((pcmreader.sample_rate % 10) == 0) and
               (pcmreader.sample_rate <= 655350)):
             encoded_sample_rate = 14
-        elif (pcmreader.sample_rate <= 65535):
+        elif pcmreader.sample_rate <= 65535:
             encoded_sample_rate = 13
         else:
             encoded_sample_rate = 0
@@ -309,16 +309,16 @@ def write_frame_header(writer, pcmreader, frame_number, frame,
     writer.write(1, 0)
     write_utf8(writer, frame_number)
 
-    if (encoded_block_size == 6):
+    if encoded_block_size == 6:
         writer.write(8, frame.frames - 1)
-    elif (encoded_block_size == 7):
+    elif encoded_block_size == 7:
         writer.write(16, frame.frames - 1)
 
-    if (encoded_sample_rate == 12):
+    if encoded_sample_rate == 12:
         writer.write(8, pcmreader.sample_rate % 1000)
-    elif (encoded_sample_rate == 13):
+    elif encoded_sample_rate == 13:
         writer.write(16, pcmreader.sample_rate)
-    elif (encoded_sample_rate == 14):
+    elif encoded_sample_rate == 14:
         writer.write(16, pcmreader.sample_rate % 10)
 
     writer.pop_callback()
@@ -326,18 +326,18 @@ def write_frame_header(writer, pcmreader, frame_number, frame,
 
 
 def write_utf8(writer, value):
-    if (value <= 127):
+    if value <= 127:
         writer.write(8, value)
     else:
-        if (value <= 2047):
+        if value <= 2047:
             total_bytes = 2
-        elif (value <= 65535):
+        elif value <= 65535:
             total_bytes = 3
-        elif (value <= 2097151):
+        elif value <= 2097151:
             total_bytes = 4
-        elif (value <= 67108863):
+        elif value <= 67108863:
             total_bytes = 5
-        elif (value <= 2147483647):
+        elif value <= 2147483647:
             total_bytes = 6
         else:
             raise ValueError("UTF-8 value too large")
@@ -354,11 +354,11 @@ def write_utf8(writer, value):
 
 def encode_subframe(writer, options, bits_per_sample, samples):
     def all_identical(l):
-        if (len(l) == 1):
+        if len(l) == 1:
             return True
         else:
             for i in l[1:]:
-                if (i != l[0]):
+                if i != l[0]:
                     return False
             else:
                 return True
@@ -370,21 +370,21 @@ def encode_subframe(writer, options, bits_per_sample, samples):
             s >>= 1
         return w
 
-    if (all_identical(samples)):
+    if all_identical(samples):
         encode_constant_subframe(writer, bits_per_sample, samples[0])
     else:
         # account for wasted BPS, if any
         wasted_bps = 2 ** 32
         for sample in samples:
-            if (sample != 0):
+            if sample != 0:
                 wasted_bps = min(wasted_bps, wasted(sample))
-                if (wasted_bps == 0):
+                if wasted_bps == 0:
                     break
 
-        if (wasted_bps == 2 ** 32):
+        if wasted_bps == 2 ** 32:
             # all samples are 0
             wasted_bps = 0
-        elif (wasted_bps > 0):
+        elif wasted_bps > 0:
             samples = [s >> wasted_bps for s in samples]
 
         fixed_subframe = BitstreamRecorder(0)
@@ -394,7 +394,7 @@ def encode_subframe(writer, options, bits_per_sample, samples):
                               bits_per_sample,
                               samples)
 
-        if (options.max_lpc_order > 0):
+        if options.max_lpc_order > 0:
             lpc_subframe = BitstreamRecorder(0)
             encode_lpc_subframe(lpc_subframe,
                                 options,
@@ -406,12 +406,12 @@ def encode_subframe(writer, options, bits_per_sample, samples):
                  min(fixed_subframe.bits(), lpc_subframe.bits()))):
                 encode_verbatim_subframe(writer, wasted_bps,
                                          bits_per_sample, samples)
-            elif (fixed_subframe.bits() < lpc_subframe.bits()):
+            elif fixed_subframe.bits() < lpc_subframe.bits():
                 fixed_subframe.copy(writer)
             else:
                 lpc_subframe.copy(writer)
         else:
-            if ((bits_per_sample * len(samples)) < fixed_subframe.bits()):
+            if (bits_per_sample * len(samples)) < fixed_subframe.bits():
                 encode_verbatim_subframe(writer, wasted_bps,
                                          bits_per_sample, samples)
             else:
@@ -429,7 +429,7 @@ def encode_constant_subframe(writer, bits_per_sample, sample):
 def encode_verbatim_subframe(writer, wasted_bps, bits_per_sample, samples):
     # write frame header
     writer.build("1p 6u", [1])
-    if (wasted_bps > 0):
+    if wasted_bps > 0:
         writer.write(1, 1)
         writer.unary(1, wasted_bps - 1)
     else:
@@ -449,13 +449,13 @@ def encode_fixed_subframe(writer, options, wasted_bps, bits_per_sample,
     residuals = [samples]
     total_error = [sum(map(abs, residuals[-1][4:]))]
 
-    if (len(samples) > 4):
+    if len(samples) > 4:
         for order in range(1, 5):
             residuals.append(next_order(residuals[-1]))
             total_error.append(sum(map(abs, residuals[-1][4 - order:])))
 
         for order in range(4):
-            if (total_error[order] < min(total_error[order + 1:])):
+            if total_error[order] < min(total_error[order + 1:]):
                 break
         else:
             order = 4
@@ -466,7 +466,7 @@ def encode_fixed_subframe(writer, options, wasted_bps, bits_per_sample,
 
     # write subframe header
     writer.build("1p 3u 3u", [1, order])
-    if (wasted_bps > 0):
+    if wasted_bps > 0:
         writer.write(1, 1)
         writer.unary(1, wasted_bps - 1)
     else:
@@ -486,11 +486,11 @@ def encode_residuals(writer, options, order, block_size, residuals):
     best_size = 2 ** 31
 
     for porder in range(0, options.max_residual_partition_order + 1):
-        if ((block_size % (2 ** porder)) == 0):
+        if (block_size % (2 ** porder)) == 0:
             unencoded_residuals = residuals[:]
             partitions = []
             for p in range(0, 2 ** porder):
-                if (p == 0):
+                if p == 0:
                     partition_size = block_size // (2 ** porder) - order
                 else:
                     partition_size = block_size // (2 ** porder)
@@ -507,14 +507,14 @@ def encode_residuals(writer, options, order, block_size, residuals):
             partition_bit_size = sum([4 + p.bits()
                                       for p in encoded_partitions])
 
-            if (partition_bit_size < best_size):
+            if partition_bit_size < best_size:
                 best_porder = porder
                 best_size = partition_bit_size
                 best_parameters = rice_parameters
                 best_encoded_partitions = encoded_partitions
 
     # then output those residual partitions into a single block
-    if (max(best_parameters) > 14):
+    if max(best_parameters) > 14:
         coding_method = 1
     else:
         coding_method = 0
@@ -522,7 +522,7 @@ def encode_residuals(writer, options, order, block_size, residuals):
     writer.write(2, coding_method)
     writer.write(4, best_porder)
     for (rice, partition) in zip(best_parameters, best_encoded_partitions):
-        if (coding_method == 0):
+        if coding_method == 0:
             writer.write(4, rice)
         else:
             writer.write(5, rice)
@@ -533,7 +533,7 @@ def best_rice_parameter(options, residuals):
     partition_sum = sum(map(abs, residuals))
     rice_parameter = 0
     while ((len(residuals) * (2 ** rice_parameter)) < partition_sum):
-        if (rice_parameter < options.max_rice_parameter):
+        if rice_parameter < options.max_rice_parameter:
             rice_parameter += 1
         else:
             return options.max_rice_parameter
@@ -544,7 +544,7 @@ def best_rice_parameter(options, residuals):
 def encode_residual_partition(rice_parameter, residuals):
     partition = BitstreamRecorder(0)
     for residual in residuals:
-        if (residual >= 0):
+        if residual >= 0:
             unsigned = residual << 1
         else:
             unsigned = ((-residual - 1) << 1) | 1
@@ -566,7 +566,7 @@ def encode_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
                 zip(samples, tukey_window(len(samples), 0.5))]
 
     # compute autocorrelation values
-    if (len(samples) > (options.max_lpc_order + 1)):
+    if len(samples) > (options.max_lpc_order + 1):
         autocorrelation_values = [
             sum(x * y for x, y in zip(windowed, windowed[lag:]))
             for lag in range(0, options.max_lpc_order + 1)]
@@ -602,7 +602,7 @@ def encode_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
                            samples=samples)
         return
 
-    if (not options.exhaustive_model_search):
+    if not options.exhaustive_model_search:
         # if not performaing an exhaustive model search
         # estimate which set of LP coefficients is best
         # and use those to build subframe
@@ -648,7 +648,7 @@ def encode_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
                                qlp_shift_needed=qlp_shift_needed,
                                qlp_coefficients=qlp_coefficients,
                                samples=samples)
-            if (subframe.bits() < best_subframe_size):
+            if subframe.bits() < best_subframe_size:
                 best_subframe = subframe
         else:
             best_subframe.copy(writer)
@@ -661,11 +661,11 @@ def tukey_window(sample_count, alpha):
     window2 = (sample_count - 1) * (1 - (alpha // 2))
 
     for n in range(0, sample_count):
-        if (n <= window1):
+        if n <= window1:
             yield (0.5 *
                    (1 +
                     cos(pi * (((2 * n) / (alpha * (sample_count - 1))) - 1))))
-        elif (n <= window2):
+        elif n <= window2:
             yield 1.0
         else:
             yield (0.5 *
@@ -705,17 +705,17 @@ def estimate_best_lpc_order(options, block_size, bits_per_sample, error):
     best_subframe_bits = 1e32
     for i in range(options.max_lpc_order):
         order = i + 1
-        if (error[i] > 0.0):
+        if error[i] > 0.0:
             header_bits = order * (bits_per_sample + options.qlp_precision)
             bits_per_residual = max((log(error[i] * error_scale) /
                                      (log(2) * 2)), 0.0)
             estimated_subframe_bits = (header_bits +
                                        bits_per_residual *
                                        (block_size - order))
-            if (estimated_subframe_bits < best_subframe_bits):
+            if estimated_subframe_bits < best_subframe_bits:
                 best_order = order
                 best_subframe_bits = estimated_subframe_bits
-        elif (error[i] == 0.0):
+        elif error[i] == 0.0:
             return order
     else:
         return best_order
@@ -729,13 +729,13 @@ def quantize_coefficients(qlp_precision, lp_coefficients, order):
     from math import log
 
     l = max(map(abs, lp_coefficients[order - 1]))
-    if (l > 0):
+    if l > 0:
         qlp_shift_needed = min((qlp_precision - 1) -
                                (int(log(l) / log(2)) - 1) - 1,
                                (2 ** 4) - 1)
     else:
         qlp_shift_needed = 0
-    if (qlp_shift_needed < -(2 ** 4)):
+    if qlp_shift_needed < -(2 ** 4):
         raise ValueError("too much negative shift needed")
 
     qlp_max = 2 ** (qlp_precision - 1) - 1
@@ -743,7 +743,7 @@ def quantize_coefficients(qlp_precision, lp_coefficients, order):
     error = 0.0
     qlp_coeffs = []
 
-    if (qlp_shift_needed >= 0):
+    if qlp_shift_needed >= 0:
         for lp_coeff in lp_coefficients[order - 1]:
             error += (lp_coeff * 2 ** qlp_shift_needed)
             qlp_coeffs.append(min(max(int(round(error)), qlp_min), qlp_max))
@@ -767,7 +767,7 @@ def write_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
 
     # write subframe header
     writer.build("1p 1u 5u", [1, order - 1])
-    if (wasted_bps > 0):
+    if wasted_bps > 0:
         writer.write(1, 1)
         writer.unary(1, wasted_bps - 1)
     else:

@@ -64,7 +64,7 @@ if (__name__ == '__main__'):
     audiofiles = audiotools.open_files(options.filenames,
                                        sorted=False,
                                        messenger=msg)
-    if (len(audiofiles) != 1):
+    if len(audiofiles) != 1:
         msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
     else:
@@ -72,7 +72,7 @@ if (__name__ == '__main__'):
         input_filename = audiotools.Filename(audiofile.filename)
 
     metadata = audiofile.get_metadata()
-    if (metadata is not None):
+    if metadata is not None:
         # divide images by type (front cover, leaflet page, etc.)
         image_types = {}
         for image in metadata.images():
@@ -81,7 +81,7 @@ if (__name__ == '__main__'):
         # build a set of (Image, Filename) tuples to be extracted
         output_images = []
         for (type, images) in image_types.items():
-            if (len(images) != 1):
+            if len(images) != 1:
                 FILE_TEMPLATE = \
                     "%(prefix)s%(filename)s%(filenum)2.2d.%(suffix)s"
             else:

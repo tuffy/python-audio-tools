@@ -40,7 +40,7 @@ class AuReader(object):
          self.sample_rate,
          self.channels) = self.stream.parse("4b 5* 32u")
 
-        if (magic_number != b'.snd'):
+        if magic_number != b'.snd':
             self.stream.close()
             raise ValueError(ERR_AU_INVALID_HEADER)
         try:
@@ -70,7 +70,7 @@ class AuReader(object):
         pcm_data = self.stream.read_bytes(requested_bytes)
 
         # raise exception if data block exhausted early
-        if (len(pcm_data) < requested_bytes):
+        if len(pcm_data) < requested_bytes:
             from audiotools.text import ERR_AU_TRUNCATED_DATA
             raise IOError(ERR_AU_TRUNCATED_DATA)
         else:
@@ -87,7 +87,7 @@ class AuReader(object):
         raise ValueError("cannot read closed stream")
 
     def seek(self, pcm_frame_offset):
-        if (pcm_frame_offset < 0):
+        if pcm_frame_offset < 0:
             from audiotools.text import ERR_NEGATIVE_SEEK
             raise ValueError(ERR_NEGATIVE_SEEK)
 
@@ -166,7 +166,7 @@ class AuAudio(AudioFile):
         except IOError as msg:
             raise InvalidAU(str(msg))
 
-        if (magic_number != b'.snd'):
+        if magic_number != b'.snd':
             raise InvalidAU(ERR_AU_INVALID_HEADER)
         try:
             self.__bits_per_sample__ = {2: 8, 3: 16, 4: 24}[encoding_format]
@@ -193,7 +193,7 @@ class AuAudio(AudioFile):
 
         """returns a ChannelMask object of this track's channel layout"""
 
-        if (self.channels() <= 2):
+        if self.channels() <= 2:
             return ChannelMask.from_channels(self.channels())
         else:
             return ChannelMask(0)
@@ -251,7 +251,7 @@ class AuAudio(AudioFile):
         from audiotools import CounterPCMReader
         from audiotools import transfer_framelist_data
 
-        if (pcmreader.bits_per_sample not in (8, 16, 24)):
+        if pcmreader.bits_per_sample not in (8, 16, 24):
             from audiotools import Filename
             from audiotools import UnsupportedBitsPerSample
             from audiotools.text import ERR_UNSUPPORTED_BITS_PER_SAMPLE
@@ -285,9 +285,9 @@ class AuAudio(AudioFile):
             cls.__unlink__(filename)
             raise EncodingError(str(err))
 
-        if (total_pcm_frames is not None):
+        if total_pcm_frames is not None:
             f.close()
-            if (total_pcm_frames != counter.frames_written):
+            if total_pcm_frames != counter.frames_written:
                 # ensure written number of PCM frames
                 # matches total_pcm_frames argument
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
@@ -319,7 +319,7 @@ class AuAudio(AudioFile):
         raises UnsupportedTracknameField if the format string
         contains invalid template fields"""
 
-        if (format is None):
+        if format is None:
             format = "track%(track_number)2.2d.au"
         return AudioFile.track_name(file_path, track_metadata, format,
                                     suffix=cls.SUFFIX)

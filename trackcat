@@ -35,9 +35,9 @@ def merge_metadatas(metadatas):
 
     track_metadatas = [m for m in metadatas if m is not None]
 
-    if (len(track_metadatas) == 0):
+    if len(track_metadatas) == 0:
         return None
-    elif (len(track_metadatas) == 1):
+    elif len(track_metadatas) == 1:
         return track_metadatas[0]
     else:
         metadata = audiotools.MetaData(
@@ -49,7 +49,7 @@ def merge_metadatas(metadatas):
         images = []
         for m in track_metadatas:
             for i in m.images():
-                if (i not in images):
+                if i not in images:
                     images.append(i)
         for i in images:
             metadata.add_image(i)
@@ -158,7 +158,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger(options.verbosity == "quiet")
 
     # ensure interactive mode is available, if selected
-    if (options.interactive and (not audiotools.ui.AVAILABLE)):
+    if options.interactive and (not audiotools.ui.AVAILABLE):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
@@ -170,37 +170,37 @@ if (__name__ == '__main__'):
                                        opened_files=opened_files)
 
     # perform some option sanity checking
-    if (len(audiofiles) < 1):
+    if len(audiofiles) < 1:
         msg.error(_.ERR_FILES_REQUIRED)
         sys.exit(1)
 
-    if (len({f.sample_rate() for f in audiofiles}) != 1):
+    if len({f.sample_rate() for f in audiofiles}) != 1:
         msg.error(_.ERR_SAMPLE_RATE_MISMATCH)
         sys.exit(1)
 
-    if (len({f.channels() for f in audiofiles}) != 1):
+    if len({f.channels() for f in audiofiles}) != 1:
         msg.error(_.ERR_CHANNEL_COUNT_MISMATCH)
         sys.exit(1)
 
-    if (len({int(f.channel_mask()) for f in audiofiles}) != 1):
+    if len({int(f.channel_mask()) for f in audiofiles}) != 1:
         msg.error(_.ERR_CHANNEL_MASK_MISMATCH)
         sys.exit(1)
 
-    if (len({f.bits_per_sample() for f in audiofiles}) != 1):
+    if len({f.bits_per_sample() for f in audiofiles}) != 1:
         msg.error(_.ERR_BPS_MISMATCH)
         sys.exit(1)
 
     # if embedding a cuesheet, try to read it before doing any work
-    if (options.cuesheet is not None):
+    if options.cuesheet is not None:
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
 
             # ensure cuesheet will embed properly
-            if (not cuesheet.image_formatted()):
+            if not cuesheet.image_formatted():
                 msg.error(_.ERR_CUE_INVALID_FORMAT)
                 sys.exit(1)
 
-            if (len(cuesheet) != len(audiofiles)):
+            if len(cuesheet) != len(audiofiles):
                 msg.error(_.ERR_CUE_INSUFFICIENT_TRACKS)
                 sys.exit(1)
 
@@ -219,24 +219,24 @@ if (__name__ == '__main__'):
     else:
         cuesheet = None
 
-    if (options.filename is None):
+    if options.filename is None:
         msg.error(_.ERR_NO_OUTPUT_FILE)
         sys.exit(1)
     else:
         output_filename = audiotools.Filename(options.filename)
-        if (output_filename in opened_files):
+        if output_filename in opened_files:
             msg.error(_.ERR_OUTPUT_IS_INPUT % (output_filename,))
             sys.exit(1)
 
     # get the AudioFile class we are converted to
-    if (options.type == 'help'):
+    if options.type == 'help':
         import audiotools.ui
         audiotools.ui.show_available_formats(msg)
         sys.exit(0)
-    elif (options.type is not None):
+    elif options.type is not None:
         AudioType = audiotools.TYPE_MAP[options.type]
     else:
-        if (options.filename is not None):
+        if options.filename is not None:
             try:
                 AudioType = audiotools.filename_to_type(options.filename)
             except audiotools.UnknownAudioType as exp:
@@ -246,13 +246,13 @@ if (__name__ == '__main__'):
             AudioType = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
 
     # ensure the selected compression is compatible with that class
-    if (options.quality == 'help'):
+    if options.quality == 'help':
         import audiotools.ui
         audiotools.ui.show_available_qualities(msg, AudioType)
         sys.exit(0)
-    elif (options.quality is None):
+    elif options.quality is None:
         options.quality = audiotools.__default_quality__(AudioType.NAME)
-    elif (options.quality not in AudioType.COMPRESSION_MODES):
+    elif options.quality not in AudioType.COMPRESSION_MODES:
         msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
                   {"quality": options.quality,
                    "type": AudioType.NAME})
@@ -262,7 +262,7 @@ if (__name__ == '__main__'):
     # which may be None if there is no metadata
     metadata = merge_metadatas([t.get_metadata() for t in audiofiles])
 
-    if (not options.metadata_lookup):
+    if not options.metadata_lookup:
         metadata_choices = [metadata]
     else:
         # perform CD lookup for existing files
@@ -278,10 +278,10 @@ if (__name__ == '__main__'):
                 use_freedb=options.use_freedb)]
 
         # and prepend metadata from existing files as an option, if any
-        if (metadata is not None):
+        if metadata is not None:
             metadata_choices.insert(0, metadata)
 
-    if (options.interactive):
+    if options.interactive:
         # pick options using interactive widget
         output_widget = audiotools.ui.SingleOutputFiller(
             track_label=_.LAB_TRACKCAT_INPUT % (len(audiofiles)),
@@ -305,7 +305,7 @@ if (__name__ == '__main__'):
             msg.info(audiotools.ui.xargs_suggestion(sys.argv))
             sys.exit(1)
 
-        if (not output_widget.cancelled()):
+        if not output_widget.cancelled():
             (output_class,
              output_filename,
              output_quality,
@@ -326,7 +326,7 @@ if (__name__ == '__main__'):
         msg, output_filename.__unicode__())
 
     try:
-        if ((cuesheet is not None) and (cuesheet.pre_gap() > 0)):
+        if (cuesheet is not None) and (cuesheet.pre_gap() > 0):
             # prepend null pre-gap samples to start of stream
             # if indicated by cuesheet
 
@@ -360,7 +360,7 @@ if (__name__ == '__main__'):
 
         progress.clear_rows()
 
-        if (cuesheet is not None):
+        if cuesheet is not None:
             encoded.set_cuesheet(cuesheet)
 
     except audiotools.EncodingError as err:

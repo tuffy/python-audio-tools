@@ -27,15 +27,15 @@ def image_metrics(file_data):
     raises InvalidImage if there is an error parsing the file
     or its type is unknown"""
 
-    if (file_data[0:3] == b"\xff\xd8\xff"):
+    if file_data[0:3] == b"\xff\xd8\xff":
         return __JPEG__.parse(file_data)
-    elif (file_data[0:8] == b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
+    elif file_data[0:8] == b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A':
         return __PNG__.parse(file_data)
-    elif (file_data[0:3] == b'GIF'):
+    elif file_data[0:3] == b'GIF':
         return __GIF__.parse(file_data)
-    elif (file_data[0:2] == b'BM'):
+    elif file_data[0:2] == b'BM':
         return __BMP__.parse(file_data)
-    elif ((file_data[0:2] == b'II') or (file_data[0:2] == b'MM')):
+    elif (file_data[0:2] == b'II') or (file_data[0:2] == b'MM'):
         return __TIFF__.parse(file_data)
     else:
         from audiotools.text import ERR_IMAGE_UNKNOWN_TYPE
@@ -98,18 +98,18 @@ class __JPEG__(ImageMetrics):
     @classmethod
     def parse(cls, file_data):
         def segments(reader):
-            if (reader.read(8) != 0xFF):
+            if reader.read(8) != 0xFF:
                 from audiotools.text import ERR_IMAGE_INVALID_JPEG_MARKER
                 raise InvalidJPEG(ERR_IMAGE_INVALID_JPEG_MARKER)
             segment_type = reader.read(8)
 
             while (segment_type != 0xDA):
-                if (segment_type not in {0xD8, 0xD9}):
+                if segment_type not in {0xD8, 0xD9}:
                     yield (segment_type, reader.substream(reader.read(16) - 2))
                 else:
                     yield (segment_type, None)
 
-                if (reader.read(8) != 0xFF):
+                if reader.read(8) != 0xFF:
                     from audiotools.text import ERR_IMAGE_INVALID_JPEG_MARKER
                     raise InvalidJPEG(ERR_IMAGE_INVALID_JPEG_MARKER)
                 segment_type = reader.read(8)
@@ -151,7 +151,7 @@ class __PNG__(ImageMetrics):
     @classmethod
     def parse(cls, file_data):
         def chunks(reader):
-            if (reader.read_bytes(8) != b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A'):
+            if reader.read_bytes(8) != b'\x89\x50\x4E\x47\x0D\x0A\x1A\x0A':
                 from audiotools.text import ERR_IMAGE_INVALID_PNG
                 raise InvalidPNG(ERR_IMAGE_INVALID_PNG)
             (chunk_length, chunk_type) = reader.parse("32u 4b")
@@ -169,12 +169,12 @@ class __PNG__(ImageMetrics):
             for (chunk_type,
                  chunk_length,
                  chunk_data) in chunks(BitstreamReader(file_data, False)):
-                if (chunk_type == b'IHDR'):
+                if chunk_type == b'IHDR':
                     ihdr = chunk_data
-                elif (chunk_type == b'PLTE'):
+                elif chunk_type == b'PLTE':
                     plte_length = chunk_length
 
-            if (ihdr is None):
+            if ihdr is None:
                 from audiotools.text import ERR_IMAGE_INVALID_PNG
                 raise InvalidPNG(ERR_IMAGE_INVALID_PNG)
 
@@ -189,18 +189,18 @@ class __PNG__(ImageMetrics):
             from audiotools.text import ERR_IMAGE_IOERROR_PNG
             raise InvalidPNG(ERR_IMAGE_IOERROR_PNG)
 
-        if (color_type == 0):    # grayscale
+        if color_type == 0:    # grayscale
             return cls(width=width,
                        height=height,
                        bits_per_pixel=bit_depth,
                        color_count=0)
-        elif (color_type == 2):  # RGB
+        elif color_type == 2:  # RGB
             return cls(width=width,
                        height=height,
                        bits_per_pixel=bit_depth * 3,
                        color_count=0)
-        elif (color_type == 3):  # palette
-            if ((plte_length % 3) != 0):
+        elif color_type == 3:  # palette
+            if (plte_length % 3) != 0:
                 from audiotools.text import ERR_IMAGE_INVALID_PLTE
                 raise InvalidPNG(ERR_IMAGE_INVALID_PLTE)
             else:
@@ -208,12 +208,12 @@ class __PNG__(ImageMetrics):
                            height=height,
                            bits_per_pixel=8,
                            color_count=plte_length // 3)
-        elif (color_type == 4):  # grayscale + alpha
+        elif color_type == 4:  # grayscale + alpha
             return cls(width=width,
                        height=height,
                        bits_per_pixel=bit_depth * 2,
                        color_count=0)
-        elif (color_type == 6):  # RGB + alpha
+        elif color_type == 6:  # RGB + alpha
             return cls(width=width,
                        height=height,
                        bits_per_pixel=bit_depth * 4,
@@ -258,7 +258,7 @@ class __BMP__(ImageMetrics):
             from audiotools.text import ERR_IMAGE_IOERROR_BMP
             raise InvalidBMP(ERR_IMAGE_IOERROR_BMP)
 
-        if (magic_number != b'BM'):
+        if magic_number != b'BM':
             from audiotools.text import ERR_IMAGE_INVALID_BMP
             raise InvalidBMP(ERR_IMAGE_INVALID_BMP)
         else:
@@ -297,7 +297,7 @@ class __GIF__(ImageMetrics):
             from audiotools.text import ERR_IMAGE_IOERROR_GIF
             raise InvalidGIF(ERR_IMAGE_IOERROR_GIF)
 
-        if (gif != b'GIF'):
+        if gif != b'GIF':
             from audiotools.text import ERR_IMAGE_INVALID_GIF
             raise InvalidGIF(ERR_IMAGE_INVALID_GIF)
         else:
@@ -339,15 +339,15 @@ class __TIFF__(ImageMetrics):
                     (tag_code,
                      tag_datatype,
                      tag_value_count) = sub_reader.parse("16u 16u 32u")
-                    if (tag_datatype == 1):    # BYTE type
+                    if tag_datatype == 1:    # BYTE type
                         tag_struct = "8u" * tag_value_count
-                    elif (tag_datatype == 3):  # SHORT type
+                    elif tag_datatype == 3:  # SHORT type
                         tag_struct = "16u" * tag_value_count
-                    elif (tag_datatype == 4):  # LONG type
+                    elif tag_datatype == 4:  # LONG type
                         tag_struct = "32u" * tag_value_count
                     else:                      # all other types
                         tag_struct = "4b"
-                    if (format_size(tag_struct) <= 32):
+                    if format_size(tag_struct) <= 32:
                         yield (tag_code, sub_reader.parse(tag_struct))
                         sub_reader.skip(32 - format_size(tag_struct))
                     else:
@@ -356,7 +356,7 @@ class __TIFF__(ImageMetrics):
                         yield (tag_code,
                                BitstreamReader(file, order).parse(tag_struct))
 
-                if (next_ifd != 0):
+                if next_ifd != 0:
                     file.seek(next_ifd, 0)
                 else:
                     break
@@ -364,15 +364,15 @@ class __TIFF__(ImageMetrics):
         file = BytesIO(file_data)
         try:
             byte_order = file.read(2)
-            if (byte_order == b'II'):
+            if byte_order == b'II':
                 order = 1
-            elif (byte_order == b'MM'):
+            elif byte_order == b'MM':
                 order = 0
             else:
                 from audiotools.text import ERR_IMAGE_INVALID_TIFF
                 raise InvalidTIFF(ERR_IMAGE_INVALID_TIFF)
             reader = BitstreamReader(file, order)
-            if (reader.read(16) != 42):
+            if reader.read(16) != 42:
                 from audiotools.text import ERR_IMAGE_INVALID_TIFF
                 raise InvalidTIFF(ERR_IMAGE_INVALID_TIFF)
 
@@ -384,13 +384,13 @@ class __TIFF__(ImageMetrics):
             bits_per_pixel = 0
             color_count = 0
             for (tag_id, tag_values) in tags(file, order):
-                if (tag_id == 0x0100):
+                if tag_id == 0x0100:
                     width = tag_values[0]
-                elif (tag_id == 0x0101):
+                elif tag_id == 0x0101:
                     height = tag_values[0]
-                elif (tag_id == 0x0102):
+                elif tag_id == 0x0102:
                     bits_per_pixel = sum(tag_values)
-                elif (tag_id == 0x0140):
+                elif tag_id == 0x0140:
                     color_count = len(tag_values) // 3
         except IOError:
             from audiotools.text import ERR_IMAGE_IOERROR_TIFF

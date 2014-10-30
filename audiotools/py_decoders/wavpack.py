@@ -41,7 +41,7 @@ class WavPackDecoder(object):
         block_header = Block_Header.read(self.reader)
         sub_blocks_size = block_header.block_size - 24
         sub_blocks_data = self.reader.substream(sub_blocks_size)
-        if (block_header.sample_rate != 15):
+        if block_header.sample_rate != 15:
             self.sample_rate = [6000,  8000,  9600,  11025, 12000,
                                 16000, 22050, 24000, 32000, 44100,
                                 48000, 64000, 88200, 96000,
@@ -64,7 +64,7 @@ class WavPackDecoder(object):
         self.bits_per_sample = \
             [8, 16, 24, 32][block_header.bits_per_sample]
 
-        if (block_header.initial_block and block_header.final_block):
+        if block_header.initial_block and block_header.final_block:
             if (((block_header.mono_output == 0) or
                  (block_header.false_stereo == 1))):
                 self.channels = 2
@@ -96,8 +96,8 @@ class WavPackDecoder(object):
         self.md5sum = md5()
 
     def read(self, pcm_frames):
-        if (self.pcm_finished):
-            if (not self.md5_checked):
+        if self.pcm_finished:
+            if not self.md5_checked:
                 block_start = self.reader.getpos()
                 try:
                     try:
@@ -134,7 +134,7 @@ class WavPackDecoder(object):
                                        sub_blocks_size,
                                        sub_blocks_data))
 
-            if (block_header.final_block == 1):
+            if block_header.final_block == 1:
                 break
 
         if ((block_header.block_index +
@@ -171,7 +171,7 @@ class Block_Header(object):
                  hybrid_noise_balanced, initial_block, final_block,
                  left_shift_data, maximum_magnitude, sample_rate,
                  use_IIR, false_stereo, CRC):
-        if (block_id != b"wvpk"):
+        if block_id != b"wvpk":
             raise ValueError("invalid WavPack block ID")
         self.block_size = block_size
         self.version = version
@@ -241,13 +241,13 @@ class Sub_Block(object):
                         "sub_block_size", "data"]])
 
     def total_size(self):
-        if (self.large_block):
+        if self.large_block:
             return 1 + 3 + (self.sub_block_size * 2)
         else:
             return 1 + 1 + (self.sub_block_size * 2)
 
     def data_size(self):
-        if (self.actual_size_1_less):
+        if self.actual_size_1_less:
             return self.sub_block_size * 2 - 1
         else:
             return self.sub_block_size * 2
@@ -259,12 +259,12 @@ class Sub_Block(object):
          actual_size_1_less,
          large_block) = reader.parse("5u 1u 1u 1u")
 
-        if (large_block == 0):
+        if large_block == 0:
             sub_block_size = reader.read(8)
         else:
             sub_block_size = reader.read(24)
 
-        if (actual_size_1_less == 0):
+        if actual_size_1_less == 0:
             data = reader.substream(sub_block_size * 2)
         else:
             data = reader.substream(sub_block_size * 2 - 1)
@@ -293,74 +293,74 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
          nondecoder_data,
          actual_size_1_less,
          large_sub_block) = sub_blocks_data.parse("5u 1u 1u 1u")
-        if (large_sub_block == 0):
+        if large_sub_block == 0:
             sub_block_size = sub_blocks_data.read(8)
         else:
             sub_block_size = sub_blocks_data.read(24)
-        if (actual_size_1_less == 0):
+        if actual_size_1_less == 0:
             sub_block_data = sub_blocks_data.substream(sub_block_size * 2)
         else:
             sub_block_data = sub_blocks_data.substream(sub_block_size * 2 - 1)
             sub_blocks_data.skip(8)
 
-        if (nondecoder_data == 0):
-            if (metadata_function == 2):
+        if nondecoder_data == 0:
+            if metadata_function == 2:
                 (decorrelation_terms,
                  decorrelation_deltas) = read_decorrelation_terms(
                     sub_block_size, actual_size_1_less, sub_block_data)
                 decorrelation_terms_read = True
-            if (metadata_function == 3):
-                if (not decorrelation_terms_read):
+            if metadata_function == 3:
+                if not decorrelation_terms_read:
                     raise ValueError(
                         "weights sub block found before terms sub block")
                 decorrelation_weights = read_decorrelation_weights(
                     block_header, len(decorrelation_terms),
                     sub_block_size, actual_size_1_less, sub_block_data)
                 decorrelation_weights_read = True
-            if (metadata_function == 4):
-                if (not decorrelation_terms_read):
+            if metadata_function == 4:
+                if not decorrelation_terms_read:
                     raise ValueError(
                         "samples sub block found before terms sub block")
-                if (actual_size_1_less):
+                if actual_size_1_less:
                     raise ValueError(
                         "decorrelation samples must have an even byte count")
                 decorrelation_samples = read_decorrelation_samples(
                     block_header, decorrelation_terms,
                     sub_block_size, sub_block_data)
                 decorrelation_samples_read = True
-            if (metadata_function == 5):
+            if metadata_function == 5:
                 entropies = read_entropy_variables(block_header,
                                                    sub_block_data)
                 entropies_read = True
-            if (metadata_function == 9):
+            if metadata_function == 9:
                 (zero_bits,
                  one_bits,
                  duplicate_bits) = read_extended_integers(sub_block_data)
                 extended_integers_read = True
-            if (metadata_function == 10):
-                if (not entropies_read):
+            if metadata_function == 10:
+                if not entropies_read:
                     raise ValueError("bitstream sub block before " +
                                      "entropy variables sub block")
                 residuals = read_bitstream(block_header, entropies,
                                            sub_block_data)
                 residuals_read = True
 
-        if (large_sub_block == 0):
+        if large_sub_block == 0:
             sub_blocks_size -= (2 + 2 * sub_block_size)
         else:
             sub_blocks_size -= (4 + 2 * sub_block_size)
 
-    if (decorrelation_terms_read):
-        if (not decorrelation_weights_read):
+    if decorrelation_terms_read:
+        if not decorrelation_weights_read:
             raise ValueError("decorrelation weights sub block not found")
-        if (not decorrelation_samples_read):
+        if not decorrelation_samples_read:
             raise ValueError("decorrelation samples sub block not found")
 
-    if (not residuals_read):
+    if not residuals_read:
         raise ValueError("bitstream sub block not found")
 
-    if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
-        if (decorrelation_terms_read and len(decorrelation_terms) > 0):
+    if (block_header.mono_output == 0) and (block_header.false_stereo == 0):
+        if decorrelation_terms_read and len(decorrelation_terms) > 0:
             decorrelated = decorrelate_channels(residuals,
                                                 decorrelation_terms,
                                                 decorrelation_deltas,
@@ -369,17 +369,17 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
         else:
             decorrelated = residuals
 
-        if (block_header.joint_stereo == 1):
+        if block_header.joint_stereo == 1:
             left_right = undo_joint_stereo(decorrelated)
         else:
             left_right = decorrelated
 
         channels_crc = calculate_crc(left_right)
-        if (channels_crc != block_header.CRC):
+        if channels_crc != block_header.CRC:
             raise ValueError("CRC mismatch (0x%8.8X != 0x%8.8X)" %
                              (channels_crc, block_header.CRC))
 
-        if (block_header.extended_size_integers == 1):
+        if block_header.extended_size_integers == 1:
             un_shifted = undo_extended_integers(zero_bits,
                                                 one_bits,
                                                 duplicate_bits,
@@ -389,7 +389,7 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
 
         return un_shifted
     else:
-        if (decorrelation_terms_read and len(decorrelation_terms) > 0):
+        if decorrelation_terms_read and len(decorrelation_terms) > 0:
             decorrelated = decorrelate_channels(residuals,
                                                 decorrelation_terms,
                                                 decorrelation_deltas,
@@ -399,11 +399,11 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
             decorrelated = residuals
 
         channels_crc = calculate_crc(decorrelated)
-        if (channels_crc != block_header.CRC):
+        if channels_crc != block_header.CRC:
             raise ValueError("CRC mismatch (0x%8.8X != 0x%8.8X)" %
                              (channels_crc, block_header.CRC))
 
-        if (block_header.extended_size_integers == 1):
+        if block_header.extended_size_integers == 1:
             un_shifted = undo_extended_integers(zero_bits,
                                                 one_bits,
                                                 duplicate_bits,
@@ -411,7 +411,7 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
         else:
             un_shifted = decorrelated
 
-        if (block_header.false_stereo == 0):
+        if block_header.false_stereo == 0:
             return un_shifted
         else:
             return (un_shifted[0], un_shifted[0])
@@ -425,12 +425,12 @@ def read_decorrelation_terms(sub_block_size,
 
     term[pass] , delta[pass]"""
 
-    if (actual_size_1_less == 0):
+    if actual_size_1_less == 0:
         passes = sub_block_size * 2
     else:
         passes = sub_block_size * 2 - 1
 
-    if (passes > 16):
+    if passes > 16:
         raise ValueError("invalid decorrelation passes count")
 
     decorrelation_terms = []
@@ -459,7 +459,7 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
     weight[pass][channel]
     """
 
-    if (actual_size_1_less == 0):
+    if actual_size_1_less == 0:
         weight_count = sub_block_size * 2
     else:
         weight_count = sub_block_size * 2 - 1
@@ -467,7 +467,7 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
     weight_values = []
     for i in range(weight_count):
         value_i = sub_block_data.read_signed(8)
-        if (value_i > 0):
+        if value_i > 0:
             weight_values.append((value_i * 2 ** 3) +
                                  ((value_i * 2 ** 3 + 2 ** 6) // 2 ** 7))
         elif(value_i == 0):
@@ -476,9 +476,9 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
             weight_values.append(value_i * 2 ** 3)
 
     weights = []
-    if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
+    if (block_header.mono_output == 0) and (block_header.false_stereo == 0):
         # two channels
-        if ((weight_count // 2) > decorrelation_terms_count):
+        if (weight_count // 2) > decorrelation_terms_count:
             raise ValueError("invalid number of decorrelation weights")
 
         for i in range(weight_count // 2):
@@ -490,7 +490,7 @@ def read_decorrelation_weights(block_header, decorrelation_terms_count,
         weights.reverse()
     else:
         # one channel
-        if (weight_count > decorrelation_terms_count):
+        if weight_count > decorrelation_terms_count:
             raise ValueError("invalid number of decorrelation weights")
 
         for i in range(weight_count):
@@ -512,11 +512,11 @@ def read_decorrelation_samples(block_header, decorrelation_terms,
     sub_block_bytes = sub_block_size * 2
 
     samples = []
-    if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
+    if (block_header.mono_output == 0) and (block_header.false_stereo == 0):
         # two channels
         for term in reversed(decorrelation_terms):
-            if ((17 <= term) and (term <= 18)):
-                if (sub_block_bytes >= 8):
+            if (17 <= term) and (term <= 18):
+                if sub_block_bytes >= 8:
                     samples.append(([read_exp2(sub_block_data),
                                      read_exp2(sub_block_data)],
                                     [read_exp2(sub_block_data),
@@ -525,9 +525,9 @@ def read_decorrelation_samples(block_header, decorrelation_terms,
                 else:
                     samples.append(([0, 0], [0, 0]))
                     sub_block_bytes = 0
-            elif ((1 <= term) and (term <= 8)):
+            elif (1 <= term) and (term <= 8):
                 term_samples = ([], [])
-                if (sub_block_bytes >= (term * 4)):
+                if sub_block_bytes >= (term * 4):
                     for s in range(term):
                         term_samples[0].append(read_exp2(sub_block_data))
                         term_samples[1].append(read_exp2(sub_block_data))
@@ -538,8 +538,8 @@ def read_decorrelation_samples(block_header, decorrelation_terms,
                         term_samples[1].append(0)
                     sub_block_bytes = 0
                 samples.append(term_samples)
-            elif ((-3 <= term) and (term <= -1)):
-                if (sub_block_bytes >= 4):
+            elif (-3 <= term) and (term <= -1):
+                if sub_block_bytes >= 4:
                     samples.append(([read_exp2(sub_block_data)],
                                     [read_exp2(sub_block_data)]))
                     sub_block_bytes -= 4
@@ -554,17 +554,17 @@ def read_decorrelation_samples(block_header, decorrelation_terms,
     else:
         # one channel
         for term in reversed(decorrelation_terms):
-            if ((17 <= term) and (term <= 18)):
-                if (sub_block_bytes >= 4):
+            if (17 <= term) and (term <= 18):
+                if sub_block_bytes >= 4:
                     samples.append(([read_exp2(sub_block_data),
                                      read_exp2(sub_block_data)],))
                     sub_block_bytes -= 4
                 else:
                     samples[0].append(([0, 0],))
                     sub_block_bytes = 0
-            elif ((1 <= term) and (term <= 8)):
+            elif (1 <= term) and (term <= 8):
                 term_samples = ([],)
-                if (sub_block_bytes >= (term * 2)):
+                if sub_block_bytes >= (term * 2):
                     for s in range(term):
                         term_samples[0].append(read_exp2(sub_block_data))
                     sub_block_bytes -= (term * 2)
@@ -585,7 +585,7 @@ def read_entropy_variables(block_header, sub_block_data):
     for i in range(3):
         entropies[0].append(read_exp2(sub_block_data))
 
-    if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
+    if (block_header.mono_output == 0) and (block_header.false_stereo == 0):
         for i in range(3):
             entropies[1].append(read_exp2(sub_block_data))
     else:
@@ -595,7 +595,7 @@ def read_entropy_variables(block_header, sub_block_data):
 
 
 def read_bitstream(block_header, entropies, sub_block_data):
-    if ((block_header.mono_output == 0) and (block_header.false_stereo == 0)):
+    if (block_header.mono_output == 0) and (block_header.false_stereo == 0):
         channel_count = 2
         residuals = ([], [])
     else:
@@ -605,16 +605,16 @@ def read_bitstream(block_header, entropies, sub_block_data):
     u = None
     i = 0
     while (i < (block_header.block_samples * channel_count)):
-        if ((u is None) and (entropies[0][0] < 2) and (entropies[1][0] < 2)):
+        if (u is None) and (entropies[0][0] < 2) and (entropies[1][0] < 2):
             # handle long run of 0 residuals
             zeroes = read_egc(sub_block_data)
-            if (zeroes > 0):
+            if zeroes > 0:
                 for j in range(zeroes):
                     residuals[i % channel_count].append(0)
                     i += 1
                 entropies[0][0] = entropies[0][1] = entropies[0][2] = 0
                 entropies[1][0] = entropies[1][1] = entropies[1][2] = 0
-            if (i < (block_header.block_samples * channel_count)):
+            if i < (block_header.block_samples * channel_count):
                 (residual, u) = read_residual(
                     sub_block_data,
                     u,
@@ -634,7 +634,7 @@ def read_bitstream(block_header, entropies, sub_block_data):
 
 def read_egc(reader):
     t = reader.unary(0)
-    if (t > 0):
+    if t > 0:
         p = reader.read(t - 1)
         return 2 ** (t - 1) + p
     else:
@@ -642,30 +642,30 @@ def read_egc(reader):
 
 
 def read_residual(reader, last_u, entropies):
-    if (last_u is None):
+    if last_u is None:
         u = reader.unary(0)
-        if (u == 16):
+        if u == 16:
             u += read_egc(reader)
         m = u // 2
-    elif ((last_u % 2) == 1):
+    elif (last_u % 2) == 1:
         u = reader.unary(0)
-        if (u == 16):
+        if u == 16:
             u += read_egc(reader)
         m = (u // 2) + 1
     else:
         u = None
         m = 0
 
-    if (m == 0):
+    if m == 0:
         base = 0
         add = entropies[0] >> 4
         entropies[0] -= ((entropies[0] + 126) >> 7) * 2
-    elif (m == 1):
+    elif m == 1:
         base = (entropies[0] >> 4) + 1
         add = entropies[1] >> 4
         entropies[0] += ((entropies[0] + 128) >> 7) * 5
         entropies[1] -= ((entropies[1] + 62) >> 6) * 2
-    elif (m == 2):
+    elif m == 2:
         base = ((entropies[0] >> 4) + 1) + ((entropies[1] >> 4) + 1)
         add = entropies[2] >> 4
         entropies[0] += ((entropies[0] + 128) >> 7) * 5
@@ -680,20 +680,20 @@ def read_residual(reader, last_u, entropies):
         entropies[1] += ((entropies[1] + 64) >> 6) * 5
         entropies[2] += ((entropies[2] + 32) >> 5) * 5
 
-    if (add == 0):
+    if add == 0:
         unsigned = base
     else:
         p = int(log(add) / log(2))
         e = 2 ** (p + 1) - add - 1
         r = reader.read(p)
-        if (r >= e):
+        if r >= e:
             b = reader.read(1)
             unsigned = base + (r * 2) - e + b
         else:
             unsigned = base + r
 
     sign = reader.read(1)
-    if (sign == 1):
+    if sign == 1:
         return (-unsigned - 1, u)
     else:
         return (unsigned, u)
@@ -725,16 +725,16 @@ def undo_extended_integers(zero_bits, one_bits, duplicate_bits,
                            channels):
     un_shifted = []
     for channel in channels:
-        if (zero_bits > 0):
+        if zero_bits > 0:
             un_shifted.append([s << zero_bits for s in channel])
-        elif (one_bits > 0):
+        elif one_bits > 0:
             ones = (1 << one_bits) - 1
             un_shifted.append([(s << one_bits) + ones for s in channel])
-        elif (duplicate_bits > 0):
+        elif duplicate_bits > 0:
             dupes = []
             ones = (1 << duplicate_bits) - 1
             for s in channel:
-                if ((s % 2) == 0):
+                if (s % 2) == 0:
                     dupes.append(s << duplicate_bits)
                 else:
                     dupes.append((s << duplicate_bits) + ones)
@@ -781,13 +781,13 @@ EXP2 = [0x100, 0x101, 0x101, 0x102, 0x103, 0x103, 0x104, 0x105,
 
 def read_exp2(reader):
     value = reader.read_signed(16)
-    if ((-32768 <= value) and (value < -2304)):
+    if (-32768 <= value) and (value < -2304):
         return -(EXP2[-value & 0xFF] << ((-value >> 8) - 9))
-    elif ((-2304 <= value) and (value < 0)):
+    elif (-2304 <= value) and (value < 0):
         return -(EXP2[-value & 0xFF] >> (9 - (-value >> 8)))
-    elif ((0 <= value) and (value <= 2304)):
+    elif (0 <= value) and (value <= 2304):
         return EXP2[value & 0xFF] >> (9 - (value >> 8))
-    elif ((2304 < value) and (value <= 32767)):
+    elif (2304 < value) and (value <= 32767):
         return EXP2[value & 0xFF] << ((value >> 8) - 9)
 
 
@@ -796,7 +796,7 @@ def decorrelate_channels(residuals,
                          decorrelation_weights, decorrelation_samples):
     """returns a tuple of 1 or 2 lists of decorrelated channel data"""
 
-    if (len(residuals) == 2):
+    if len(residuals) == 2:
         latest_pass = [r[:] for r in residuals]
         for (term,
              delta,
@@ -830,7 +830,7 @@ def decorrelate_channels(residuals,
 
 def decorrelation_pass_1ch(correlated_samples,
                            term, delta, weight, decorrelation_samples):
-    if (term == 18):
+    if term == 18:
         assert(len(decorrelation_samples) == 2)
         decorrelated = decorrelation_samples[:]
         decorrelated.reverse()
@@ -840,7 +840,7 @@ def decorrelation_pass_1ch(correlated_samples,
                                 correlated_samples[i])
             weight += update_weight(temp, correlated_samples[i], delta)
         return decorrelated[2:]
-    elif (term == 17):
+    elif term == 17:
         assert(len(decorrelation_samples) == 2)
         decorrelated = decorrelation_samples[:]
         decorrelated.reverse()
@@ -850,7 +850,7 @@ def decorrelation_pass_1ch(correlated_samples,
                                 correlated_samples[i])
             weight += update_weight(temp, correlated_samples[i], delta)
         return decorrelated[2:]
-    elif ((1 <= term) and (term <= 8)):
+    elif (1 <= term) and (term <= 8):
         assert(len(decorrelation_samples) == term)
         decorrelated = decorrelation_samples[:]
         for i in range(len(correlated_samples)):
@@ -870,19 +870,19 @@ def decorrelation_pass_2ch(correlated,
     assert(len(correlated[0]) == len(correlated[1]))
     assert(len(weights) == 2)
 
-    if (((17 <= term) and (term <= 18)) or ((1 <= term) and (term <= 8))):
+    if ((17 <= term) and (term <= 18)) or ((1 <= term) and (term <= 8)):
         return (decorrelation_pass_1ch(correlated[0],
                                        term, delta, weights[0],
                                        decorrelation_samples[0]),
                 decorrelation_pass_1ch(correlated[1],
                                        term, delta, weights[1],
                                        decorrelation_samples[1]))
-    elif ((-3 <= term) and (term <= -1)):
+    elif (-3 <= term) and (term <= -1):
         assert(len(decorrelation_samples[0]) == 1)
         decorrelated = ([decorrelation_samples[1][0]],
                         [decorrelation_samples[0][0]])
         weights = list(weights)
-        if (term == -1):
+        if term == -1:
             for i in range(len(correlated[0])):
                 decorrelated[0].append(apply_weight(weights[0],
                                                     decorrelated[1][i]) +
@@ -899,7 +899,7 @@ def decorrelation_pass_2ch(correlated,
                                             delta)
                 weights[0] = max(min(weights[0], 1024), -1024)
                 weights[1] = max(min(weights[1], 1024), -1024)
-        elif (term == -2):
+        elif term == -2:
             for i in range(len(correlated[0])):
                 decorrelated[1].append(apply_weight(weights[1],
                                                     decorrelated[0][i]) +
@@ -917,7 +917,7 @@ def decorrelation_pass_2ch(correlated,
                                             delta)
                 weights[1] = max(min(weights[1], 1024), -1024)
                 weights[0] = max(min(weights[0], 1024), -1024)
-        elif (term == -3):
+        elif term == -3:
             for i in range(len(correlated[0])):
                 decorrelated[0].append(apply_weight(weights[0],
                                                     decorrelated[1][i]) +
@@ -946,9 +946,9 @@ def apply_weight(weight, sample):
 
 
 def update_weight(source, result, delta):
-    if ((source == 0) or (result == 0)):
+    if (source == 0) or (result == 0):
         return 0
-    elif ((source ^ result) >= 0):
+    elif (source ^ result) >= 0:
         return delta
     else:
         return -delta
@@ -961,7 +961,7 @@ def calculate_crc(samples):
         for s in frame:
             crc = 3 * crc + s
 
-    if (crc >= 0):
+    if crc >= 0:
         return crc % 0x100000000
     else:
         return (2 ** 32 - (-crc)) % 0x100000000

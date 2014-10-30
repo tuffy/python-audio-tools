@@ -49,7 +49,7 @@ class Player(object):
         except ImportError:
             from Queue import Queue
 
-        if (not isinstance(audio_output, AudioOutput)):
+        if not isinstance(audio_output, AudioOutput):
             raise TypeError("invalid output object")
 
         self.__audio_output__ = audio_output
@@ -208,11 +208,11 @@ class AudioPlayer(object):
     def stop(self):
         """changes current state of player to PLAYER_STOPPED"""
 
-        if (self.__state__ == PLAYER_STOPPED):
+        if self.__state__ == PLAYER_STOPPED:
             # already stopped, so nothing to do
             return
         else:
-            if (self.__state__ == PLAYER_PAUSED):
+            if self.__state__ == PLAYER_PAUSED:
                 self.__audio_output__.resume()
 
             self.__state__ = PLAYER_STOPPED
@@ -224,7 +224,7 @@ class AudioPlayer(object):
         """if playing, changes current state of player to PLAYER_PAUSED"""
 
         # do nothing if player is stopped or already paused
-        if (self.__state__ == PLAYER_PLAYING):
+        if self.__state__ == PLAYER_PLAYING:
             self.__audio_output__.pause()
             self.__state__ = PLAYER_PAUSED
 
@@ -234,10 +234,10 @@ class AudioPlayer(object):
 
         from audiotools import BufferedPCMReader
 
-        if (self.__state__ == PLAYER_PLAYING):
+        if self.__state__ == PLAYER_PLAYING:
             # already playing, so nothing to do
             return
-        elif (self.__state__ == PLAYER_PAUSED):
+        elif self.__state__ == PLAYER_PAUSED:
             # go from unpaused to playing
             self.__audio_output__.resume()
             self.__state__ = PLAYER_PLAYING
@@ -250,12 +250,12 @@ class AudioPlayer(object):
             pcmreader = self.__audiofile__.to_pcm()
 
             # apply ReplayGain if requested
-            if (self.__replay_gain__ in (RG_TRACK_GAIN, RG_ALBUM_GAIN)):
+            if self.__replay_gain__ in (RG_TRACK_GAIN, RG_ALBUM_GAIN):
                 gain = self.__audiofile__.get_replay_gain()
-                if (gain is not None):
+                if gain is not None:
                     from audiotools.replaygain import ReplayGainReader
 
-                    if (self.__replay_gain__ == RG_TRACK_GAIN):
+                    if self.__replay_gain__ == RG_TRACK_GAIN:
                         pcmreader = ReplayGainReader(pcmreader,
                                                      gain.track_gain,
                                                      gain.track_peak)
@@ -292,24 +292,24 @@ class AudioPlayer(object):
 
         if audio is exhausted, stop playing and call the next_track callback"""
 
-        if (self.__state__ == PLAYER_PLAYING):
+        if self.__state__ == PLAYER_PLAYING:
             try:
                 frame = self.__pcmreader__.read(self.__buffer_size__)
             except (IOError, ValueError) as err:
                 # some sort of read error occurred
                 # so cease playing file and move on to next
                 self.stop()
-                if (callable(self.__next_track_callback__)):
+                if callable(self.__next_track_callback__):
                     self.__next_track_callback__()
                 return
 
-            if (len(frame) > 0):
+            if len(frame) > 0:
                 self.__current_frames__ += frame.frames
                 self.__audio_output__.play(frame)
             else:
                 # audio has been exhausted
                 self.stop()
-                if (callable(self.__next_track_callback__)):
+                if callable(self.__next_track_callback__):
                     self.__next_track_callback__()
 
     def run(self, commands, responses):
@@ -326,23 +326,23 @@ class AudioPlayer(object):
                 (command,
                  args) = commands.get(self.__state__ != PLAYER_PLAYING)
                 # got a command to process
-                if (command == "open"):
+                if command == "open":
                     # stop whatever's playing and prepare new track for playing
                     self.stop()
                     self.set_audiofile(args[0])
-                elif (command == "play"):
+                elif command == "play":
                     self.play()
-                elif (command == "set_replay_gain"):
+                elif command == "set_replay_gain":
                     self.__replay_gain__ = args[0]
-                elif (command == "set_output"):
+                elif command == "set_output":
                     # resume (if necessary) and close existing output
-                    if (self.__state__ == PLAYER_PAUSED):
+                    if self.__state__ == PLAYER_PAUSED:
                         self.__audio_output__.resume()
                     self.__audio_output__.close()
 
                     # set new output and set format (if necessary)
                     self.__audio_output__ = args[0]
-                    if (self.__pcmreader__ is not None):
+                    if self.__pcmreader__ is not None:
                         self.__audio_output__.set_format(
                             sample_rate=self.__pcmreader__.sample_rate,
                             channels=self.__pcmreader__.channels,
@@ -350,20 +350,20 @@ class AudioPlayer(object):
                             bits_per_sample=self.__pcmreader__.bits_per_sample)
 
                     # if paused, reset audio output to paused
-                    if (self.__state__ == PLAYER_PAUSED):
+                    if self.__state__ == PLAYER_PAUSED:
                         self.__audio_output__.pause()
-                elif (command == "pause"):
+                elif command == "pause":
                     self.pause()
-                elif (command == "toggle_play_pause"):
+                elif command == "toggle_play_pause":
                     # switch from paused to playing or playing to paused
-                    if (self.__state__ == PLAYER_PAUSED):
+                    if self.__state__ == PLAYER_PAUSED:
                         self.play()
-                    elif (self.__state__ == PLAYER_PLAYING):
+                    elif self.__state__ == PLAYER_PLAYING:
                         self.pause()
-                elif (command == "stop"):
+                elif command == "stop":
                     self.stop()
                     self.__audio_output__.close()
-                elif (command == "close"):
+                elif command == "close":
                     self.stop()
                     self.__audio_output__.close()
                     return
@@ -389,7 +389,7 @@ class CDPlayer(Player):
         except ImportError:
             from Queue import Queue
 
-        if (not isinstance(audio_output, AudioOutput)):
+        if not isinstance(audio_output, AudioOutput):
             raise TypeError("invalid output object")
 
         self.__audio_output__ = audio_output
@@ -446,7 +446,7 @@ class CDAudioPlayer(AudioPlayer):
         """set tracks number to play"""
 
         # ensure track number is in the proper range
-        if (track_number in self.__offsets__.keys()):
+        if track_number in self.__offsets__.keys():
             self.__track_number__ = track_number
 
     def play(self):
@@ -457,10 +457,10 @@ class CDAudioPlayer(AudioPlayer):
                                 ThreadedPCMReader,
                                 PCMReaderHead)
 
-        if (self.__state__ == PLAYER_PLAYING):
+        if self.__state__ == PLAYER_PLAYING:
             # already playing, so nothing to do
             return
-        elif (self.__state__ == PLAYER_PAUSED):
+        elif self.__state__ == PLAYER_PAUSED:
             # go from unpaused to playing
             self.__audio_output__.resume()
             self.__state__ = PLAYER_PLAYING
@@ -641,7 +641,7 @@ class NULLAudioOutput(AudioOutput):
         """sets the output volume to a floating point value
         between 0.0 and 1.0"""
 
-        if ((volume >= 0) and (volume <= 1.0)):
+        if (volume >= 0) and (volume <= 1.0):
             self.__volume__ = volume
         else:
             raise ValueError("volume must be between 0.0 and 1.0")
@@ -699,7 +699,7 @@ class OSSAudioOutput(AudioOutput):
         if the stream has been initialized to the same format,
         this method does nothing"""
 
-        if (self.__ossaudio__ is None):
+        if self.__ossaudio__ is None:
             # output hasn't been initialized
 
             import ossaudiodev
@@ -710,13 +710,13 @@ class OSSAudioOutput(AudioOutput):
             # initialize audio output device and setup framelist converter
             self.__ossaudio__ = ossaudiodev.open('w')
             self.__ossmixer__ = ossaudiodev.openmixer()
-            if (self.bits_per_sample == 8):
+            if self.bits_per_sample == 8:
                 self.__ossaudio__.setfmt(ossaudiodev.AFMT_S8_LE)
                 self.__converter__ = lambda f: f.to_bytes(False, True)
-            elif (self.bits_per_sample == 16):
+            elif self.bits_per_sample == 16:
                 self.__ossaudio__.setfmt(ossaudiodev.AFMT_S16_LE)
                 self.__converter__ = lambda f: f.to_bytes(False, True)
-            elif (self.bits_per_sample == 24):
+            elif self.bits_per_sample == 24:
                 from audiotools.pcm import from_list
 
                 self.__ossaudio__.setfmt(ossaudiodev.AFMT_S16_LE)
@@ -760,13 +760,13 @@ class OSSAudioOutput(AudioOutput):
 
         import ossaudiodev
 
-        if (self.__ossmixer__ is None):
+        if self.__ossmixer__ is None:
             self.set_format(*DEFAULT_FORMAT)
 
         controls = self.__ossmixer__.controls()
         for control in (ossaudiodev.SOUND_MIXER_VOLUME,
                         ossaudiodev.SOUND_MIXER_PCM):
-            if (controls & (1 << control)):
+            if controls & (1 << control):
                 try:
                     volumes = self.__ossmixer__.get(control)
                     return (sum(volumes) / float(len(volumes))) / 100.0
@@ -779,15 +779,15 @@ class OSSAudioOutput(AudioOutput):
         """sets the output volume to a floating point value
         between 0.0 and 1.0"""
 
-        if ((volume >= 0) and (volume <= 1.0)):
-            if (self.__ossmixer__ is None):
+        if (volume >= 0) and (volume <= 1.0):
+            if self.__ossmixer__ is None:
                 self.set_format(*DEFAULT_FORMAT)
 
             controls = self.__ossmixer__.controls()
             ossvolume = max(min(int(round(volume * 100)), 100), 0)
             for control in (ossaudiodev.SOUND_MIXER_VOLUME,
                             ossaudiodev.SOUND_MIXER_PCM):
-                if (controls & (1 << control)):
+                if controls & (1 << control):
                     try:
                         self.__ossmixer__.set(control, (ossvolume, ossvolume))
                     except ossaudiodev.OSSAudioError:
@@ -800,10 +800,10 @@ class OSSAudioOutput(AudioOutput):
 
         AudioOutput.close(self)
 
-        if (self.__ossaudio__ is not None):
+        if self.__ossaudio__ is not None:
             self.__ossaudio__.close()
             self.__ossaudio__ = None
-        if (self.__ossmixer__ is not None):
+        if self.__ossmixer__ is not None:
             self.__ossmixer__.close()
             self.__ossmixer__ = None
 
@@ -856,7 +856,7 @@ class PulseAudioOutput(AudioOutput):
         if the stream has been initialized to the same format,
         this method does nothing"""
 
-        if (self.__pulseaudio__ is None):
+        if self.__pulseaudio__ is None:
             # output hasn't been initialized
 
             from audiotools.output import PulseAudio
@@ -892,19 +892,19 @@ class PulseAudioOutput(AudioOutput):
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
 
-        if (self.__pulseaudio__ is not None):
+        if self.__pulseaudio__ is not None:
             self.__pulseaudio__.pause()
 
     def resume(self):
         """resumes playing paused audio output"""
 
-        if (self.__pulseaudio__ is not None):
+        if self.__pulseaudio__ is not None:
             self.__pulseaudio__.resume()
 
     def get_volume(self):
         """returns a floating-point volume value between 0.0 and 1.0"""
 
-        if (self.__pulseaudio__ is None):
+        if self.__pulseaudio__ is None:
             self.set_format(*DEFAULT_FORMAT)
 
         return self.__pulseaudio__.get_volume()
@@ -913,8 +913,8 @@ class PulseAudioOutput(AudioOutput):
         """sets the output volume to a floating point value
         between 0.0 and 1.0"""
 
-        if ((volume >= 0) and (volume <= 1.0)):
-            if (self.__pulseaudio__ is None):
+        if (volume >= 0) and (volume <= 1.0):
+            if self.__pulseaudio__ is None:
                 self.set_format(*DEFAULT_FORMAT)
 
             self.__pulseaudio__.set_volume(volume)
@@ -926,7 +926,7 @@ class PulseAudioOutput(AudioOutput):
 
         AudioOutput.close(self)
 
-        if (self.__pulseaudio__ is not None):
+        if self.__pulseaudio__ is not None:
             self.__pulseaudio__.flush()
             self.__pulseaudio__.close()
             self.__pulseaudio__ = None
@@ -980,7 +980,7 @@ class ALSAAudioOutput(AudioOutput):
         if the stream has been initialized to the same format,
         this method does nothing"""
 
-        if (self.__alsaaudio__ is None):
+        if self.__alsaaudio__ is None:
             # output hasn't been initialized
 
             from audiotools.output import ALSAAudio
@@ -1012,19 +1012,19 @@ class ALSAAudioOutput(AudioOutput):
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
 
-        if (self.__alsaaudio__ is not None):
+        if self.__alsaaudio__ is not None:
             self.__alsaaudio__.pause()
 
     def resume(self):
         """resumes playing paused audio output"""
 
-        if (self.__alsaaudio__ is not None):
+        if self.__alsaaudio__ is not None:
             self.__alsaaudio__.resume()
 
     def get_volume(self):
         """returns a floating-point volume value between 0.0 and 1.0"""
 
-        if (self.__alsaaudio__ is None):
+        if self.__alsaaudio__ is None:
             self.set_format(*DEFAULT_FORMAT)
         return self.__alsaaudio__.get_volume()
 
@@ -1032,8 +1032,8 @@ class ALSAAudioOutput(AudioOutput):
         """sets the output volume to a floating point value
         between 0.0 and 1.0"""
 
-        if ((volume >= 0) and (volume <= 1.0)):
-            if (self.__alsaaudio__ is None):
+        if (volume >= 0) and (volume <= 1.0):
+            if self.__alsaaudio__ is None:
                 self.set_format(*DEFAULT_FORMAT)
             self.__alsaaudio__.set_volume(volume)
         else:
@@ -1044,7 +1044,7 @@ class ALSAAudioOutput(AudioOutput):
 
         AudioOutput.close(self)
 
-        if (self.__alsaaudio__ is not None):
+        if self.__alsaaudio__ is not None:
             self.__alsaaudio__.flush()
             self.__alsaaudio__.close()
             self.__alsaaudio__ = None
@@ -1098,7 +1098,7 @@ class CoreAudioOutput(AudioOutput):
         if the stream has been initialized to the same format,
         this method does nothing"""
 
-        if (self.__coreaudio__ is None):
+        if self.__coreaudio__ is None:
             # output hasn't been initialized
 
             from audiotools.output import CoreAudio
@@ -1130,19 +1130,19 @@ class CoreAudioOutput(AudioOutput):
     def pause(self):
         """pauses audio output, with the expectation it will be resumed"""
 
-        if (self.__coreaudio__ is not None):
+        if self.__coreaudio__ is not None:
             self.__coreaudio__.pause()
 
     def resume(self):
         """resumes playing paused audio output"""
 
-        if (self.__coreaudio__ is not None):
+        if self.__coreaudio__ is not None:
             self.__coreaudio__.resume()
 
     def get_volume(self):
         """returns a floating-point volume value between 0.0 and 1.0"""
 
-        if (self.__coreaudio__ is None):
+        if self.__coreaudio__ is None:
             self.set_format(*DEFAULT_FORMAT)
         try:
             return self.__coreaudio__.get_volume()
@@ -1154,8 +1154,8 @@ class CoreAudioOutput(AudioOutput):
         """sets the output volume to a floating point value
         between 0.0 and 1.0"""
 
-        if ((volume >= 0) and (volume <= 1.0)):
-            if (self.__coreaudio__ is None):
+        if (volume >= 0) and (volume <= 1.0):
+            if self.__coreaudio__ is None:
                 self.set_format(*DEFAULT_FORMAT)
             try:
                 self.__coreaudio__.set_volume(volume)
@@ -1170,7 +1170,7 @@ class CoreAudioOutput(AudioOutput):
 
         AudioOutput.close(self)
 
-        if (self.__coreaudio__ is not None):
+        if self.__coreaudio__ is not None:
             self.__coreaudio__.flush()
             self.__coreaudio__.close()
             self.__coreaudio__ = None
@@ -1191,16 +1191,16 @@ def available_outputs():
     """iterates over all available AudioOutput objects
     this will always yield at least one output"""
 
-    if (PulseAudioOutput.available()):
+    if PulseAudioOutput.available():
         yield PulseAudioOutput()
 
-    if (ALSAAudioOutput.available()):
+    if ALSAAudioOutput.available():
         yield ALSAAudioOutput()
 
-    if (CoreAudioOutput.available()):
+    if CoreAudioOutput.available():
         yield CoreAudioOutput()
 
-    if (OSSAudioOutput.available()):
+    if OSSAudioOutput.available():
         yield OSSAudioOutput()
 
     yield NULLAudioOutput()
@@ -1212,7 +1212,7 @@ def open_output(output):
     or raises ValueError if it is unavailable"""
 
     for audio_output in available_outputs():
-        if (audio_output.NAME == output):
+        if audio_output.NAME == output:
             return audio_output
     else:
         raise ValueError("no such outout %s" % (output))

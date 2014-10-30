@@ -22,7 +22,7 @@ from audiotools.bitstream import BitstreamWriter
 from audiotools import BufferedPCMReader
 
 
-if (version_info[0] >= 3):
+if version_info[0] >= 3:
     def bytes_to_ints(b):
         return list(b)
 else:
@@ -75,23 +75,23 @@ def encode_shn(filename,
     writer.add_callback(bytes_written.byte)
 
     # write header from PCMReader info and encoding options
-    if (pcmreader.bits_per_sample == 8):
-        if (signed_samples):
+    if pcmreader.bits_per_sample == 8:
+        if signed_samples:
             write_long(writer, 1)  # signed, 8-bit
             sign_adjustment = 0
         else:
             write_long(writer, 2)  # unsigned, 8-bit
             sign_adjustment = 1 << (pcmreader.bits_per_sample - 1)
         # 8-bit samples have no endianness
-    elif (pcmreader.bits_per_sample == 16):
-        if (signed_samples):
-            if (is_big_endian):
+    elif pcmreader.bits_per_sample == 16:
+        if signed_samples:
+            if is_big_endian:
                 write_long(writer, 3)  # signed, 16-bit, big-endian
             else:
                 write_long(writer, 5)  # signed, 16-bit, little-endian
             sign_adjustment = 0
         else:
-            if (is_big_endian):
+            if is_big_endian:
                 write_long(writer, 4)  # unsigned, 16-bit, big-endian
             else:
                 write_long(writer, 6)  # unsigned, 16-bit, little-endian
@@ -117,7 +117,7 @@ def encode_shn(filename,
     while (len(frame) > 0):
         # if the chunk isn't block_size frames long,
         # issue a command to change it
-        if (frame.frames != block_size):
+        if frame.frames != block_size:
             block_size = frame.frames
             write_unsigned(writer, COMMAND_SIZE, FN_BLOCKSIZE)
             write_long(writer, block_size)
@@ -125,13 +125,13 @@ def encode_shn(filename,
         # split chunk into individual channels
         for c in range(pcmreader.channels):
             # convert PCM data to unsigned, if necessary
-            if (signed_samples):
+            if signed_samples:
                 channel = list(frame.channel(c))
             else:
                 channel = [s + sign_adjustment for s in frame.channel(c)]
 
             # if all samples are 0, issue a ZERO command
-            if (all_zeroes(channel)):
+            if all_zeroes(channel):
                 write_unsigned(writer, COMMAND_SIZE, FN_ZERO)
 
                 # wrap zeroes around for next set of channels
@@ -141,13 +141,13 @@ def encode_shn(filename,
                 # from the previous channel's shift
                 # issue a new BITSHIFT command
                 wasted_bits = wasted_bps(channel)
-                if (wasted_bits != left_shift):
+                if wasted_bits != left_shift:
                     write_unsigned(writer, COMMAND_SIZE, FN_BITSHIFT)
                     write_unsigned(writer, BITSHIFT_SIZE, wasted_bits)
                     left_shift = wasted_bits
 
                 # and shift the channel's bits if the amount is still > 0
-                if (left_shift > 0):
+                if left_shift > 0:
                     shifted = [s >> left_shift for s in channel]
                 else:
                     shifted = channel
@@ -176,7 +176,7 @@ def encode_shn(filename,
 
     # once all PCM data has been sent
     # if there's any footer data, write it as another VERBATIM block
-    if (len(footer_data) > 0):
+    if len(footer_data) > 0:
         write_unsigned(writer, COMMAND_SIZE, FN_VERBATIM)
         write_unsigned(writer, VERBATIM_SIZE, len(footer_data))
         for b in bytes_to_ints(footer_data):
@@ -204,7 +204,7 @@ def write_unsigned(writer, size, value):
 
 
 def write_signed(writer, size, value):
-    if (value >= 0):
+    if value >= 0:
         write_unsigned(writer, size + 1, value * 2)
     else:
         write_unsigned(writer, size + 1, ((-value - 1) * 2) + 1)
@@ -214,7 +214,7 @@ def write_long(writer, value):
     assert(value >= 0)
     from math import log
 
-    if (value == 0):
+    if value == 0:
         write_unsigned(writer, 2, 0)
         write_unsigned(writer, 0, 0)
     else:
@@ -231,7 +231,7 @@ def best_diff(previous_samples, samples):
 
     # build a full list of samples containing at least 3 previous samples
     # which are padded with 0s if there aren't enough present
-    if (len(previous_samples) < 3):
+    if len(previous_samples) < 3:
         full_samples = ([0] * (3 - len(previous_samples)) +
                         previous_samples + samples)
     else:
@@ -254,9 +254,9 @@ def best_diff(previous_samples, samples):
 
     # pick DIFF command based on minimum abs sum
     # and return residuals
-    if (abs_sum1 < min(abs_sum2, abs_sum3)):
+    if abs_sum1 < min(abs_sum2, abs_sum3):
         return (1, delta1[2:])
-    elif (abs_sum2 < abs_sum3):
+    elif abs_sum2 < abs_sum3:
         return (2, delta2[1:])
     else:
         return (3, delta3)
@@ -276,7 +276,7 @@ def best_energy(residuals):
 
 def all_zeroes(samples):
     for s in samples:
-        if (s != 0):
+        if s != 0:
             return False
     else:
         return True
@@ -292,13 +292,13 @@ def wasted_bps(samples):
 
     wasted = 2 ** 32
     for s in samples:
-        if (s != 0):
+        if s != 0:
             wasted = min(wasted_bits(s), wasted)
-            if (wasted == 0):
+            if wasted == 0:
                 return 0
 
     # all samples are 0
-    if (wasted == 2 ** 32):
+    if wasted == 2 ** 32:
         return 0
     else:
         return wasted

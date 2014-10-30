@@ -190,24 +190,24 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger(options.verbosity == "quiet")
 
     # ensure interactive mode is available, if selected
-    if (options.interactive and (not audiotools.ui.AVAILABLE)):
+    if options.interactive and (not audiotools.ui.AVAILABLE):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
     # get the AudioFile class we are converted to
-    if (options.type == 'help'):
+    if options.type == 'help':
         audiotools.ui.show_available_formats(msg)
         sys.exit(0)
     else:
         AudioType = audiotools.TYPE_MAP[options.type]
 
     # ensure the selected compression is compatible with that class
-    if (options.quality == 'help'):
+    if options.quality == 'help':
         audiotools.ui.show_available_qualities(msg, AudioType)
         sys.exit(0)
-    elif (options.quality is None):
+    elif options.quality is None:
         options.quality = audiotools.__default_quality__(AudioType.NAME)
-    elif (options.quality not in AudioType.COMPRESSION_MODES):
+    elif options.quality not in AudioType.COMPRESSION_MODES:
         msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
                   {"quality": options.quality,
                    "type": AudioType.NAME})
@@ -216,7 +216,7 @@ if (__name__ == '__main__'):
     quality = options.quality
     base_directory = options.dir
 
-    if (options.audio_ts is None):
+    if options.audio_ts is None:
         msg.error(_.ERR_NO_AUDIO_TS)
         sys.exit(1)
 
@@ -231,7 +231,7 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     # get selected DVDATitle from DVDAudio object
-    if (options.title < 1):
+    if options.title < 1:
         msg.error(_.ERR_INVALID_TITLE_NUMBER)
         sys.exit(1)
     title = dvda[0][options.title - 1]
@@ -261,15 +261,15 @@ if (__name__ == '__main__'):
                 # track_number and track_start both start at 1
                 # so minus 1 to take care of the offset
                 m.track_number += (options.track_start - 1)
-            if (options.track_total is not None):
+            if options.track_total is not None:
                 m.track_total = options.track_total
-            if (options.album_number is not None):
+            if options.album_number is not None:
                 m.album_number = options.album_number
-            if (options.album_total is not None):
+            if options.album_total is not None:
                 m.album_total = options.album_total
 
     # determine which tracks to extract from the DVDATitle
-    if (len(options.tracks) == 0):
+    if len(options.tracks) == 0:
         to_rip = {track.track: track for track in title}
     else:
         to_rip = {}
@@ -282,7 +282,7 @@ if (__name__ == '__main__'):
                 continue
 
     # decide which metadata and output options use when extracting tracks
-    if (options.interactive):
+    if options.interactive:
         # pick choice using interactive widget
         output_widget = audiotools.ui.OutputFiller(
             track_labels=[_.LAB_TRACK_X_OF_Y % (i, len(title))
@@ -313,7 +313,7 @@ if (__name__ == '__main__'):
             msg.info(audiotools.ui.xargs_suggestion(sys.argv))
             sys.exit(1)
 
-        if (not output_widget.cancelled()):
+        if not output_widget.cancelled():
             output_tracks = list(output_widget.output_tracks())
         else:
             sys.exit(0)
@@ -351,7 +351,7 @@ if (__name__ == '__main__'):
         pcmreader.next_track(pts_ticks)
         pcm_frames = pcmreader.pcm_frames
 
-        if ((i + 1) in to_rip):
+        if (i + 1) in to_rip:
             (output_class,
              output_filename,
              output_quality,

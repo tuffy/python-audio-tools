@@ -33,9 +33,9 @@ def log2(i):
 
 
 def sign_only(value):
-    if (value == 0):
+    if value == 0:
         return 0
-    elif (value > 0):
+    elif value > 0:
         return 1
     else:
         return -1
@@ -46,7 +46,7 @@ def truncate_bits(value, bits):
     truncated = value & ((1 << bits) - 1)
 
     # apply newly created sign bit
-    if (truncated & (1 << (bits - 1))):
+    if truncated & (1 << (bits - 1)):
         return truncated - (1 << bits)
     else:
         return truncated
@@ -102,7 +102,7 @@ class ALACDecoder(object):
                              7: 0x013F,
                              8: 0x00FF}.get(self.channels, 0)
 
-        if ((alac1 != b'alac') or (alac2 != b'alac')):
+        if (alac1 != b'alac') or (alac2 != b'alac'):
             raise ValueError("Invalid alac atom")
 
         # also locate the "mdhd" atom
@@ -110,10 +110,10 @@ class ALACDecoder(object):
         self.reader.setpos(stream_start)
         mdhd = self.find_sub_atom(b"moov", b"trak", b"mdia", b"mdhd")
         (version, ) = mdhd.parse("8u 24p")
-        if (version == 0):
+        if version == 0:
             (self.total_pcm_frames,) = mdhd.parse(
                 "32p 32p 32p 32u 2P 16p")
-        elif (version == 1):
+        elif version == 1:
             (self.total_pcm_frames,) = mdhd.parse(
                 "64p 64p 32p 64U 2P 16p")
         else:
@@ -135,7 +135,7 @@ class ALACDecoder(object):
                 while (stream_atom != next_atom):
                     reader.skip_bytes(length - 8)
                     (length, stream_atom) = reader.parse("32u 4b")
-                if (last):
+                if last:
                     return reader.substream(length - 8)
                 else:
                     reader = reader.substream(length - 8)
@@ -144,7 +144,7 @@ class ALACDecoder(object):
 
     def read(self, pcm_frames):
         # if the stream is exhausted, return an empty pcm.FrameList object
-        if (self.total_pcm_frames == 0):
+        if self.total_pcm_frames == 0:
             return empty_framelist(self.channels, self.bits_per_sample)
 
         # otherwise, read one ALAC frameset's worth of frame data
@@ -156,31 +156,31 @@ class ALACDecoder(object):
         self.reader.byte_align()
 
         # reorder the frameset to Wave order, depending on channel count
-        if ((self.channels == 1) or (self.channels == 2)):
+        if (self.channels == 1) or (self.channels == 2):
             pass
-        elif (self.channels == 3):
+        elif self.channels == 3:
             frameset_data = [frameset_data[1],
                              frameset_data[2],
                              frameset_data[0]]
-        elif (self.channels == 4):
+        elif self.channels == 4:
             frameset_data = [frameset_data[1],
                              frameset_data[2],
                              frameset_data[0],
                              frameset_data[3]]
-        elif (self.channels == 5):
+        elif self.channels == 5:
             frameset_data = [frameset_data[1],
                              frameset_data[2],
                              frameset_data[0],
                              frameset_data[3],
                              frameset_data[4]]
-        elif (self.channels == 6):
+        elif self.channels == 6:
             frameset_data = [frameset_data[1],
                              frameset_data[2],
                              frameset_data[0],
                              frameset_data[5],
                              frameset_data[3],
                              frameset_data[4]]
-        elif (self.channels == 7):
+        elif self.channels == 7:
             frameset_data = [frameset_data[1],
                              frameset_data[2],
                              frameset_data[0],
@@ -188,7 +188,7 @@ class ALACDecoder(object):
                              frameset_data[3],
                              frameset_data[4],
                              frameset_data[5]]
-        elif (self.channels == 8):
+        elif self.channels == 8:
             frameset_data = [frameset_data[3],
                              frameset_data[4],
                              frameset_data[0],
@@ -220,12 +220,12 @@ class ALACDecoder(object):
         has_sample_count = self.reader.read(1)
         uncompressed_lsb_size = self.reader.read(2)
         uncompressed = self.reader.read(1)
-        if (has_sample_count):
+        if has_sample_count:
             sample_count = self.reader.read(32)
         else:
             sample_count = self.samples_per_frame
 
-        if (uncompressed == 1):
+        if uncompressed == 1:
             # if the frame is uncompressed,
             # read the raw, interlaced samples
             samples = [self.reader.read_signed(self.bits_per_sample)
@@ -242,7 +242,7 @@ class ALACDecoder(object):
                                 for i in range(channel_count)]
 
             # optional uncompressed LSB values
-            if (uncompressed_lsb_size > 0):
+            if uncompressed_lsb_size > 0:
                 uncompressed_lsbs = [
                     self.reader.read(uncompressed_lsb_size * 8)
                     for i in range(sample_count * channel_count)]
@@ -276,7 +276,7 @@ class ALACDecoder(object):
 
             # if uncompressed LSB values are present,
             # prepend them to each sample of each channel
-            if (uncompressed_lsb_size > 0):
+            if uncompressed_lsb_size > 0:
                 channels = []
                 for (i, channel) in enumerate(decorrelated_channels):
                     assert(len(channel) ==
@@ -315,13 +315,13 @@ class ALACDecoder(object):
             sign_modifier = 0
 
             # change unsigned residual to signed residual
-            if (unsigned & 1):
+            if unsigned & 1:
                 residuals.append(-((unsigned + 1) // 2))
             else:
                 residuals.append(unsigned // 2)
 
             # update history based on unsigned residual
-            if (unsigned <= 0xFFFF):
+            if unsigned <= 0xFFFF:
                 history += ((unsigned * self.history_multiplier) -
                             ((history * self.history_multiplier) >> 9))
             else:
@@ -329,19 +329,19 @@ class ALACDecoder(object):
 
             # if history gets too small, we may have a block of 0 samples
             # which can be compressed more efficiently
-            if ((history < 128) and ((i + 1) < sample_count)):
+            if (history < 128) and ((i + 1) < sample_count):
                 zeroes_k = min(7 -
                                log2(history) +
                                ((history + 16) // 64),
                                self.maximum_k)
                 zero_residuals = self.read_residual(zeroes_k, 16)
-                if (zero_residuals > 0):
+                if zero_residuals > 0:
                     residuals.extend([0] * zero_residuals)
                     i += zero_residuals
 
                 history = 0
 
-                if (zero_residuals <= 0xFFFF):
+                if zero_residuals <= 0xFFFF:
                     sign_modifier = 1
 
             i += 1
@@ -350,15 +350,15 @@ class ALACDecoder(object):
 
     def read_residual(self, k, sample_size):
         msb = self.reader.read_huffman_code(RESIDUAL)
-        if (msb == -1):
+        if msb == -1:
             return self.reader.read(sample_size)
-        elif (k == 0):
+        elif k == 0:
             return msb
         else:
             lsb = self.reader.read(k)
-            if (lsb > 1):
+            if lsb > 1:
                 return msb * ((1 << k) - 1) + (lsb - 1)
-            elif (lsb == 1):
+            elif lsb == 1:
                 self.reader.unread(1)
                 return msb * ((1 << k) - 1)
             else:
@@ -370,7 +370,7 @@ class ALACDecoder(object):
         # first sample is always copied verbatim
         samples = [residuals.pop(0)]
 
-        if (len(qlp_coefficients) < 31):
+        if len(qlp_coefficients) < 31:
             # the next "coefficient count" samples
             # are applied as differences to the previous
             for i in range(len(qlp_coefficients)):
@@ -391,7 +391,7 @@ class ALACDecoder(object):
                 buf = samples[-len(qlp_coefficients) - 2:-1]
 
                 # error value then adjusts the coefficients table
-                if (residual > 0):
+                if residual > 0:
                     predictor_num = len(qlp_coefficients) - 1
 
                     while ((predictor_num >= 0) and residual > 0):
@@ -409,7 +409,7 @@ class ALACDecoder(object):
 
                         predictor_num -= 1
 
-                elif (residual < 0):
+                elif residual < 0:
                     # the same as above, but we break if residual goes positive
                     predictor_num = len(qlp_coefficients) - 1
 
@@ -437,9 +437,9 @@ class ALACDecoder(object):
 
     def decorrelate_channels(self, channel_data,
                              interlacing_shift, interlacing_leftweight):
-        if (len(channel_data) != 2):
+        if len(channel_data) != 2:
             return channel_data
-        elif (interlacing_leftweight == 0):
+        elif interlacing_leftweight == 0:
             return channel_data
         else:
             left = []

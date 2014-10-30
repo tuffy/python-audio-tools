@@ -41,7 +41,7 @@ class PacketReader(object):
         self.close()
 
     def read_segment(self):
-        if (self.__current_segment__ >= len(self.__page__)):
+        if self.__current_segment__ >= len(self.__page__):
             self.read_page()
 
         segment = self.__page__[self.__current_segment__]
@@ -73,11 +73,11 @@ class PacketReader(object):
 
 
 def packet_to_segments(packet):
-    if (len(packet) == 0):
+    if len(packet) == 0:
         yield b""
     else:
         while (len(packet) > 0):
-            if (len(packet) == 255):
+            if len(packet) == 255:
                 yield packet
                 yield b""
                 packet = b""
@@ -109,7 +109,7 @@ def packet_to_pages(packet, bitstream_serial_number,
         segments=[])
 
     for segment in packet_to_segments(packet):
-        if (page.full()):
+        if page.full():
             yield page
             starting_sequence_number += 1
             page = Page(
@@ -150,7 +150,7 @@ def packets_to_pages(packets, bitstream_serial_number,
 
     for packet in packets:
         for (i, segment) in enumerate(packet_to_segments(packet)):
-            if (page.full()):
+            if page.full():
                 yield page
                 starting_sequence_number += 1
                 page = Page(

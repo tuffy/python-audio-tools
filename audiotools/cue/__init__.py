@@ -64,17 +64,17 @@ class Cuesheet(Sheet):
             current_file = None
             current_tracks = []
             for track in tracks:
-                if (current_file is None):
+                if current_file is None:
                     current_file = track.filename()
                     current_tracks = [track]
-                elif (current_file != track.filename()):
+                elif current_file != track.filename():
                     yield (current_file, current_tracks)
                     current_file = track.filename()
                     current_tracks = [track]
                 else:
                     current_tracks.append(track)
             else:
-                if (current_file is not None):
+                if current_file is not None:
                     yield (current_file, current_tracks)
 
         metadata = sheet.get_metadata()
@@ -86,7 +86,7 @@ class Cuesheet(Sheet):
                                tracks=[Track.converted(t) for t in tracks])
                           for (track_filename, tracks) in group_tracks(sheet)]}
 
-        if (metadata is not None):
+        if metadata is not None:
             args["catalog"] = metadata.catalog
             args["title"] = metadata.album_name
             args["performer"] = metadata.performer_name
@@ -100,7 +100,7 @@ class Cuesheet(Sheet):
     def __getitem__(self, index):
         not_found = IndexError(index)
         for file in self.__files__:
-            if (index < len(file)):
+            if index < len(file):
                 return file[index]
             else:
                 index -= len(file)
@@ -133,23 +133,23 @@ class Cuesheet(Sheet):
         """returns the Cuesheet as a unicode string"""
 
         items = []
-        if (self.__catalog__ is not None):
+        if self.__catalog__ is not None:
             items.append(
                 u"CATALOG %s" % (format_string(self.__catalog__)))
-        if (self.__title__ is not None):
+        if self.__title__ is not None:
             items.append(
                 u"TITLE %s" % (format_string(self.__title__)))
-        if (self.__performer__ is not None):
+        if self.__performer__ is not None:
             items.append(
                 u"PERFORMER %s" % (format_string(self.__performer__)))
-        if (self.__songwriter__ is not None):
+        if self.__songwriter__ is not None:
             items.append(
                 u"SONGWRITER %s" % (format_string(self.__songwriter__)))
-        if (self.__cdtextfile__ is not None):
+        if self.__cdtextfile__ is not None:
             items.append(
                 u"CDTEXTFILE %s" % (format_string(self.__cdtextfile__)))
 
-        if (len(items) > 0):
+        if len(items) > 0:
             return (u"\r\n".join(items) +
                     u"\r\n" +
                     u"\r\n".join([f.build() for f in self.__files__]) +
@@ -215,7 +215,7 @@ class Track(SheetTrack):
         assert((isrc is None) or isinstance(isrc, str_type))
         assert((pregap is None) or isinstance(pregap, int))
         assert((postgap is None) or isinstance(postgap, int))
-        if (flags is not None):
+        if flags is not None:
             for flag in flags:
                 assert(isinstance(flag, str_type))
         assert((title is None) or isinstance(title, str_type))
@@ -260,17 +260,17 @@ class Track(SheetTrack):
                                u"MODE1/2352"),
                 "indexes": [Index.converted(i) for i in sheettrack]}
 
-        if (metadata is not None):
+        if metadata is not None:
             args["isrc"] = metadata.ISRC
             args["title"] = metadata.track_name
             args["performer"] = metadata.performer_name
             args["songwriter"] = metadata.artist_name
 
-        if (sheettrack.pre_emphasis() and sheettrack.copy_permitted()):
+        if sheettrack.pre_emphasis() and sheettrack.copy_permitted():
             args["flags"] = [u"PRE", u"DCP"]
-        elif (sheettrack.pre_emphasis()):
+        elif sheettrack.pre_emphasis():
             args["flags"] = [u"PRE"]
-        elif (sheettrack.copy_permitted()):
+        elif sheettrack.copy_permitted():
             args["flags"] = [u"DCP"]
 
         return cls(**args)
@@ -309,7 +309,7 @@ class Track(SheetTrack):
     def filename(self):
         """returns SheetTrack's filename as a unicode string"""
 
-        if (self.__parent_file__ is not None):
+        if self.__parent_file__ is not None:
             return self.__parent_file__.filename()
         else:
             return u""
@@ -322,7 +322,7 @@ class Track(SheetTrack):
     def pre_emphasis(self):
         """returns whether SheetTrack has pre-emphasis"""
 
-        if (self.__flags__ is not None):
+        if self.__flags__ is not None:
             return u"PRE" in self.__flags__
         else:
             return False
@@ -330,7 +330,7 @@ class Track(SheetTrack):
     def copy_permitted(self):
         """returns whether copying is permitted"""
 
-        if (self.__flags__ is not None):
+        if self.__flags__ is not None:
             return u"DCP" in self.__flags__
         else:
             return False
@@ -340,32 +340,32 @@ class Track(SheetTrack):
 
         items = []
 
-        if (self.__title__ is not None):
+        if self.__title__ is not None:
             items.append(u"    TITLE %s" %
                          (format_string(self.__title__)))
 
-        if (self.__performer__ is not None):
+        if self.__performer__ is not None:
             items.append(u"    PERFORMER %s" %
                          (format_string(self.__performer__)))
 
-        if (self.__songwriter__ is not None):
+        if self.__songwriter__ is not None:
             items.append(u"    SONGWRITER %s" %
                          (format_string(self.__songwriter__)))
 
-        if (self.__flags__ is not None):
+        if self.__flags__ is not None:
             items.append(u"    FLAGS %s" % (" ".join(self.__flags__)))
 
-        if (self.__isrc__ is not None):
+        if self.__isrc__ is not None:
             items.append(u"    ISRC %s" % (self.__isrc__))
 
-        if (self.__pregap__ is not None):
+        if self.__pregap__ is not None:
             items.append(u"    PREGAP %s" %
                          (format_timestamp(self.__pregap__)))
 
         for index in self.__indexes__:
             items.append(index.build())
 
-        if (self.__postgap__ is not None):
+        if self.__postgap__ is not None:
             items.append(u"    POSTGAP %s" %
                          (format_timestamp(self.__postgap__)))
 

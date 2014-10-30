@@ -33,11 +33,11 @@ def __number_pair__(current, total):
     unslashed_format = u"%d"
     slashed_format = u"%d/%d"
 
-    if (empty(current) and empty(total)):
+    if empty(current) and empty(total):
         return unslashed_format % (0,)
-    elif ((not empty(current)) and empty(total)):
+    elif (not empty(current)) and empty(total):
         return unslashed_format % (current,)
-    elif (empty(current) and (not empty(total))):
+    elif empty(current) and (not empty(total)):
         return slashed_format % (0, total)
     else:
         # neither current or total are empty
@@ -51,7 +51,7 @@ def limited_transfer_data(from_function, to_function, max_bytes):
     BUFFER_SIZE = 0x100000
     s = from_function(BUFFER_SIZE)
     while ((len(s) > 0) and (max_bytes > 0)):
-        if (len(s) > max_bytes):
+        if len(s) > max_bytes:
             s = s[0:max_bytes]
         to_function(s)
         max_bytes -= len(s)
@@ -111,23 +111,23 @@ class ApeTagItem(object):
     def raw_info_pair(self):
         """returns a human-readable key/value pair of item data"""
 
-        if (self.type == 0):    # text
-            if (self.read_only):
+        if self.type == 0:    # text
+            if self.read_only:
                 return (self.key.decode('ascii'),
                         u"(read only) %s" % (self.data.decode('utf-8')))
             else:
                 return (self.key.decode('ascii'), self.data.decode('utf-8'))
-        elif (self.type == 1):  # binary
+        elif self.type == 1:  # binary
             return (self.key.decode('ascii'),
                     u"(binary) %d bytes" % (len(self.data)))
-        elif (self.type == 2):  # external
+        elif self.type == 2:  # external
             return (self.key.decode('ascii'),
                     u"(external) %d bytes" % (len(self.data)))
         else:                   # reserved
             return (self.key.decode('ascii'),
                     u"(reserved) %d bytes" % (len(self.data)))
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -242,28 +242,28 @@ class ApeTag(MetaData):
         """returns the minimum size of the total ApeTag, in bytes"""
 
         size = 0
-        if (self.contains_header):
+        if self.contains_header:
             size += 32
         for tag in self.tags:
             size += tag.total_size()
-        if (self.contains_footer):
+        if self.contains_footer:
             size += 32
         return size
 
     def __eq__(self, metadata):
-        if (isinstance(metadata, ApeTag)):
-            if (set(self.keys()) != set(metadata.keys())):
+        if isinstance(metadata, ApeTag):
+            if set(self.keys()) != set(metadata.keys()):
                 return False
 
             for tag in self.tags:
                 try:
-                    if (tag.data != metadata[tag.key].data):
+                    if tag.data != metadata[tag.key].data:
                         return False
                 except KeyError:
                     return False
             else:
                 return True
-        elif (isinstance(metadata, MetaData)):
+        elif isinstance(metadata, MetaData):
             return MetaData.__eq__(self, metadata)
         else:
             return False
@@ -273,7 +273,7 @@ class ApeTag(MetaData):
 
     def __contains__(self, key):
         for tag in self.tags:
-            if (tag.key == key):
+            if tag.key == key:
                 return True
         else:
             return False
@@ -282,7 +282,7 @@ class ApeTag(MetaData):
         assert(isinstance(key, bytes))
 
         for tag in self.tags:
-            if (tag.key == key):
+            if tag.key == key:
                 return tag
         else:
             raise KeyError(key)
@@ -299,7 +299,7 @@ class ApeTag(MetaData):
         assert(isinstance(key, bytes))
 
         for i in range(len(self.tags)):
-            if (self.tags[i].key == key):
+            if self.tags[i].key == key:
                 self.tags[i] = value
                 return
         else:
@@ -309,7 +309,7 @@ class ApeTag(MetaData):
         assert(isinstance(key, bytes))
 
         for (i, tag) in enumerate(self.tags):
-            if (tag.key == key):
+            if tag.key == key:
                 return i
         else:
             raise ValueError(key)
@@ -318,7 +318,7 @@ class ApeTag(MetaData):
         assert(isinstance(key, bytes))
 
         new_tags = [tag for tag in self.tags if tag.key != key]
-        if (len(new_tags) < len(self.tags)):
+        if len(new_tags) < len(self.tags):
             self.tags = new_tags
         else:
             raise KeyError(key)
@@ -326,11 +326,11 @@ class ApeTag(MetaData):
     def __getattr__(self, attr):
         import re
 
-        if (attr == 'track_number'):
+        if attr == 'track_number':
             try:
                 track_text = self[b"Track"].__unicode__()
                 track = re.search(r'\d+', track_text)
-                if (track is not None):
+                if track is not None:
                     track_number = int(track.group(0))
                     if ((track_number == 0) and
                         (re.search(r'/.*?(\d+)',
@@ -347,10 +347,10 @@ class ApeTag(MetaData):
             except KeyError:
                 # no "Track" in list of items
                 return None
-        elif (attr == 'track_total'):
+        elif attr == 'track_total':
             try:
                 track = re.search(r'/.*?(\d+)', self[b"Track"].__unicode__())
-                if (track is not None):
+                if track is not None:
                     return int(track.group(1))
                 else:
                     # no slashed integer field in "Track"
@@ -358,11 +358,11 @@ class ApeTag(MetaData):
             except KeyError:
                 # no "Track" in list of items
                 return None
-        elif (attr == 'album_number'):
+        elif attr == 'album_number':
             try:
                 media_text = self[b"Media"].__unicode__()
                 media = re.search(r'\d+', media_text)
-                if (media is not None):
+                if media is not None:
                     album_number = int(media.group(0))
                     if ((album_number == 0) and
                         (re.search(r'/.*?(\d+)',
@@ -379,10 +379,10 @@ class ApeTag(MetaData):
             except KeyError:
                 # no "Media" in list of items
                 return None
-        elif (attr == 'album_total'):
+        elif attr == 'album_total':
             try:
                 media = re.search(r'/.*?(\d+)', self[b"Media"].__unicode__())
-                if (media is not None):
+                if media is not None:
                     return int(media.group(1))
                 else:
                     # no slashed integer field in "Media"
@@ -390,12 +390,12 @@ class ApeTag(MetaData):
             except KeyError:
                 # no "Media" in list of items
                 return None
-        elif (attr in self.ATTRIBUTE_MAP):
+        elif attr in self.ATTRIBUTE_MAP:
             try:
                 return self[self.ATTRIBUTE_MAP[attr]].__unicode__()
             except KeyError:
                 return None
-        elif (attr in MetaData.FIELDS):
+        elif attr in MetaData.FIELDS:
             return None
         else:
             return MetaData.__getattribute__(self, attr)
@@ -403,11 +403,11 @@ class ApeTag(MetaData):
     # if an attribute is updated (e.g. self.track_name)
     # make sure to update the corresponding dict pair
     def __setattr__(self, attr, value):
-        if (attr in self.ATTRIBUTE_MAP):
-            if (value is not None):
+        if attr in self.ATTRIBUTE_MAP:
+            if value is not None:
                 import re
 
-                if (attr == 'track_number'):
+                if attr == 'track_number':
                     try:
                         self[b'Track'].data = (re.sub(
                             r'\d+',
@@ -418,7 +418,7 @@ class ApeTag(MetaData):
                         self[b'Track'] = self.ITEM.string(
                             b'Track',
                             __number_pair__(value, self.track_total))
-                elif (attr == 'track_total'):
+                elif attr == 'track_total':
                     try:
                         if (re.search(
                                 r'/\D*\d+',
@@ -436,7 +436,7 @@ class ApeTag(MetaData):
                         self[b'Track'] = self.ITEM.string(
                             b'Track',
                             __number_pair__(self.track_number, value))
-                elif (attr == 'album_number'):
+                elif attr == 'album_number':
                     try:
                         self[b'Media'].data = (re.sub(
                             r'\d+',
@@ -447,7 +447,7 @@ class ApeTag(MetaData):
                         self[b'Media'] = self.ITEM.string(
                             b'Media',
                             __number_pair__(value, self.album_total))
-                elif (attr == 'album_total'):
+                elif attr == 'album_total':
                     try:
                         if (re.search(
                                 r'/\D*\d+',
@@ -476,7 +476,7 @@ class ApeTag(MetaData):
     def __delattr__(self, attr):
         import re
 
-        if (attr == 'track_number'):
+        if attr == 'track_number':
             try:
                 # if "Track" field contains a slashed total
                 if (re.search(r'\d+.*?/.*?\d+',
@@ -492,7 +492,7 @@ class ApeTag(MetaData):
                     del(self[b'Track'])
             except KeyError:
                 pass
-        elif (attr == 'track_total'):
+        elif attr == 'track_total':
             try:
                 track_number = re.search(
                     r'\d+', self[b"Track"].__unicode__().split(u"/")[0])
@@ -513,7 +513,7 @@ class ApeTag(MetaData):
                         del(self[b'Track'])
             except KeyError:
                 pass
-        elif (attr == 'album_number'):
+        elif attr == 'album_number':
             try:
                 # if "Media" field contains a slashed total
                 if (re.search(r'\d+.*?/.*?\d+',
@@ -529,7 +529,7 @@ class ApeTag(MetaData):
                     del(self[b'Media'])
             except KeyError:
                 pass
-        elif (attr == 'album_total'):
+        elif attr == 'album_total':
             try:
                 track_number = re.search(
                     r'\d+', self[b"Media"].__unicode__().split(u"/")[0])
@@ -550,12 +550,12 @@ class ApeTag(MetaData):
                         del(self[b'Media'])
             except KeyError:
                 pass
-        elif (attr in self.ATTRIBUTE_MAP):
+        elif attr in self.ATTRIBUTE_MAP:
             try:
                 del(self[self.ATTRIBUTE_MAP[attr]])
             except KeyError:
                 pass
-        elif (attr in MetaData.FIELDS):
+        elif attr in MetaData.FIELDS:
             pass
         else:
             MetaData.__delattr__(self, attr)
@@ -564,9 +564,9 @@ class ApeTag(MetaData):
     def converted(cls, metadata):
         """converts a MetaData object to an ApeTag object"""
 
-        if (metadata is None):
+        if metadata is None:
             return None
-        elif (isinstance(metadata, ApeTag)):
+        elif isinstance(metadata, ApeTag):
             return ApeTag([tag.copy() for tag in metadata.tags],
                           contains_header=metadata.contains_header,
                           contains_footer=metadata.contains_footer)
@@ -574,7 +574,7 @@ class ApeTag(MetaData):
             tags = cls([])
 
             for (field, value) in metadata.filled_fields():
-                if (field in cls.ATTRIBUTE_MAP.keys()):
+                if field in cls.ATTRIBUTE_MAP.keys():
                     setattr(tags, field, value)
 
             for image in metadata.images():
@@ -626,13 +626,13 @@ class ApeTag(MetaData):
 
         from audiotools import FRONT_COVER, BACK_COVER
 
-        if (image.type == FRONT_COVER):
+        if image.type == FRONT_COVER:
             self[b'Cover Art (front)'] = self.ITEM.binary(
                 b'Cover Art (front)',
                 image.description.encode('utf-8', 'replace') +
                 b"\x00" +
                 image.data)
-        elif (image.type == BACK_COVER):
+        elif image.type == BACK_COVER:
             self[b'Cover Art (back)'] = self.ITEM.binary(
                 b'Cover Art (back)',
                 image.description.encode('utf-8', 'replace') +
@@ -642,9 +642,9 @@ class ApeTag(MetaData):
     def delete_image(self, image):
         """deletes an Image object from this metadata"""
 
-        if ((image.type == 0) and b'Cover Art (front)' in self.keys()):
+        if (image.type == 0) and b'Cover Art (front)' in self.keys():
             del(self[b'Cover Art (front)'])
-        elif ((image.type == 1) and b'Cover Art (back)' in self.keys()):
+        elif (image.type == 1) and b'Cover Art (back)' in self.keys():
             del(self[b'Cover Art (back)'])
 
     def images(self):
@@ -655,10 +655,10 @@ class ApeTag(MetaData):
         # APEv2 supports only one value per key
         # so a single front and back cover are all that is possible
         img = []
-        if (b'Cover Art (front)' in self.keys()):
+        if b'Cover Art (front)' in self.keys():
             img.append(self.__parse_image__(b'Cover Art (front)',
                                             FRONT_COVER))
-        if (b'Cover Art (back)' in self.keys()):
+        if b'Cover Art (back)' in self.keys():
             img.append(self.__parse_image__(b'Cover Art (back)',
                                             BACK_COVER))
         return img
@@ -674,7 +674,7 @@ class ApeTag(MetaData):
         apefile.seek(-32, 2)
         tag_footer = apefile.read(32)
 
-        if (len(tag_footer) < 32):
+        if len(tag_footer) < 32:
             # not enough bytes for an ApeV2 tag
             return None
 
@@ -688,7 +688,7 @@ class ApeTag(MetaData):
          no_footer,
          has_header) = parse(cls.HEADER_FORMAT, True, tag_footer)
 
-        if ((preamble != b"APETAGEX") or (version != 2000)):
+        if (preamble != b"APETAGEX") or (version != 2000):
             return None
 
         apefile.seek(-tag_size, 2)
@@ -703,7 +703,7 @@ class ApeTag(MetaData):
 
         tag_size = sum(tag.total_size() for tag in self.tags) + 32
 
-        if (self.contains_header):
+        if self.contains_header:
             writer.build(ApeTag.HEADER_FORMAT,
                          (b"APETAGEX",               # preamble
                           2000,                      # version
@@ -718,7 +718,7 @@ class ApeTag(MetaData):
         for tag in self.tags:
             tag.build(writer)
 
-        if (self.contains_footer):
+        if self.contains_footer:
             writer.build(ApeTag.HEADER_FORMAT,
                          (b"APETAGEX",               # preamble
                           2000,                      # version
@@ -742,35 +742,35 @@ class ApeTag(MetaData):
         used_tags = set()
         tag_items = []
         for tag in self.tags:
-            if (tag.key.upper() in used_tags):
+            if tag.key.upper() in used_tags:
                 fixes_performed.append(
                     CLEAN_REMOVE_DUPLICATE_TAG %
                     {"field": tag.key.decode('ascii')})
-            elif (tag.type == 0):
+            elif tag.type == 0:
                 used_tags.add(tag.key.upper())
                 text = tag.__unicode__()
 
                 # check trailing whitespace
                 fix1 = text.rstrip()
-                if (fix1 != text):
+                if fix1 != text:
                     fixes_performed.append(
                         CLEAN_REMOVE_TRAILING_WHITESPACE %
                         {"field": tag.key.decode('ascii')})
 
                 # check leading whitespace
                 fix2 = fix1.lstrip()
-                if (fix2 != fix1):
+                if fix2 != fix1:
                     fixes_performed.append(
                         CLEAN_REMOVE_LEADING_WHITESPACE %
                         {"field": tag.key.decode('ascii')})
 
-                if (tag.key in self.INTEGER_ITEMS):
-                    if (u"/" in fix2):
+                if tag.key in self.INTEGER_ITEMS:
+                    if u"/" in fix2:
                         # item is a slashed field of some sort
                         (current, total) = fix2.split(u"/", 1)
                         current_int = re.search(r'\d+', current)
                         total_int = re.search(r'\d+', total)
-                        if ((current_int is None) and (total_int is None)):
+                        if (current_int is None) and (total_int is None):
                             # neither side contains an integer value
                             # so ignore it altogether
                             fix3 = fix2
@@ -787,7 +787,7 @@ class ApeTag(MetaData):
                     else:
                         # item contains no slash
                         current_int = re.search(r'\d+', fix2)
-                        if (current_int is not None):
+                        if current_int is not None:
                             # item contains an integer
                             fix3 = u"%d" % (int(current_int.group(0)),)
                         else:
@@ -797,14 +797,14 @@ class ApeTag(MetaData):
                             # so it may be best to simply ignore that case)
                             fix3 = fix2
 
-                    if (fix3 != fix2):
+                    if fix3 != fix2:
                         fixes_performed.append(
                             CLEAN_FIX_TAG_FORMATTING %
                             {"field": tag.key.decode('ascii')})
                 else:
                     fix3 = fix2
 
-                if (len(fix3) > 0):
+                if len(fix3) > 0:
                     tag_items.append(ApeTagItem.string(tag.key, fix3))
                 else:
                     fixes_performed.append(
@@ -848,9 +848,9 @@ class ApeTaggedAudio(object):
         raises IOError if unable to write the file
         """
 
-        if (metadata is None):
+        if metadata is None:
             return
-        elif (not isinstance(metadata, ApeTag)):
+        elif not isinstance(metadata, ApeTag):
             from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
 
@@ -861,7 +861,7 @@ class ApeTaggedAudio(object):
         f.seek(-32, 2)
         tag_footer = f.read(32)
 
-        if (len(tag_footer) < 32):
+        if len(tag_footer) < 32:
             # no existing ApeTag can fit, so append fresh tag
             f.close()
             with BitstreamWriter(open(self.filename, "ab"), True) as writer:
@@ -878,13 +878,13 @@ class ApeTaggedAudio(object):
          no_footer,
          has_header) = parse(ApeTag.HEADER_FORMAT, True, tag_footer)
 
-        if ((preamble == b'APETAGEX') and (version == 2000)):
-            if (has_header):
+        if (preamble == b'APETAGEX') and (version == 2000):
+            if has_header:
                 old_tag_size = 32 + tag_size
             else:
                 old_tag_size = tag_size
 
-            if (metadata.total_size() >= old_tag_size):
+            if metadata.total_size() >= old_tag_size:
                 # metadata has grown
                 # so append it to existing file
                 f.seek(-old_tag_size, 2)
@@ -924,7 +924,7 @@ class ApeTaggedAudio(object):
 
         raises IOError if unable to write the file"""
 
-        if (metadata is None):
+        if metadata is None:
             return self.delete_metadata()
 
         from audiotools.bitstream import BitstreamWriter
@@ -932,7 +932,7 @@ class ApeTaggedAudio(object):
         old_metadata = self.get_metadata()
         new_metadata = ApeTag.converted(metadata)
 
-        if (old_metadata is not None):
+        if old_metadata is not None:
             # transfer ReplayGain tags from old metadata to new metadata
             for tag in [b"replaygain_track_gain",
                         b"replaygain_track_peak",
@@ -950,9 +950,9 @@ class ApeTaggedAudio(object):
                         continue
 
             # transfer Cuesheet from old metadata to new metadata
-            if (b"Cuesheet" in old_metadata):
+            if b"Cuesheet" in old_metadata:
                 new_metadata[b"Cuesheet"] = old_metadata[b"Cuesheet"]
-            elif (b"Cuesheet" in new_metadata):
+            elif b"Cuesheet" in new_metadata:
                 del(new_metadata[b"Cuesheet"])
 
             self.update_metadata(new_metadata)
@@ -968,7 +968,7 @@ class ApeTaggedAudio(object):
                     continue
 
             # delete Cuesheet from new metadata
-            if (b"Cuesheet" in new_metadata):
+            if b"Cuesheet" in new_metadata:
                 del(new_metadata[b"Cuesheet"])
 
             # no existing metadata, so simply append a fresh tag
@@ -990,7 +990,7 @@ class ApeTaggedAudio(object):
             from audiotools.bitstream import BitstreamReader
             from audiotools import transfer_data
 
-            if (not access(self.filename, R_OK | W_OK)):
+            if not access(self.filename, R_OK | W_OK):
                 raise IOError(self.filename)
 
             with open(self.filename, "rb") as f:
@@ -1007,13 +1007,13 @@ class ApeTaggedAudio(object):
                  has_header) = BitstreamReader(f, True).parse(
                     ApeTag.HEADER_FORMAT)
 
-            if ((preamble == b'APETAGEX') and (version == 2000)):
+            if (preamble == b'APETAGEX') and (version == 2000):
                 from audiotools import TemporaryFile
                 from os.path import getsize
 
                 # there's existing metadata to delete
                 # so rewrite file without trailing metadata tag
-                if (has_header):
+                if has_header:
                     old_tag_size = 32 + tag_size
                 else:
                     old_tag_size = tag_size
@@ -1047,7 +1047,7 @@ class ApeGainedAudio(object):
         from audiotools import ReplayGain
 
         metadata = self.get_metadata()
-        if (metadata is None):
+        if metadata is None:
             return None
 
         if ({b'replaygain_track_gain', b'replaygain_track_peak',
@@ -1073,11 +1073,11 @@ class ApeGainedAudio(object):
 
         may raise IOError if unable to read or write the file"""
 
-        if (replaygain is None):
+        if replaygain is None:
             return self.delete_replay_gain()
 
         metadata = self.get_metadata()
-        if (metadata is None):
+        if metadata is None:
             metadata = ApeTag([])
 
         metadata[b"replaygain_track_gain"] = ApeTagItem.string(
@@ -1101,7 +1101,7 @@ class ApeGainedAudio(object):
         may raise IOError if unable to modify the file"""
 
         metadata = self.get_metadata()
-        if (metadata is not None):
+        if metadata is not None:
             for field in [b"replaygain_track_gain",
                           b"replaygain_track_peak",
                           b"replaygain_album_gain",
@@ -1224,11 +1224,11 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
         try:
             file_head = cls.FILE_HEAD.parse_stream(f)
 
-            if (file_head.id != 'MAC '):
+            if file_head.id != 'MAC ':
                 from audiotools.text import ERR_APE_INVALID_HEADER
                 raise InvalidFile(ERR_APE_INVALID_HEADER)
 
-            if (file_head.version >= 3980):  # the latest APE file type
+            if file_head.version >= 3980:  # the latest APE file type
                 descriptor = cls.APE_DESCRIPTOR.parse_stream(f)
                 header = cls.APE_HEADER.parse_stream(f)
 
@@ -1241,7 +1241,7 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
             else:                           # old-style APE file (obsolete)
                 header = cls.APE_HEADER_OLD.parse_stream(f)
 
-                if (file_head.version >= 3950):
+                if file_head.version >= 3950:
                     blocks_per_frame = 0x48000
                 elif ((file_head.version >= 3900) or
                       ((file_head.version >= 3800) and
@@ -1250,9 +1250,9 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
                 else:
                     blocks_per_frame = 0x2400
 
-                if (header.format_flags & 0x01):
+                if header.format_flags & 0x01:
                     bits_per_sample = 8
-                elif (header.format_flags & 0x08):
+                elif header.format_flags & 0x08:
                     bits_per_sample = 24
                 else:
                     bits_per_sample = 16
@@ -1277,7 +1277,7 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
         import subprocess
         import os
 
-        if (self.filename.endswith(".ape")):
+        if self.filename.endswith(".ape"):
             devnull = open(os.devnull, "wb")
             sub = subprocess.Popen([BIN['mac'],
                                     self.filename,
@@ -1320,7 +1320,7 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
         import subprocess
         import os
 
-        if (str(compression) not in cls.COMPRESSION_MODES):
+        if str(compression) not in cls.COMPRESSION_MODES:
             compression = cls.DEFAULT_COMPRESSION
 
         devnull = open(os.devnull, "wb")

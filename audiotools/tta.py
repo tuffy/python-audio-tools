@@ -62,9 +62,9 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                  self.__total_pcm_frames__) = reader.parse(
                     "4b 16u 16u 16u 32u 32u 32p")
 
-                if (signature != b"TTA1"):
+                if signature != b"TTA1":
                     raise InvalidTTA(ERR_TTA_INVALID_SIGNATURE)
-                elif (format_ != 1):
+                elif format_ != 1:
                     raise InvalidTTA(ERR_TTA_INVALID_FORMAT)
 
                 self.__total_tta_frames__ = div_ceil(
@@ -90,9 +90,9 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         from audiotools import ChannelMask
 
-        if (self.__channels__ == 1):
+        if self.__channels__ == 1:
             return ChannelMask(0x4)
-        elif (self.__channels__ == 2):
+        elif self.__channels__ == 2:
             return ChannelMask(0x3)
         else:
             return ChannelMask(0)
@@ -190,7 +190,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         writer = BitstreamWriter(file, True)
         counter = CounterPCMReader(pcmreader)
         try:
-            if (total_pcm_frames is not None):
+            if total_pcm_frames is not None:
                 # write header to disk
                 write_header(writer,
                              pcmreader.channels,
@@ -218,7 +218,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
                 # ensure written number of PCM frames
                 # matches total_pcm_frames
-                if (counter.frames_written != total_pcm_frames):
+                if counter.frames_written != total_pcm_frames:
                     from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                     cls.__unlink__(filename)
                     raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
@@ -286,14 +286,14 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         with open(self.filename, "rb") as f:
             # first, attempt to find APEv2 comment at end of file
             f.seek(-32, 2)
-            if (f.read(10) == b"APETAGEX\xd0\x07"):
+            if f.read(10) == b"APETAGEX\xd0\x07":
                 from audiotools import ApeTag
 
                 return ApeTag.read(f)
             else:
                 # then, look for ID3v2 comment at beginning of file
                 f.seek(0, 0)
-                if (f.read(3) == b"ID3"):
+                if f.read(3) == b"ID3":
                     from audiotools.id3 import read_id3v2_comment
                     try:
                         id3v2 = read_id3v2_comment(self.filename)
@@ -305,7 +305,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                 # and look for ID3v1 comment at end of file
                 try:
                     f.seek(-128, 2)
-                    if (f.read(3) == b"TAG"):
+                    if f.read(3) == b"TAG":
                         from audiotools.id3v1 import ID3v1Comment
                         try:
                             id3v1 = ID3v1Comment.parse(f)
@@ -317,10 +317,10 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                     id3v1 = None
 
                 # if both ID3v2 and ID3v1 are present, return a pair
-                if ((id3v2 is not None) and (id3v1 is not None)):
+                if (id3v2 is not None) and (id3v1 is not None):
                     from audiotools.id3 import ID3CommentPair
                     return ID3CommentPair(id3v2, id3v1)
-                elif (id3v2 is not None):
+                elif id3v2 is not None:
                     return id3v2
                 else:
                     return id3v1
@@ -335,18 +335,18 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         from audiotools.ape import ApeTag
         from audiotools.bitstream import BitstreamWriter
 
-        if (metadata is None):
+        if metadata is None:
             return
         else:
             new_metadata = ApeTag.converted(metadata)
 
-        if (not os.access(self.filename, os.W_OK)):
+        if not os.access(self.filename, os.W_OK):
             raise IOError(self.filename)
 
         # if current metadata is present and in a particular format
         # set_metadata() should continue using that format
         old_metadata = ApeTag.converted(self.get_metadata())
-        if (old_metadata is not None):
+        if old_metadata is not None:
             # transfer ReplayGain tags from old metadata to new metadata
             for tag in [b"replaygain_track_gain",
                         b"replaygain_track_peak",
@@ -364,9 +364,9 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                         continue
 
             # transfer Cuesheet from old metadata to new metadata
-            if (b"Cuesheet" in old_metadata):
+            if b"Cuesheet" in old_metadata:
                 new_metadata[b"Cuesheet"] = old_metadata[b"Cuesheet"]
-            elif (b"Cuesheet" in new_metadata):
+            elif b"Cuesheet" in new_metadata:
                 del(new_metadata[b"Cuesheet"])
 
             self.update_metadata(new_metadata)
@@ -382,7 +382,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                     continue
 
             # delete Cuesheet from new metadata
-            if (b"Cuesheet" in new_metadata):
+            if b"Cuesheet" in new_metadata:
                 del(new_metadata[b"Cuesheet"])
 
             # no current metadata, so append a fresh APEv2 tag
@@ -403,9 +403,9 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         from audiotools.id3 import ID3CommentPair
         from audiotools.id3v1 import ID3v1Comment
 
-        if (metadata is None):
+        if metadata is None:
             return
-        elif (not os.access(self.filename, os.W_OK)):
+        elif not os.access(self.filename, os.W_OK):
             raise IOError(self.filename)
 
         # ensure metadata is APEv2, ID3v2, ID3v1, or ID3CommentPair
@@ -418,7 +418,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         current_metadata = self.get_metadata()
 
-        if (isinstance(metadata, ApeTag) and (current_metadata is None)):
+        if isinstance(metadata, ApeTag) and (current_metadata is None):
             # if new metadata is APEv2 and no current metadata,
             # simply append APEv2 tag
             from audiotools.bitstream import BitstreamWriter
@@ -448,14 +448,14 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
             new_tta = TemporaryFile(self.filename)
 
-            if (isinstance(metadata, ApeTag)):
+            if isinstance(metadata, ApeTag):
                 transfer_data(old_tta.read, new_tta.write)
                 metadata.build(BitstreamWriter(new_tta, True))
-            elif (isinstance(metadata, ID3CommentPair)):
+            elif isinstance(metadata, ID3CommentPair):
                 metadata.id3v2.build(BitstreamWriter(new_tta, False))
                 transfer_data(old_tta.read, new_tta.write)
                 metadata.id3v1.build(new_tta)
-            elif (isinstance(metadata, ID3v2Comment)):
+            elif isinstance(metadata, ID3v2Comment):
                 metadata.build(BitstreamWriter(new_tta, False))
                 transfer_data(old_tta.read, new_tta.write)
             else:
@@ -478,7 +478,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                                 TemporaryFile)
         from audiotools.id3 import skip_id3v2_comment
 
-        if (not os.access(self.filename, os.W_OK)):
+        if not os.access(self.filename, os.W_OK):
             raise IOError(self.filename)
 
         # overwrite original with no tags attached
@@ -506,7 +506,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         metadata = self.get_metadata()
 
-        if ((metadata is not None) and (b'Cuesheet' in metadata.keys())):
+        if (metadata is not None) and (b'Cuesheet' in metadata.keys()):
             try:
                 return cue.read_cuesheet_string(
                     metadata[b'Cuesheet'].__unicode__())
@@ -528,11 +528,11 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         from audiotools.ape import ApeTag
         from audiotools.cue import write_cuesheet
 
-        if (cuesheet is None):
+        if cuesheet is None:
             return self.delete_cuesheet()
 
         metadata = self.get_metadata()
-        if (metadata is None):
+        if metadata is None:
             metadata = ApeTag([])
         else:
             metadata = ApeTag.converted(metadata)
@@ -578,7 +578,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         # if current metadata is present and is in APEv2 format,
         # return contents of "replaygain_" tags
         metadata = self.get_metadata()
-        if ((metadata is not None) and isinstance(metadata, ApeTag)):
+        if (metadata is not None) and isinstance(metadata, ApeTag):
             return ApeGainedAudio.get_replay_gain(self)
         else:
             # otherwise, return None
@@ -589,13 +589,13 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         may raise IOError if unable to read or write the file"""
 
-        if (replaygain is None):
+        if replaygain is None:
             return self.delete_replay_gain()
 
         from audiotools.ape import ApeTag
 
         metadata = self.get_metadata()
-        if ((metadata is None) or (isinstance(metadata, ApeTag))):
+        if (metadata is None) or (isinstance(metadata, ApeTag)):
             ApeGainedAudio.set_replay_gain(self, replaygain)
         else:
             metadata = ApeTag.converted(metadata)
@@ -610,7 +610,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         from audiotools.ape import ApeTag
 
         metadata = self.get_metadata()
-        if ((metadata is not None) and (isinstance(metadata, ApeTag))):
+        if (metadata is not None) and (isinstance(metadata, ApeTag)):
             ApeGainedAudio.delete_replay_gain(self)
 
     def clean(self, output_filename=None):
@@ -632,15 +632,15 @@ class TrueAudio(AudioFile, ApeGainedAudio):
         from audiotools.text import CLEAN_REMOVE_DUPLICATE_ID3V2
 
         with open(self.filename, "rb") as f:
-            if (total_id3v2_comments(f) > 1):
+            if total_id3v2_comments(f) > 1:
                 file_fixes = [CLEAN_REMOVE_DUPLICATE_ID3V2]
             else:
                 file_fixes = []
 
-        if (output_filename is None):
+        if output_filename is None:
             # dry run only
             metadata = self.get_metadata()
-            if (metadata is not None):
+            if metadata is not None:
                 (metadata, fixes) = metadata.clean()
                 return file_fixes + fixes
             else:
@@ -657,9 +657,9 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
             new_track = open_audiofile(output_filename)
             metadata = self.get_metadata()
-            if (metadata is not None):
+            if metadata is not None:
                 (metadata, fixes) = metadata.clean()
-                if (len(file_fixes + fixes) > 0):
+                if len(file_fixes + fixes) > 0:
                     # only update metadata if fixes are actually performed
                     new_track.update_metadata(metadata)
                 return file_fixes + fixes

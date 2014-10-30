@@ -34,7 +34,7 @@ def do_nothing(self):
 # which can be wrapped around individual tests as needed
 for section in parser.sections():
     for option in parser.options(section):
-        if (parser.getboolean(section, option)):
+        if parser.getboolean(section, option):
             vars()["%s_%s" % (section.upper(),
                               option.upper())] = lambda function: function
         else:
@@ -111,7 +111,7 @@ class MetaDataTest(unittest.TestCase):
                 # check that setting the fields to random values works
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
+                    if field not in audiotools.MetaData.INTEGER_FIELDS:
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in range(random.choice(range(1, 21)))])
@@ -131,7 +131,7 @@ class MetaDataTest(unittest.TestCase):
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
                     self.assertIsNone(getattr(metadata, field))
-                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
+                    if field not in audiotools.MetaData.INTEGER_FIELDS:
                         setattr(metadata, field, u"")
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
@@ -145,7 +145,7 @@ class MetaDataTest(unittest.TestCase):
                 # re-set the fields with random values
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
+                    if field not in audiotools.MetaData.INTEGER_FIELDS:
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in range(random.choice(range(1, 21)))])
@@ -236,14 +236,14 @@ class MetaDataTest(unittest.TestCase):
 
         # ensure our fields match
         for field in audiotools.MetaData.FIELDS:
-            if (field in self.supported_fields):
+            if field in self.supported_fields:
                 self.assertEqual(getattr(metadata_orig, field),
                                  getattr(metadata_new, field))
             else:
                 self.assertIsNone(getattr(metadata_new, field))
 
         # ensure images match, if supported
-        if (self.metadata_class.supports_images()):
+        if self.metadata_class.supports_images():
             self.assertEqual(metadata_new.images(),
                              [image1, image2, image3])
 
@@ -265,7 +265,7 @@ class MetaDataTest(unittest.TestCase):
     @METADATA_METADATA
     def test_images(self):
         # perform tests only if images are actually supported
-        if (self.metadata_class.supports_images()):
+        if self.metadata_class.supports_images():
             for audio_class in self.supported_formats:
                 temp_file = tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX)
@@ -411,12 +411,12 @@ class MetaDataTest(unittest.TestCase):
     def test_raw_info(self):
         import sys
 
-        if (sys.version_info[0] >= 3):
+        if sys.version_info[0] >= 3:
             __unicode__ = str
         else:
             __unicode__ = unicode
 
-        if (self.metadata_class is audiotools.MetaData):
+        if self.metadata_class is audiotools.MetaData:
             return
 
         # ensure raw_info() returns a Unicode object
@@ -424,7 +424,7 @@ class MetaDataTest(unittest.TestCase):
 
         metadata = self.empty_metadata()
         for field in self.supported_fields:
-            if (field not in audiotools.MetaData.INTEGER_FIELDS):
+            if field not in audiotools.MetaData.INTEGER_FIELDS:
                 setattr(metadata, field, u"A" * 5)
             else:
                 setattr(metadata, field, 1)
@@ -436,7 +436,7 @@ class MetaDataTest(unittest.TestCase):
     @METADATA_METADATA
     def test_cuesheet(self):
         for audio_class in self.supported_formats:
-            if (not audio_class.supports_cuesheet()):
+            if not audio_class.supports_cuesheet():
                 continue
 
             from audiotools import Sheet, SheetTrack, SheetIndex
@@ -584,7 +584,7 @@ class MetaDataTest(unittest.TestCase):
         for audio_class in self.supported_formats:
             with tempfile.NamedTemporaryFile(
                 suffix="." + audio_class.SUFFIX) as temp_file:
-                if (audio_class.supports_cuesheet()):
+                if audio_class.supports_cuesheet():
                     track = audio_class.from_pcm(
                         temp_file.name,
                         EXACT_SILENCE_PCM_Reader(43646652),
@@ -601,7 +601,7 @@ class MetaDataTest(unittest.TestCase):
                      (track.get_metadata().track_number is None)))
 
                 # if class supports metadata
-                if (audio_class.supports_metadata()):
+                if audio_class.supports_metadata():
                     # setting metadata should work
                     track.set_metadata(metadata)
                     self.assertEqual(track.get_metadata(), metadata)
@@ -646,7 +646,7 @@ class MetaDataTest(unittest.TestCase):
                 self.assertIsNone(track.get_replay_gain())
 
                 # if class supports ReplayGain
-                if (audio_class.supports_replay_gain()):
+                if audio_class.supports_replay_gain():
                     # setting ReplayGain should work
                     track.set_replay_gain(replay_gain)
                     self.assertEqual(track.get_replay_gain(), replay_gain)
@@ -673,7 +673,7 @@ class MetaDataTest(unittest.TestCase):
                 self.assertIsNone(track.get_cuesheet())
 
                 # if class supports cuesheets
-                if (audio_class.supports_cuesheet()):
+                if audio_class.supports_cuesheet():
                     # setting cuesheet should work
                     track.set_cuesheet(sheet)
                     self.assertEqual(track.get_cuesheet(), sheet)
@@ -703,11 +703,11 @@ class MetaDataTest(unittest.TestCase):
                 track.set_replay_gain(replay_gain)
                 track.set_cuesheet(sheet)
                 track.delete_metadata()
-                if (track.supports_replay_gain()):
+                if track.supports_replay_gain():
                     self.assertEqual(track.get_replay_gain(), replay_gain)
                 else:
                     self.assertIsNone(track.get_replay_gain())
-                if (track.supports_cuesheet()):
+                if track.supports_cuesheet():
                     self.assertEqual(track.get_cuesheet(), sheet)
                 else:
                     self.assertIsNone(track.get_cuesheet())
@@ -718,11 +718,11 @@ class MetaDataTest(unittest.TestCase):
                 track.set_replay_gain(replay_gain)
                 track.set_cuesheet(sheet)
                 track.delete_replay_gain()
-                if (track.supports_metadata()):
+                if track.supports_metadata():
                     self.assertEqual(track.get_metadata(), metadata)
                 else:
                     self.assertIsNone(track.get_metadata())
-                if (track.supports_cuesheet()):
+                if track.supports_cuesheet():
                     self.assertEqual(track.get_cuesheet(), sheet)
                 else:
                     self.assertIsNone(track.get_cuesheet())
@@ -733,11 +733,11 @@ class MetaDataTest(unittest.TestCase):
                 track.set_replay_gain(replay_gain)
                 track.set_cuesheet(sheet)
                 track.delete_cuesheet()
-                if (track.supports_metadata()):
+                if track.supports_metadata():
                     self.assertEqual(track.get_metadata(), metadata)
                 else:
                     self.assertIsNone(track.get_metadata())
-                if (track.supports_replay_gain()):
+                if track.supports_replay_gain():
                     self.assertEqual(track.get_replay_gain(), replay_gain)
                 else:
                     self.assertIsNone(track.get_replay_gain())
@@ -751,7 +751,7 @@ class MetaDataTest(unittest.TestCase):
             audiotools.MetaData(track_name=u"Track Name 1",
                                 track_number=1))
 
-        if (self.metadata_class.supports_images()):
+        if self.metadata_class.supports_images():
             metadata1.add_image(audiotools.Image.new(TEST_COVER1,
                                                      u"",
                                                      audiotools.FRONT_COVER))
@@ -768,7 +768,7 @@ class MetaDataTest(unittest.TestCase):
         metadata2.track_number = 2
         self.assertNotEqual(metadata1.track_name, metadata2.track_name)
         self.assertNotEqual(metadata1.track_number, metadata2.track_number)
-        if (self.metadata_class.supports_images()):
+        if self.metadata_class.supports_images():
             metadata2.delete_image(metadata2.images()[0])
             self.assertNotEqual(metadata1.images(), metadata2.images())
 
@@ -1667,7 +1667,7 @@ class WavPackApeTagMetaData(MetaDataTest):
 
         # ensure our fields match
         for field in audiotools.MetaData.FIELDS:
-            if (field in self.supported_fields):
+            if field in self.supported_fields:
                 self.assertEqual(getattr(metadata_orig, field),
                                  getattr(metadata_new, field))
             else:
@@ -2071,7 +2071,7 @@ class ID3v1MetaData(MetaDataTest):
                 # check that setting the fields to random values works
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
+                    if field not in audiotools.MetaData.INTEGER_FIELDS:
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in range(random.choice(range(1, 5)))])
@@ -2090,15 +2090,15 @@ class ID3v1MetaData(MetaDataTest):
                 # check that overlong fields are truncated
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
+                    if field not in audiotools.MetaData.INTEGER_FIELDS:
                         unicode_string = u"a" * 50
                         setattr(metadata, field, unicode_string)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
-                        if (field == "comment"):
+                        if field == "comment":
                             self.assertEqual(getattr(metadata, field),
                                              u"a" * 28)
-                        elif (field == "year"):
+                        elif field == "year":
                             self.assertEqual(getattr(metadata, field),
                                              u"a" * 4)
                         else:
@@ -2108,7 +2108,7 @@ class ID3v1MetaData(MetaDataTest):
                 # check that blanking out the fields works
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
+                    if field not in audiotools.MetaData.INTEGER_FIELDS:
                         setattr(metadata, field, u"")
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
@@ -2122,7 +2122,7 @@ class ID3v1MetaData(MetaDataTest):
                 # re-set the fields with random values
                 for field in self.supported_fields:
                     metadata = self.empty_metadata()
-                    if (field not in audiotools.MetaData.INTEGER_FIELDS):
+                    if field not in audiotools.MetaData.INTEGER_FIELDS:
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in range(random.choice(range(1, 5)))])
@@ -2324,7 +2324,7 @@ class ID3v22MetaData(MetaDataTest):
                        # ("TT2":u"foo")
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
-            if (attribute not in INTEGER_ATTRIBS):
+            if attribute not in INTEGER_ATTRIBS:
                 attribs1[attribute] = attribs2[key] = u"value %d" % (i)
         attribs1["track_number"] = 2
         attribs1["track_total"] = 10
@@ -2360,7 +2360,7 @@ class ID3v22MetaData(MetaDataTest):
         # >>> id3['TT2'][0] == u"bar"
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
-            if (key not in id3_class.TEXT_FRAME.NUMERICAL_IDS):
+            if key not in id3_class.TEXT_FRAME.NUMERICAL_IDS:
                 setattr(id3, attribute, u"new value %d" % (i))
                 self.assertEqual(u"%s" % (id3[key][0],),
                                  u"new value %d" % (i))
@@ -2398,7 +2398,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(getattr(id3, attribute), value)
 
         for (key, value) in attribs2.items():
-            if (key not in id3_class.TEXT_FRAME.NUMERICAL_IDS):
+            if key not in id3_class.TEXT_FRAME.NUMERICAL_IDS:
                 self.assertEqual(id3[key][0].__unicode__(), value)
             else:
                 self.assertEqual(int(id3[key][0]), value)
@@ -2408,7 +2408,7 @@ class ID3v22MetaData(MetaDataTest):
         # >>> id3.track_name == u"bar"
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
-            if (attribute not in INTEGER_ATTRIBS):
+            if attribute not in INTEGER_ATTRIBS:
                 id3[key] = [id3_class.TEXT_FRAME(
                     key, 0, (u"new value %d" % (i)).encode("ascii"))]
                 self.assertEqual(getattr(id3, attribute),
@@ -2437,7 +2437,7 @@ class ID3v22MetaData(MetaDataTest):
         # >>> id3.track_name = u"foo"
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
-            if (attribute not in INTEGER_ATTRIBS):
+            if attribute not in INTEGER_ATTRIBS:
                 id3[key] = [id3_class.TEXT_FRAME.converted(key, u"%s" % (i,))]
                 self.assertEqual(getattr(id3, attribute), u"%s" % (i,))
 
@@ -3932,7 +3932,7 @@ class FlacMetaData(MetaDataTest):
                         audiotools.flac.Flac_CUESHEET.BLOCK_ID),
                     new_cuesheet)
 
-                if (audio_class is not audiotools.OggFlacAudio):
+                if audio_class is not audiotools.OggFlacAudio:
                     # seektable not updated with set_metadata()
                     # but can be updated with update_metadata()
 
@@ -6528,14 +6528,14 @@ class M4AMetaDataTest(MetaDataTest):
 
         # ensure our fields match
         for field in audiotools.MetaData.FIELDS:
-            if (field in self.supported_fields):
+            if field in self.supported_fields:
                 self.assertEqual(getattr(metadata_orig, field),
                                  getattr(metadata_new, field))
             else:
                 self.assertIsNone(getattr(metadata_new, field))
 
         # ensure images match, if supported
-        if (self.metadata_class.supports_images()):
+        if self.metadata_class.supports_images():
             self.assertEqual(metadata_new.images(), [image1])
 
         # check non-MetaData fields
@@ -7747,7 +7747,7 @@ class VorbisCommentTest(MetaDataTest):
                     audiotools.VorbisComment.ATTRIBUTE_MAP.items()
                     if item in map_to][0]
 
-            if (attr in audiotools.VorbisComment.INTEGER_FIELDS):
+            if attr in audiotools.VorbisComment.INTEGER_FIELDS:
                 old_raw_value = u"1"
                 old_attr_value = 1
                 new_raw_value = u"2"
@@ -7772,7 +7772,7 @@ class VorbisCommentTest(MetaDataTest):
             # ensure updating the metadata with an aliased key
             # doesn't change the aliased key field
             for new_key in map_to:
-                if (new_key != key):
+                if new_key != key:
                     metadata[new_key] = [old_raw_value]
                     self.assertEqual(metadata.keys(), [key])
 
@@ -8083,7 +8083,7 @@ class TrueAudioTest(unittest.TestCase):
                 metadata = track.get_metadata()
                 self.assertEqual(metadata.track_name, u"Bar")
 
-                if (isinstance(base_metadata, audiotools.ApeTag)):
+                if isinstance(base_metadata, audiotools.ApeTag):
                     # replaygain strings not updated with set_metadata()
                     # but can be updated with update_metadata()
                     self.assertRaises(KeyError,

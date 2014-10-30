@@ -99,23 +99,23 @@ if (__name__ == '__main__'):
     # to avoid reading the same images multiple times
     images = {}
     try:
-        if (options.front_cover is not None):
+        if options.front_cover is not None:
             for path in options.front_cover:
                 images.setdefault(0, []).append(get_image(path, 0))
 
-        if (options.leaflet is not None):
+        if options.leaflet is not None:
             for path in options.leaflet:
                 images.setdefault(2, []).append(get_image(path, 2))
 
-        if (options.back_cover is not None):
+        if options.back_cover is not None:
             for path in options.back_cover:
                 images.setdefault(1, []).append(get_image(path, 1))
 
-        if (options.media is not None):
+        if options.media is not None:
             for path in options.media:
                 images.setdefault(3, []).append(get_image(path, 3))
 
-        if (options.other_image is not None):
+        if options.other_image is not None:
             for path in options.other_image:
                 images.setdefault(4, []).append(get_image(path, 4))
     except audiotools.InvalidImage as err:
@@ -127,10 +127,10 @@ if (__name__ == '__main__'):
         metadata = track.get_metadata()
 
         # if metadata is present
-        if (metadata is not None):
-            if (metadata.supports_images()):
+        if metadata is not None:
+            if metadata.supports_images():
                 # if --replace indicated, remove old images
-                if (options.replace):
+                if options.replace:
                     for i in metadata.images():
                         metadata.delete_image(i)
 

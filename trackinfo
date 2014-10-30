@@ -66,7 +66,7 @@ if (__name__ == '__main__'):
 
     for file in audiotools.open_files(options.filenames, messenger=msg):
         length = int(file.seconds_length())
-        if (options.show_bitrate):
+        if options.show_bitrate:
             try:
                 msg.output(
                     _.LAB_TRACKINFO_BITRATE %
@@ -78,7 +78,7 @@ if (__name__ == '__main__'):
                     _.LAB_TRACKINFO_BITRATE %
                     {'bitrate': 0,
                      'filename': audiotools.Filename(file.filename)})
-        elif (options.show_percentage):
+        elif options.show_percentage:
             try:
                 percentage = (float(os.path.getsize(file.filename) * 100) /
                               (file.total_frames() * file.channels() *
@@ -101,14 +101,14 @@ if (__name__ == '__main__'):
                  "bits": file.bits_per_sample(),
                  "filename": audiotools.Filename(file.filename)})
 
-        if (not options.no_metadata):
+        if not options.no_metadata:
             metadata = file.get_metadata()
-            if (not options.low_level):
-                if (metadata is not None):
+            if not options.low_level:
+                if metadata is not None:
                     msg.output(u"%s" % (metadata))
                     msg.output(u"")
                 replay_gain = file.get_replay_gain()
-                if (replay_gain is not None):
+                if replay_gain is not None:
                     table = audiotools.output_table()
 
                     msg.output(_.LAB_TRACKINFO_REPLAYGAIN)
@@ -133,7 +133,7 @@ if (__name__ == '__main__'):
                         msg.output(row)
                     msg.output(u"")
                 cuesheet = file.get_cuesheet()
-                if (cuesheet is not None):
+                if cuesheet is not None:
                     msg.output(_.LAB_TRACKINFO_CUESHEET)
                     lengths = {}  # track_number -> length fraction
                     indexes = {}  # track_number -> {index_number -> offset}
@@ -141,7 +141,7 @@ if (__name__ == '__main__'):
                     index_numbers = set()
                     for track in cuesheet:
                         track_length = cuesheet.track_length(track.number())
-                        if (track_length is not None):
+                        if track_length is not None:
                             lengths[track.number()] = track_length
                         else:
                             lengths[track.number()] = \
@@ -179,7 +179,7 @@ if (__name__ == '__main__'):
                         track_indexes = indexes[t]
                         for i in index_numbers:
                             row.add_column(u"")
-                            if (i in track_indexes):
+                            if i in track_indexes:
                                 index = track_indexes[i]
                                 row.add_column(
                                     u"%d:%2.2d.%2.2d" % (int(index) // 60,
@@ -193,17 +193,17 @@ if (__name__ == '__main__'):
                         msg.output(row)
                     msg.output(u"")
             else:
-                if (metadata is not None):
+                if metadata is not None:
                     msg.output(metadata.raw_info())
                     msg.output(u"")
-        if (options.channel_assignment):
+        if options.channel_assignment:
             msg.output(_.LAB_TRACKINFO_CHANNELS)
 
             channel_names = {attr: audiotools.ChannelMask.MASK_TO_NAME[mask]
                              for (attr, mask) in
                              audiotools.ChannelMask.SPEAKER_TO_MASK.items()}
 
-            if (file.channel_mask().defined()):
+            if file.channel_mask().defined():
                 for (i, channel) in enumerate(file.channel_mask().channels()):
                     msg.output(_.LAB_TRACKINFO_CHANNEL %
                                {"channel_number": i + 1,

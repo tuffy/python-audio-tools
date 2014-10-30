@@ -24,7 +24,7 @@ from audiotools.wav import parse_fmt
 from audiotools.aiff import parse_comm
 
 
-if (version_info[0] >= 3):
+if version_info[0] >= 3:
     def ints_to_bytes(l):
         return bytes(l)
 else:
@@ -46,10 +46,10 @@ class SHNDecoder(object):
          self.max_LPC,
          self.number_of_means) = self.read_header()
 
-        if ((1 <= self.file_type) and (self.file_type <= 2)):
+        if (1 <= self.file_type) and (self.file_type <= 2):
             self.bits_per_sample = 8
             self.signed_samples = (self.file_type == 1)
-        elif ((3 <= self.file_type) and (self.file_type <= 6)):
+        elif (3 <= self.file_type) and (self.file_type <= 6):
             self.bits_per_sample = 16
             self.signed_samples = (self.file_type in (3, 5))
         else:
@@ -70,7 +70,7 @@ class SHNDecoder(object):
         from io import BytesIO
 
         command = self.unsigned(2)
-        if (command == 9):
+        if command == 9:
             # got verbatim, so read data
             verbatim_bytes = ints_to_bytes([self.unsigned(8) & 0xFF
                                             for i in range(self.unsigned(5))])
@@ -78,13 +78,13 @@ class SHNDecoder(object):
             try:
                 wave = BitstreamReader(BytesIO(verbatim_bytes), True)
                 header = wave.read_bytes(12)
-                if (header.startswith(b"RIFF") and header.endswith(b"WAVE")):
+                if header.startswith(b"RIFF") and header.endswith(b"WAVE"):
                     # got RIFF/WAVE header, so parse wave blocks as needed
                     total_size = len(verbatim_bytes) - 12
                     while (total_size > 0):
                         (chunk_id, chunk_size) = wave.parse("4b 32u")
                         total_size -= 8
-                        if (chunk_id == b'fmt '):
+                        if chunk_id == b'fmt ':
                             (channels,
                              self.sample_rate,
                              bits_per_sample,
@@ -93,7 +93,7 @@ class SHNDecoder(object):
                             self.channel_mask = int(channel_mask)
                             return
                         else:
-                            if (chunk_size % 2):
+                            if chunk_size % 2:
                                 wave.read_bytes(chunk_size + 1)
                                 total_size -= (chunk_size + 1)
                             else:
@@ -108,13 +108,13 @@ class SHNDecoder(object):
             try:
                 aiff = BitstreamReader(BytesIO(verbatim_bytes), False)
                 header = aiff.read_bytes(12)
-                if (header.startswith(b"FORM") and header.endswith(b"AIFF")):
+                if header.startswith(b"FORM") and header.endswith(b"AIFF"):
                     # got FORM/AIFF header, so parse aiff blocks as needed
                     total_size = len(verbatim_bytes) - 12
                     while (total_size > 0):
                         (chunk_id, chunk_size) = aiff.parse("4b 32u")
                         total_size -= 8
-                        if (chunk_id == b'COMM'):
+                        if chunk_id == b'COMM':
                             (channels,
                              total_sample_frames,
                              bits_per_sample,
@@ -124,7 +124,7 @@ class SHNDecoder(object):
                             self.channel_mask = int(channel_mask)
                             return
                         else:
-                            if (chunk_size % 2):
+                            if chunk_size % 2:
                                 aiff.read_bytes(chunk_size + 1)
                                 total_size -= (chunk_size + 1)
                             else:
@@ -138,9 +138,9 @@ class SHNDecoder(object):
 
         # got something else, so invent some PCM parameters
         self.sample_rate = 44100
-        if (self.channels == 1):
+        if self.channels == 1:
             self.channel_mask = 0x4
-        elif (self.channels == 2):
+        elif self.channels == 2:
             self.channel_mask = 0x3
         else:
             self.channel_mask = 0
@@ -152,7 +152,7 @@ class SHNDecoder(object):
 
     def signed(self, c):
         u = self.unsigned(c + 1)
-        if ((u % 2) == 0):
+        if (u % 2) == 0:
             return u // 2
         else:
             return -(u // 2) - 1
@@ -166,10 +166,10 @@ class SHNDecoder(object):
 
     def read_header(self):
         magic = self.reader.read_bytes(4)
-        if (magic != b"ajkg"):
+        if magic != b"ajkg":
             raise ValueError("invalid magic number")
         version = self.reader.read(8)
-        if (version != 2):
+        if version != 2:
             raise ValueError("unsupported version")
 
         file_type = self.long()
@@ -183,7 +183,7 @@ class SHNDecoder(object):
         return (file_type, channels, block_length, max_LPC, number_of_means)
 
     def read(self, pcm_frames):
-        if (self.stream_finished):
+        if self.stream_finished:
             return from_channels([empty_framelist(1, self.bits_per_sample)
                                   for channel in range(self.channels)])
 
@@ -195,23 +195,23 @@ class SHNDecoder(object):
             if (((0 <= command) and (command <= 3) or
                  (7 <= command) and (command <= 8))):
                 # audio data commands
-                if (command == 0):    # DIFF0
+                if command == 0:    # DIFF0
                     samples.append(self.read_diff0(self.block_length,
                                                    self.means[c]))
-                elif (command == 1):  # DIFF1
+                elif command == 1:  # DIFF1
                     samples.append(self.read_diff1(self.block_length,
                                                    self.wrapped_samples[c]))
-                elif (command == 2):  # DIFF2
+                elif command == 2:  # DIFF2
                     samples.append(self.read_diff2(self.block_length,
                                                    self.wrapped_samples[c]))
-                elif (command == 3):  # DIFF3
+                elif command == 3:  # DIFF3
                     samples.append(self.read_diff3(self.block_length,
                                                    self.wrapped_samples[c]))
-                elif (command == 7):  # QLPC
+                elif command == 7:  # QLPC
                     samples.append(self.read_qlpc(self.block_length,
                                                   self.means[c],
                                                   self.wrapped_samples[c]))
-                elif (command == 8):  # ZERO
+                elif command == 8:  # ZERO
                     samples.append([0] * self.block_length)
 
                 # update means for channel
@@ -222,14 +222,14 @@ class SHNDecoder(object):
                 self.wrapped_samples[c] = samples[c][-(max(3, self.max_LPC)):]
 
                 # apply left shift to samples
-                if (self.left_shift > 0):
+                if self.left_shift > 0:
                     unshifted.append([s << self.left_shift
                                       for s in samples[c]])
                 else:
                     unshifted.append(samples[c])
 
                 c += 1
-                if (c == self.channels):
+                if c == self.channels:
                     # return a FrameList from shifted data
                     return from_channels([from_list(channel, 1,
                                                     self.bits_per_sample,
@@ -237,16 +237,16 @@ class SHNDecoder(object):
                                           for channel in unshifted])
             else:
                 # non audio commands
-                if (command == 4):  # QUIT
+                if command == 4:  # QUIT
                     self.stream_finished = True
                     return from_channels(
                         [empty_framelist(1, self.bits_per_sample)
                          for channel in range(self.channels)])
-                elif (command == 5):  # BLOCKSIZE
+                elif command == 5:  # BLOCKSIZE
                     self.block_length = self.long()
-                elif (command == 6):  # BITSHIFT
+                elif command == 6:  # BITSHIFT
                     self.left_shift = self.unsigned(2)
-                elif (command == 9):  # VERBATIM
+                elif command == 9:  # VERBATIM
                     # skip this command during reading
                     size = self.unsigned(5)
                     for i in range(size):
@@ -299,7 +299,7 @@ class SHNDecoder(object):
             residual = self.signed(energy)
             LPC_sum = 2 ** 5
             for j in range(LPC_count):
-                if ((i - j - 1) < 0):
+                if (i - j - 1) < 0:
                     # apply offset to warm-up samples
                     LPC_sum += (LPC_coeff[j] *
                                 (samples[LPC_count + (i - j - 1)] - offset))

@@ -35,7 +35,7 @@ def add_replay_gain(tracks, progress=None):
         pass
 
 
-if (audiotools.ui.AVAILABLE):
+if audiotools.ui.AVAILABLE:
     urwid_present = True
     urwid = audiotools.ui.urwid
 
@@ -94,9 +94,9 @@ if (audiotools.ui.AVAILABLE):
             return self.__cancelled__
 
         def handle_text(self, i):
-            if (i == 'f1'):
+            if i == 'f1':
                 self.__current_filler__.selected_match.select_previous_item()
-            elif (i == 'f2'):
+            elif i == 'f2':
                 self.__current_filler__.selected_match.select_next_item()
 
         def populated_metadata(self):
@@ -213,7 +213,7 @@ if (__name__ == '__main__'):
     text_group = parser.add_argument_group(_.OPT_CAT_TEXT)
 
     for field in audiotools.MetaData.FIELD_ORDER:
-        if (field in UPDATE_OPTIONS):
+        if field in UPDATE_OPTIONS:
             variable = "update_%s" % (field)
             (option, help_text) = UPDATE_OPTIONS[field]
             text_group.add_argument(
@@ -239,7 +239,7 @@ if (__name__ == '__main__'):
     remove_group = parser.add_argument_group(_.OPT_CAT_REMOVAL)
 
     for field in audiotools.MetaData.FIELD_ORDER:
-        if (field in REMOVE_OPTIONS):
+        if field in REMOVE_OPTIONS:
             variable = "remove_%s" % (field)
             (option, help_text) = REMOVE_OPTIONS[field]
             remove_group.add_argument(
@@ -325,12 +325,12 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger(options.verbosity == "quiet")
 
     # ensure interactive mode is available, if selected
-    if (options.interactive and (not audiotools.ui.AVAILABLE)):
+    if options.interactive and (not audiotools.ui.AVAILABLE):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
     # open a --comment-file as UTF-8 formatted text file
-    if (options.comment_file is not None):
+    if options.comment_file is not None:
         try:
             with open(options.comment_file, "rb") as f:
                 comment_file = f.read().decode('utf-8', 'replace')
@@ -356,7 +356,7 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
         sys.exit(1)
 
-    if (len(tracks) == 0):
+    if len(tracks) == 0:
         msg.error(_.ERR_1_FILE_REQUIRED)
         sys.exit(1)
 
@@ -374,7 +374,7 @@ if (__name__ == '__main__'):
     # is a MetaData object per album "a", per choice "", per "track"
     album_metadata_choices = []
 
-    if (options.metadata_lookup):
+    if options.metadata_lookup:
         # split tracks by album and perform lookup for each
         for album in audiotools.group_tracks(tracks):
             album_tracks.append(album)
@@ -406,7 +406,7 @@ if (__name__ == '__main__'):
         album_metadata_choices.append(
             [[audiotools.MetaData() for t in tracks]])
 
-    if (options.replace):
+    if options.replace:
         # ignore track metadata and treat choices as final metadata
         pass
     else:
@@ -417,7 +417,7 @@ if (__name__ == '__main__'):
             for choice in metadata_choices:
                 for (old_metadata,
                      new_metadata) in zip(current_metadatas, choice):
-                    if (old_metadata is not None):
+                    if old_metadata is not None:
                         for (attr, value) in new_metadata.empty_fields():
                             setattr(new_metadata, attr,
                                     getattr(old_metadata, attr))
@@ -428,12 +428,12 @@ if (__name__ == '__main__'):
             for metadata in choice:
                 # apply field removal options across all metadata choices
                 for attr in audiotools.MetaData.FIELD_ORDER:
-                    if (getattr(options, "remove_%s" % (attr))):
+                    if getattr(options, "remove_%s" % (attr)):
                         delattr(metadata, attr)
 
                 # apply field addition options across all metadata choices
                 for attr in audiotools.MetaData.FIELD_ORDER:
-                    if (getattr(options, "update_%s" % (attr)) is not None):
+                    if getattr(options, "update_%s" % (attr)) is not None:
                         value = getattr(options, "update_%s" % (attr))
                         if ((attr not in audiotools.MetaData.INTEGER_FIELDS) and
                             (sys.version_info[0] < 3)):
@@ -441,10 +441,10 @@ if (__name__ == '__main__'):
                         setattr(metadata, attr, value)
 
                 # apply comment file across all metadata choices, if any
-                if (comment_file is not None):
+                if comment_file is not None:
                     metadata.comment = comment_file
 
-    if (options.interactive):
+    if options.interactive:
         # run Tracktag widget and get single list of MetaData
         # for each album's worth of tracks
         widget = Tracktag(album_tracks, album_metadata_choices)
@@ -462,7 +462,7 @@ if (__name__ == '__main__'):
             msg.info(audiotools.ui.xargs_suggestion(sys.argv))
             sys.exit(1)
 
-        if (not widget.cancelled()):
+        if not widget.cancelled():
             to_tag = map(tuple, zip(album_tracks,
                                     album_current_metadatas,
                                     widget.populated_metadata()))
@@ -482,14 +482,14 @@ if (__name__ == '__main__'):
     # once all final output metadata is set,
     # perform actual tagging
     for (album_tracks, old_metadatas, new_metadatas) in to_tag:
-        if (not options.replace):
+        if not options.replace:
             # apply final metadata to tracks using update_metadata
             # if no full replacement
             for (old_metadata,
                  (track,
                   new_metadata)) in zip(old_metadatas,
                                         zip(album_tracks, new_metadatas)):
-                if (old_metadata is not None):
+                if old_metadata is not None:
                     # merge new fields with old fields
                     field_updated = False
                     for (attr, value) in new_metadata.fields():
@@ -499,7 +499,7 @@ if (__name__ == '__main__'):
                             setattr(old_metadata, attr, value)
                             field_updated = True
 
-                    if (field_updated):
+                    if field_updated:
                         # update track if at least one field has changed
                         try:
                             track.update_metadata(old_metadata)
@@ -529,7 +529,7 @@ if (__name__ == '__main__'):
     # add ReplayGain to tracks, if indicated
     queue = audiotools.ExecProgressQueue(msg)
 
-    if (len(tracks) > 0):
+    if len(tracks) > 0:
         for album_tracks in audiotools.group_tracks(tracks):
 
             album_number = {(m.album_number if m is not None else None)
@@ -539,8 +539,8 @@ if (__name__ == '__main__'):
             # if both --add-replay-gain and --remove-replay-gain
             # are specified, do nothing
 
-            if (options.add_replay_gain and not options.remove_replay_gain):
-                if (album_number is None):
+            if options.add_replay_gain and not options.remove_replay_gain:
+                if album_number is None:
                     progress_text = _.RG_ADDING_REPLAYGAIN
                     completion_output = _.RG_REPLAYGAIN_ADDED
                 else:
@@ -554,7 +554,7 @@ if (__name__ == '__main__'):
                     progress_text=progress_text,
                     completion_output=completion_output,
                     tracks=album_tracks)
-            elif (options.remove_replay_gain and not options.add_replay_gain):
+            elif options.remove_replay_gain and not options.add_replay_gain:
                 for track in album_tracks:
                     try:
                         track.delete_replay_gain()

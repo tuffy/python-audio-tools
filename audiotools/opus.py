@@ -62,10 +62,10 @@ class OpusAudio(VorbisAudio):
                  segment_count) = ogg_reader.parse(
                     "4b 8u 8u 64S 32u 32u 32u 8u")
 
-                if (magic_number != b'OggS'):
+                if magic_number != b'OggS':
                     from audiotools.text import ERR_OGG_INVALID_MAGIC_NUMBER
                     raise InvalidOpus(ERR_OGG_INVALID_MAGIC_NUMBER)
-                if (version != 0):
+                if version != 0:
                     from audiotools.text import ERR_OGG_INVALID_VERSION
                     raise InvalidOpus(ERR_OGG_INVALID_VERSION)
 
@@ -80,21 +80,21 @@ class OpusAudio(VorbisAudio):
                  mapping_family) = ogg_reader.parse(
                     "8b 8u 8u 16u 32u 16s 8u")
 
-                if (opushead != b"OpusHead"):
+                if opushead != b"OpusHead":
                     from audiotools.text import ERR_OPUS_INVALID_TYPE
                     raise InvalidOpus(ERR_OPUS_INVALID_TYPE)
-                if (version != 1):
+                if version != 1:
                     from audiotools.text import ERR_OPUS_INVALID_VERSION
                     raise InvalidOpus(ERR_OPUS_INVALID_VERSION)
-                if (self.__channels__ == 0):
+                if self.__channels__ == 0:
                     from audiotools.text import ERR_OPUS_INVALID_CHANNELS
                     raise InvalidOpus(ERR_OPUS_INVALID_CHANNELS)
 
                 # FIXME - assign channel mask from mapping family
-                if (mapping_family == 0):
-                    if (self.__channels__ == 1):
+                if mapping_family == 0:
+                    if self.__channels__ == 1:
                         self.__channel_mask__ = VorbisChannelMask(0x4)
-                    elif (self.__channels__ == 2):
+                    elif self.__channels__ == 2:
                         self.__channel_mask__ = VorbisChannelMask(0x3)
                     else:
                         self.__channel_mask__ = VorbisChannelMask(0)
@@ -211,7 +211,7 @@ class OpusAudio(VorbisAudio):
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
-        if ((pcmreader.channels > 2) and (pcmreader.channels <= 8)):
+        if (pcmreader.channels > 2) and (pcmreader.channels <= 8):
             if ((pcmreader.channel_mask != 0) and
                 (pcmreader.channel_mask not in
                  {0x7,      # FR, FC, FL
@@ -225,7 +225,7 @@ class OpusAudio(VorbisAudio):
                 raise UnsupportedChannelMask(filename, channel_mask)
 
         try:
-            if (total_pcm_frames is not None):
+            if total_pcm_frames is not None:
                 from audiotools import CounterPCMReader
                 pcmreader = CounterPCMReader(pcmreader)
 
@@ -270,12 +270,12 @@ class OpusAudio(VorbisAudio):
                                     packets_to_pages)
         from audiotools.bitstream import BitstreamRecorder
 
-        if (metadata is None):
+        if metadata is None:
             return
-        elif (not isinstance(metadata, VorbisComment)):
+        elif not isinstance(metadata, VorbisComment):
             from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
-        elif (not os.access(self.filename, os.W_OK)):
+        elif not os.access(self.filename, os.W_OK):
             raise IOError(self.filename)
 
         original_ogg = PacketReader(PageReader(open(self.filename, "rb")))
@@ -336,7 +336,7 @@ class OpusAudio(VorbisAudio):
         this metadata includes track name, album name, and so on
         raises IOError if unable to write the file"""
 
-        if (metadata is None):
+        if metadata is None:
             return self.delete_metadata()
 
         metadata = VorbisComment.converted(metadata)
@@ -378,7 +378,7 @@ class OpusAudio(VorbisAudio):
             identification = reader.read_packet()
             comment = BitstreamReader(BytesIO(reader.read_packet()), True)
 
-            if (comment.read_bytes(8) == b"OpusTags"):
+            if comment.read_bytes(8) == b"OpusTags":
                 vendor_string = \
                     comment.read_bytes(comment.read(32)).decode('utf-8')
                 comment_strings = [

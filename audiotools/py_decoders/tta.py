@@ -32,11 +32,11 @@ def div_ceil(n, d):
 
 
 def tta_filter(bps, residuals):
-    if (bps == 8):
+    if bps == 8:
         shift = 10
-    elif (bps == 16):
+    elif bps == 16:
         shift = 9
-    elif (bps == 24):
+    elif bps == 24:
         shift = 10
     round_ = (1 << (shift - 1))
 
@@ -47,12 +47,12 @@ def tta_filter(bps, residuals):
     dl = [0] * 8
 
     for i in range(0, len(residuals)):
-        if (i == 0):
+        if i == 0:
             filtered.append(residuals[i] + (round_ >> shift))
         else:
-            if (residuals[i - 1] < 0):
+            if residuals[i - 1] < 0:
                 qm = [m - x for (m, x) in zip(qm, dx)]
-            elif (residuals[i - 1] > 0):
+            elif residuals[i - 1] > 0:
                 qm = [m + x for (m, x) in zip(qm, dx)]
 
             sum_ = round_ + sum([l * m for (l, m) in zip(dl, qm)])
@@ -88,11 +88,11 @@ def tta_filter(bps, residuals):
 
 
 def fixed_predictor(bps, filtered):
-    if (bps == 8):
+    if bps == 8:
         shift = 4
-    elif (bps == 16):
+    elif bps == 16:
         shift = 5
-    elif (bps == 24):
+    elif bps == 24:
         shift = 5
 
     predicted = [filtered[0]]
@@ -113,9 +113,9 @@ def decorrelate(predicted):
 
     for c in reversed(range(channels)):
         decorrelated_ch = []
-        if (c == (channels - 1)):
+        if c == (channels - 1):
             for i in range(pcm_frames):
-                if (predicted[c - 1][i] >= 0):
+                if predicted[c - 1][i] >= 0:
                     decorrelated_ch.append(
                         predicted[c][i] +
                         (predicted[c - 1][i] // 2))
@@ -227,7 +227,7 @@ class TTADecoder(object):
 
         self.reader.pop_callback()
         header_crc = self.reader.read(32)
-        if (int(crc) != header_crc):
+        if int(crc) != header_crc:
             raise ValueError(
                 "CRC32 mismatch in header (0x%8.8X != 0x%8.8X)" %
                 (header_crc, int(crc)))
@@ -246,7 +246,7 @@ class TTADecoder(object):
                             range(total_tta_frames)]
         self.reader.pop_callback()
         seektable_crc = self.reader.read(32)
-        if (int(crc) != seektable_crc):
+        if int(crc) != seektable_crc:
             raise ValueError(
                 "CRC32 mismatch in seektable (0x%8.8X != 0x%8.8X)" %
                 (header_crc, int(crc)))
@@ -254,7 +254,7 @@ class TTADecoder(object):
         self.current_tta_frame = 0
 
     def read(self, pcm_frames):
-        if (self.total_pcm_frames == 0):
+        if self.total_pcm_frames == 0:
             return empty_framelist(self.channels, self.bits_per_sample)
 
         pcm_frames = min(self.pcm_frames_per_tta_frame, self.total_pcm_frames)
@@ -282,7 +282,7 @@ class TTADecoder(object):
             for (c, ch_output) in enumerate(unfiltered):
                 # read most-significant bits
                 MSB = frame_reader.unary(0)
-                if (MSB == 0):
+                if MSB == 0:
                     # read least-significant bits
                     unsigned = frame_reader.read(k0[c])
                 else:
@@ -293,20 +293,20 @@ class TTADecoder(object):
 
                     # adjust sum1 and k1
                     sum1[c] += (unshifted - (sum1[c] >> 4))
-                    if (sum1[c] < (2 ** (k1[c] + 4))):
+                    if sum1[c] < (2 ** (k1[c] + 4)):
                         k1[c] = max(k1[c] - 1, 0)
-                    elif (sum1[c] > (2 ** (k1[c] + 5))):
+                    elif sum1[c] > (2 ** (k1[c] + 5)):
                         k1[c] += 1
 
                 # adjust sum0 and k0
                 sum0[c] += (unsigned - (sum0[c] >> 4))
-                if (sum0[c] < (2 ** (k0[c] + 4))):
+                if sum0[c] < (2 ** (k0[c] + 4)):
                     k0[c] = max(k0[c] - 1, 0)
-                elif (sum0[c] > (2 ** (k0[c] + 5))):
+                elif sum0[c] > (2 ** (k0[c] + 5)):
                     k0[c] += 1
 
                 # apply sign bit
-                if ((unsigned % 2) == 1):
+                if (unsigned % 2) == 1:
                     # positive
                     ch_output.append((unsigned + 1) // 2)
                 else:
@@ -317,7 +317,7 @@ class TTADecoder(object):
         frame_reader.byte_align()
         frame_reader.pop_callback()
         frame_crc = frame_reader.read(32)
-        if (int(crc) != frame_crc):
+        if int(crc) != frame_crc:
             raise ValueError("CRC32 mismatch in frame (0x%8.8X != 0x%8.8X)" %
                              (frame_crc, int(crc)))
 
@@ -333,7 +333,7 @@ class TTADecoder(object):
             predicted.append(
                 fixed_predictor(self.bits_per_sample, filtered_ch))
 
-        if (self.channels == 1):
+        if self.channels == 1:
             # send channel as-is
             return from_list(predicted[0],
                              1,

@@ -106,7 +106,7 @@ class DiscID(object):
                                     "track_count",
                                     "playable_length"]])
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -151,41 +151,41 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
 
     line = next(query)
     response = RESPONSE.match(line)
-    if (response is None):
+    if response is None:
         raise ValueError("invalid response from server")
     else:
         # a list of (category, disc id, disc title) tuples
         matches = []
         code = int(response.group(1))
-        if (code == 200):
+        if code == 200:
             # single exact match
             match = QUERY_RESULT.match(response.group(2))
-            if (match is not None):
+            if match is not None:
                 matches.append((match.group(1),
                                 match.group(2),
                                 match.group(3)))
             else:
                 raise ValueError("invalid query result")
-        elif ((code == 211) or (code == 210)):
+        elif (code == 211) or (code == 210):
             # multiple exact or inexact matches
             line = next(query)
             while (not line.startswith(u".")):
                 match = QUERY_RESULT.match(line)
-                if (match is not None):
+                if match is not None:
                     matches.append((match.group(1),
                                     match.group(2),
                                     match.group(3)))
                 else:
                     raise ValueError("invalid query result")
                 line = next(query)
-        elif (code == 202):
+        elif code == 202:
             # no match found
             pass
         else:
             # some error has occurred
             raise ValueError(response.group(2))
 
-    if (len(matches) > 0):
+    if len(matches) > 0:
         # for each result, query FreeDB for XMCD file data
         for (category, disc_id, title) in matches:
             sleep(1)  # add a slight delay to keep the server happy
@@ -197,15 +197,15 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
                                    disc_id)
 
             response = RESPONSE.match(next(query))
-            if (response is not None):
+            if response is not None:
                 # FIXME - check response code here
                 freedb = {}
                 line = next(query)
                 while (not line.startswith(u".")):
-                    if (not line.startswith(u"#")):
+                    if not line.startswith(u"#"):
                         entry = FREEDB_LINE.match(line)
-                        if (entry is not None):
-                            if (entry.group(1) in freedb):
+                        if entry is not None:
+                            if entry.group(1) in freedb:
                                 freedb[entry.group(1)] += entry.group(2)
                             else:
                                 freedb[entry.group(1)] = entry.group(2)
@@ -242,7 +242,7 @@ def freedb_command(freedb_server, freedb_port, cmd, *args):
     POST = []
 
     # generate query to post with arguments in specific order
-    if (len(args) > 0):
+    if len(args) > 0:
         POST.append((u"cmd", u"cddb %s %s" % (cmd, " ".join(args))))
     else:
         POST.append((u"cmd", u"cddb %s" % (cmd)))
@@ -284,7 +284,7 @@ def xmcd_metadata(freedb_file):
     TTITLE = re.compile(r'TTITLE(\d+)')
 
     dtitle = freedb_file.get(u"DTITLE", u"")
-    if (u" / " in dtitle):
+    if u" / " in dtitle:
         (album_artist, album_name) = dtitle.split(u" / ", 1)
     else:
         album_artist = None
@@ -296,13 +296,13 @@ def xmcd_metadata(freedb_file):
                [(TTITLE.match(key), value) for (key, value) in
                 freedb_file.items()] if m is not None]
 
-    if (len(ttitles) > 0):
+    if len(ttitles) > 0:
         track_total = max([tracknum for (tracknum, ttitle) in ttitles]) + 1
     else:
         track_total = 0
 
     for (tracknum, ttitle) in sorted(ttitles, key=lambda t: t[0]):
-        if (u" / " in ttitle):
+        if u" / " in ttitle:
             (track_artist,
              track_name) = ttitle.split(u" / ", 1)
         else:

@@ -26,7 +26,7 @@ def p_cuesheet(t):
 
     from audiotools.cue import Cuesheet
 
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = Cuesheet(files=t[1])
     else:
         # FIXME - check against multiple "once only" attributes
@@ -39,7 +39,7 @@ def p_cuesheet(t):
 def p_cuesheet_items(t):
     '''cuesheet_items : cuesheet_item
                       | cuesheet_items cuesheet_item'''
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = t[1] + [t[2]]
@@ -89,7 +89,7 @@ def p_cdtextfile(t):
 def p_files(t):
     '''files : file
              | files file'''
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = t[1] + [t[2]]
@@ -120,7 +120,7 @@ def p_filetype(t):
 def p_tracks(t):
     '''tracks : track
               | tracks track'''
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = t[1] + [t[2]]
@@ -135,7 +135,7 @@ def p_track(t):
     args = {}
 
     for (key, value) in t[4]:
-        if (key == "index"):
+        if key == "index":
             indexes.append(value)
         else:
             args[key] = value
@@ -160,7 +160,7 @@ def p_tracktype(t):
 def p_indexes(t):
     '''trackitems : trackitem
                   | trackitems trackitem'''
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = t[1] + [t[2]]
@@ -210,7 +210,7 @@ def p_flags(t):
 def p_flaglist(t):
     '''flaglist : flag
                 | flaglist flag'''
-    if (len(t) == 2):
+    if len(t) == 2:
         t[0] = [t[1]]
     else:
         t[0] = t[1] + [t[2]]

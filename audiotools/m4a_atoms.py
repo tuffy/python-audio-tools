@@ -121,7 +121,7 @@ class M4A_Tree_Atom(object):
         # assert(isinstance(atom_name, bytes))
 
         for leaf in self:
-            if (leaf.name == atom_name):
+            if leaf.name == atom_name:
                 return leaf
         else:
             raise KeyError(atom_name)
@@ -133,7 +133,7 @@ class M4A_Tree_Atom(object):
         # assert(isinstance(atom_name, bytes))
 
         for leaf in self:
-            if (leaf.name == atom_name):
+            if leaf.name == atom_name:
                 return True
         else:
             return False
@@ -151,7 +151,7 @@ class M4A_Tree_Atom(object):
         new_leaf_atoms = []
         data_deleted = False
         for leaf_atom in self:
-            if ((leaf_atom.name == atom_name) and (not data_deleted)):
+            if (leaf_atom.name == atom_name) and (not data_deleted):
                 data_deleted = True
             else:
                 new_leaf_atoms.append(leaf_atom)
@@ -165,7 +165,7 @@ class M4A_Tree_Atom(object):
         new_leaf_atoms = []
         data_replaced = False
         for leaf_atom in self:
-            if ((leaf_atom.name == atom_obj.name) and (not data_replaced)):
+            if (leaf_atom.name == atom_obj.name) and (not data_replaced):
                 new_leaf_atoms.append(atom_obj)
                 data_replaced = True
             else:
@@ -182,8 +182,8 @@ class M4A_Tree_Atom(object):
         offset = 0
         next_child = child_path[0]
         for leaf_atom in self:
-            if (leaf_atom.name == next_child):
-                if (len(child_path) > 1):
+            if leaf_atom.name == next_child:
+                if len(child_path) > 1:
                     return (offset + 8 +
                             leaf_atom.child_offset(*(child_path[1:])))
                 else:
@@ -246,7 +246,7 @@ class M4A_Leaf_Atom(object):
         else:
             return True
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -265,7 +265,7 @@ class M4A_Leaf_Atom(object):
 
         from audiotools import hex_string
 
-        if (len(self.data) > 20):
+        if len(self.data) > 20:
             return u"%s : %s\u2026" % \
                 (self.name.decode('ascii', 'replace'),
                  hex_string(self.data[0:20]))
@@ -370,7 +370,7 @@ class M4A_MVHD_Atom(M4A_Leaf_Atom):
         assert(name == b'mvhd')
         (version, flags) = reader.parse("8u 24u")
 
-        if (version == 0):
+        if version == 0:
             atom_format = "32u 32u 32u 32u 32u 16u 10P"
         else:
             atom_format = "64U 64U 32u 64U 32u 16u 10P"
@@ -421,7 +421,7 @@ class M4A_MVHD_Atom(M4A_Leaf_Atom):
 
         writer.build("8u 24u", (self.version, self.flags))
 
-        if (self.version == 0):
+        if self.version == 0:
             atom_format = "32u 32u 32u 32u 32u 16u 10P"
         else:
             atom_format = "64U 64U 32u 64U 32u 16u 10P"
@@ -442,7 +442,7 @@ class M4A_MVHD_Atom(M4A_Leaf_Atom):
         """returns the atom's size
         not including its 64-bit size / name header"""
 
-        if (self.version == 0):
+        if self.version == 0:
             return 100
         else:
             return 112
@@ -494,7 +494,7 @@ class M4A_TKHD_Atom(M4A_Leaf_Atom):
          track_in_movie,
          track_enabled) = reader.parse("8u 20p 1u 1u 1u 1u")
 
-        if (version == 0):
+        if version == 0:
             atom_format = "32u 32u 32u 4P 32u 8P 16u 16u 16u 2P"
         else:
             atom_format = "64U 64U 32u 4P 64U 8P 16u 16u 16u 2P"
@@ -533,7 +533,7 @@ class M4A_TKHD_Atom(M4A_Leaf_Atom):
                      (self.version, self.track_in_poster,
                       self.track_in_preview, self.track_in_movie,
                       self.track_enabled))
-        if (self.version == 0):
+        if self.version == 0:
             atom_format = "32u 32u 32u 4P 32u 8P 16u 16u 16u 2P"
         else:
             atom_format = "64U 64U 32u 4P 64U 8P 16u 16u 16u 2P"
@@ -548,7 +548,7 @@ class M4A_TKHD_Atom(M4A_Leaf_Atom):
         """returns the atom's size
         not including its 64-bit size / name header"""
 
-        if (self.version == 0):
+        if self.version == 0:
             return 84
         else:
             return 96
@@ -582,7 +582,7 @@ class M4A_MDHD_Atom(M4A_Leaf_Atom):
 
         assert(name == b'mdhd')
         (version, flags) = reader.parse("8u 24u")
-        if (version == 0):
+        if version == 0:
             atom_format = "32u 32u 32u 32u"
         else:
             atom_format = "64U 64U 32u 64U"
@@ -607,7 +607,7 @@ class M4A_MDHD_Atom(M4A_Leaf_Atom):
         not including its 64-bit size / name header"""
 
         writer.build("8u 24u", (self.version, self.flags))
-        if (self.version == 0):
+        if self.version == 0:
             atom_format = "32u 32u 32u 32u"
         else:
             atom_format = "64U 64U 32u 64U"
@@ -621,7 +621,7 @@ class M4A_MDHD_Atom(M4A_Leaf_Atom):
         """returns the atom's size
         not including its 64-bit size / name header"""
 
-        if (self.version == 0):
+        if self.version == 0:
             return 24
         else:
             return 36
@@ -1102,7 +1102,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         """returns True if this atom contains an ILST sub-atom"""
 
         for a in self.leaf_atoms:
-            if (a.name == b'ilst'):
+            if a.name == b'ilst':
                 return True
         else:
             return False
@@ -1111,7 +1111,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         """returns the first ILST sub-atom, or None"""
 
         for a in self.leaf_atoms:
-            if (a.name == b'ilst'):
+            if a.name == b'ilst':
                 return a
         else:
             return None
@@ -1120,7 +1120,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         """place new ILST atom after the first HDLR atom, if any"""
 
         for (index, atom) in enumerate(self.leaf_atoms):
-            if (atom.name == b'hdlr'):
+            if atom.name == b'hdlr':
                 self.leaf_atoms.insert(index, M4A_Tree_Atom(b'ilst', []))
                 break
         else:
@@ -1137,11 +1137,11 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
         from os import linesep
 
-        if (self.has_ilst_atom()):
+        if self.has_ilst_atom():
             comment_lines = [u"M4A:"]
 
             for atom in self.ilst_atom():
-                if (hasattr(atom, "raw_info_lines")):
+                if hasattr(atom, "raw_info_lines"):
                     comment_lines.extend(atom.raw_info_lines())
                 else:
                     comment_lines.append(u"%s : (%d bytes)" %
@@ -1179,8 +1179,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         return 4 + sum([8 + sub_atom.size() for sub_atom in self])
 
     def __getattr__(self, attr):
-        if (attr in self.UNICODE_ATTRIB_TO_ILST):
-            if (self.has_ilst_atom()):
+        if attr in self.UNICODE_ATTRIB_TO_ILST:
+            if self.has_ilst_atom():
                 try:
                     return self.ilst_atom()[
                         self.UNICODE_ATTRIB_TO_ILST[attr]][b'data'].__unicode__()
@@ -1188,8 +1188,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     return None
             else:
                 return None
-        elif (attr in self.INT_ATTRIB_TO_ILST):
-            if (self.has_ilst_atom()):
+        elif attr in self.INT_ATTRIB_TO_ILST:
+            if self.has_ilst_atom():
                 try:
                     return self.ilst_atom()[
                         self.INT_ATTRIB_TO_ILST[attr]][b'data'].number()
@@ -1197,8 +1197,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     return None
             else:
                 return None
-        elif (attr in self.TOTAL_ATTRIB_TO_ILST):
-            if (self.has_ilst_atom()):
+        elif attr in self.TOTAL_ATTRIB_TO_ILST:
+            if self.has_ilst_atom():
                 try:
                     return self.ilst_atom()[
                         self.TOTAL_ATTRIB_TO_ILST[attr]][b'data'].total()
@@ -1206,22 +1206,22 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     return None
             else:
                 return None
-        elif (attr in self.FIELDS):
+        elif attr in self.FIELDS:
             return None
         else:
             raise AttributeError(attr)
 
     def __setattr__(self, attr, value):
         def new_data_atom(attribute, value):
-            if (attribute in self.UNICODE_ATTRIB_TO_ILST):
+            if attribute in self.UNICODE_ATTRIB_TO_ILST:
                 return M4A_ILST_Unicode_Data_Atom(0, 1, value.encode('utf-8'))
-            elif (attribute == "track_number"):
+            elif attribute == "track_number":
                 return M4A_ILST_TRKN_Data_Atom(int(value), 0)
-            elif (attribute == "track_total"):
+            elif attribute == "track_total":
                 return M4A_ILST_TRKN_Data_Atom(0, int(value))
-            elif (attribute == "album_number"):
+            elif attribute == "album_number":
                 return M4A_ILST_DISK_Data_Atom(int(value), 0)
-            elif (attribute == "album_total"):
+            elif attribute == "album_total":
                 return M4A_ILST_DISK_Data_Atom(0, int(value))
             else:
                 raise ValueError(value)
@@ -1230,20 +1230,20 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             new_leaf_atoms = []
             data_replaced = False
             for leaf_atom in parent_atom.leaf_atoms:
-                if ((leaf_atom.name == b'data') and (not data_replaced)):
-                    if (attribute == "track_number"):
+                if (leaf_atom.name == b'data') and (not data_replaced):
+                    if attribute == "track_number":
                         new_leaf_atoms.append(
                             M4A_ILST_TRKN_Data_Atom(int(value),
                                                     leaf_atom.track_total))
-                    elif (attribute == "track_total"):
+                    elif attribute == "track_total":
                         new_leaf_atoms.append(
                             M4A_ILST_TRKN_Data_Atom(leaf_atom.track_number,
                                                     int(value)))
-                    elif (attribute == "album_number"):
+                    elif attribute == "album_number":
                         new_leaf_atoms.append(
                             M4A_ILST_DISK_Data_Atom(int(value),
                                                     leaf_atom.disk_total))
-                    elif (attribute == "album_total"):
+                    elif attribute == "album_total":
                         new_leaf_atoms.append(
                             M4A_ILST_DISK_Data_Atom(leaf_atom.disk_number,
                                                     int(value)))
@@ -1256,7 +1256,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
 
             parent_atom.leaf_atoms = new_leaf_atoms
 
-        if (value is None):
+        if value is None:
             return delattr(self, attr)
 
         ilst_leaf = self.UNICODE_ATTRIB_TO_ILST.get(
@@ -1267,13 +1267,13 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     attr,
                     None)))
 
-        if (ilst_leaf is not None):
-            if (not self.has_ilst_atom()):
+        if ilst_leaf is not None:
+            if not self.has_ilst_atom():
                 self.add_ilst_atom()
 
             # an ilst atom is present, so check its sub-atoms
             for ilst_atom in self.ilst_atom():
-                if (ilst_atom.name == ilst_leaf):
+                if ilst_atom.name == ilst_leaf:
                     # atom already present, so adjust its data sub-atom
                     replace_data_atom(attr, ilst_atom, value)
                     break
@@ -1287,15 +1287,15 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             MetaData.__setattr__(self, attr, value)
 
     def __delattr__(self, attr):
-        if (self.has_ilst_atom()):
+        if self.has_ilst_atom():
             ilst_atom = self.ilst_atom()
 
-            if (attr in self.UNICODE_ATTRIB_TO_ILST):
+            if attr in self.UNICODE_ATTRIB_TO_ILST:
                 ilst_atom.leaf_atoms = [
                     atom for atom in ilst_atom if
                     atom.name != self.UNICODE_ATTRIB_TO_ILST[attr]]
-            elif (attr == "track_number"):
-                if (self.track_total is None):
+            elif attr == "track_number":
+                if self.track_total is None:
                     # if track_number and track_total are both 0
                     # remove trkn atom
                     ilst_atom.leaf_atoms = [
@@ -1303,8 +1303,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                         atom.name != b"trkn"]
                 else:
                     self.track_number = 0
-            elif (attr == "track_total"):
-                if (self.track_number is None):
+            elif attr == "track_total":
+                if self.track_number is None:
                     # if track_number and track_total are both 0
                     # remove trkn atom
                     ilst_atom.leaf_atoms = [
@@ -1312,8 +1312,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                         atom.name != b"trkn"]
                 else:
                     self.track_total = 0
-            elif (attr == "album_number"):
-                if (self.album_total is None):
+            elif attr == "album_number":
+                if self.album_total is None:
                     # if album_number and album_total are both 0
                     # remove disk atom
                     ilst_atom.leaf_atoms = [
@@ -1321,8 +1321,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                         atom.name != b"disk"]
                 else:
                     self.album_number = 0
-            elif (attr == "album_total"):
-                if (self.album_number is None):
+            elif attr == "album_total":
+                if self.album_number is None:
                     # if album_number and album_total are both 0
                     # remove disk atom
                     ilst_atom.leaf_atoms = [
@@ -1336,7 +1336,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
     def images(self):
         """returns a list of embedded Image objects"""
 
-        if (self.has_ilst_atom()):
+        if self.has_ilst_atom():
             return [atom[b'data'] for atom in self.ilst_atom()
                     if ((atom.name == b'covr') and (atom.has_child(b'data')))]
         else:
@@ -1348,7 +1348,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         def not_cover(atom):
             return not ((atom.name == b'covr') and (atom.has_child(b'data')))
 
-        if (not self.has_ilst_atom()):
+        if not self.has_ilst_atom():
             self.add_ilst_atom()
 
         ilst_atom = self.ilst_atom()
@@ -1362,7 +1362,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
     def delete_image(self, image):
         """deletes an Image object from this metadata"""
 
-        if (self.has_ilst_atom()):
+        if self.has_ilst_atom():
             ilst_atom = self.ilst_atom()
 
             ilst_atom.leaf_atoms = [
@@ -1378,9 +1378,9 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         takes a MetaData-compatible object (or None)
         and returns a new MetaData subclass with the data fields converted"""
 
-        if (metadata is None):
+        if metadata is None:
             return None
-        elif (isinstance(metadata, cls)):
+        elif isinstance(metadata, cls):
             return cls(metadata.version,
                        metadata.flags,
                        [leaf.copy() for leaf in metadata])
@@ -1416,7 +1416,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                                              (metadata.album_total
                                               is not None) else 0)]))
 
-        if (len(metadata.front_covers()) > 0):
+        if len(metadata.front_covers()) > 0:
             ilst_atoms.append(
                 M4A_ILST_Leaf_Atom(
                     b'covr',
@@ -1457,20 +1457,20 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             from audiotools.text import (CLEAN_REMOVE_TRAILING_WHITESPACE,
                                          CLEAN_REMOVE_EMPTY_TAG)
 
-            if (atom.name in self.UNICODE_ATTRIB_TO_ILST.values()):
+            if atom.name in self.UNICODE_ATTRIB_TO_ILST.values():
                 text = atom[b'data'].data.decode('utf-8')
                 fix1 = text.rstrip()
-                if (fix1 != text):
+                if fix1 != text:
                     fixes_performed.append(
                         CLEAN_REMOVE_TRAILING_WHITESPACE %
                         {"field": atom.name.lstrip(b'\xa9').decode('ascii')})
                 fix2 = fix1.lstrip()
-                if (fix2 != fix1):
+                if fix2 != fix1:
                     from audiotools.text import CLEAN_REMOVE_LEADING_WHITESPACE
                     fixes_performed.append(
                         CLEAN_REMOVE_LEADING_WHITESPACE %
                         {"field": atom.name.lstrip(b'\xa9').decode('ascii')})
-                if (len(fix2) > 0):
+                if len(fix2) > 0:
                     return M4A_ILST_Leaf_Atom(
                         atom.name,
                         [M4A_ILST_Unicode_Data_Atom(0, 1,
@@ -1483,7 +1483,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             else:
                 return atom
 
-        if (self.has_ilst_atom()):
+        if self.has_ilst_atom():
             return (M4A_META_Atom(
                 self.version,
                 self.flags,
@@ -1537,7 +1537,7 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
                                        b"disk": M4A_ILST_DISK_Data_Atom
                                        }.get(name, M4A_Leaf_Atom)}))
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -1556,7 +1556,7 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
 
         for leaf_atom in self.leaf_atoms:
             name = self.name.replace(b"\xa9", b" ").decode('ascii')
-            if (hasattr(leaf_atom, "raw_info")):
+            if hasattr(leaf_atom, "raw_info"):
                 yield u"%s : %s" % (name, leaf_atom.raw_info())
             else:
                 yield u"%s : %s" % (name, repr(leaf_atom))  # FIXME
@@ -1617,7 +1617,7 @@ class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
 
         return 8 + len(self.data)
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -1652,7 +1652,7 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
         else:
             return True
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -1660,7 +1660,7 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
             return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
-        if (self.track_total > 0):
+        if self.track_total > 0:
             return u"%d/%d" % (self.track_number, self.track_total)
         else:
             return u"%d" % (self.track_number,)
@@ -1697,7 +1697,7 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
         """returns this atom's track_number field
         or None if the field is 0"""
 
-        if (self.track_number != 0):
+        if self.track_number != 0:
             return self.track_number
         else:
             return None
@@ -1706,7 +1706,7 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
         """returns this atom's track_total field
         or None if the field is 0"""
 
-        if (self.track_total != 0):
+        if self.track_total != 0:
             return self.track_total
         else:
             return None
@@ -1736,7 +1736,7 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
         else:
             return True
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -1744,7 +1744,7 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
             return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
-        if (self.disk_total > 0):
+        if self.disk_total > 0:
             return u"%d/%d" % (self.disk_number, self.disk_total)
         else:
             return u"%d" % (self.disk_number,)
@@ -1780,7 +1780,7 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
     def number(self):
         """returns this atom's disc_number field"""
 
-        if (self.disk_number != 0):
+        if self.disk_number != 0:
             return self.disk_number
         else:
             return None
@@ -1788,7 +1788,7 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
     def total(self):
         """returns this atom's disk_total field"""
 
-        if (self.disk_total != 0):
+        if self.disk_total != 0:
             return self.disk_total
         else:
             return None
@@ -1828,7 +1828,7 @@ class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
 
         from audiotools import hex_string
 
-        if (len(self.data) > 20):
+        if len(self.data) > 20:
             return (u"(%d bytes) %s\u2026" % (len(self.data),
                                               hex_string(self.data[0:20])))
         else:

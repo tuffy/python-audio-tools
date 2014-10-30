@@ -72,7 +72,7 @@ def write_wave_header(writer, pcmreader, total_frames, wave_footer_len):
     total_size = 4 * 3   # 'RIFF' + size + 'WAVE'
 
     total_size += 4 * 2  # 'fmt ' + size
-    if ((pcmreader.channels <= 2) and (pcmreader.bits_per_sample <= 16)):
+    if (pcmreader.channels <= 2) and (pcmreader.bits_per_sample <= 16):
         # classic fmt chunk
         fmt = "16u 16u 32u 32u 16u 16u"
         fmt_fields = (1,   # compression code
@@ -185,23 +185,23 @@ class EncodingParameters(object):
         if "channel_count" is 1 or "false_stereo" is True
         """
 
-        if ((self.channel_count == 2) and (not false_stereo)):
+        if (self.channel_count == 2) and (not false_stereo):
             channel_count = 2
         else:
             channel_count = 1
 
-        if (channel_count != self.__parameters_channel_count__):
-            if (channel_count == 1):
-                if (self.correlation_passes == 0):
+        if channel_count != self.__parameters_channel_count__:
+            if channel_count == 1:
+                if self.correlation_passes == 0:
                     self.__correlation_parameters__ = []
-                elif (self.correlation_passes == 1):
+                elif self.correlation_passes == 1:
                     self.__correlation_parameters__ = [
                         CorrelationParameters(18, 2, [0], [[0] * 2])]
-                elif (self.correlation_passes == 2):
+                elif self.correlation_passes == 2:
                     self.__correlation_parameters__ = [
                         CorrelationParameters(17, 2, [0], [[0] * 2]),
                         CorrelationParameters(18, 2, [0], [[0] * 2])]
-                elif (self.correlation_passes in (5, 10, 16)):
+                elif self.correlation_passes in (5, 10, 16):
                     self.__correlation_parameters__ = [
                         CorrelationParameters(3, 2, [0], [[0] * 3]),
                         CorrelationParameters(17, 2, [0], [[0] * 2]),
@@ -210,20 +210,20 @@ class EncodingParameters(object):
                         CorrelationParameters(18, 2, [0], [[0] * 2])]
                 else:
                     raise ValueError("invalid correlation pass count")
-            elif (channel_count == 2):
-                if (self.correlation_passes == 0):
+            elif channel_count == 2:
+                if self.correlation_passes == 0:
                     self.__correlation_parameters__ = []
-                elif (self.correlation_passes == 1):
+                elif self.correlation_passes == 1:
                     self.__correlation_parameters__ = [
                         CorrelationParameters(18, 2, [0, 0], [[0] * 2,
                                                               [0] * 2])]
-                elif (self.correlation_passes == 2):
+                elif self.correlation_passes == 2:
                     self.__correlation_parameters__ = [
                         CorrelationParameters(17, 2, [0, 0], [[0] * 2,
                                                               [0] * 2]),
                         CorrelationParameters(18, 2, [0, 0], [[0] * 2,
                                                               [0] * 2])]
-                elif (self.correlation_passes == 5):
+                elif self.correlation_passes == 5:
                     self.__correlation_parameters__ = [
                         CorrelationParameters(3, 2, [0, 0], [[0] * 3,
                                                              [0] * 3]),
@@ -235,7 +235,7 @@ class EncodingParameters(object):
                                                               [0] * 2]),
                         CorrelationParameters(18, 2, [0, 0], [[0] * 2,
                                                               [0] * 2])]
-                elif (self.correlation_passes == 10):
+                elif self.correlation_passes == 10:
                     self.__correlation_parameters__ = [
                         CorrelationParameters(4, 2, [0, 0], [[0] * 4,
                                                              [0] * 4]),
@@ -257,7 +257,7 @@ class EncodingParameters(object):
                                                               [0] * 2]),
                         CorrelationParameters(18, 2, [0, 0], [[0] * 2,
                                                               [0] * 2])]
-                elif (self.correlation_passes == 16):
+                elif self.correlation_passes == 16:
                     self.__correlation_parameters__ = [
                         CorrelationParameters(2, 2, [0, 0], [[0] * 2,
                                                              [0] * 2]),
@@ -299,29 +299,29 @@ class EncodingParameters(object):
 
 
 def block_parameters(channel_count, channel_mask, correlation_passes):
-    if (channel_count == 1):
+    if channel_count == 1:
         return [EncodingParameters(1, correlation_passes)]
-    elif (channel_count == 2):
+    elif channel_count == 2:
         return [EncodingParameters(2, correlation_passes)]
-    elif ((channel_count == 3) and (channel_mask == 0x7)):
+    elif (channel_count == 3) and (channel_mask == 0x7):
         # front left, front right, front center
         return [EncodingParameters(2, correlation_passes),
                 EncodingParameters(1, correlation_passes)]
-    elif ((channel_count == 4) and (channel_mask == 0x33)):
+    elif (channel_count == 4) and (channel_mask == 0x33):
         # front left, front right, back left, back right
         return [EncodingParameters(2, correlation_passes),
                 EncodingParameters(2, correlation_passes)]
-    elif ((channel_count == 4) and (channel_mask == 0x107)):
+    elif (channel_count == 4) and (channel_mask == 0x107):
         # front left, front right, front center, back center
         return [EncodingParameters(2, correlation_passes),
                 EncodingParameters(1, correlation_passes),
                 EncodingParameters(1, correlation_passes)]
-    elif ((channel_count == 5) and (channel_mask == 0x37)):
+    elif (channel_count == 5) and (channel_mask == 0x37):
         # front left, front right, front center, back left, back right
         return [EncodingParameters(2, correlation_passes),
                 EncodingParameters(1, correlation_passes),
                 EncodingParameters(2, correlation_passes)]
-    elif ((channel_count == 6) and (channel_mask == 0x3F)):
+    elif (channel_count == 6) and (channel_mask == 0x3F):
         # front left, front right, front center, LFE, back left, back right
         return [EncodingParameters(2, correlation_passes),
                 EncodingParameters(1, correlation_passes),
@@ -363,7 +363,7 @@ def encode_wavpack(filename,
 
         c = 0
         for parameters in context.block_parameters:
-            if (parameters.channel_count == 1):
+            if parameters.channel_count == 1:
                 channel_data = [list(frame.channel(c))]
             else:
                 channel_data = [list(frame.channel(c)),
@@ -382,7 +382,7 @@ def encode_wavpack(filename,
                                                parameters)
 
             c += parameters.channel_count
-            if (total_pcm_frames == 0):
+            if total_pcm_frames == 0:
                 total_pcm_frames_positions.append(total_pcm_frames_pos)
 
         block_index += frame.frames
@@ -412,7 +412,7 @@ def encode_wavpack(filename,
         false_stereo=0,
         CRC=0xFFFFFFFF)
 
-    if (total_pcm_frames == 0):
+    if total_pcm_frames == 0:
         total_pcm_frames_positions.append(total_pcm_frames_pos)
 
     writer.add_callback(sub_blocks_size.add)
@@ -423,7 +423,7 @@ def encode_wavpack(filename,
     write_sub_block(writer, WV_MD5, 1, sub_block)
 
     # write Wave footer in final block, if present
-    if (context.wave_footer is not None):
+    if context.wave_footer is not None:
         sub_block.reset()
         sub_block.write_bytes(context.wave_footer)
         write_sub_block(writer, WV_WAVE_FOOTER, 1, sub_block)
@@ -437,10 +437,10 @@ def encode_wavpack(filename,
     writer.setpos(end_of_block)
 
     # update Wave header's "data" chunk size, if generated
-    if (context.wave_header is None):
+    if context.wave_header is None:
         sub_block.reset()
         writer.setpos(context.wave_header_start)
-        if (context.wave_footer is None):
+        if context.wave_footer is None:
             write_wave_header(sub_block, context.pcmreader,
                               context.total_frames, 0)
         else:
@@ -450,7 +450,7 @@ def encode_wavpack(filename,
 
     # go back and populate block headers with total samples
 
-    if (total_pcm_frames > 0):
+    if total_pcm_frames > 0:
         assert(block_index == total_pcm_frames)
 
     for pos in total_pcm_frames_positions:
@@ -479,9 +479,9 @@ def write_block(writer,
 
     assert((len(channels) == 1) or (len(channels) == 2))
 
-    if ((len(channels) == 1) or (channels[0] == channels[1])):
+    if (len(channels) == 1) or (channels[0] == channels[1]):
         # 1 channel block or equivalent
-        if (len(channels) == 1):
+        if len(channels) == 1:
             false_stereo = 0
         else:
             false_stereo = 1
@@ -491,12 +491,12 @@ def write_block(writer,
 
         # determine wasted bits
         wasted = min(map(wasted_bps, channels[0]))
-        if (wasted == INFINITY):
+        if wasted == INFINITY:
             # all samples are 0
             wasted = 0
 
         # if wasted bits, remove them from channel_0
-        if ((wasted > 0) and (wasted != INFINITY)):
+        if (wasted > 0) and (wasted != INFINITY):
             shifted = [[s >> wasted for s in channels[0]]]
         else:
             shifted = [channels[0]]
@@ -514,12 +514,12 @@ def write_block(writer,
         # determine wasted bits
         wasted = min(min(map(wasted_bps, channels[0])),
                      min(map(wasted_bps, channels[1])))
-        if (wasted == INFINITY):
+        if wasted == INFINITY:
             # all samples are 0
             wasted = 0
 
         # if wasted bits, remove them from channel_0/channel_1
-        if (wasted > 0):
+        if wasted > 0:
             shifted = [[s >> wasted for s in channels[0]],
                        [s >> wasted for s in channels[1]]]
         else:
@@ -559,10 +559,10 @@ def write_block(writer,
     writer.add_callback(sub_blocks_size.add)
 
     # if first block in file, write Wave header
-    if (not context.first_block_written):
+    if not context.first_block_written:
         sub_block.reset()
-        if (context.wave_header is None):
-            if (context.wave_footer is None):
+        if context.wave_header is None:
+            if context.wave_footer is None:
                 write_wave_header(sub_block, context.pcmreader, 0, 0)
             else:
                 write_wave_header(sub_block, context.pcmreader, 0,
@@ -575,7 +575,7 @@ def write_block(writer,
         context.first_block_written = True
 
     # if correlation passes, write three sub blocks of pass data
-    if (parameters.correlation_passes > 0):
+    if parameters.correlation_passes > 0:
         sub_block.reset()
         write_correlation_terms(
             sub_block,
@@ -603,13 +603,13 @@ def write_block(writer,
         write_sub_block(writer, WV_SAMPLES, 0, sub_block)
 
     # if wasted bits, write extended integers sub block
-    if (wasted > 0):
+    if wasted > 0:
         sub_block.reset()
         write_extended_integers(sub_block, 0, wasted, 0, 0)
         write_sub_block(writer, WV_INT32_INFO, 0, sub_block)
 
     # if channel count > 2, write channel info sub block
-    if (context.pcmreader.channels > 2):
+    if context.pcmreader.channels > 2:
         sub_block.reset()
         sub_block.write(8, context.pcmreader.channels)
         sub_block.write(32, context.pcmreader.channel_mask)
@@ -623,11 +623,11 @@ def write_block(writer,
         sub_block.write(32, context.pcmreader.sample_rate)
         write_sub_block(writer, WV_SAMPLE_RATE, 1, sub_block)
 
-    if ((len(channels) == 1) or (false_stereo)):
+    if (len(channels) == 1) or (false_stereo):
         # 1 channel block
 
         # correlate shifted_0 with terms/deltas/weights/samples
-        if (parameters.correlation_passes > 0):
+        if parameters.correlation_passes > 0:
             assert(len(shifted) == 1)
             correlated = correlate_channels(
                 shifted,
@@ -639,7 +639,7 @@ def write_block(writer,
         # 2 channel block
 
         # correlate shifted_0/shifted_1 with terms/deltas/weights/samples
-        if (parameters.correlation_passes > 0):
+        if parameters.correlation_passes > 0:
             assert(len(mid_side) == 2)
             correlated = correlate_channels(
                 mid_side,
@@ -689,7 +689,7 @@ INFINITY = 2 ** 32
 
 
 def wasted_bps(sample):
-    if (sample == 0):
+    if sample == 0:
         return INFINITY
     else:
         total = 0
@@ -706,7 +706,7 @@ def calculate_crc(samples):
         for s in frame:
             crc = 3 * crc + s
 
-    if (crc >= 0):
+    if crc >= 0:
         return crc % 0x100000000
     else:
         return (2 ** 32 - (-crc)) % 0x100000000
@@ -742,7 +742,7 @@ def write_block_header(writer,
     writer.write_bytes(b"wvpk")             # block ID
     # block size
     sub_blocks_size_pos = writer.getpos()
-    if (sub_blocks_size > 0):
+    if sub_blocks_size > 0:
         writer.write(32, sub_blocks_size + 24)
     else:
         writer.write(32, 0)
@@ -760,7 +760,7 @@ def write_block_header(writer,
     writer.write(1, cross_channel_decorrelation)
     writer.write(1, 0)                      # hybrid noise shaping
     writer.write(1, 0)                      # floating point data
-    if (wasted_bps > 0):                    # extended size integers
+    if wasted_bps > 0:                    # extended size integers
         writer.write(1, 1)
     else:
         writer.write(1, 0)
@@ -804,7 +804,7 @@ def write_sub_block(writer, function, nondecoder_data, recorder):
                   nondecoder_data,
                   actual_size_1_less))
 
-    if (recorder.bytes() > (255 * 2)):
+    if recorder.bytes() > (255 * 2):
         writer.write(1, 1)
         writer.write(24, (recorder.bytes() // 2) + actual_size_1_less)
     else:
@@ -813,7 +813,7 @@ def write_sub_block(writer, function, nondecoder_data, recorder):
 
     recorder.copy(writer)
 
-    if (actual_size_1_less):
+    if actual_size_1_less:
         writer.write(8, 0)
 
 
@@ -843,16 +843,16 @@ def write_correlation_weights(writer, correlation_weights):
 def store_weight(w):
     w = min(max(w, -1024), 1024)
 
-    if (w > 0):
+    if w > 0:
         return (w - ((w + 2 ** 6) // 2 ** 7) + 4) // (2 ** 3)
-    elif (w == 0):
+    elif w == 0:
         return 0
-    elif (w < 0):
+    elif w < 0:
         return (w + 4) // (2 ** 3)
 
 
 def restore_weight(v):
-    if (v > 0):
+    if v > 0:
         return ((v * 2 ** 3) + ((v * 2 ** 3 + 2 ** 6) // 2 ** 7))
     elif(v == 0):
         return 0
@@ -871,28 +871,28 @@ def write_correlation_samples(writer, correlation_terms, correlation_samples,
 
     assert(len(correlation_terms) == len(correlation_samples))
 
-    if (channel_count == 2):
+    if channel_count == 2:
         for (term, samples) in zip(correlation_terms, correlation_samples):
-            if ((17 <= term) and (term <= 18)):
+            if (17 <= term) and (term <= 18):
                 writer.write_signed(16, wv_log2(samples[0][0]))
                 writer.write_signed(16, wv_log2(samples[0][1]))
                 writer.write_signed(16, wv_log2(samples[1][0]))
                 writer.write_signed(16, wv_log2(samples[1][1]))
-            elif ((1 <= term) and (term <= 8)):
+            elif (1 <= term) and (term <= 8):
                 for s in range(term):
                     writer.write_signed(16, wv_log2(samples[0][s]))
                     writer.write_signed(16, wv_log2(samples[1][s]))
-            elif ((-3 <= term) and (term <= -1)):
+            elif (-3 <= term) and (term <= -1):
                 writer.write_signed(16, wv_log2(samples[0][0]))
                 writer.write_signed(16, wv_log2(samples[1][0]))
             else:
                 raise ValueError("invalid correlation term")
-    elif (channel_count == 1):
+    elif channel_count == 1:
         for (term, samples) in zip(correlation_terms, correlation_samples):
-            if ((17 <= term) and (term <= 18)):
+            if (17 <= term) and (term <= 18):
                 writer.write_signed(16, wv_log2(samples[0][0]))
                 writer.write_signed(16, wv_log2(samples[0][1]))
-            elif ((1 <= term) and (term <= 8)):
+            elif (1 <= term) and (term <= 8):
                 for s in range(term):
                     writer.write_signed(16, wv_log2(samples[0][s]))
             else:
@@ -905,17 +905,17 @@ def wv_log2(value):
     from math import log
 
     a = abs(value) + (abs(value) // 2 ** 9)
-    if (a != 0):
+    if a != 0:
         c = int(log(a) / log(2)) + 1
     else:
         c = 0
-    if (value > 0):
-        if ((0 <= a) and (a < 256)):
+    if value > 0:
+        if (0 <= a) and (a < 256):
             return (c * 2 ** 8) + WLOG[(a * 2 ** (9 - c)) % 256]
         else:
             return (c * 2 ** 8) + WLOG[(a // 2 ** (c - 9)) % 256]
     else:
-        if ((0 <= a) and (a < 256)):
+        if (0 <= a) and (a < 256):
             return -((c * 2 ** 8) + WLOG[(a * 2 ** (9 - c)) % 256])
         else:
             return -((c * 2 ** 8) + WLOG[(a // 2 ** (c - 9)) % 256])
@@ -956,13 +956,13 @@ WLOG = [0x00, 0x01, 0x03, 0x04, 0x06, 0x07, 0x09, 0x0a,
 
 
 def wv_exp2(value):
-    if ((-32768 <= value) and (value < -2304)):
+    if (-32768 <= value) and (value < -2304):
         return -(WEXP[-value & 0xFF] << ((-value >> 8) - 9))
-    elif ((-2304 <= value) and (value < 0)):
+    elif (-2304 <= value) and (value < 0):
         return -(WEXP[-value & 0xFF] >> (9 - (-value >> 8)))
-    elif ((0 <= value) and (value <= 2304)):
+    elif (0 <= value) and (value <= 2304):
         return WEXP[value & 0xFF] >> (9 - (value >> 8))
-    elif ((2304 < value) and (value <= 32767)):
+    elif (2304 < value) and (value <= 32767):
         return WEXP[value & 0xFF] << ((value >> 8) - 9)
 
 
@@ -1009,7 +1009,7 @@ def correlate_channels(uncorrelated_samples,
     returns correlated_samples[c][s] with sample 's' for channel 'c'
     """
 
-    if (channel_count == 1):
+    if channel_count == 1:
         latest_pass = uncorrelated_samples[0]
         for p in correlation_parameters:
             (latest_pass,
@@ -1045,7 +1045,7 @@ def correlation_pass_1ch(uncorrelated_samples,
     returns a (correlated[s], weight, samples[s]) tuple
     containing correlated samples and updated weight/samples"""
 
-    if (term == 18):
+    if term == 18:
         assert(len(correlation_samples) == 2)
         uncorrelated = ([correlation_samples[1],
                          correlation_samples[0]] +
@@ -1056,7 +1056,7 @@ def correlation_pass_1ch(uncorrelated_samples,
             correlated.append(uncorrelated[i] - apply_weight(weight, temp))
             weight += update_weight(temp, correlated[i - 2], delta)
         return (correlated, weight, list(reversed(correlated[-2:])))
-    elif (term == 17):
+    elif term == 17:
         assert(len(correlation_samples) == 2)
         uncorrelated = ([correlation_samples[1],
                          correlation_samples[0]] +
@@ -1067,7 +1067,7 @@ def correlation_pass_1ch(uncorrelated_samples,
             correlated.append(uncorrelated[i] - apply_weight(weight, temp))
             weight += update_weight(temp, correlated[i - 2], delta)
         return (correlated, weight, list(reversed(correlated[-2:])))
-    elif ((1 <= term) and (term <= 8)):
+    elif (1 <= term) and (term <= 8):
         assert(len(correlation_samples) == term)
         uncorrelated = correlation_samples[:] + uncorrelated_samples
         correlated = []
@@ -1094,7 +1094,7 @@ def correlation_pass_2ch(uncorrelated_samples,
     assert(len(uncorrelated_samples[0]) == len(uncorrelated_samples[1]))
     assert(len(weights) == 2)
 
-    if (((17 <= term) and (term <= 18)) or ((1 <= term) and (term <= 8))):
+    if ((17 <= term) and (term <= 18)) or ((1 <= term) and (term <= 8)):
         (uncorrelated1,
          weight1,
          samples1) = correlation_pass_1ch(uncorrelated_samples[0],
@@ -1109,14 +1109,14 @@ def correlation_pass_2ch(uncorrelated_samples,
                 [weight1, weight2],
                 [samples1, samples2])
 
-    elif ((-3 <= term) and (term <= -1)):
+    elif (-3 <= term) and (term <= -1):
         assert(len(correlation_samples[0]) == 1)
         assert(len(correlation_samples[1]) == 1)
         uncorrelated = (correlation_samples[1] + uncorrelated_samples[0],
                         correlation_samples[0] + uncorrelated_samples[1])
         correlated = [[], []]
         weights = list(weights)
-        if (term == -1):
+        if term == -1:
             for i in range(1, len(uncorrelated[0])):
                 correlated[0].append(uncorrelated[0][i] -
                                      apply_weight(weights[0],
@@ -1132,7 +1132,7 @@ def correlation_pass_2ch(uncorrelated_samples,
                                             delta)
                 weights[0] = max(min(weights[0], 1024), -1024)
                 weights[1] = max(min(weights[1], 1024), -1024)
-        elif (term == -2):
+        elif term == -2:
             for i in range(1, len(uncorrelated[0])):
                 correlated[0].append(uncorrelated[0][i] -
                                      apply_weight(weights[0],
@@ -1148,7 +1148,7 @@ def correlation_pass_2ch(uncorrelated_samples,
                                             delta)
                 weights[0] = max(min(weights[0], 1024), -1024)
                 weights[1] = max(min(weights[1], 1024), -1024)
-        elif (term == -3):
+        elif term == -3:
             for i in range(1, len(uncorrelated[0])):
                 correlated[0].append(uncorrelated[0][i] -
                                      apply_weight(weights[0],
@@ -1176,16 +1176,16 @@ def apply_weight(weight, sample):
 
 
 def update_weight(source, result, delta):
-    if ((source == 0) or (result == 0)):
+    if (source == 0) or (result == 0):
         return 0
-    elif ((source ^ result) >= 0):
+    elif (source ^ result) >= 0:
         return delta
     else:
         return -delta
 
 
 def write_entropy_variables(writer, channels, entropies):
-    if (len(channels) == 2):
+    if len(channels) == 2:
         for e in entropies[0]:
             writer.write(16, wv_log2(e))
         for e in entropies[1]:
@@ -1217,7 +1217,7 @@ class Residual(object):
         returns a Residual object and updates the entropies"""
 
         # figure out unsigned from signed
-        if (residual >= 0):
+        if residual >= 0:
             unsigned = residual
             sign = 0
         else:
@@ -1227,18 +1227,18 @@ class Residual(object):
         medians = [e // 2 ** 4 + 1 for e in entropy]
 
         # figure out m, offset, add and update channel's entropies
-        if (unsigned < medians[0]):
+        if unsigned < medians[0]:
             m = 0
             offset = unsigned
             add = medians[0] - 1
             entropy[0] -= ((entropy[0] + 126) // 128) * 2
-        elif ((unsigned - medians[0]) < medians[1]):
+        elif (unsigned - medians[0]) < medians[1]:
             m = 1
             offset = unsigned - medians[0]
             add = medians[1] - 1
             entropy[0] += ((entropy[0] + 128) // 128) * 5
             entropy[1] -= ((entropy[1] + 62) // 64) * 2
-        elif ((unsigned - (medians[0] + medians[1])) < medians[2]):
+        elif (unsigned - (medians[0] + medians[1])) < medians[2]:
             m = 2
             offset = unsigned - (medians[0] + medians[1])
             add = medians[2] - 1
@@ -1263,35 +1263,35 @@ class Residual(object):
 
         from math import log
 
-        if (self.zeroes is not None):
+        if self.zeroes is not None:
             write_egc(writer, self.zeroes)
 
-        if (self.m is not None):
+        if self.m is not None:
             # calculate unary_{i - 1} based on m_{i}
-            if ((self.m > 0) and (m_i > 0)):
+            if (self.m > 0) and (m_i > 0):
                 # positive m to positive m
-                if ((u_i_2 is None) or (u_i_2 % 2 == 0)):
+                if (u_i_2 is None) or (u_i_2 % 2 == 0):
                     u_i_1 = (self.m * 2) + 1
                 else:
                     # passing 1 from previous u
                     u_i_1 = (self.m * 2) - 1
-            elif ((self.m == 0) and (m_i > 0)):
+            elif (self.m == 0) and (m_i > 0):
                 # zero m to positive m
-                if ((u_i_2 is None) or (u_i_2 % 2 == 1)):
+                if (u_i_2 is None) or (u_i_2 % 2 == 1):
                     u_i_1 = 1
                 else:
                     # passing 0 from previous u
                     u_i_1 = None
-            elif ((self.m > 0) and (m_i == 0)):
+            elif (self.m > 0) and (m_i == 0):
                 # positive m to zero m
-                if ((u_i_2 is None) or (u_i_2 % 2 == 0)):
+                if (u_i_2 is None) or (u_i_2 % 2 == 0):
                     u_i_1 = self.m * 2
                 else:
                     # passing 1 from previous u
                     u_i_1 = (self.m - 1) * 2
-            elif ((self.m == 0) and (m_i == 0)):
+            elif (self.m == 0) and (m_i == 0):
                 # zero m to zero m
-                if ((u_i_2 is None) or (u_i_2 % 2 == 1)):
+                if (u_i_2 is None) or (u_i_2 % 2 == 1):
                     u_i_1 = 0
                 else:
                     # passing 0 from previous u
@@ -1300,17 +1300,17 @@ class Residual(object):
                 raise ValueError("invalid m")
 
             # write residual_{i - 1} to disk based on unary_{i - 1}
-            if (u_i_1 is not None):
-                if (u_i_1 < 16):
+            if u_i_1 is not None:
+                if u_i_1 < 16:
                     writer.unary(0, u_i_1)
                 else:
                     writer.unary(0, 16)
                     write_egc(writer, u_i_1 - 16)
 
-            if (self.add > 0):
+            if self.add > 0:
                 p = int(log(self.add) / log(2))
                 e = 2 ** (p + 1) - self.add - 1
-                if (self.offset < e):
+                if self.offset < e:
                     writer.write(p, self.offset)
                 else:
                     writer.write(p, (self.offset + e) // 2)
@@ -1337,9 +1337,9 @@ def write_bitstream(writer, channels, entropies):
 
         if (((entropies[0][0] < 2) and (entropies[1][0] < 2) and
              unary_undefined(u_i_2, r_i_1.m))):
-            if ((r_i_1.zeroes is not None) and (r_i_1.m is None)):
+            if (r_i_1.zeroes is not None) and (r_i_1.m is None):
                 # in a block of zeroes
-                if (r == 0):
+                if r == 0:
                     # continue block of zeroes
                     r_i_1.zeroes += 1
                 else:
@@ -1349,7 +1349,7 @@ def write_bitstream(writer, channels, entropies):
                     r_i_1 = r_i
             else:
                 # start a new block of zeroes
-                if (r == 0):
+                if r == 0:
                     r_i = Residual(zeroes=1,
                                    m=None, offset=None, add=None, sign=None)
                     u_i_2 = r_i_1.flush(writer, u_i_2, 0)
@@ -1380,9 +1380,9 @@ def unary_undefined(prev_u, m):
     returns True if u_{i} is undefined,
     False if defined"""
 
-    if (m is None):
+    if m is None:
         return True
-    if ((m == 0) and (prev_u is not None) and (prev_u % 2 == 0)):
+    if (m == 0) and (prev_u is not None) and (prev_u % 2 == 0):
         return True
     else:
         return False
@@ -1393,7 +1393,7 @@ def write_egc(writer, value):
 
     assert(value >= 0)
 
-    if (value > 1):
+    if value > 1:
         t = int(log(value) / log(2)) + 1
         writer.unary(0, t)
         writer.write(t - 1, value % (2 ** (t - 1)))

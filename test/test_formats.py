@@ -49,7 +49,7 @@ def do_nothing(self):
 # which can be wrapped around individual tests as needed
 for section in parser.sections():
     for option in parser.options(section):
-        if (parser.getboolean(section, option)):
+        if parser.getboolean(section, option):
             vars()["%s_%s" % (section.upper(),
                               option.upper())] = lambda function: function
         else:
@@ -80,7 +80,7 @@ class ERROR_PCM_Reader(audiotools.PCMReader):
     def __init__(self, error,
                  sample_rate=44100, channels=2, bits_per_sample=16,
                  channel_mask=None, failure_chance=.2, minimum_successes=0):
-        if (channel_mask is None):
+        if channel_mask is None:
             channel_mask = int(audiotools.ChannelMask.from_channels(channels))
         audiotools.PCMReader.__init__(
             self,
@@ -102,12 +102,12 @@ class ERROR_PCM_Reader(audiotools.PCMReader):
                                               True)
 
     def read(self, pcm_frames):
-        if (self.minimum_successes > 0):
+        if self.minimum_successes > 0:
             self.minimum_successes -= 1
             return audiotools.pcm.from_frames(
                 [self.frame for i in range(pcm_frames)])
         else:
-            if (random.random() <= self.failure_chance):
+            if random.random() <= self.failure_chance:
                 raise self.error
             else:
                 return audiotools.pcm.from_frames(
@@ -149,7 +149,7 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_init(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         # first check nonexistent files
@@ -189,7 +189,7 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_is_type(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         valid = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -215,7 +215,7 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_bits_per_sample(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -248,7 +248,7 @@ class AudioFileTest(unittest.TestCase):
         import string
         from audiotools import PY3
 
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         dummy_metadata = audiotools.MetaData(
@@ -266,7 +266,7 @@ class AudioFileTest(unittest.TestCase):
             track.set_metadata(dummy_metadata)
             track = audiotools.open(temp.name)
             metadata = track.get_metadata()
-            if (metadata is None):
+            if metadata is None:
                 return
 
             # check that delete_metadata works
@@ -279,7 +279,7 @@ class AudioFileTest(unittest.TestCase):
             self.assertEqual(track.get_metadata(), nonblank_metadata)
             track.delete_metadata()
             metadata = track.get_metadata()
-            if (metadata is not None):
+            if metadata is not None:
                 self.assertEqual(
                     metadata,
                     audiotools.MetaData())
@@ -313,7 +313,7 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_length(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -335,7 +335,7 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_context_manager(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
@@ -351,9 +351,9 @@ class AudioFileTest(unittest.TestCase):
         # this checks to make sure PCMReader implementations
         # aren't leaking file handles
 
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
-        elif (self.audio_class.NAME == "m4a"):
+        elif self.audio_class.NAME == "m4a":
             # M4A implemented using external programs
             # so no need to check those
             return
@@ -373,7 +373,7 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_close(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         pcm_frames = 123456
@@ -470,13 +470,13 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_convert_progress(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         with tempfile.NamedTemporaryFile(suffix=self.suffix) as temp:
             track = self.audio_class.from_pcm(temp.name,
                                               BLANK_PCM_Reader(10))
-            if (track.lossless()):
+            if track.lossless():
                 self.assertTrue(
                     audiotools.pcm_cmp(track.to_pcm(), BLANK_PCM_Reader(10)))
             for audio_class in audiotools.AVAILABLE_TYPES:
@@ -496,7 +496,7 @@ class AudioFileTest(unittest.TestCase):
                     for x, y in zip(log.results[1:], log.results):
                         self.assertGreaterEqual((x[0] - y[0]), 0)
 
-                    if (track.lossless() and track2.lossless()):
+                    if track.lossless() and track2.lossless():
                         self.assertTrue(
                             audiotools.pcm_cmp(track.to_pcm(),
                                                track2.to_pcm()),
@@ -508,13 +508,13 @@ class AudioFileTest(unittest.TestCase):
     def test_track_name(self):
         import sys
 
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         format_template = u"Fo\u00f3 %%(%(field)s)s"
         # first, test the many unicode string fields
         for field in audiotools.MetaData.FIELDS:
-            if (field not in audiotools.MetaData.INTEGER_FIELDS):
+            if field not in audiotools.MetaData.INTEGER_FIELDS:
                 metadata = audiotools.MetaData()
                 value = u"\u00dcnicode value \u2ec1"
                 setattr(metadata, field, value)
@@ -526,7 +526,7 @@ class AudioFileTest(unittest.TestCase):
                             (sys.version_info[0] >= 3) else
                             format_string.encode("UTF-8", "replace")))
                 self.assertGreater(len(track_name), 0)
-                if (sys.version_info[0] >= 3):
+                if sys.version_info[0] >= 3:
                     self.assertEqual(
                         track_name,
                         (format_template %
@@ -560,7 +560,7 @@ class AudioFileTest(unittest.TestCase):
                 metadata = audiotools.MetaData(track_number=track_number,
                                                album_number=album_number)
 
-                if (sys.version_info[0] < 3):
+                if sys.version_info[0] < 3:
                     track_name = self.audio_class.track_name(
                         file_path=basepath.encode("UTF-8", "replace"),
                         track_metadata=metadata,
@@ -596,7 +596,7 @@ class AudioFileTest(unittest.TestCase):
                 metadata = audiotools.MetaData(track_total=track_total,
                                                album_total=album_total)
 
-                if (sys.version_info[0] < 3):
+                if sys.version_info[0] < 3:
                     track_name = self.audio_class.track_name(
                         file_path="track",
                         track_metadata=metadata,
@@ -627,7 +627,7 @@ class AudioFileTest(unittest.TestCase):
                              (u"/foo/bar/track", u"track"),
                              (u"/f\u00f3o/bar/tr\u00e1ck", u"tr\u00e1ck")]:
             for metadata in [None, audiotools.MetaData()]:
-                if (sys.version_info[0] < 3):
+                if sys.version_info[0] < 3:
                     track_name = self.audio_class.track_name(
                         file_path=path.encode("UTF-8", "replace"),
                         track_metadata=metadata,
@@ -652,7 +652,7 @@ class AudioFileTest(unittest.TestCase):
                      u"/foo/bar/track",
                      u"/f\u00f3o/bar/tr\u00e1ck"]:
             for metadata in [None, audiotools.MetaData()]:
-                if (sys.version_info[0] < 3):
+                if sys.version_info[0] < 3:
                     track_name = self.audio_class.track_name(
                         file_path=path.encode("UTF-8", "replace"),
                         track_metadata=metadata,
@@ -708,7 +708,7 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_replay_gain(self):
-        if (self.audio_class.supports_replay_gain()):
+        if self.audio_class.supports_replay_gain():
             # make test file
             temp_file = tempfile.NamedTemporaryFile(
                 suffix="." + self.audio_class.SUFFIX)
@@ -754,7 +754,7 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_read_after_eof(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return None
 
         # build basic file
@@ -790,7 +790,7 @@ class AudioFileTest(unittest.TestCase):
 
     @FORMAT_AUDIOFILE
     def test_invalid_from_pcm(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         # test our ERROR_PCM_Reader works
@@ -805,7 +805,7 @@ class AudioFileTest(unittest.TestCase):
 
         # ensure that our dummy file doesn't exist
         dummy_filename = "invalid." + self.audio_class.SUFFIX
-        if (os.path.isfile(dummy_filename)):
+        if os.path.isfile(dummy_filename):
             os.unlink(dummy_filename)
 
         # a decoder that raises IOError on to_pcm()
@@ -853,12 +853,12 @@ class AudioFileTest(unittest.TestCase):
         # but all should raise an exception if the actual amount
         # of input frames doesn't match
 
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp_name = "test." + self.audio_class.SUFFIX
 
-        if (os.path.isfile(temp_name)):
+        if os.path.isfile(temp_name):
             os.unlink(temp_name)
 
         # encode a file without the total_pcm_frames argument
@@ -867,7 +867,7 @@ class AudioFileTest(unittest.TestCase):
             EXACT_SILENCE_PCM_Reader(123456))
         track.verify()
 
-        if (track.lossless()):
+        if track.lossless():
             self.assertEqual(track.total_frames(), 123456)
 
         del(track)
@@ -880,7 +880,7 @@ class AudioFileTest(unittest.TestCase):
             total_pcm_frames=234567)
         track.verify()
 
-        if (track.lossless()):
+        if track.lossless():
             self.assertEqual(track.total_frames(), 234567)
 
         del(track)
@@ -909,7 +909,7 @@ class AudioFileTest(unittest.TestCase):
         from hashlib import md5
         from random import randrange
 
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         total_pcm_frames = 44100 * 60 * 3
@@ -923,7 +923,7 @@ class AudioFileTest(unittest.TestCase):
                 EXACT_SILENCE_PCM_Reader(total_pcm_frames),
                 total_pcm_frames=total_pcm_frames)
 
-            if (temp_track.seekable()):
+            if temp_track.seekable():
                 # get a PCMReader of our format
                 with temp_track.to_pcm() as pcmreader:
                     # hash its data when read to end
@@ -1033,7 +1033,7 @@ class AudioFileTest(unittest.TestCase):
 class LosslessFileTest(AudioFileTest):
     @FORMAT_LOSSLESS
     def test_lossless(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -1047,7 +1047,7 @@ class LosslessFileTest(AudioFileTest):
 
     @FORMAT_LOSSLESS
     def test_channels(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -1065,7 +1065,7 @@ class LosslessFileTest(AudioFileTest):
 
     @FORMAT_LOSSLESS
     def test_channel_mask(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -1098,7 +1098,7 @@ class LosslessFileTest(AudioFileTest):
                                                 channels=len(cm),
                                                 channel_mask=int(cm)))
                 self.assertEqual(track.channels(), len(cm))
-                if (int(track.channel_mask()) != 0):
+                if int(track.channel_mask()) != 0:
                     self.assertEqual(track.channel_mask(), cm)
                     track = audiotools.open(temp.name)
                     self.assertEqual(track.channels(), len(cm))
@@ -1108,7 +1108,7 @@ class LosslessFileTest(AudioFileTest):
 
     @FORMAT_LOSSLESS
     def test_sample_rate(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -1125,7 +1125,7 @@ class LosslessFileTest(AudioFileTest):
 
     @FORMAT_LOSSLESS
     def test_pcm(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -1136,7 +1136,7 @@ class LosslessFileTest(AudioFileTest):
                 for compression in (None,) + self.audio_class.COMPRESSION_MODES:
                     # test silence
                     reader = MD5_Reader(BLANK_PCM_Reader(1))
-                    if (compression is None):
+                    if compression is None:
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
@@ -1154,7 +1154,7 @@ class LosslessFileTest(AudioFileTest):
 
                     # test random noise
                     reader = MD5_Reader(RANDOM_PCM_Reader(1))
-                    if (compression is None):
+                    if compression is None:
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
@@ -1172,7 +1172,7 @@ class LosslessFileTest(AudioFileTest):
 
                     # test randomly-sized chunks of silence
                     reader = MD5_Reader(Variable_Reader(BLANK_PCM_Reader(10)))
-                    if (compression is None):
+                    if compression is None:
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
@@ -1192,7 +1192,7 @@ class LosslessFileTest(AudioFileTest):
 
                     # test randomly-sized chunks of random noise
                     reader = MD5_Reader(Variable_Reader(RANDOM_PCM_Reader(10)))
-                    if (compression is None):
+                    if compression is None:
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
@@ -1253,7 +1253,7 @@ class LosslessFileTest(AudioFileTest):
 
                     # test without suffix
                     reader = MD5_Reader(BLANK_PCM_Reader(1))
-                    if (compression is None):
+                    if compression is None:
                         track = self.audio_class.from_pcm(
                             temp2.name,
                             reader,
@@ -1277,7 +1277,7 @@ class LosslessFileTest(AudioFileTest):
 
     @FORMAT_LOSSLESS
     def test_convert(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         # check various round-trip options
@@ -1299,7 +1299,7 @@ class LosslessFileTest(AudioFileTest):
                 with tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX) as temp_output:
                     track2 = track.convert(temp_output.name, audio_class)
-                    if (track2.lossless()):
+                    if track2.lossless():
                         self.assertTrue(
                             audiotools.pcm_cmp(track.to_pcm(),
                                                track2.to_pcm()),
@@ -1327,7 +1327,7 @@ class LosslessFileTest(AudioFileTest):
                         track2 = track.convert(temp_output.name,
                                                audio_class,
                                                compression)
-                        if (track2.lossless()):
+                        if track2.lossless():
                             self.assertTrue(
                                 audiotools.pcm_cmp(track.to_pcm(),
                                                    track2.to_pcm()),
@@ -1362,7 +1362,7 @@ class LosslessFileTest(AudioFileTest):
 class LossyFileTest(AudioFileTest):
     @FORMAT_LOSSY
     def test_bits_per_sample(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -1378,7 +1378,7 @@ class LossyFileTest(AudioFileTest):
 
     @FORMAT_LOSSY
     def test_lossless(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -1392,7 +1392,7 @@ class LossyFileTest(AudioFileTest):
 
     @FORMAT_LOSSY
     def test_channels(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -1410,7 +1410,7 @@ class LossyFileTest(AudioFileTest):
 
     @FORMAT_LOSSY
     def test_channel_mask(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -1432,7 +1432,7 @@ class LossyFileTest(AudioFileTest):
 
     @FORMAT_LOSSY
     def test_pcm(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         temp = tempfile.NamedTemporaryFile(suffix=self.suffix)
@@ -1443,7 +1443,7 @@ class LossyFileTest(AudioFileTest):
                 for compression in (None,) + self.audio_class.COMPRESSION_MODES:
                     # test silence
                     reader = BLANK_PCM_Reader(5)
-                    if (compression is None):
+                    if compression is None:
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
@@ -1464,7 +1464,7 @@ class LossyFileTest(AudioFileTest):
 
                     # test random noise
                     reader = RANDOM_PCM_Reader(5)
-                    if (compression is None):
+                    if compression is None:
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
@@ -1485,7 +1485,7 @@ class LossyFileTest(AudioFileTest):
 
                     # test randomly-sized chunks of silence
                     reader = Variable_Reader(BLANK_PCM_Reader(5))
-                    if (compression is None):
+                    if compression is None:
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
@@ -1507,7 +1507,7 @@ class LossyFileTest(AudioFileTest):
 
                     # test randomly-sized chunks of random noise
                     reader = Variable_Reader(RANDOM_PCM_Reader(5))
-                    if (compression is None):
+                    if compression is None:
                         track = self.audio_class.from_pcm(
                             temp.name,
                             reader,
@@ -1570,7 +1570,7 @@ class LossyFileTest(AudioFileTest):
 
                     # test without suffix
                     reader = BLANK_PCM_Reader(5)
-                    if (compression is None):
+                    if compression is None:
                         track = self.audio_class.from_pcm(
                             temp2.name,
                             reader,
@@ -1598,7 +1598,7 @@ class LossyFileTest(AudioFileTest):
 
     @FORMAT_LOSSY
     def test_convert(self):
-        if (self.audio_class is audiotools.AudioFile):
+        if self.audio_class is audiotools.AudioFile:
             return
 
         # check various round-trip options
@@ -1658,7 +1658,7 @@ class TestForeignWaveChunks:
     @FORMAT_LOSSLESS
     def test_from_wave_close(self):
         temp_name = "closed." + self.audio_class.SUFFIX
-        if (os.path.isfile(temp_name)):
+        if os.path.isfile(temp_name):
             os.unlink(temp_name)
         try:
             pcmreader = CLOSE_PCM_Reader(
@@ -1766,7 +1766,7 @@ class TestForeignWaveChunks:
                 # convert our file to every other WaveContainer format
                 # (including our own)
                 for new_class in audiotools.AVAILABLE_TYPES:
-                    if (issubclass(new_class, audiotools.WaveContainer)):
+                    if issubclass(new_class, audiotools.WaveContainer):
                         temp2 = tempfile.NamedTemporaryFile(
                             suffix="." + new_class.SUFFIX)
                         log = Log()
@@ -1808,7 +1808,7 @@ class TestForeignWaveChunks:
             finally:
                 temp1.close()
 
-        if (os.path.isfile("bad.wav")):
+        if os.path.isfile("bad.wav"):
             os.unlink("bad.wav")
 
         for (header, footer) in [
@@ -1902,7 +1902,7 @@ class TestForeignAiffChunks:
     @FORMAT_LOSSLESS
     def test_from_wave_close(self):
         temp_name = "closed." + self.audio_class.SUFFIX
-        if (os.path.isfile(temp_name)):
+        if os.path.isfile(temp_name):
             os.unlink(temp_name)
         try:
             pcmreader = CLOSE_PCM_Reader(
@@ -2013,7 +2013,7 @@ class TestForeignAiffChunks:
                 # convert our file to every other AiffContainer format
                 # (including our own)
                 for new_class in audiotools.AVAILABLE_TYPES:
-                    if (issubclass(new_class, audiotools.AiffContainer)):
+                    if issubclass(new_class, audiotools.AiffContainer):
                         temp2 = tempfile.NamedTemporaryFile(
                             suffix="." + new_class.SUFFIX)
                         log = Log()
@@ -2055,7 +2055,7 @@ class TestForeignAiffChunks:
             finally:
                 temp1.close()
 
-        if (os.path.isfile("bad.aiff")):
+        if os.path.isfile("bad.aiff"):
             os.unlink("bad.aiff")
 
         for (header, footer) in [
@@ -2268,7 +2268,7 @@ class AiffFileTest(TestForeignAiffChunks, LosslessFileTest):
                 temp.write(f.read()[0:-10])
             temp.flush()
             flac = audiotools.open(temp.name)
-            if (os.path.isfile("dummy.wav")):
+            if os.path.isfile("dummy.wav"):
                 os.unlink("dummy.wav")
             self.assertFalse(os.path.isfile("dummy.wav"))
             self.assertRaises(audiotools.EncodingError,
@@ -2492,7 +2492,7 @@ class ALACFileTest(LosslessFileTest):
                 temp.write(f.read()[0:-10])
                 temp.flush()
             alac = audiotools.open(temp.name)
-            if (os.path.isfile("dummy.wav")):
+            if os.path.isfile("dummy.wav"):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
@@ -2516,7 +2516,7 @@ class ALACFileTest(LosslessFileTest):
             self.assertEqual(u"%s" % (metadata[b'ilst'][b'\xa9too'],), encoder)
 
     def __test_reader__(self, pcmreader, total_pcm_frames, block_size=4096):
-        if (not audiotools.BIN.can_execute(audiotools.BIN["alac"])):
+        if not audiotools.BIN.can_execute(audiotools.BIN["alac"]):
             self.assertTrue(
                 False,
                 "reference ALAC binary alac(1) required for this test")
@@ -3282,7 +3282,7 @@ class AUFileTest(LosslessFileTest):
                 good_data = f.read()
             with open(temp.name, 'wb') as f:
                 f.write(good_data[0:-10])
-            if (os.path.isfile("dummy.wav")):
+            if os.path.isfile("dummy.wav"):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
@@ -3609,7 +3609,7 @@ class FlacFileTest(TestForeignAiffChunks,
                 temp.write(ints_to_bytes(flac_data[0:i]))
                 temp.flush()
                 self.assertEqual(os.path.getsize(temp.name), i)
-                if (i < 4):
+                if i < 4:
                     with open(temp.name, "rb") as f:
                         self.assertIsNone(audiotools.file_type(f))
                 with open(temp.name, "rb") as f:
@@ -3695,7 +3695,7 @@ class FlacFileTest(TestForeignAiffChunks,
             temp.write(ints_to_bytes(flac_data[0:-10]))
             temp.flush()
             flac = audiotools.open(temp.name)
-            if (os.path.isfile("dummy.wav")):
+            if os.path.isfile("dummy.wav"):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
@@ -3852,7 +3852,7 @@ class FlacFileTest(TestForeignAiffChunks,
             g.close()
 
     def __test_reader__(self, pcmreader, **encode_options):
-        if (not audiotools.BIN.can_execute(audiotools.BIN["flac"])):
+        if not audiotools.BIN.can_execute(audiotools.BIN["flac"]):
             self.assertTrue(
                 False,
                 "reference FLAC binary flac(1) required for this test")
@@ -3871,7 +3871,7 @@ class FlacFileTest(TestForeignAiffChunks,
 
         flac = audiotools.open(temp_file.name)
         self.assertGreater(flac.total_frames(), 0)
-        if (hasattr(pcmreader, "digest")):
+        if hasattr(pcmreader, "digest"):
             self.assertEqual(flac.__md5__, pcmreader.digest())
 
         # check FlacDecoder using raw file
@@ -4099,7 +4099,7 @@ class FlacFileTest(TestForeignAiffChunks,
                                     encode_opts[d] = True
                                 for e in extra:
                                     encode_opts[e] = True
-                                if (blocksize is not None):
+                                if blocksize is not None:
                                     encode_opts["block_size"] = blocksize
 
                                 self.__test_reader__(
@@ -4563,7 +4563,7 @@ class M4AFileTest(LossyFileTest):
                     temp.name, BLANK_PCM_Reader(1,
                                                 channels=channels,
                                                 channel_mask=0))
-            if (self.audio_class is audiotools.m4a.M4AAudio_faac):
+            if self.audio_class is audiotools.m4a.M4AAudio_faac:
                 self.assertEqual(track.channels(), 2)
                 track = audiotools.open(temp.name)
                 self.assertEqual(track.channels(), 2)
@@ -4636,7 +4636,7 @@ class MP3FileTest(LossyFileTest):
         #     f = open(temp.name, 'wb')
         #     f.write(good_data[0:100])
         #     f.close()
-        #     if (os.path.isfile("dummy.wav")):
+        #     if os.path.isfile("dummy.wav"):
         #         os.unlink("dummy.wav")
         #     self.assertEqual(os.path.isfile("dummy.wav"), False)
         #     self.assertRaises(audiotools.EncodingError,
@@ -4688,7 +4688,7 @@ class MP3FileTest(LossyFileTest):
         #                            ("channel", 3)]:
         #         temp.seek(0, 0)
         #         for (i, (header, data)) in enumerate(mpx_file.mpeg_frames()):
-        #             if (i == 1):
+        #             if i == 1:
         #                 setattr(header, field, value)
         #                 temp.write(frame_header.build(header))
         #                 temp.write(data)
@@ -4741,7 +4741,7 @@ class MP3FileTest(LossyFileTest):
             # this string should result from escaping through UCS-2
             test_string_out = u'f\ufffdoo'
 
-            if (len(test_string) == 4):
+            if len(test_string) == 4:
                 self.assertEqual(test_string,
                                  test_string.encode('utf-16').decode('utf-16'))
                 self.assertEqual(test_string.encode('ucs2').decode('ucs2'),
@@ -4900,7 +4900,7 @@ class OggVerify:
             good_file.close()
             bad_file.close()
 
-        if (self.audio_class is audiotools.OpusAudio):
+        if self.audio_class is audiotools.OpusAudio:
             # opusdec doesn't currently reject invalid
             # streams like it should
             # so the encoding test doesn't work right
@@ -4916,7 +4916,7 @@ class OggVerify:
                 good_data = f.read()
             with open(temp.name, 'wb') as f:
                 f.write(good_data[0:min(100, len(good_data) - 1)])
-            if (os.path.isfile("dummy.wav")):
+            if os.path.isfile("dummy.wav"):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
@@ -5071,7 +5071,7 @@ class ShortenFileTest(TestForeignWaveChunks,
                 temp.write(f.read()[0:-10])
                 temp.flush()
             shn = audiotools.open(temp.name)
-            if (os.path.isfile("dummy.wav")):
+            if os.path.isfile("dummy.wav"):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
@@ -5183,7 +5183,7 @@ class ShortenFileTest(TestForeignWaveChunks,
             g.close()
 
     def __test_reader__(self, pcmreader, **encode_options):
-        if (not audiotools.BIN.can_execute(audiotools.BIN["shorten"])):
+        if not audiotools.BIN.can_execute(audiotools.BIN["shorten"]):
             self.assertTrue(False,
                             "reference Shorten binary shorten(1) " +
                             "required for this test")
@@ -5201,7 +5201,7 @@ class ShortenFileTest(TestForeignWaveChunks,
         options["is_big_endian"] = False
         options["signed_samples"] = (pcmreader.bits_per_sample == 16)
         options["header_data"] = head
-        if (len(tail) > 0):
+        if len(tail) > 0:
             options["footer_data"] = tail
 
         with temp_input_wave.to_pcm() as pcmreader2:
@@ -5259,7 +5259,7 @@ class ShortenFileTest(TestForeignWaveChunks,
         options["signed_samples"] = True
         (head, tail) = temp_input_aiff.aiff_header_footer()
         options["header_data"] = head
-        if (len(tail) > 0):
+        if len(tail) > 0:
             options["footer_data"] = tail
 
         with temp_input_aiff.to_pcm() as pcmreader2:
@@ -5658,7 +5658,7 @@ class WaveFileTest(TestForeignWaveChunks,
         #     temp.write(open("wav-2ch.wav", "rb").read()[0:-10])
         #     temp.flush()
         #     flac = audiotools.open(temp.name)
-        #     if (os.path.isfile("dummy.wav")):
+        #     if os.path.isfile("dummy.wav"):
         #         os.unlink("dummy.wav")
         #     self.assertEqual(os.path.isfile("dummy.wav"), False)
         #     self.assertRaises(audiotools.EncodingError,
@@ -5937,7 +5937,7 @@ class WavPackFileTest(TestForeignWaveChunks,
                 with open("wavpack-combo.wv", "rb") as r:
                     w.write(r.read()[0:-0x20B])
 
-            if (os.path.isfile("dummy.wav")):
+            if os.path.isfile("dummy.wav"):
                 os.unlink("dummy.wav")
             self.assertFalse(os.path.isfile("dummy.wav"))
             self.assertRaises(audiotools.EncodingError,
@@ -6083,7 +6083,7 @@ class WavPackFileTest(TestForeignWaveChunks,
             yield stream
 
     def __test_reader__(self, pcmreader, total_pcm_frames, **encode_options):
-        if (not audiotools.BIN.can_execute(audiotools.BIN["wvunpack"])):
+        if not audiotools.BIN.can_execute(audiotools.BIN["wvunpack"]):
             self.assertTrue(False,
                             "reference WavPack binary wvunpack(1) " +
                             "required for this test")
@@ -6312,7 +6312,7 @@ class WavPackFileTest(TestForeignWaveChunks,
     @FORMAT_WAVPACK
     def test_multichannel(self):
         def __permutations__(executables, options, total):
-            if (total == 0):
+            if total == 0:
                 yield []
             else:
                 for (executable, option) in zip(executables,
@@ -6693,7 +6693,7 @@ class TTAFileTest(LosslessFileTest):
                 temp.write(tta_data[0:i])
                 temp.flush()
                 self.assertEqual(os.path.getsize(temp.name), i)
-                if (i < 4):
+                if i < 4:
                     with open(temp.name, "rb") as f:
                         self.assertIsNone(audiotools.file_type(f))
                 with open(temp.name, "rb") as f:
@@ -6879,7 +6879,7 @@ class TTAFileTest(LosslessFileTest):
             yield stream
 
     def __test_reader__(self, pcmreader, total_pcm_frames):
-        if (not audiotools.BIN.can_execute(audiotools.BIN["tta"])):
+        if not audiotools.BIN.can_execute(audiotools.BIN["tta"]):
             self.assertTrue(
                 False,
                 "reference TrueAudio binary tta(1) required for this test")
@@ -6888,7 +6888,7 @@ class TTAFileTest(LosslessFileTest):
         temp_tta_file = tempfile.NamedTemporaryFile(suffix=".tta")
         self.encode(temp_tta_file.name, pcmreader)
 
-        if ((pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6)):
+        if (pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6):
             # reference decoder doesn't like 8 bit .wav files?!
             # or files with too many channels?
 
@@ -6917,14 +6917,14 @@ class TTAFileTest(LosslessFileTest):
             tta.close()
             self.assertEqual(md5sum.digest(), pcmreader.digest())
 
-            if (temp_wav_file is not None):
+            if temp_wav_file is not None:
                 wav_md5sum = md5()
                 audiotools.transfer_framelist_data(
                     audiotools.WaveAudio(temp_wav_file.name).to_pcm(),
                     wav_md5sum.update)
                 self.assertEqual(md5sum.digest(), wav_md5sum.digest())
 
-        if (temp_wav_file is not None):
+        if temp_wav_file is not None:
             temp_wav_file.close()
 
         # perform test again with total_pcm_frames indicated
@@ -6933,7 +6933,7 @@ class TTAFileTest(LosslessFileTest):
                     pcmreader,
                     total_pcm_frames=total_pcm_frames)
 
-        if ((pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6)):
+        if (pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6):
             # reference decoder doesn't like 8 bit .wav files?!
             # or files with too many channels?
             temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -6962,14 +6962,14 @@ class TTAFileTest(LosslessFileTest):
             self.assertEqual(md5sum.digest(), pcmreader.digest())
             temp_tta_file.close()
 
-            if (temp_wav_file is not None):
+            if temp_wav_file is not None:
                 wav_md5sum = md5()
                 audiotools.transfer_framelist_data(
                     audiotools.WaveAudio(temp_wav_file.name).to_pcm(),
                     wav_md5sum.update)
                 self.assertEqual(md5sum.digest(), wav_md5sum.digest())
 
-        if (temp_wav_file is not None):
+        if temp_wav_file is not None:
             temp_wav_file.close()
 
         devnull.close()
@@ -7053,7 +7053,7 @@ class TTAFileTest(LosslessFileTest):
     @FORMAT_TTA
     def test_multichannel(self):
         def __permutations__(executables, options, total):
-            if (total == 0):
+            if total == 0:
                 yield []
             else:
                 for (executable, option) in zip(executables,
@@ -7102,7 +7102,7 @@ class TTAFileTest(LosslessFileTest):
     @FORMAT_TTA
     def test_python_codec(self):
         def test_python_reader(pcmreader, pcm_frames):
-            if (not audiotools.BIN.can_execute(audiotools.BIN["tta"])):
+            if not audiotools.BIN.can_execute(audiotools.BIN["tta"]):
                 self.assertTrue(
                     False,
                     "reference TrueAudio binary tta(1) required for this test")
@@ -7122,7 +7122,7 @@ class TTAFileTest(LosslessFileTest):
 
             # verify against output of Python encoder
             # against reference tta decoder
-            if ((pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6)):
+            if (pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6):
                 # reference decoder doesn't like 8 bit .wav files?!
                 # or files with too many channels?
                 temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -7157,7 +7157,7 @@ class TTAFileTest(LosslessFileTest):
 
             # verify against output of Python encoder
             # against reference tta decoder
-            if ((pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6)):
+            if (pcmreader.bits_per_sample > 8) and (pcmreader.channels <= 6):
                 # reference decoder doesn't like 8 bit .wav files?!
                 # or files with too many channels?
                 temp_wav_file = tempfile.NamedTemporaryFile(suffix=".wav")

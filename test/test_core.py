@@ -46,7 +46,7 @@ def do_nothing(self):
 # which can be wrapped around individual tests as needed
 for section in parser.sections():
     for option in parser.options(section):
-        if (parser.getboolean(section, option)):
+        if parser.getboolean(section, option):
             vars()["%s_%s" % (section.upper(),
                               option.upper())] = lambda function: function
         else:
@@ -54,7 +54,7 @@ for section in parser.sections():
                               option.upper())] = lambda function: do_nothing
 
 
-if (sys.version_info[0] >= 3):
+if sys.version_info[0] >= 3:
     def ints_to_bytes(l):
         return bytes(l)
 
@@ -395,18 +395,18 @@ class PCMReaderWindow(unittest.TestCase):
                 self.assertEqual(len(samples), pcm_frames)
 
                 target_samples = list(range(1, 11))
-                if (initial_offset < 0):
+                if initial_offset < 0:
                     # negative offsets pad window with 0s
                     target_samples = (([0] * abs(initial_offset)) +
                                       target_samples)
-                elif (initial_offset > 0):
+                elif initial_offset > 0:
                     # positive offsets remove samples from window
                     target_samples = target_samples[initial_offset:]
 
-                if (len(target_samples) < pcm_frames):
+                if len(target_samples) < pcm_frames:
                     # window longer than samples gets padded with 0s
                     target_samples += [0] * (pcm_frames - len(target_samples))
-                elif (len(target_samples) > pcm_frames):
+                elif len(target_samples) > pcm_frames:
                     # window shorder than samples truncates samples
                     target_samples = target_samples[0:pcm_frames]
 
@@ -888,7 +888,7 @@ class Test_filename_to_type(unittest.TestCase):
         for suffix in type_group.keys():
             temp = tempfile.NamedTemporaryFile(suffix="." + suffix)
             try:
-                if (len(type_group[suffix]) == 1):
+                if len(type_group[suffix]) == 1:
                     self.assertEqual(audiotools.filename_to_type(temp.name),
                                      type_group[suffix][0])
                 else:
@@ -1294,7 +1294,7 @@ class Test_pcm_frame_cmp(unittest.TestCase):
 
 
 class TestFrameList(unittest.TestCase):
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         @classmethod
         def Bits8(cls):
             for i in range(0, 0xFF + 1):
@@ -1395,14 +1395,14 @@ class TestFrameList(unittest.TestCase):
         for channels in range(1, 9):
             for bps in [8, 16, 24]:
                 for signed in [True, False]:
-                    if (signed):
+                    if signed:
                         l = [random.choice(range(-40, 40)) for i in
                              range(16 * channels)]
                     else:
                         l = [random.choice(range(0, 80)) for i in
                              range(16 * channels)]
                     f2 = audiotools.pcm.from_list(l, channels, bps, signed)
-                    if (signed):
+                    if signed:
                         self.assertEqual(list(f2), l)
                         for channel in range(channels):
                             self.assertEqual(list(f2.channel(channel)),
@@ -1785,7 +1785,7 @@ class TestFrameList(unittest.TestCase):
                         track = format.from_pcm(temp_track.name, sine)
                     except audiotools.UnsupportedBitsPerSample:
                         continue
-                    if (track.lossless()):
+                    if track.lossless():
                         md5sum = md5()
                         audiotools.transfer_framelist_data(
                             track.to_pcm(), md5sum.update)
@@ -1802,7 +1802,7 @@ class TestFrameList(unittest.TestCase):
                                         track.to_pcm())
                                 except audiotools.UnsupportedBitsPerSample:
                                     continue
-                                if (track2.lossless()):
+                                if track2.lossless():
                                     md5sum2 = md5()
                                     audiotools.transfer_framelist_data(
                                         track2.to_pcm(), md5sum2.update)
@@ -3317,7 +3317,7 @@ class Bitstream(unittest.TestCase):
                 temp.close()
 
     def __writer_perform_write__(self, writer, endianness):
-        if (endianness == 0):
+        if endianness == 0:
             writer.write(2, 2)
             writer.write(3, 6)
             writer.write(5, 7)
@@ -3333,7 +3333,7 @@ class Bitstream(unittest.TestCase):
         self.assertRaises(ValueError, writer.write, -1, 0)
 
     def __writer_perform_write_signed__(self, writer, endianness):
-        if (endianness == 0):
+        if endianness == 0:
             writer.write_signed(2, -2)
             writer.write_signed(3, -2)
             writer.write_signed(5, 7)
@@ -3349,7 +3349,7 @@ class Bitstream(unittest.TestCase):
         self.assertRaises(ValueError, writer.write_signed, -1, 0)
 
     def __writer_perform_write_unary_0__(self, writer, endianness):
-        if (endianness == 0):
+        if endianness == 0:
             writer.unary(0, 1)
             writer.unary(0, 2)
             writer.unary(0, 0)
@@ -3383,7 +3383,7 @@ class Bitstream(unittest.TestCase):
             writer.write(2, 3)
 
     def __writer_perform_write_unary_1__(self, writer, endianness):
-        if (endianness == 0):
+        if endianness == 0:
             writer.unary(1, 0)
             writer.unary(1, 1)
             writer.unary(1, 0)
@@ -3431,7 +3431,7 @@ class Bitstream(unittest.TestCase):
                              [0, 0, 1], 3,
                              [0, 0, 0], 4], endianness)
 
-        if (endianness == 0):
+        if endianness == 0:
             writer.write_huffman_code(table, 1)
             writer.write_huffman_code(table, 0)
             writer.write_huffman_code(table, 4)
@@ -4950,7 +4950,7 @@ class test_flac_cuesheet(testcuesheet):
         # these only contain CD images
 
         for sheet in testcuesheet.__sheets__(self):
-            if (sheet.image_formatted()):
+            if sheet.image_formatted():
                 yield sheet
 
     @LIB_CUESHEET
@@ -5265,7 +5265,7 @@ class TestMultiChannel(unittest.TestCase):
                      for i in range(channels)],
                     int(audiotools.ChannelMask(0))))
             self.assertEqual(temp_track.channels(), channels)
-            if (should_be_blank):
+            if should_be_blank:
                 self.assertEqual(int(temp_track.channel_mask()), 0)
                 pcm = temp_track.to_pcm()
                 self.assertEqual(int(pcm.channel_mask), 0)

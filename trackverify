@@ -54,21 +54,21 @@ def open_file(filename):
 
 
 def get_tracks(args, queued_files, accept_list=None):
-    if (accept_list is not None):
+    if accept_list is not None:
         accept_list = set(accept_list)
 
     for path in args:
-        if (os.path.isfile(path)):
+        if os.path.isfile(path):
             try:
                 filename = audiotools.Filename(path)
-                if (filename not in queued_files):
+                if filename not in queued_files:
                     queued_files.add(filename)
                     track = open_file(str(filename))
-                    if ((accept_list is None) or (track.NAME in accept_list)):
+                    if (accept_list is None) or (track.NAME in accept_list):
                         yield track
             except (audiotools.UnsupportedFile, IOError, OSError):
                 continue
-        elif (os.path.isdir(path)):
+        elif os.path.isdir(path):
             for (d, ds, fs) in os.walk(path):
                 for track in get_tracks([os.path.join(d, f) for f in fs],
                                         queued_files,
@@ -78,8 +78,8 @@ def get_tracks(args, queued_files, accept_list=None):
 
 def track_number(track, default):
     metadata = track.get_metadata()
-    if (metadata is not None):
-        if (metadata.track_number is not None):
+    if metadata is not None:
+        if metadata.track_number is not None:
             return metadata.track_number
         else:
             return default
@@ -105,7 +105,7 @@ def verify(progress, track):
 
 def display_results(result, is_tty=False):
     (filename, track_type, error) = result
-    if (error is None):
+    if error is None:
         return _.LAB_TRACKVERIFY_RESULT % {
             "path": filename,
             "result": audiotools.output_text(_.LAB_TRACKVERIFY_OK,
@@ -148,10 +148,10 @@ def accuraterip_checksum(progress,
     # unify previous track, current track and next track into a single stream
 
     pcmreaders = []
-    if (previous_track is not None):
+    if previous_track is not None:
         frames_to_skip = previous_track.total_frames() - PREVIOUS_TRACK_FRAMES
         prev_pcmreader = previous_track.to_pcm()
-        if (hasattr(prev_pcmreader, "seek") and callable(prev_pcmreader.seek)):
+        if hasattr(prev_pcmreader, "seek") and callable(prev_pcmreader.seek):
             frames_to_skip -= prev_pcmreader.seek(frames_to_skip)
         pcmreaders.append(PCMReaderDeHead(prev_pcmreader, frames_to_skip))
     else:
@@ -165,7 +165,7 @@ def accuraterip_checksum(progress,
 
     pcmreaders.append(track.to_pcm())
 
-    if (next_track is not None):
+    if next_track is not None:
         pcmreaders.append(PCMReaderHead(next_track.to_pcm(),
                                         NEXT_TRACK_FRAMES))
     else:
@@ -217,7 +217,7 @@ def accuraterip_checksum(progress,
                                checksums=checksummer.checksums_v1(),
                                initial_offset=-PREVIOUS_TRACK_FRAMES)
 
-    if (len(ar_matches) == 0):
+    if len(ar_matches) == 0:
         return {"filename": track.filename,
                 "error": None,
                 "v1": {"checksum": checksum_v1,
@@ -307,7 +307,7 @@ def accuraterip_image_checksum(progress,
                                checksums=checksummer.checksums_v1(),
                                initial_offset=-PREVIOUS_TRACK_FRAMES)
 
-    if (len(ar_matches) == 0):
+    if len(ar_matches) == 0:
         return {"filename": displayed_filename,
                 "error": None,
                 "v1": {"checksum": checksum_v1,
@@ -332,7 +332,7 @@ def accuraterip_image_checksum(progress,
 
 
 def accuraterip_display_result(result):
-    if (result["error"] is None):
+    if result["error"] is None:
         confidence_v1 = result["v1"]["confidence"]
         confidence_v2 = result["v2"]["confidence"]
         path = audiotools.Filename(result["filename"])
@@ -347,7 +347,7 @@ def accuraterip_display_result(result):
             # neither checksum matches
             return _.LAB_TRACKVERIFY_RESULT % \
                 {"path": path, "result": _.LAB_ACCURATERIP_MISMATCH}
-        elif (confidence_v2 == AR_MISMATCH):
+        elif confidence_v2 == AR_MISMATCH:
             # only AccurateRip V1 matches
             return _.LAB_TRACKVERIFY_RESULT % \
                 {"path": path,
@@ -418,7 +418,7 @@ if (__name__ == '__main__'):
     options = parser.parse_args()
     msg = audiotools.Messenger(options.verbosity == "quiet")
 
-    if (not options.accuraterip):
+    if not options.accuraterip:
         queued_files = set()  # a set of Filename objects already encountered
         queue = audiotools.ExecProgressQueue(msg)
         for track in get_tracks(options.filenames,
@@ -444,7 +444,7 @@ if (__name__ == '__main__'):
         success_total = len([r for r in results if r[2] is None])
         failure_total = len(results) - success_total
 
-        if ((len(formats) > 0) and (not options.no_summary)):
+        if (len(formats) > 0) and (not options.no_summary):
             msg.output(_.LAB_TRACKVERIFY_RESULTS)
             msg.output(u"")
 
@@ -488,7 +488,7 @@ if (__name__ == '__main__'):
             for row in table.format(msg.output_isatty()):
                 msg.output(row)
 
-        if (failure_total > 0):
+        if failure_total > 0:
             sys.exit(1)
     else:
         queued_files = set()  # a set of Filename objects already encountered
@@ -511,7 +511,7 @@ if (__name__ == '__main__'):
                     sample_rate = tracks[0].sample_rate()
                     # cuesheet from command-line takes precedence
                     # over cuesheet embedded in file
-                    if (options.cuesheet is not None):
+                    if options.cuesheet is not None:
                         try:
                             sheet = audiotools.read_sheet(options.cuesheet)
                         except audiotools.SheetException as err:
@@ -533,10 +533,10 @@ if (__name__ == '__main__'):
                         offset = int(sheet.track_offset(track_num) *
                                      sample_rate)
 
-                        if (sheet.track_length(track_num) is not None):
+                        if sheet.track_length(track_num) is not None:
                             length = int(sheet.track_length(track_num) *
                                          sample_rate)
-                        elif (track_num > 1):
+                        elif track_num > 1:
                             length = (tracks[0].total_frames() -
                                       int(sheet.track_offset(track_num) *
                                           sample_rate))
@@ -558,7 +558,7 @@ if (__name__ == '__main__'):
                 else:
                     # process each track as if it were part of a CD
                     tracks = audiotools.sorted_tracks(tracks)
-                    if (options.cuesheet is not None):
+                    if options.cuesheet is not None:
                         try:
                             sheet = audiotools.read_sheet(options.cuesheet)
                         except audiotools.SheetException as err:
@@ -627,7 +627,7 @@ if (__name__ == '__main__'):
         row.add_column(u" ")
         row.add_column(_.LAB_TRACKVERIFY_AR_CHECKSUM)
 
-        if (sys.stdout.isatty()):
+        if sys.stdout.isatty():
             filename_max = (msg.terminal_size(sys.stdout)[1] -
                             sum(c.minimum_width() for c in
                                 table.__rows__[1].__columns__[1:]))
@@ -645,21 +645,21 @@ if (__name__ == '__main__'):
 
             # truncate long filenames if necessary
             filename = audiotools.output_text(filename)
-            if (len(filename) <= filename_max):
+            if len(filename) <= filename_max:
                 row.add_column(filename)
             else:
                 head = filename.head(filename_max - 1)
                 row.add_column(
                     u"%s%s" % (head, u"\u2026" * (filename_max - len(head))))
 
-            if (err is None):
+            if err is None:
                 for version in ["v1", "v2"]:
                     checksum = result[version]["checksum"]
                     offset = result[version]["offset"]
                     confidence = result[version]["confidence"]
 
                     row.add_column(u"")
-                    if (confidence >= 0):
+                    if confidence >= 0:
                         row.add_column(u"%d" % (confidence), "right")
                     else:
                         row.add_column(u"", "right")
@@ -673,5 +673,5 @@ if (__name__ == '__main__'):
         for row in table.format(msg.output_isatty()):
             msg.output(row)
 
-        if (len([r for r in results if r["error"] is not None]) > 0):
+        if len([r for r in results if r["error"] is not None]) > 0:
             sys.exit(1)

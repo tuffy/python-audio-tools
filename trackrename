@@ -28,7 +28,7 @@ import audiotools.text as _
 from audiotools import PY3
 
 
-if (audiotools.ui.AVAILABLE):
+if audiotools.ui.AVAILABLE:
     urwid = audiotools.ui.urwid
 
     class Trackrename(urwid.Pile):
@@ -108,7 +108,7 @@ if (audiotools.ui.AVAILABLE):
                  ('fixed', 1, metadata_buttons)])
 
         def apply(self, button):
-            if (not self.has_errors):
+            if not self.has_errors:
                 self.__cancelled__ = False
                 raise urwid.ExitMainLoop()
 
@@ -120,7 +120,7 @@ if (audiotools.ui.AVAILABLE):
             return self.__cancelled__
 
         def handle_text(self, i):
-            if (i == 'esc'):
+            if i == 'esc':
                 self.exit(None)
 
         def format_changed(self, widget, new_value, user_data):
@@ -166,10 +166,10 @@ if (audiotools.ui.AVAILABLE):
             where old_name and new_name differ
             where the names are Filename objects"""
 
-            if (not self.has_errors):
+            if not self.has_errors:
                 for (old_name, new_name) in zip(self.input_filenames,
                                                 self.output_filenames):
-                    if (old_name != new_name):
+                    if old_name != new_name:
                         yield (old_name, new_name)
 
 
@@ -208,7 +208,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger(options.verbosity == "quiet")
 
     # ensure interactive mode is available, if selected
-    if (options.interactive and (not audiotools.ui.AVAILABLE)):
+    if options.interactive and (not audiotools.ui.AVAILABLE):
         audiotools.ui.not_available_message(msg)
         sys.exit(1)
 
@@ -220,7 +220,7 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
         sys.exit(1)
 
-    if (len(audiofiles) < 1):
+    if len(audiofiles) < 1:
         msg.error(_.ERR_FILES_REQUIRED)
         sys.exit(1)
 
@@ -228,7 +228,7 @@ if (__name__ == '__main__'):
     # and generate an error if a duplicate occurs
     renamed_filenames = {audiotools.Filename(t.filename) for t in audiofiles}
 
-    if (options.interactive):
+    if options.interactive:
         widget = Trackrename(
             audio_class=audiofiles[0].__class__,
             format_string=options.format,
@@ -250,7 +250,7 @@ if (__name__ == '__main__'):
             msg.info(audiotools.ui.xargs_suggestion(sys.argv))
             sys.exit(1)
 
-        if (not widget.cancelled()):
+        if not widget.cancelled():
             to_rename = list(widget.to_rename())
         else:
             sys.exit(0)
@@ -265,8 +265,8 @@ if (__name__ == '__main__'):
                         track.track_name(file_path=track.filename,
                                          track_metadata=track.get_metadata(),
                                          format=options.format)))
-                if (new_filename != original_filename):
-                    if (new_filename not in renamed_filenames):
+                if new_filename != original_filename:
+                    if new_filename not in renamed_filenames:
                         renamed_filenames.add(new_filename)
                         to_rename.append((original_filename, new_filename))
                     else:

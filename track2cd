@@ -92,7 +92,7 @@ class PCMBuffer(object):
         self.bits_per_sample = bits_per_sample
 
     def read(self, frames):
-        if (self.pcm_frames is not None):
+        if self.pcm_frames is not None:
             try:
                 return self.pcm_frames.popleft()
             except IndexError:
@@ -150,7 +150,7 @@ if (__name__ == '__main__'):
 
     msg = audiotools.Messenger(options.verbosity == "quiet")
 
-    if (options.max_processes < 1):
+    if options.max_processes < 1:
         msg.error(_.ERR_INVALID_JOINT)
         sys.exit(1)
     else:
@@ -165,7 +165,7 @@ if (__name__ == '__main__'):
                                        messenger=msg,
                                        warn_duplicates=True)
 
-    if (len(audiofiles) < 1):
+    if len(audiofiles) < 1:
         msg.error(_.ERR_FILES_REQUIRED)
         sys.exit(1)
 
@@ -174,7 +174,7 @@ if (__name__ == '__main__'):
         # writing a single file with an embedded cuesheet
         # so extract its contents to wave/cue and call cdrdao
 
-        if (not audiotools.BIN.can_execute(audiotools.BIN['cdrdao'])):
+        if not audiotools.BIN.can_execute(audiotools.BIN['cdrdao']):
             msg.error(_.ERR_NO_CDRDAO)
             msg.info(_.ERR_GET_CDRDAO)
             sys.exit(1)
@@ -249,7 +249,7 @@ if (__name__ == '__main__'):
 
         cdrdao_args.append(temptoc.name)
 
-        if (options.verbosity != 'quiet'):
+        if options.verbosity != 'quiet':
             subprocess.call(cdrdao_args)
         else:
             devnull = open(os.devnull, 'wb')
@@ -262,24 +262,24 @@ if (__name__ == '__main__'):
         temptoc.close()
         tempwav.close()
 
-    elif (options.cuesheet is not None):
+    elif options.cuesheet is not None:
         # writing tracks with a cuesheet,
         # so combine them into a single wave/cue and call cdrdao
 
-        if (not audiotools.BIN.can_execute(audiotools.BIN['cdrdao'])):
+        if not audiotools.BIN.can_execute(audiotools.BIN['cdrdao']):
             msg.error(_.ERR_NO_CDRDAO)
             msg.info(_.ERR_GET_CDRDAO)
             sys.exit(1)
 
-        if (len({f.sample_rate() for f in audiofiles}) != 1):
+        if len({f.sample_rate() for f in audiofiles}) != 1:
             msg.error(_.ERR_SAMPLE_RATE_MISMATCH)
             sys.exit(1)
 
-        if (len({f.channels() for f in audiofiles}) != 1):
+        if len({f.channels() for f in audiofiles}) != 1:
             msg.error(_.ERR_CHANNEL_COUNT_MISMATCH)
             sys.exit(1)
 
-        if (len({f.bits_per_sample() for f in audiofiles}) != 1):
+        if len({f.bits_per_sample() for f in audiofiles}) != 1:
             msg.error(_.ERR_BPS_MISMATCH)
             sys.exit(1)
 
@@ -290,12 +290,12 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
         # ensure sheet is formatted for CD images
-        if (not cuesheet.image_formatted()):
+        if not cuesheet.image_formatted():
             msg.error(_.ERR_CUE_INVALID_FORMAT)
             sys.exit(1)
 
         # ensure sheet fits the tracks it's given
-        if (len(cuesheet) != len(audiofiles)):
+        if len(cuesheet) != len(audiofiles):
             msg.error(_.ERR_CUE_INSUFFICIENT_TRACKS)
             sys.exit(1)
 
@@ -357,7 +357,7 @@ if (__name__ == '__main__'):
             msg, _.LAB_CONVERTING_FILE)
 
         try:
-            if (write_offset == 0):
+            if write_offset == 0:
                 temptrack = audiotools.WaveAudio.from_pcm(
                     tempwav.name,
                     audiotools.PCMReaderProgress(
@@ -388,7 +388,7 @@ if (__name__ == '__main__'):
                        "--speed", str(options.speed),
                        tempcue.name]
 
-        if (options.verbosity != 'quiet'):
+        if options.verbosity != 'quiet':
             subprocess.call(cdrdao_args)
         else:
             devnull = open(os.devnull, 'wb')
@@ -404,7 +404,7 @@ if (__name__ == '__main__'):
         # writing tracks without a cuesheet,
         # so extract them to waves and call cdrecord
 
-        if (not audiotools.BIN.can_execute(audiotools.BIN['cdrecord'])):
+        if not audiotools.BIN.can_execute(audiotools.BIN['cdrecord']):
             msg.error(_.ERR_NO_CDRECORD)
             msg.info(_.ERR_GET_CDRECORD)
             sys.exit(1)
@@ -418,11 +418,11 @@ if (__name__ == '__main__'):
         temp_pool = []
         wave_files = []
 
-        if (write_offset == 0):
+        if write_offset == 0:
             queue = audiotools.ExecProgressQueue(msg)
 
             for audiofile in audiofiles:
-                if (isinstance(audiofile, audiotools.WaveAudio)):
+                if isinstance(audiofile, audiotools.WaveAudio):
                     wave_files.append(audiofile.filename)
                 else:
                     filename = audiotools.Filename(audiofile.filename)
@@ -493,7 +493,7 @@ if (__name__ == '__main__'):
 
         exec_args += wave_files
 
-        if (options.verbosity != 'quiet'):
+        if options.verbosity != 'quiet':
             subprocess.call(exec_args)
         else:
             devnull = open(os.devnull, 'wb')

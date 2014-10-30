@@ -30,23 +30,23 @@ class __Checksum__(object):
                  is_first=False,
                  is_last=False,
                  pcm_frame_range=1):
-        if (total_pcm_frames <= 0):
+        if total_pcm_frames <= 0:
             raise ValueError("total PCM frames must be > 0")
-        if (sample_rate <= 0):
+        if sample_rate <= 0:
             raise ValueError("sample rate must be > 0")
-        if (pcm_frame_range <= 0):
+        if pcm_frame_range <= 0:
             raise ValueError("PCM frame range must be > 0")
 
         self.__total_pcm_frames__ = total_pcm_frames
         self.__pcm_frame_range__ = pcm_frame_range
         self.__values__ = []
 
-        if (is_first):
+        if is_first:
             self.__start_offset__ = ((sample_rate // 75) * 5)
         else:
             self.__start_offset__ = 1
 
-        if (is_last):
+        if is_last:
             self.__end_offset__ = (total_pcm_frames -
                                    ((sample_rate // 75) * 5))
         else:
@@ -62,11 +62,11 @@ class __Checksum__(object):
         def unsigned(v):
             return (v if (v >= 0) else ((1 << 16) - (-v)))
 
-        if (not isinstance(framelist, FrameList)):
+        if not isinstance(framelist, FrameList):
             raise TypeError("framelist must be instance of Framelist")
-        elif (framelist.channels != 2):
+        elif framelist.channels != 2:
             raise ValueError("FrameList must have 2 channels")
-        elif (framelist.bits_per_sample != 16):
+        elif framelist.bits_per_sample != 16:
             raise ValueError("FrameList must have 16 bits-per-sample")
 
         if ((len(self.__values__) +
@@ -121,7 +121,7 @@ def match_offset(ar_matches, checksums, initial_offset):
     if no matches are found, confidence is None and offset is 0
     """
 
-    if (len(checksums) == 0):
+    if len(checksums) == 0:
         raise ValueError("at least 1 checksum is required")
 
     # crc should be unique in the list
@@ -137,13 +137,13 @@ def match_offset(ar_matches, checksums, initial_offset):
          set(matches.keys()) & set(offsets.keys())],
         key=lambda triple: triple[1])
 
-    if (len(match_offsets) > 0):
+    if len(match_offsets) > 0:
         # choose the match with the highest confidence
         return match_offsets[-1]
     else:
         # no match found
         # return checksum at offset 0, or as close as possible
-        if (initial_offset <= 0):
+        if initial_offset <= 0:
             return (checksums[-initial_offset], None, 0)
         else:
             return (checksums[0], None, initial_offset)
@@ -297,7 +297,7 @@ def perform_lookup(disc_id,
                  (id2 == disc_id.id2()) and
                  (freedb_disc_id == disc_id.freedb_disc_id()))):
                 for track_number in range(1, track_count + 1):
-                    if (track_number in matches):
+                    if track_number in matches:
                         matches[track_number].append(
                             tuple(response.parse("8u 32u 32u")))
     except IOError:

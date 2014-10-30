@@ -62,15 +62,15 @@ class ID3v1Comment(MetaData):
         track_number and genre are integers
         """
 
-        if (len(track_name) > 30):
+        if len(track_name) > 30:
             raise ValueError("track_name cannot be longer than 30 characters")
-        if (len(artist_name) > 30):
+        if len(artist_name) > 30:
             raise ValueError("artist_name cannot be longer than 30 characters")
-        if (len(album_name) > 30):
+        if len(album_name) > 30:
             raise ValueError("album_name cannot be longer than 30 characters")
-        if (len(year) > 4):
+        if len(year) > 4:
             raise ValueError("year cannot be longer than 4 characters")
-        if (len(comment) > 28):
+        if len(comment) > 28:
             raise ValueError("comment cannot be longer than 28 characters")
 
         MetaData.__setattr__(self, "__track_name__", track_name)
@@ -92,31 +92,31 @@ class ID3v1Comment(MetaData):
              repr(self.__genre__))
 
     def __getattr__(self, attr):
-        if (attr == "track_number"):
+        if attr == "track_number":
             number = self.__track_number__
-            if (number > 0):
+            if number > 0:
                 return number
             else:
                 return None
-        elif (attr in self.ID3v1_FIELDS):
+        elif attr in self.ID3v1_FIELDS:
             value = getattr(self, self.ID3v1_FIELDS[attr])
-            if (len(value) > 0):
+            if len(value) > 0:
                 return value
             else:
                 return None
-        elif (attr in self.FIELDS):
+        elif attr in self.FIELDS:
             return None
         else:
             return MetaData.__getattribute__(self, attr)
 
     def __setattr__(self, attr, value):
-        if (attr == "track_number"):
+        if attr == "track_number":
             MetaData.__setattr__(
                 self,
                 "__track_number__",
                 min(0 if (value is None) else int(value), 0xFF))
-        elif (attr in self.FIELD_LENGTHS):
-            if (value is None):
+        elif attr in self.FIELD_LENGTHS:
+            if value is None:
                 delattr(self, attr)
             else:
                 # all are text fields
@@ -124,20 +124,20 @@ class ID3v1Comment(MetaData):
                     self,
                     self.ID3v1_FIELDS[attr],
                     value[0:self.FIELD_LENGTHS[attr]])
-        elif (attr in self.FIELDS):
+        elif attr in self.FIELDS:
             # field not supported by ID3v1Comment, so ignore it
             pass
         else:
             MetaData.__setattr__(self, attr, value)
 
     def __delattr__(self, attr):
-        if (attr == "track_number"):
+        if attr == "track_number":
             MetaData.__setattr__(self, "__track_number__", 0)
-        elif (attr in self.FIELD_LENGTHS):
+        elif attr in self.FIELD_LENGTHS:
             MetaData.__setattr__(self,
                                  self.ID3v1_FIELDS[attr],
                                  u"")
-        elif (attr in self.FIELDS):
+        elif attr in self.FIELDS:
             # field not supported by ID3v1Comment, so ignore it
             pass
         else:
@@ -183,7 +183,7 @@ class ID3v1Comment(MetaData):
          genre) = parse("3b 30b 30b 30b 4b 28b 8p 8u 8u",
                         False,
                         mp3_file.read(128))
-        if (tag != b'TAG'):
+        if tag != b'TAG':
             raise ValueError(u"invalid ID3v1 tag")
 
         return ID3v1Comment(track_name=decode_string(track_name),
@@ -201,7 +201,7 @@ class ID3v1Comment(MetaData):
 
         def encode_string(u, max_chars):
             s = u.encode("ascii", "replace")
-            if (len(s) >= max_chars):
+            if len(s) >= max_chars:
                 return s[0:max_chars]
             else:
                 return s + b"\x00" * (max_chars - len(s))
@@ -228,9 +228,9 @@ class ID3v1Comment(MetaData):
     def converted(cls, metadata):
         """converts a MetaData object to an ID3v1Comment object"""
 
-        if (metadata is None):
+        if metadata is None:
             return None
-        elif (isinstance(metadata, ID3v1Comment)):
+        elif isinstance(metadata, ID3v1Comment):
             # duplicate all fields as-is
             return ID3v1Comment(track_name=metadata.__track_name__,
                                 artist_name=metadata.__artist_name__,
@@ -275,13 +275,13 @@ class ID3v1Comment(MetaData):
             # strip out trailing NULL bytes
             initial_value = getattr(self, attr)
 
-            if (initial_value is not None):
+            if initial_value is not None:
                 fix1 = initial_value.rstrip()
-                if (fix1 != initial_value):
+                if fix1 != initial_value:
                     fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
                                            {"field": name})
                 fix2 = fix1.lstrip()
-                if (fix2 != fix1):
+                if fix2 != fix1:
                     fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
                                            {"field": name})
 

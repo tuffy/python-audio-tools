@@ -47,7 +47,7 @@ class UCS2Codec(codecs.Codec):
     def fix_char(cls, c):
         """a filter which changes overly large c values to 'unknown'"""
 
-        if (ord(c) <= 0xFFFF):
+        if ord(c) <= 0xFFFF:
             return c
         else:
             return u"\ufffd"
@@ -74,7 +74,7 @@ class UCS2CodecStreamReader(UCS2Codec, codecs.StreamReader):
 
 
 def __reg_ucs2__(name):
-    if (name == 'ucs2'):
+    if name == 'ucs2':
         return (UCS2Codec().encode,
                 UCS2Codec().decode,
                 UCS2CodecStreamReader,
@@ -92,15 +92,15 @@ def decode_syncsafe32(i):
     may raise ValueError if the value is negative,
     larger than 32 bits or contains invalid sync-safe bits"""
 
-    if (i >= (2 ** 32)):
+    if i >= (2 ** 32):
         raise ValueError("value of %s is too large" % (i))
-    elif (i < 0):
+    elif i < 0:
         raise ValueError("value cannot be negative")
 
     value = 0
 
     for x in range(4):
-        if ((i & 0x80) == 0):
+        if (i & 0x80) == 0:
             value |= ((i & 0x7F) << (x * 7))
             i >>= 8
         else:
@@ -116,9 +116,9 @@ def encode_syncsafe32(i):
     may raise ValueError is the value is negative
     or larger than 28 bits"""
 
-    if (i >= (2 ** 28)):
+    if i >= (2 ** 28):
         raise ValueError("value too large")
-    elif (i < 0):
+    elif i < 0:
         raise ValueError("value cannot be negative")
 
     value = 0
@@ -157,7 +157,7 @@ class C_string(object):
         return "C_string(%s, %s)" % (repr(self.encoding),
                                      repr(self.unicode_string))
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -242,7 +242,7 @@ def __padded__(value):
     """given an integer value, returns it as a unicode string
     with the proper padding"""
 
-    if (config.getboolean_default("ID3", "pad", False)):
+    if config.getboolean_default("ID3", "pad", False):
         return u"%2.2d" % (value)
     else:
         return u"%d" % (value)
@@ -253,13 +253,13 @@ def __padded__(value):
 # for example, __number_pair__(2,3) returns u"2/3"
 # whereas      __number_pair__(4,0) returns u"4"
 def __number_pair__(current, total):
-    if (current is None):
-        if (total is None):
+    if current is None:
+        if total is None:
             return __padded__(0)
         else:
             return __padded__(0) + u"/" + __padded__(total)
     else:  # current is not None
-        if (total is None):
+        if total is None:
             return __padded__(current)
         else:
             return __padded__(current) + u"/" + __padded__(total)
@@ -277,15 +277,15 @@ def read_id3v2_comment(filename):
     with BitstreamReader(open(filename, "rb"), False) as reader:
         start = reader.getpos()
         (tag, version_major, version_minor) = reader.parse("3b 8u 8u")
-        if (tag != b'ID3'):
+        if tag != b'ID3':
             raise ValueError("invalid ID3 header")
-        elif (version_major == 0x2):
+        elif version_major == 0x2:
             reader.setpos(start)
             return ID3v22Comment.parse(reader)
-        elif (version_major == 0x3):
+        elif version_major == 0x3:
             reader.setpos(start)
             return ID3v23Comment.parse(reader)
-        elif (version_major == 0x4):
+        elif version_major == 0x4:
             reader.setpos(start)
             return ID3v24Comment.parse(reader)
         else:
@@ -301,14 +301,14 @@ def skip_id3v2_comment(file):
     start = file.tell()
     try:
         # check initial header
-        if (file.read(3) == b"ID3"):
+        if file.read(3) == b"ID3":
             bytes_skipped = 3
         else:
             file.seek(start)
             return 0
 
         # ensure major version is valid
-        if (ord(file.read(1)) in (2, 3, 4)):
+        if ord(file.read(1)) in (2, 3, 4):
             bytes_skipped += 1
         else:
             file.seek(start)
@@ -349,12 +349,12 @@ def total_id3v2_comments(file):
     start = file.tell()
     try:
         # check initial header
-        if (file.read(3) != b"ID3"):
+        if file.read(3) != b"ID3":
             file.seek(start)
             return 0
 
         # ensure major version is valid
-        if (ord(file.read(1)) not in (2, 3, 4)):
+        if ord(file.read(1)) not in (2, 3, 4):
             file.seek(start)
             return 0
 
@@ -399,7 +399,7 @@ class ID3v22_Frame(object):
     def raw_info(self):
         from audiotools import hex_string
 
-        if (len(self.data) > 20):
+        if len(self.data) > 20:
             return u"%s = %s\u2026" % \
                 (self.id.decode('ascii', 'replace'),
                  hex_string(self.data[0:20]))
@@ -477,7 +477,7 @@ class ID3v22_T__Frame(object):
     def __eq__(self, frame):
         return __attrib_equals__(["id", "encoding", "data"], self, frame)
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -495,14 +495,14 @@ class ID3v22_T__Frame(object):
 
         import re
 
-        if (self.id in self.NUMERICAL_IDS):
+        if self.id in self.NUMERICAL_IDS:
             unicode_value = self.__unicode__()
             int_string = re.search(r'\d+', unicode_value)
-            if (int_string is not None):
+            if int_string is not None:
                 int_value = int(int_string.group(0))
-                if (int_value == 0):
+                if int_value == 0:
                     total_string = re.search(r'/\D*?(\d+)', unicode_value)
-                    if (total_string is not None):
+                    if total_string is not None:
                         # don't return placeholder 0 value
                         # when a track_total value is present
                         # but track_number value is 0
@@ -522,9 +522,9 @@ class ID3v22_T__Frame(object):
 
         import re
 
-        if (self.id in self.NUMERICAL_IDS):
+        if self.id in self.NUMERICAL_IDS:
             int_value = re.search(r'/\D*?(\d+)', self.__unicode__())
-            if (int_value is not None):
+            if int_value is not None:
                 return int(int_value.group(1))
             else:
                 return None
@@ -556,7 +556,7 @@ class ID3v22_T__Frame(object):
     def converted(cls, frame_id, unicode_string):
         """given a unicode string, returns a text frame"""
 
-        if (is_latin_1(unicode_string)):
+        if is_latin_1(unicode_string):
             return cls(frame_id, 0, unicode_string.encode('latin-1'))
         else:
             return cls(frame_id, 1, unicode_string.encode('ucs2'))
@@ -577,28 +577,28 @@ class ID3v22_T__Frame(object):
         value = self.__unicode__()
 
         # check for an empty tag
-        if (len(value.strip()) == 0):
+        if len(value.strip()) == 0:
             return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
         # check trailing whitespace
         fix1 = value.rstrip()
-        if (fix1 != value):
+        if fix1 != value:
             fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
                                    {"field": field})
 
         # check leading whitespace
         fix2 = fix1.lstrip()
-        if (fix2 != fix1):
+        if fix2 != fix1:
             fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
                                    {"field": field})
 
         # check leading zeroes for a numerical tag
-        if (self.id in self.NUMERICAL_IDS):
+        if self.id in self.NUMERICAL_IDS:
             fix3 = __number_pair__(self.number(), self.total())
-            if (fix3 != fix2):
+            if fix3 != fix2:
                 from audiotools import config
 
-                if (config.getboolean_default("ID3", "pad", False)):
+                if config.getboolean_default("ID3", "pad", False):
                     fixes_performed.append(CLEAN_ADD_LEADING_ZEROES %
                                            {"field": field})
                 else:
@@ -639,7 +639,7 @@ class ID3v22_TXX_Frame(object):
     def __eq__(self, frame):
         return __attrib_equals__(["id", "encoding", "description", "data"])
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -691,18 +691,18 @@ class ID3v22_TXX_Frame(object):
         value = self.__unicode__()
 
         # check for an empty tag
-        if (len(value.strip()) == 0):
+        if len(value.strip()) == 0:
             return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
         # check trailing whitespace
         fix1 = value.rstrip()
-        if (fix1 != value):
+        if fix1 != value:
             fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
                                    {"field": field})
 
         # check leading whitespace
         fix2 = fix1.lstrip()
-        if (fix2 != fix1):
+        if fix2 != fix1:
             fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
                                    {"field": field})
 
@@ -864,7 +864,7 @@ class ID3v22_COM_Frame(object):
     def __ne__(self, frame):
         return not self.__eq__(frame)
 
-    if (sys.version_info[0] >= 3):
+    if sys.version_info[0] >= 3:
         def __str__(self):
             return self.__unicode__()
     else:
@@ -903,7 +903,7 @@ class ID3v22_COM_Frame(object):
 
     @classmethod
     def converted(cls, frame_id, unicode_string):
-        if (is_latin_1(unicode_string)):
+        if is_latin_1(unicode_string):
             return cls(0, b"eng", C_string("latin-1", u""),
                        unicode_string.encode('latin-1'))
         else:
@@ -926,18 +926,18 @@ class ID3v22_COM_Frame(object):
         value = self.data.decode(text_encoding[self.encoding], 'replace')
 
         # check for an empty tag
-        if (len(value.strip()) == 0):
+        if len(value.strip()) == 0:
             return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
         # check trailing whitespace
         fix1 = value.rstrip()
-        if (fix1 != value):
+        if fix1 != value:
             fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
                                    {"field": field})
 
         # check leading whitespace
         fix2 = fix1.lstrip()
-        if (fix2 != fix1):
+        if fix2 != fix1:
             fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
                                    {"field": field})
 
@@ -1034,13 +1034,13 @@ class ID3v22_PIC_Frame(Image):
                                 MEDIA,
                                 OTHER)
 
-        if (attr == 'type'):
+        if attr == 'type':
             return {3: FRONT_COVER,
                     4: BACK_COVER,
                     5: LEAFLET_PAGE,
                     6: MEDIA
                     }.get(self.pic_type, OTHER)
-        elif (attr == 'description'):
+        elif attr == 'description':
             return self.pic_description.__unicode__()
         else:
             raise AttributeError(attr)
@@ -1051,13 +1051,13 @@ class ID3v22_PIC_Frame(Image):
                                 LEAFLET_PAGE,
                                 MEDIA,
                                 OTHER)
-        if (attr == 'type'):
+        if attr == 'type':
             Image.__setattr__(self,
                               "pic_type", {FRONT_COVER: 3,
                                            BACK_COVER: 4,
                                            LEAFLET_PAGE: 5,
                                            MEDIA: 6}.get(value, 0))
-        elif (attr == 'description'):
+        elif attr == 'description':
             Image.__setattr__(
                 self,
                 "pic_description",
@@ -1096,7 +1096,7 @@ class ID3v22_PIC_Frame(Image):
 
     @classmethod
     def converted(cls, frame_id, image):
-        if (is_latin_1(image.description)):
+        if is_latin_1(image.description):
             description = C_string('latin-1', image.description)
         else:
             description = C_string('ucs2', image.description)
@@ -1194,11 +1194,11 @@ class ID3v22Comment(MetaData):
          major_version,
          minor_version,
          flags) = reader.parse("3b 8u 8u 8u")
-        if (id3 != b'ID3'):
+        if id3 != b'ID3':
             raise ValueError("invalid ID3 header")
-        elif (major_version != 0x02):
+        elif major_version != 0x02:
             raise ValueError("invalid major version")
-        elif (minor_version != 0x00):
+        elif minor_version != 0x00:
             raise ValueError("invalid minor version")
         total_size = remaining_size = decode_syncsafe32(reader.read(32))
 
@@ -1207,29 +1207,29 @@ class ID3v22Comment(MetaData):
         while (remaining_size > 6):
             (frame_id, frame_size) = reader.parse("3b 24u")
 
-            if (frame_id == b"\x00" * 3):
+            if frame_id == b"\x00" * 3:
                 break
-            elif (frame_id == b'TXX'):
+            elif frame_id == b'TXX':
                 frames.append(
                     cls.USER_TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == b'WXX'):
+            elif frame_id == b'WXX':
                 frames.append(
                     cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == b'COM'):
+            elif frame_id == b'COM':
                 frames.append(
                     cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == b'PIC'):
+            elif frame_id == b'PIC':
                 frames.append(
                     cls.IMAGE_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith(b'T')):
+            elif frame_id.startswith(b'T'):
                 frames.append(
                     cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith(b'W')):
+            elif frame_id.startswith(b'W'):
                 frames.append(
                     cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
@@ -1277,7 +1277,7 @@ class ID3v22Comment(MetaData):
 
     def __getitem__(self, frame_id):
         frames = [frame for frame in self if (frame.id == frame_id)]
-        if (len(frames) > 0):
+        if len(frames) > 0:
             return frames
         else:
             raise KeyError(frame_id)
@@ -1287,7 +1287,7 @@ class ID3v22Comment(MetaData):
         updated_frames = []
 
         for old_frame in self:
-            if (old_frame.id == frame_id):
+            if old_frame.id == frame_id:
                 try:
                     # replace current frame with newly set frame
                     updated_frames.append(new_frames.pop(0))
@@ -1306,7 +1306,7 @@ class ID3v22Comment(MetaData):
 
     def __delitem__(self, frame_id):
         updated_frames = [frame for frame in self if frame.id != frame_id]
-        if (len(updated_frames) < len(self)):
+        if len(updated_frames) < len(self):
             MetaData.__setattr__(self, "frames", updated_frames)
         else:
             raise KeyError(frame_id)
@@ -1321,30 +1321,30 @@ class ID3v22Comment(MetaData):
         return [(key, self[key]) for key in self.keys()]
 
     def __getattr__(self, attr):
-        if (attr in self.ATTRIBUTE_MAP):
+        if attr in self.ATTRIBUTE_MAP:
             try:
                 frame = self[self.ATTRIBUTE_MAP[attr]][0]
-                if (attr in ('track_number', 'album_number')):
+                if attr in ('track_number', 'album_number'):
                     return frame.number()
-                elif (attr in ('track_total', 'album_total')):
+                elif attr in ('track_total', 'album_total'):
                     return frame.total()
                 else:
                     return frame.__unicode__()
             except KeyError:
                 return None
-        elif (attr in self.FIELDS):
+        elif attr in self.FIELDS:
             return None
         else:
             return MetaData.__getattribute__(self, attr)
 
     def __setattr__(self, attr, value):
-        if (attr in self.ATTRIBUTE_MAP):
-            if (value is not None):
+        if attr in self.ATTRIBUTE_MAP:
+            if value is not None:
                 import re
 
                 frame_id = self.ATTRIBUTE_MAP[attr]
 
-                if (attr == 'track_number'):
+                if attr == 'track_number':
                     try:
                         # substitute the first set of digits
                         # with our padded value
@@ -1361,7 +1361,7 @@ class ID3v22Comment(MetaData):
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             __number_pair__(value, self.track_total))
-                elif (attr == 'track_total'):
+                elif attr == 'track_total':
                     try:
                         # if the value has a u"/" followed by some digits
                         if (re.search(
@@ -1388,7 +1388,7 @@ class ID3v22Comment(MetaData):
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             __number_pair__(self.track_number, value))
-                elif (attr == 'album_number'):
+                elif attr == 'album_number':
                     try:
                         # substitute the first set of digits
                         # with our padded value
@@ -1405,7 +1405,7 @@ class ID3v22Comment(MetaData):
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             __number_pair__(value, self.album_total))
-                elif (attr == 'album_total'):
+                elif attr == 'album_total':
                     try:
                         # if the value has a u"/" followed by some digits
                         if (re.search(
@@ -1432,7 +1432,7 @@ class ID3v22Comment(MetaData):
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
                             __number_pair__(self.album_number, value))
-                elif (attr == 'comment'):
+                elif attr == 'comment':
                     new_frame = self.COMMENT_FRAME.converted(
                         frame_id, value)
                 else:
@@ -1445,18 +1445,18 @@ class ID3v22Comment(MetaData):
                     self[frame_id] = [new_frame]
             else:
                 delattr(self, attr)
-        elif (attr in MetaData.FIELDS):
+        elif attr in MetaData.FIELDS:
             pass
         else:
             MetaData.__setattr__(self, attr, value)
 
     def __delattr__(self, attr):
-        if (attr in self.ATTRIBUTE_MAP):
+        if attr in self.ATTRIBUTE_MAP:
             updated_frames = []
             delete_frame_id = self.ATTRIBUTE_MAP[attr]
             for frame in self:
-                if (frame.id == delete_frame_id):
-                    if ((attr == 'track_number') or (attr == 'album_number')):
+                if frame.id == delete_frame_id:
+                    if (attr == 'track_number') or (attr == 'album_number'):
                         import re
 
                         # if *_number field contains a slashed total
@@ -1510,7 +1510,7 @@ class ID3v22Comment(MetaData):
 
             MetaData.__setattr__(self, "frames", updated_frames)
 
-        elif (attr in MetaData.FIELDS):
+        elif attr in MetaData.FIELDS:
             # ignore deleted attributes which are in MetaData
             # but we don't support
             pass
@@ -1535,17 +1535,17 @@ class ID3v22Comment(MetaData):
     def converted(cls, metadata):
         """converts a MetaData object to an ID3v2*Comment object"""
 
-        if (metadata is None):
+        if metadata is None:
             return None
-        elif (cls is metadata.__class__):
+        elif cls is metadata.__class__:
             return cls([frame.copy() for frame in metadata])
 
         frames = []
 
         for (attr, key) in cls.ATTRIBUTE_MAP.items():
             value = getattr(metadata, attr)
-            if ((attr not in cls.INTEGER_FIELDS) and (value is not None)):
-                if (attr == 'comment'):
+            if (attr not in cls.INTEGER_FIELDS) and (value is not None):
+                if attr == 'comment':
                     frames.append(cls.COMMENT_FRAME.converted(key, value))
                 else:
                     frames.append(cls.TEXT_FRAME.converted(key, value))
@@ -1569,7 +1569,7 @@ class ID3v22Comment(MetaData):
         for image in metadata.images():
             frames.append(cls.IMAGE_FRAME.converted(cls.IMAGE_FRAME_ID, image))
 
-        if (hasattr(cls, 'ITUNES_COMPILATION_ID')):
+        if hasattr(cls, 'ITUNES_COMPILATION_ID'):
             frames.append(
                 cls.TEXT_FRAME.converted(
                     cls.ITUNES_COMPILATION_ID, u'1'))
@@ -1584,7 +1584,7 @@ class ID3v22Comment(MetaData):
 
         for frame in self:
             (filtered_frame, frame_fixes) = frame.clean()
-            if (filtered_frame is not None):
+            if filtered_frame is not None:
                 new_frames.append(filtered_frame)
             fixes_performed.extend(frame_fixes)
 
@@ -1701,15 +1701,15 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
                                 MEDIA,
                                 OTHER)
 
-        if (attr == 'type'):
+        if attr == 'type':
             return {3: FRONT_COVER,
                     4: BACK_COVER,
                     5: LEAFLET_PAGE,
                     6: MEDIA
                     }.get(self.pic_type, 4)  # other
-        elif (attr == 'description'):
+        elif attr == 'description':
             return self.pic_description.__unicode__()
-        elif (attr == 'mime_type'):
+        elif attr == 'mime_type':
             return self.pic_mime_type.__unicode__()
         else:
             raise AttributeError(attr)
@@ -1721,20 +1721,20 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
                                 MEDIA,
                                 OTHER)
 
-        if (attr == 'type'):
+        if attr == 'type':
             Image.__setattr__(self,
                               "pic_type",
                               {FRONT_COVER: 3,
                                BACK_COVER: 4,
                                LEAFLET_PAGE: 5,
                                MEDIA: 6}.get(value, 0))
-        elif (attr == 'description'):
+        elif attr == 'description':
             Image.__setattr__(
                 self,
                 "pic_description",
                 C_string("latin-1" if is_latin_1(value) else "ucs2",
                          value))
-        elif (attr == 'mime_type'):
+        elif attr == 'mime_type':
             Image.__setattr__(self, "pic_mime_type", C_string('ascii', value))
         else:
             Image.__setattr__(self, attr, value)
@@ -1778,7 +1778,7 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
 
     @classmethod
     def converted(cls, frame_id, image):
-        if (is_latin_1(image.description)):
+        if is_latin_1(image.description):
             description = C_string('latin-1', image.description)
         else:
             description = C_string('ucs2', image.description)
@@ -1798,7 +1798,7 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
         any fixes are appended to fixes_applied as unicode string"""
 
         actual_mime_type = Image.new(self.data, u"", 0).mime_type
-        if (self.pic_mime_type.__unicode__() != actual_mime_type):
+        if self.pic_mime_type.__unicode__() != actual_mime_type:
             from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
             return (ID3v23_APIC_Frame(
                 C_string('ascii', actual_mime_type),
@@ -1886,11 +1886,11 @@ class ID3v23Comment(ID3v22Comment):
          major_version,
          minor_version,
          flags) = reader.parse("3b 8u 8u 8u")
-        if (id3 != b'ID3'):
+        if id3 != b'ID3':
             raise ValueError("invalid ID3 header")
-        elif (major_version != 0x03):
+        elif major_version != 0x03:
             raise ValueError("invalid major version")
-        elif (minor_version != 0x00):
+        elif minor_version != 0x00:
             raise ValueError("invalid minor version")
         total_size = remaining_size = decode_syncsafe32(reader.read(32))
 
@@ -1899,29 +1899,29 @@ class ID3v23Comment(ID3v22Comment):
         while (remaining_size > 10):
             (frame_id, frame_size, frame_flags) = reader.parse("4b 32u 16u")
 
-            if (frame_id == b"\x00" * 4):
+            if frame_id == b"\x00" * 4:
                 break
-            elif (frame_id == b'TXXX'):
+            elif frame_id == b'TXXX':
                 frames.append(
                     cls.USER_TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == b'WXXX'):
+            elif frame_id == b'WXXX':
                 frames.append(
                     cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == b'COMM'):
+            elif frame_id == b'COMM':
                 frames.append(
                     cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == b'APIC'):
+            elif frame_id == b'APIC':
                 frames.append(
                     cls.IMAGE_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith(b'T')):
+            elif frame_id.startswith(b'T'):
                 frames.append(
                     cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith(b'W')):
+            elif frame_id.startswith(b'W'):
                 frames.append(
                     cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
@@ -2009,7 +2009,7 @@ class ID3v24_T___Frame(ID3v23_T___Frame):
     def converted(cls, frame_id, unicode_string):
         """given a unicode string, returns a text frame"""
 
-        if (is_latin_1(unicode_string)):
+        if is_latin_1(unicode_string):
             return cls(frame_id, 0, unicode_string.encode('latin-1'))
         else:
             return cls(frame_id, 3, unicode_string.encode('utf-8'))
@@ -2068,7 +2068,7 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
                                 MEDIA,
                                 OTHER)
 
-        if (attr == 'type'):
+        if attr == 'type':
             Image.__setattr__(
                 self,
                 "pic_type",
@@ -2076,12 +2076,12 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
                  BACK_COVER: 4,
                  LEAFLET_PAGE: 5,
                  MEDIA: 6}.get(value, 0))
-        elif (attr == 'description'):
+        elif attr == 'description':
             Image.__setattr__(
                 self,
                 "pic_description",
                 C_string("latin-1" if is_latin_1(value) else "utf-8", value))
-        elif (attr == 'mime_type'):
+        elif attr == 'mime_type':
             Image.__setattr__(self, "pic_mime_type", C_string('ascii', value))
         else:
             Image.__setattr__(self, attr, value)
@@ -2119,7 +2119,7 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
 
     @classmethod
     def converted(cls, frame_id, image):
-        if (is_latin_1(image.description)):
+        if is_latin_1(image.description):
             description = C_string('latin-1', image.description)
         else:
             description = C_string('utf-8', image.description)
@@ -2139,7 +2139,7 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
         any fixes are appended to fixes_applied as unicode string"""
 
         actual_mime_type = Image.new(self.data, u"", 0).mime_type
-        if (self.pic_mime_type.__unicode__() != actual_mime_type):
+        if self.pic_mime_type.__unicode__() != actual_mime_type:
             from audiotools.text import (CLEAN_FIX_IMAGE_FIELDS)
             return (ID3v24_APIC_Frame(
                 C_string('ascii', actual_mime_type),
@@ -2237,7 +2237,7 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
 
     @classmethod
     def converted(cls, frame_id, unicode_string):
-        if (is_latin_1(unicode_string)):
+        if is_latin_1(unicode_string):
             return cls(0, b"eng", C_string("latin-1", u""),
                        unicode_string.encode('latin-1'))
         else:
@@ -2263,18 +2263,18 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
         value = self.data.decode(text_encoding[self.encoding], 'replace')
 
         # check for an empty tag
-        if (len(value.strip()) == 0):
+        if len(value.strip()) == 0:
             return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
 
         # check trailing whitespace
         fix1 = value.rstrip()
-        if (fix1 != value):
+        if fix1 != value:
             fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
                                    {"field": field})
 
         # check leading whitespace
         fix2 = fix1.lstrip()
-        if (fix2 != fix1):
+        if fix2 != fix1:
             fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
                                    {"field": field})
 
@@ -2312,11 +2312,11 @@ class ID3v24Comment(ID3v23Comment):
          major_version,
          minor_version,
          flags) = reader.parse("3b 8u 8u 8u")
-        if (id3 != b'ID3'):
+        if id3 != b'ID3':
             raise ValueError("invalid ID3 header")
-        elif (major_version != 0x04):
+        elif major_version != 0x04:
             raise ValueError("invalid major version")
-        elif (minor_version != 0x00):
+        elif minor_version != 0x00:
             raise ValueError("invalid minor version")
         total_size = remaining_size = decode_syncsafe32(reader.read(32))
 
@@ -2327,29 +2327,29 @@ class ID3v24Comment(ID3v23Comment):
             frame_size = decode_syncsafe32(reader.read(32))
             flags = reader.read(16)
 
-            if (frame_id == b"\x00" * 4):
+            if frame_id == b"\x00" * 4:
                 break
-            elif (frame_id == b'TXXX'):
+            elif frame_id == b'TXXX':
                 frames.append(
                     cls.USER_TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == b'WXXX'):
+            elif frame_id == b'WXXX':
                 frames.append(
                     cls.USER_WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == b'COMM'):
+            elif frame_id == b'COMM':
                 frames.append(
                     cls.COMMENT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id == b'APIC'):
+            elif frame_id == b'APIC':
                 frames.append(
                     cls.IMAGE_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith(b'T')):
+            elif frame_id.startswith(b'T'):
                 frames.append(
                     cls.TEXT_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
-            elif (frame_id.startswith(b'W')):
+            elif frame_id.startswith(b'W'):
                 frames.append(
                     cls.WEB_FRAME.parse(
                         frame_id, frame_size, reader.substream(frame_size)))
@@ -2411,9 +2411,9 @@ class ID3CommentPair(MetaData):
         MetaData.__setattr__(self, "id3v2", id3v2_comment)
         MetaData.__setattr__(self, "id3v1", id3v1_comment)
 
-        if (self.id3v2 is not None):
+        if self.id3v2 is not None:
             base_comment = self.id3v2
-        elif (self.id3v1 is not None):
+        elif self.id3v1 is not None:
             base_comment = self.id3v1
         else:
             raise ValueError("ID3v2 and ID3v1 cannot both be blank")
@@ -2423,37 +2423,37 @@ class ID3CommentPair(MetaData):
 
     def __getattr__(self, attr):
         assert((self.id3v2 is not None) or (self.id3v1 is not None))
-        if (attr in self.FIELDS):
-            if (self.id3v2 is not None):
+        if attr in self.FIELDS:
+            if self.id3v2 is not None:
                 # ID3v2 takes precedence over ID3v1
                 field = getattr(self.id3v2, attr)
-                if (field is not None):
+                if field is not None:
                     return field
-                elif (self.id3v1 is not None):
+                elif self.id3v1 is not None:
                     return getattr(self.id3v1, attr)
                 else:
                     return None
-            elif (self.id3v1 is not None):
+            elif self.id3v1 is not None:
                 return getattr(self.id3v1, attr)
         else:
             return MetaData.__getattribute__(self, attr)
 
     def __setattr__(self, attr, value):
         assert((self.id3v2 is not None) or (self.id3v1 is not None))
-        if (attr in self.FIELDS):
-            if (self.id3v2 is not None):
+        if attr in self.FIELDS:
+            if self.id3v2 is not None:
                 setattr(self.id3v2, attr, value)
-            if (self.id3v1 is not None):
+            if self.id3v1 is not None:
                 setattr(self.id3v1, attr, value)
         else:
             MetaData.__setattr__(self, attr, value)
 
     def __delattr__(self, attr):
         assert((self.id3v2 is not None) or (self.id3v1 is not None))
-        if (attr in self.FIELDS):
-            if (self.id3v2 is not None):
+        if attr in self.FIELDS:
+            if self.id3v2 is not None:
                 delattr(self.id3v2, attr)
-            if (self.id3v1 is not None):
+            if self.id3v1 is not None:
                 delattr(self.id3v1, attr)
         else:
             MetaData.__delattr__(self, attr)
@@ -2464,13 +2464,13 @@ class ID3CommentPair(MetaData):
                   id3v1_class=ID3v1Comment):
         """takes a MetaData object and returns an ID3CommentPair object"""
 
-        if (metadata is None):
+        if metadata is None:
             return None
-        elif (isinstance(metadata, ID3CommentPair)):
+        elif isinstance(metadata, ID3CommentPair):
             return ID3CommentPair(
                 metadata.id3v2.__class__.converted(metadata.id3v2),
                 metadata.id3v1.__class__.converted(metadata.id3v1))
-        elif (isinstance(metadata, ID3v2Comment)):
+        elif isinstance(metadata, ID3v2Comment):
             return ID3CommentPair(metadata,
                                   id3v1_class.converted(metadata))
         else:
@@ -2482,17 +2482,17 @@ class ID3CommentPair(MetaData):
         """returns a human-readable version of this metadata pair
         as a unicode string"""
 
-        if ((self.id3v2 is not None) and (self.id3v1 is not None)):
+        if (self.id3v2 is not None) and (self.id3v1 is not None):
             # both comments present
             from os import linesep
 
             return (self.id3v2.raw_info() +
                     linesep * 2 +
                     self.id3v1.raw_info())
-        elif (self.id3v2 is not None):
+        elif self.id3v2 is not None:
             # only ID3v2
             return self.id3v2.raw_info()
-        elif (self.id3v1 is not None):
+        elif self.id3v1 is not None:
             # only ID3v1
             return self.id3v1.raw_info()
         else:
@@ -2502,7 +2502,7 @@ class ID3CommentPair(MetaData):
     def images(self):
         """returns a list of embedded Image objects"""
 
-        if (self.id3v2 is not None):
+        if self.id3v2 is not None:
             return self.id3v2.images()
         else:
             return []
@@ -2510,13 +2510,13 @@ class ID3CommentPair(MetaData):
     def add_image(self, image):
         """embeds an Image object in this metadata"""
 
-        if (self.id3v2 is not None):
+        if self.id3v2 is not None:
             self.id3v2.add_image(image)
 
     def delete_image(self, image):
         """deletes an Image object from this metadata"""
 
-        if (self.id3v2 is not None):
+        if self.id3v2 is not None:
             self.id3v2.delete_image(image)
 
     @classmethod
@@ -2526,13 +2526,13 @@ class ID3CommentPair(MetaData):
         return True
 
     def clean(self):
-        if (self.id3v2 is not None):
+        if self.id3v2 is not None:
             (new_id3v2, id3v2_fixes) = self.id3v2.clean()
         else:
             new_id3v2 = None
             id3v2_fixes = []
 
-        if (self.id3v1 is not None):
+        if self.id3v1 is not None:
             (new_id3v1, id3v1_fixes) = self.id3v1.clean()
         else:
             new_id3v1 = None

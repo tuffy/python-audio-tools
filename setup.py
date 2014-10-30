@@ -20,12 +20,12 @@
 from __future__ import print_function
 import sys
 
-if (sys.version_info[0] == 3):
-    if (sys.version_info[1] < 3):
+if sys.version_info[0] == 3:
+    if sys.version_info[1] < 3:
         print("*** Python 3.3 or better required")
         sys.exit(1)
-elif (sys.version_info[0] == 2):
-    if (sys.version_info[1] < 7):
+elif sys.version_info[0] == 2:
+    if sys.version_info[1] < 7:
         print("*** Python 2.7 or better required")
         sys.exit(1)
 
@@ -78,7 +78,7 @@ class SystemLibraries(object):
         default is None"""
 
         try:
-            if (self.configfile.get("Libraries", library) == "probe"):
+            if self.configfile.get("Libraries", library) == "probe":
                 return None
             else:
                 try:
@@ -95,7 +95,7 @@ class SystemLibraries(object):
         returns False if it cannot be found"""
 
         present = self.guaranteed_present(library)
-        if (present is None):
+        if present is None:
             # probe for library using pkg-config, if available
             try:
                 pkg_config = subprocess.Popen(
@@ -124,7 +124,7 @@ class SystemLibraries(object):
 
             pkg_config_stdout = pkg_config.stdout.read().strip()
 
-            if (pkg_config.wait() == 0):
+            if pkg_config.wait() == 0:
                 # libraries found
                 return pkg_config_stdout.split()
             else:
@@ -149,7 +149,7 @@ class SystemLibraries(object):
 
             pkg_config_stdout = pkg_config.stdout.read().strip()
 
-            if (pkg_config.wait() == 0):
+            if pkg_config.wait() == 0:
                 # libraries found
                 return pkg_config_stdout.split()
             else:
@@ -208,7 +208,7 @@ class output_table(object):
     def format(self):
         """yields one formatted string per row"""
 
-        if (len(self.__rows__) == 0):
+        if len(self.__rows__) == 0:
             # no rows, so do nothing
             return
 
@@ -238,7 +238,7 @@ class output_table_row(object):
 
         alignment may be 'left', 'center', 'right'"""
 
-        if (alignment not in ("left", "center", "right")):
+        if alignment not in ("left", "center", "right"):
             raise ValueError("alignment must be 'left', 'center', or 'right'")
 
         self.__columns__.append((text, alignment))
@@ -252,7 +252,7 @@ class output_table_row(object):
         def align_left(text, width):
             spaces = width - len(text)
 
-            if (spaces > 0):
+            if spaces > 0:
                 return text + " " * spaces
             else:
                 return text
@@ -260,7 +260,7 @@ class output_table_row(object):
         def align_right(text, width):
             spaces = width - len(text)
 
-            if (spaces > 0):
+            if spaces > 0:
                 return " " * spaces + text
             else:
                 return text
@@ -269,7 +269,7 @@ class output_table_row(object):
             left_spaces = (width - len(text)) // 2
             right_spaces = width - (left_spaces + len(text))
 
-            if ((left_spaces + right_spaces) > 0):
+            if (left_spaces + right_spaces) > 0:
                 return (" " * left_spaces +
                         text +
                         " " * right_spaces)
@@ -338,14 +338,14 @@ class build_ext(_build_ext):
                 for (library,
                      used_for,
                      is_present) in extension.library_manifest():
-                    if (library in libraries):
+                    if library in libraries:
                         libraries[library] = (
                             libraries[library][0] + [used_for],
                             libraries[library][1] and is_present)
                     else:
                         libraries[library] = ([used_for], is_present)
 
-        if (ext_audiotools_cdio not in self.extensions):
+        if ext_audiotools_cdio not in self.extensions:
             libraries["libcdio"] = (["CDDA data extraction"], False)
 
         all_libraries_present = (set([l[1] for l in libraries.values()]) ==
@@ -359,11 +359,11 @@ class build_ext(_build_ext):
         header.add_column("present?")
         header.add_column(" ")
         header.add_column("used for")
-        if (not all_libraries_present):
+        if not all_libraries_present:
             header.add_column(" ")
             header.add_column("download URL")
 
-        if (not all_libraries_present):
+        if not all_libraries_present:
             table.divider_row(["-", " ", "-", " ", "-", " ", "-"])
         else:
             table.divider_row(["-", " ", "-", " ", "-"])
@@ -375,9 +375,9 @@ class build_ext(_build_ext):
             row.add_column("yes" if libraries[library][1] else "no")
             row.add_column(" ")
             row.add_column(", ".join(libraries[library][0]))
-            if (not all_libraries_present):
+            if not all_libraries_present:
                 row.add_column(" ")
-                if (not libraries[library][1]):
+                if not libraries[library][1]:
                     row.add_column(LIBRARY_URLS[library])
                 else:
                     row.add_column("")
@@ -395,7 +395,7 @@ class build_ext(_build_ext):
         print("Python Audio Tools %s Setup" % (VERSION))
         print("=" * table.total_width())
 
-        if (not pkg_config_found):
+        if not pkg_config_found:
             def add_row(table, text, alignment="left"):
                 row = table.row()
                 row.add_column("*")
@@ -451,8 +451,8 @@ class audiotools_cdio(Extension):
         extra_compile_args = []
         extra_link_args = []
 
-        if (system_libraries.present("libcdio_paranoia")):
-            if (system_libraries.guaranteed_present("libcdio_paranoia")):
+        if system_libraries.present("libcdio_paranoia"):
+            if system_libraries.guaranteed_present("libcdio_paranoia"):
                 libraries.update(set(["libcdio",
                                       "libcdio_cdda",
                                       "libcdio_paranoia"]))
@@ -487,7 +487,7 @@ class audiotools_cdio(Extension):
 
     def libraries_present(self):
         for (library, used_for, is_present) in self.library_manifest():
-            if (not is_present):
+            if not is_present:
                 return False
         else:
             return True
@@ -563,8 +563,8 @@ class audiotools_decoders(Extension):
         extra_link_args = []
         extra_compile_args = []
 
-        if (system_libraries.present("libmpg123")):
-            if (system_libraries.guaranteed_present("libmpg123")):
+        if system_libraries.present("libmpg123"):
+            if system_libraries.guaranteed_present("libmpg123"):
                 libraries.add("mpg123")
             else:
                 extra_compile_args.extend(
@@ -581,8 +581,8 @@ class audiotools_decoders(Extension):
                                               "MP3/MP2 decoding",
                                               False))
 
-        if (system_libraries.present("vorbisfile")):
-            if (system_libraries.guaranteed_present("vorbisfile")):
+        if system_libraries.present("vorbisfile"):
+            if system_libraries.guaranteed_present("vorbisfile"):
                 libraries.update(set(["vorbisfile", "vorbis", "ogg"]))
             else:
                 extra_compile_args.extend(
@@ -599,8 +599,8 @@ class audiotools_decoders(Extension):
                                               "Ogg Vorbis decoding",
                                               False))
 
-        if (system_libraries.present("opusfile")):
-            if (system_libraries.guaranteed_present("opusfile")):
+        if system_libraries.present("opusfile"):
+            if system_libraries.guaranteed_present("opusfile"):
                 libraries.add("opusfile")
             else:
                 extra_compile_args.extend(
@@ -617,7 +617,7 @@ class audiotools_decoders(Extension):
                                               "Opus decoding",
                                               False))
 
-        if (sys.platform == "linux2"):
+        if sys.platform == "linux2":
             defines.extend([("DVD_STRUCT_IN_LINUX_CDROM_H", None),
                             ("HAVE_LINUX_DVD_STRUCT", None),
                             ("HAS_UNPROT", None)])
@@ -667,10 +667,10 @@ class audiotools_encoders(Extension):
         # This may fail if the user has installed the binary
         # with a lame-dev package of some kind.
         mp3lame_present = system_libraries.guaranteed_present("mp3lame")
-        if (mp3lame_present is None):
+        if mp3lame_present is None:
             mp3lame_present = system_libraries.executable_present(
                 "lame", "--version")
-        if (mp3lame_present):
+        if mp3lame_present:
             libraries.add("mp3lame")
             defines.append(("HAS_MP3", None))
             sources.append("src/encoders/mp3.c")
@@ -682,8 +682,8 @@ class audiotools_encoders(Extension):
                                               "MP3 encoding",
                                               False))
 
-        if (system_libraries.present("twolame")):
-            if (system_libraries.guaranteed_present("twolame")):
+        if system_libraries.present("twolame"):
+            if system_libraries.guaranteed_present("twolame"):
                 libraries.add("twolame")
             else:
                 extra_compile_args.extend(
@@ -701,8 +701,8 @@ class audiotools_encoders(Extension):
                                               "MP2 encoding",
                                               False))
 
-        if (system_libraries.present("vorbisenc")):
-            if (system_libraries.guaranteed_present("vorbisenc")):
+        if system_libraries.present("vorbisenc"):
+            if system_libraries.guaranteed_present("vorbisenc"):
                 libraries.update(set(["vorbisenc", "vorbis", "ogg"]))
             else:
                 extra_compile_args.extend(
@@ -720,8 +720,8 @@ class audiotools_encoders(Extension):
                                               "Ogg Vorbis encoding",
                                               False))
 
-        if (system_libraries.present("opus")):
-            if (system_libraries.guaranteed_present("opus")):
+        if system_libraries.present("opus"):
+            if system_libraries.guaranteed_present("opus"):
                 libraries.add("opus")
             else:
                 extra_compile_args.extend(
@@ -794,7 +794,7 @@ class audiotools_output(Extension):
         extra_link_args = []
 
         # assume MacOS X always has CoreAudio
-        if (sys.platform == "darwin"):
+        if sys.platform == "darwin":
             sources.append("src/output/core_audio.c")
             defines.append(("CORE_AUDIO", "1"))
             extra_link_args.extend(["-framework", "AudioToolbox",
@@ -803,10 +803,10 @@ class audiotools_output(Extension):
             self.__library_manifest__.append(("CoreAudio",
                                               "Core Audio output",
                                               True))
-        elif (sys.platform.startswith("linux")):
+        elif sys.platform.startswith("linux"):
             # only check for ALSA on Linux
-            if (system_libraries.present("alsa")):
-                if (system_libraries.guaranteed_present("alsa")):
+            if system_libraries.present("alsa"):
+                if system_libraries.guaranteed_present("alsa"):
                     libraries.add("asound")
                 else:
                     extra_compile_args.extend(
@@ -824,8 +824,8 @@ class audiotools_output(Extension):
                                                   "ALSA output",
                                                   False))
 
-        if (system_libraries.present("libpulse")):
-            if (system_libraries.guaranteed_present("libpulse")):
+        if system_libraries.present("libpulse"):
+            if system_libraries.guaranteed_present("libpulse"):
                 libraries.add("pulse")
             else:
                 extra_compile_args.extend(
@@ -834,7 +834,7 @@ class audiotools_output(Extension):
                     system_libraries.extra_link_args("libpulse"))
             sources.append("src/output/pulseaudio.c")
             # only include pcmconv once
-            if ("src/pcmconv.c" not in sources):
+            if "src/pcmconv.c" not in sources:
                 sources.append("src/pcmconv.c")
             defines.append(("PULSEAUDIO", "1"))
             self.__library_manifest__.append(("libpulse",
@@ -889,7 +889,7 @@ scripts = ["audiotools-config",
            "tracktag",
            "trackverify"]
 
-if (ext_audiotools_cdio.libraries_present()):
+if ext_audiotools_cdio.libraries_present():
     ext_modules.append(ext_audiotools_cdio)
     scripts.extend(["cd2track", "cdinfo", "cdplay"])
 

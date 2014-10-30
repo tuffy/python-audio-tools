@@ -40,12 +40,12 @@ def get_m4a_atom(reader, *atoms):
         try:
             (length, stream_atom) = reader.parse("32u 4b")
             while (stream_atom != next_atom):
-                if ((length - 8) >= 0):
+                if (length - 8) >= 0:
                     reader.skip_bytes(length - 8)
                     (length, stream_atom) = reader.parse("32u 4b")
                 else:
                     raise KeyError(next_atom)
-            if (last):
+            if last:
                 return (length - 8, reader.substream(length - 8))
             else:
                 reader = reader.substream(length - 8)
@@ -69,14 +69,14 @@ def get_m4a_atom_offset(reader, *atoms):
             (length, stream_atom) = reader.parse("32u 4b")
             offset += 8
             while (stream_atom != next_atom):
-                if ((length - 8) > 0):
+                if (length - 8) > 0:
                     reader.skip_bytes(length - 8)
                     offset += (length - 8)
                     (length, stream_atom) = reader.parse("32u 4b")
                     offset += 8
                 else:
                     raise KeyError(next_atom)
-            if (last):
+            if last:
                 return (length, offset - 8)
             else:
                 reader = reader.substream(length - 8)
@@ -96,12 +96,12 @@ def has_m4a_atom(reader, *atoms):
         try:
             (length, stream_atom) = reader.parse("32u 4b")
             while (stream_atom != next_atom):
-                if ((length - 8) > 0):
+                if (length - 8) > 0:
                     reader.skip_bytes(length - 8)
                     (length, stream_atom) = reader.parse("32u 4b")
                 else:
                     return False
-            if (last):
+            if last:
                 return True
             else:
                 reader = reader.substream(length - 8)
@@ -168,14 +168,14 @@ class M4ATaggedAudio(object):
         from audiotools.bitstream import BitstreamReader
         import os.path
 
-        if (metadata is None):
+        if metadata is None:
             return
 
-        if (not isinstance(metadata, M4A_META_Atom)):
+        if not isinstance(metadata, M4A_META_Atom):
             from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
 
-        if (old_metadata is None):
+        if old_metadata is None:
             # get_metadata() result may still be None, and that's okay
             old_metadata = self.get_metadata()
 
@@ -229,14 +229,14 @@ class M4ATaggedAudio(object):
 
             # adjust moov -> udta -> meta atom
             # (generating sub-atoms as necessary)
-            if (not m4a_tree.has_child(b"moov")):
+            if not m4a_tree.has_child(b"moov"):
                 return
             else:
                 moov = m4a_tree[b"moov"]
-            if (not moov.has_child(b"udta")):
+            if not moov.has_child(b"udta"):
                 moov.append_child(M4A_Tree_Atom(b"udta", []))
             udta = moov[b"udta"]
-            if (not udta.has_child(b"meta")):
+            if not udta.has_child(b"meta"):
                 udta.append_child(metadata)
             else:
                 udta.replace_child(metadata)
@@ -266,7 +266,7 @@ class M4ATaggedAudio(object):
         this metadata includes track name, album name, and so on
         raises IOError if unable to write the file"""
 
-        if (metadata is None):
+        if metadata is None:
             return self.delete_metadata()
 
         old_metadata = self.get_metadata()
@@ -278,12 +278,12 @@ class M4ATaggedAudio(object):
         # from one M4A file to another
         file_specific_atoms = {b'\xa9too', b'----', b'pgap', b'tmpo'}
 
-        if (metadata.has_ilst_atom()):
+        if metadata.has_ilst_atom():
             metadata.ilst_atom().leaf_atoms = [
                 atom for atom in metadata.ilst_atom()
                 if atom.name not in file_specific_atoms]
 
-            if (old_metadata.has_ilst_atom()):
+            if old_metadata.has_ilst_atom():
                 metadata.ilst_atom().leaf_atoms.extend(
                     [atom for atom in old_metadata.ilst_atom()
                      if atom.name in file_specific_atoms])
@@ -362,10 +362,10 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
             raise InvalidM4A(ERR_M4A_MISSING_MDHD)
         try:
             (version, ) = mdhd.parse("8u 24p")
-            if (version == 0):
+            if version == 0:
                 (self.__sample_rate__,
                  self.__length__,) = mdhd.parse("32p 32p 32u 32u 2P 16p")
-            elif (version == 1):
+            elif version == 1:
                 (self.__sample_rate__,
                  self.__length__,) = mdhd.parse("64p 64p 32u 64U 2P 16p")
             else:
@@ -382,24 +382,24 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 
         # M4A seems to use the same channel assignment
         # as old-style RIFF WAVE/FLAC
-        if (self.channels() == 1):
+        if self.channels() == 1:
             return ChannelMask.from_fields(
                 front_center=True)
-        elif (self.channels() == 2):
+        elif self.channels() == 2:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True)
-        elif (self.channels() == 3):
+        elif self.channels() == 3:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True, front_center=True)
-        elif (self.channels() == 4):
+        elif self.channels() == 4:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True,
                 back_left=True, back_right=True)
-        elif (self.channels() == 5):
+        elif self.channels() == 5:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True, front_center=True,
                 back_left=True, back_right=True)
-        elif (self.channels() == 6):
+        elif self.channels() == 6:
             return ChannelMask.from_fields(
                 front_left=True, front_right=True, front_center=True,
                 back_left=True, back_right=True,
@@ -485,7 +485,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                                       cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
-        if (pcmreader.channels > 2):
+        if pcmreader.channels > 2:
             pcmreader = PCMConverter(pcmreader,
                                      sample_rate=pcmreader.sample_rate,
                                      channels=2,
@@ -493,7 +493,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                                      bits_per_sample=pcmreader.bits_per_sample)
 
         # faac requires files to end with .m4a for some reason
-        if (not filename.endswith(".m4a")):
+        if not filename.endswith(".m4a"):
             import tempfile
             actual_filename = filename
             tempfile = tempfile.NamedTemporaryFile(suffix=".m4a")
@@ -521,7 +521,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
         # so trying to ignore it doesn't work like on most other encoders.
 
         try:
-            if (total_pcm_frames is not None):
+            if total_pcm_frames is not None:
                 from audiotools import CounterPCMReader
                 pcmreader = CounterPCMReader(pcmreader)
 
@@ -545,8 +545,8 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 
         sub.stdin.close()
 
-        if (sub.wait() == 0):
-            if (tempfile is not None):
+        if sub.wait() == 0:
+            if tempfile is not None:
                 filename = actual_filename
                 f = open(filename, 'wb')
                 tempfile.seek(0, 0)
@@ -556,7 +556,7 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 
             return M4AAudio(filename)
         else:
-            if (tempfile is not None):
+            if tempfile is not None:
                 tempfile.close()
             raise EncodingError(u"unable to write file with faac")
 
@@ -603,7 +603,7 @@ class M4AAudio_nero(M4AAudio_faac):
         tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
         tempwave_name = tempwavefile.name
         try:
-            if (pcmreader.sample_rate > 96000):
+            if pcmreader.sample_rate > 96000:
                 tempwave = WaveAudio.from_pcm(
                     tempwave_name,
                     PCMConverter(pcmreader,
@@ -622,7 +622,7 @@ class M4AAudio_nero(M4AAudio_faac):
             return cls(filename)
         finally:
             tempwavefile.close()
-            if (os.path.isfile(tempwave_name)):
+            if os.path.isfile(tempwave_name):
                 os.unlink(tempwave_name)
 
     def to_pcm(self):
@@ -661,12 +661,12 @@ class M4AAudio_nero(M4AAudio_faac):
             stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
             open(os.devnull, "wb"))
 
-        if (sub.wait() != 0):
+        if sub.wait() != 0:
             raise EncodingError(u"neroAacEnc unable to write file")
         else:
             return cls(filename)
 
-if (BIN.can_execute(BIN["neroAacEnc"]) and BIN.can_execute(BIN["neroAacDec"])):
+if BIN.can_execute(BIN["neroAacEnc"]) and BIN.can_execute(BIN["neroAacDec"]):
     M4AAudio = M4AAudio_nero
 else:
     M4AAudio = M4AAudio_faac
@@ -741,7 +741,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             from audiotools.text import ERR_ALAC_INVALID_ALAC
             raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
 
-        if ((alac1 != b'alac') or (alac2 != b'alac')):
+        if (alac1 != b'alac') or (alac2 != b'alac'):
             from audiotools.text import ERR_ALAC_INVALID_ALAC
             raise InvalidALAC(ERR_ALAC_INVALID_ALAC)
 
@@ -754,9 +754,9 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             raise InvalidALAC(ERR_M4A_MISSING_MDHD)
         try:
             (version, ) = mdhd.parse("8u 24p")
-            if (version == 0):
+            if version == 0:
                 (self.__length__,) = mdhd.parse("32p 32p 32p 32u 2P 16p")
-            elif (version == 1):
+            elif version == 1:
                 (self.__length__,) = mdhd.parse("64p 64p 32p 64U 2P 16p")
             else:
                 from audiotools.text import ERR_M4A_UNSUPPORTED_MDHD
@@ -911,7 +911,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         at the given filename with the specified compression level
         and returns a new ALACAudio object"""
 
-        if (pcmreader.bits_per_sample not in {16, 24}):
+        if pcmreader.bits_per_sample not in {16, 24}:
             from audiotools import UnsupportedBitsPerSample
 
             pcmreader.close()
@@ -945,7 +945,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         free = cls.__free_atom__(0x1000)
         create_date = int(time.time()) + 2082844800
 
-        if (total_pcm_frames is not None):
+        if total_pcm_frames is not None:
             total_alac_frames = ((total_pcm_frames // block_size) +
                                  (1 if (total_pcm_frames % block_size) else 0))
 
@@ -998,7 +998,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
             finally:
                 pcmreader.close()
 
-            if (actual_pcm_frames != total_pcm_frames):
+            if actual_pcm_frames != total_pcm_frames:
                 from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
                 m4a_writer.close()
                 cls.__unlink__(filename)
@@ -1302,11 +1302,11 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                        (1 if (total_pcm_frames % block_size) else 0))
         alac_frames_per_chunk = 5
 
-        if (alac_frames < alac_frames_per_chunk):
+        if alac_frames < alac_frames_per_chunk:
             blocks = [(1, alac_frames, 1)]
         else:
             blocks = [(1, alac_frames_per_chunk, 1)]
-            if (alac_frames % alac_frames_per_chunk):
+            if alac_frames % alac_frames_per_chunk:
                 blocks.append((1 + (alac_frames // alac_frames_per_chunk),
                                alac_frames % alac_frames_per_chunk,
                                1))
