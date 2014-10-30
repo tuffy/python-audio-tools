@@ -49,6 +49,8 @@ typedef enum {BS_INST_UNSIGNED,
               BS_INST_SIGNED,
               BS_INST_UNSIGNED64,
               BS_INST_SIGNED64,
+              BS_INST_UNSIGNED_BIGINT,
+              BS_INST_SIGNED_BIGINT,
               BS_INST_SKIP,
               BS_INST_SKIP_BYTES,
               BS_INST_BYTES,
@@ -237,16 +239,18 @@ typedef struct BitstreamReader_s {
       and places the results in the given argument pointers
       where the format actions are:
 
-      | format | action         | argument      |
-      |--------+----------------+---------------|
-      | u      | read           | unsigned int* |
-      | s      | read_signed    | int*          |
-      | U      | read_64        | uint64_t*     |
-      | S      | read_signed_64 | int64_t*      |
-      | p      | skip           | N/A           |
-      | P      | skip_bytes     | N/A           |
-      | b      | read_bytes     | uint8_t*      |
-      | a      | byte_align     | N/A           |
+      | format | action             | argument      |
+      |--------+--------------------+---------------|
+      | u      | read               | unsigned int* |
+      | s      | read_signed        | int*          |
+      | U      | read_64            | uint64_t*     |
+      | S      | read_signed_64     | int64_t*      |
+      | K      | read_bigint        | mpz_t*        |
+      | L      | read_signed_bigint | mpz_t*        |
+      | p      | skip               | N/A           |
+      | P      | skip_bytes         | N/A           |
+      | b      | read_bytes         | uint8_t*      |
+      | a      | byte_align         | N/A           |
 
       For example, one could read a 32 bit header as follows:
 
@@ -922,16 +926,18 @@ struct bw_pos_stack {
     /*using the values from the given arguments*/           \
     /*where the format actions are*/                        \
                                                             \
-    /*| format | action          | argument     |*/         \
-    /*|--------+-----------------+--------------|*/         \
-    /*| u      | write           | unsigned int |*/         \
-    /*| s      | write_signed    | int          |*/         \
-    /*| U      | write_64        | uint64_t     |*/         \
-    /*| S      | write_signed_64 | int64_t      |*/         \
-    /*| p      | skip            | N/A          |*/         \
-    /*| P      | skip_bytes      | N/A          |*/         \
-    /*| b      | write_bytes     | uint8_t*     |*/         \
-    /*| a      | byte_align      | N/A          |*/         \
+    /*| format | action              | argument     |*/     \
+    /*|--------+---------------------+--------------|*/     \
+    /*| u      | write               | unsigned int |*/     \
+    /*| s      | write_signed        | int          |*/     \
+    /*| U      | write_64            | uint64_t     |*/     \
+    /*| S      | write_signed_64     | int64_t      |*/     \
+    /*| K      | write_bigint        | mpz_t*       |*/     \
+    /*| L      | write_signed_bigint | mpz_t*       |*/     \
+    /*| p      | skip                | N/A          |*/     \
+    /*| P      | skip_bytes          | N/A          |*/     \
+    /*| b      | write_bytes         | uint8_t*     |*/     \
+    /*| a      | byte_align          | N/A          |*/     \
                                                             \
     /*For example, one could write a 32 bit header as follows:*/ \
                                                             \

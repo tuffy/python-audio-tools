@@ -2743,6 +2743,7 @@ bitstream_parse(BitstreamReader* stream,
         switch (inst) {
         case BS_INST_UNSIGNED:
         case BS_INST_UNSIGNED64:
+        case BS_INST_UNSIGNED_BIGINT:
             for (; times; times--) {
                 PyObject *py_value = brpy_read_unsigned(stream, size);
                 if (py_value != NULL) {
@@ -2761,6 +2762,7 @@ bitstream_parse(BitstreamReader* stream,
             break;
         case BS_INST_SIGNED:
         case BS_INST_SIGNED64:
+        case BS_INST_SIGNED_BIGINT:
             if (size == 0) {
                 PyErr_SetString(PyExc_ValueError, "count must be > 0");
                 return 1;
@@ -2849,6 +2851,7 @@ bitstream_build(BitstreamWriter* stream,
         switch (inst) {
         case BS_INST_UNSIGNED:
         case BS_INST_UNSIGNED64:
+        case BS_INST_UNSIGNED_BIGINT:
             {
                 for (; times; times--) {
                     PyObject *py_value = PyIter_Next(iterator);
@@ -2876,6 +2879,7 @@ bitstream_build(BitstreamWriter* stream,
             break;
         case BS_INST_SIGNED:
         case BS_INST_SIGNED64:
+        case BS_INST_SIGNED_BIGINT:
             {
                 if (size == 0) {
                     PyErr_SetString(PyExc_ValueError, "size must be > 0");

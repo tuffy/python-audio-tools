@@ -1141,6 +1141,18 @@ br_parse(struct BitstreamReader_s* stream, const char* format, ...)
                 *value = stream->read_signed_64(stream, size);
             }
             break;
+        case BS_INST_UNSIGNED_BIGINT:
+            for (; times; times--) {
+                mpz_t *value = va_arg(ap, mpz_t*);
+                stream->read_bigint(stream, size, *value);
+            }
+            break;
+        case BS_INST_SIGNED_BIGINT:
+            for (; times; times--) {
+                mpz_t *value = va_arg(ap, mpz_t*);
+                stream->read_signed_bigint(stream, size, *value);
+            }
+            break;
         case BS_INST_SKIP:
             for (; times; times--) {
                 stream->skip(stream, size);
@@ -2461,6 +2473,18 @@ bw_build(struct BitstreamWriter_s* stream, const char* format, ...)
                 stream->write_signed_64(stream, size, value);
             }
             break;
+        case BS_INST_UNSIGNED_BIGINT:
+            for (; times; times--) {
+                mpz_t *value = va_arg(ap, mpz_t*);
+                stream->write_bigint(stream, size, *value);
+            }
+            break;
+        case BS_INST_SIGNED_BIGINT:
+            for (; times; times--) {
+                mpz_t *value = va_arg(ap, mpz_t*);
+                stream->write_signed_bigint(stream, size, *value);
+            }
+            break;
         case BS_INST_SKIP:
             for (; times; times--) {
                 stream->write(stream, size, 0);
@@ -2927,6 +2951,16 @@ bs_parse_format(const char *format,
         *size = argument;
         *inst = BS_INST_SIGNED64;
         return format + 1;
+    case 'K':
+        *times = 1;
+        *size = argument;
+        *inst = BS_INST_UNSIGNED_BIGINT;
+        return format + 1;
+    case 'L':
+        *times = 1;
+        *size = argument;
+        *inst = BS_INST_SIGNED_BIGINT;
+        return format + 1;
     case 'p':
         *times = 1;
         *size = argument;
@@ -2981,6 +3015,8 @@ bs_format_size(const char* format)
         case BS_INST_SIGNED:
         case BS_INST_UNSIGNED64:
         case BS_INST_SIGNED64:
+        case BS_INST_UNSIGNED_BIGINT:
+        case BS_INST_SIGNED_BIGINT:
         case BS_INST_SKIP:
             total_size += (times * size);
             break;
@@ -3520,6 +3556,14 @@ writer_perform_build_s(BitstreamWriter* writer,
 
 void
 writer_perform_build_S(BitstreamWriter* writer,
+                       bs_endianness endianness);
+
+void
+writer_perform_build_K(BitstreamWriter* writer,
+                       bs_endianness endianness);
+
+void
+writer_perform_build_L(BitstreamWriter* writer,
                        bs_endianness endianness);
 
 void
@@ -4125,7 +4169,14 @@ void test_big_endian_parse(BitstreamReader* reader) {
     int64_t S1,S2,S3,S4,S5;
     uint8_t sub_data1[2];
     uint8_t sub_data2[2];
+    mpz_t B1,B2,B3,B4,B5;
     br_pos_t *pos;
+
+    mpz_init(B1);
+    mpz_init(B2);
+    mpz_init(B3);
+    mpz_init(B4);
+    mpz_init(B5);
 
     pos = reader->getpos(reader);
 
@@ -4160,6 +4211,22 @@ void test_big_endian_parse(BitstreamReader* reader) {
     assert(S3 == 7);
     assert(S4 == -3);
     assert(S5 == -181311);
+
+    reader->setpos(reader, pos);
+    reader->parse(reader, "2K 3K 5K 3K 19K", &B1, &B2, &B3, &B4, &B5);
+    assert(mpz_get_ui(B1) == 0x2);
+    assert(mpz_get_ui(B2) == 0x6);
+    assert(mpz_get_ui(B3) == 0x07);
+    assert(mpz_get_ui(B4) == 0x5);
+    assert(mpz_get_ui(B5) == 0x53BC1);
+
+    reader->setpos(reader, pos);
+    reader->parse(reader, "2L 3L 5L 3L 19L", &B1, &B2, &B3, &B4, &B5);
+    assert(mpz_get_si(B1) == -2);
+    assert(mpz_get_si(B2) == -2);
+    assert(mpz_get_si(B3) == 7);
+    assert(mpz_get_si(B4) == -3);
+    assert(mpz_get_si(B5) == -181311);
 
     u1 = u2 = u3 = u4 = u5 = 0;
     reader->setpos(reader, pos);
@@ -4232,6 +4299,12 @@ void test_big_endian_parse(BitstreamReader* reader) {
 
     reader->setpos(reader, pos);
     pos->del(pos);
+
+    mpz_clear(B1);
+    mpz_clear(B2);
+    mpz_clear(B3);
+    mpz_clear(B4);
+    mpz_clear(B5);
 }
 
 void test_little_endian_reader(BitstreamReader* reader,
@@ -4543,7 +4616,14 @@ void test_little_endian_parse(BitstreamReader* reader) {
     int64_t S1,S2,S3,S4,S5;
     uint8_t sub_data1[2];
     uint8_t sub_data2[2];
+    mpz_t B1,B2,B3,B4,B5;
     br_pos_t* pos;
+
+    mpz_init(B1);
+    mpz_init(B2);
+    mpz_init(B3);
+    mpz_init(B4);
+    mpz_init(B5);
 
     pos = reader->getpos(reader);
 
@@ -4578,6 +4658,22 @@ void test_little_endian_parse(BitstreamReader* reader) {
     assert(s3 == 13);
     assert(s4 == 3);
     assert(s5 == -128545);
+
+    reader->setpos(reader, pos);
+    reader->parse(reader, "2K 3K 5K 3K 19K", &B1, &B2, &B3, &B4, &B5);
+    assert(mpz_get_ui(B1) == 0x1);
+    assert(mpz_get_ui(B2) == 0x4);
+    assert(mpz_get_ui(B3) == 0x0D);
+    assert(mpz_get_ui(B4) == 0x3);
+    assert(mpz_get_ui(B5) == 0x609DF);
+
+    reader->setpos(reader, pos);
+    reader->parse(reader, "2L 3L 5L 3L 19L", &B1, &B2, &B3, &B4, &B5);
+    assert(mpz_get_si(B1) == 1);
+    assert(mpz_get_si(B2) == -4);
+    assert(mpz_get_si(B3) == 13);
+    assert(mpz_get_si(B4) == 3);
+    assert(mpz_get_si(B5) == -128545);
 
     u1 = u2 = u3 = u4 = u5 = 0;
     reader->setpos(reader, pos);
@@ -4650,6 +4746,12 @@ void test_little_endian_parse(BitstreamReader* reader) {
 
     reader->setpos(reader, pos);
     pos->del(pos);
+
+    mpz_clear(B1);
+    mpz_clear(B2);
+    mpz_clear(B3);
+    mpz_clear(B4);
+    mpz_clear(B5);
 }
 
 void
@@ -5041,6 +5143,8 @@ test_writer(bs_endianness endianness) {
                             writer_perform_build_U,
                             writer_perform_build_s,
                             writer_perform_build_S,
+                            writer_perform_build_K,
+                            writer_perform_build_L,
                             writer_perform_build_b,
                             writer_perform_build_mult};
     int total_checks = 14;
@@ -5769,6 +5873,40 @@ writer_perform_build_U(BitstreamWriter* writer,
 }
 
 void
+writer_perform_build_K(BitstreamWriter* writer,
+                       bs_endianness endianness)
+{
+    mpz_t B1,B2,B3,B4,B5;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        mpz_init_set_ui(B1, 2);
+        mpz_init_set_ui(B2, 6);
+        mpz_init_set_ui(B3, 7);
+        mpz_init_set_ui(B4, 5);
+        mpz_init_set_ui(B5, 342977);
+        break;
+    case BS_LITTLE_ENDIAN:
+        mpz_init_set_ui(B1, 1);
+        mpz_init_set_ui(B2, 4);
+        mpz_init_set_ui(B3, 13);
+        mpz_init_set_ui(B4, 3);
+        mpz_init_set_ui(B5, 395743);
+        break;
+    }
+
+    assert(writer->byte_aligned(writer) == 1);
+    writer->build(writer, "2K 3K 5K 3K 19K", &B1, &B2, &B3, &B4, &B5);
+    assert(writer->byte_aligned(writer) == 1);
+
+    mpz_clear(B1);
+    mpz_clear(B2);
+    mpz_clear(B3);
+    mpz_clear(B4);
+    mpz_clear(B5);
+}
+
+void
 writer_perform_build_s(BitstreamWriter* writer,
                        bs_endianness endianness)
 {
@@ -5810,6 +5948,40 @@ writer_perform_build_S(BitstreamWriter* writer,
     assert(writer->byte_aligned(writer) == 1);
     writer->build(writer, "2S 3S 5S 3S 19S", v1, v2, v3, v4, v5);
     assert(writer->byte_aligned(writer) == 1);
+}
+
+void
+writer_perform_build_L(BitstreamWriter* writer,
+                       bs_endianness endianness)
+{
+    mpz_t B1,B2,B3,B4,B5;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        mpz_init_set_si(B1, -2);
+        mpz_init_set_si(B2, -2);
+        mpz_init_set_si(B3, 7);
+        mpz_init_set_si(B4, -3);
+        mpz_init_set_si(B5, -181311);
+        break;
+    case BS_LITTLE_ENDIAN:
+        mpz_init_set_si(B1, 1);
+        mpz_init_set_si(B2, -4);
+        mpz_init_set_si(B3, 13);
+        mpz_init_set_si(B4, 3);
+        mpz_init_set_si(B5, -128545);
+        break;
+    }
+
+    assert(writer->byte_aligned(writer) == 1);
+    writer->build(writer, "2L 3L 5L 3L 19L", &B1, &B2, &B3, &B4, &B5);
+    assert(writer->byte_aligned(writer) == 1);
+
+    mpz_clear(B1);
+    mpz_clear(B2);
+    mpz_clear(B3);
+    mpz_clear(B4);
+    mpz_clear(B5);
 }
 
 void
@@ -6468,11 +6640,7 @@ unsigned ext_fread_test(FILE* user_data,
                         unsigned buffer_size)
 {
     const size_t read = fread(buffer, sizeof(uint8_t), buffer_size, user_data);
-    if (read >= 0) {
-        return (unsigned)read;
-    }else {
-        return 0;
-    }
+    return (unsigned)read;
 }
 
 int ext_fclose_test(FILE* user_data)
