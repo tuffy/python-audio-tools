@@ -321,7 +321,7 @@ class AudioPlayer(object):
         except ImportError:
             from Queue import Empty
 
-        while (True):
+        while True:
             try:
                 (command,
                  args) = commands.get(self.__state__ != PLAYER_PLAYING)

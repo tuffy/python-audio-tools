@@ -325,7 +325,7 @@ class DVDATitle(object):
             if start_code != 1:
                 from audiotools.text import ERR_DVDA_INVALID_AOB_START
                 raise InvalidDVDA(ERR_DVDA_INVALID_AOB_START)
-            while (stream_id != 0xBD):
+            while stream_id != 0xBD:
                 aob_reader.skip_bytes(packet_length)
                 (start_code,
                  stream_id,

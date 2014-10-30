@@ -2624,7 +2624,7 @@ def transfer_data(from_function, to_function):
 
     try:
         s = from_function(BUFFER_SIZE)
-        while (len(s) > 0):
+        while len(s) > 0:
             to_function(s)
             s = from_function(BUFFER_SIZE)
     except IOError:
@@ -2648,7 +2648,7 @@ def transfer_framelist_data(pcmreader, to_function,
 
     try:
         f = pcmreader.read(FRAMELIST_SIZE)
-        while (len(f) > 0):
+        while len(f) > 0:
             to_function(f.to_bytes(big_endian, signed))
             f = pcmreader.read(FRAMELIST_SIZE)
     finally:
@@ -2700,7 +2700,7 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
         framelist2 = reader2.read(FRAMELIST_SIZE)
 
         # so long as both framelists contain data
-        while ((len(framelist1) > 0) and (len(framelist2) > 0)):
+        while (len(framelist1) > 0) and (len(framelist2) > 0):
             # compare both entire framelists
             if framelist1 == framelist2:
                 # if they both match, continue to the next pair
@@ -2816,7 +2816,7 @@ class BufferedPCMReader(PCMReader):
         """
 
         # fill our buffer to at least "pcm_frames", possibly more
-        while (self.buffer.frames < pcm_frames):
+        while self.buffer.frames < pcm_frames:
             frame = self.pcmreader.read(FRAMELIST_SIZE)
             if len(frame):
                 self.buffer += frame
@@ -4251,7 +4251,7 @@ class AudioFile(object):
         with self.to_pcm() as decoder:
             try:
                 framelist = decoder.read(FRAMELIST_SIZE)
-                while (len(framelist) > 0):
+                while len(framelist) > 0:
                     pcm_frame_count += framelist.frames
                     if progress is not None:
                         progress(pcm_frame_count, total_frames)
@@ -4872,7 +4872,7 @@ def iter_last(iterator):
     except StopIteration:
         return
 
-    while (True):
+    while True:
         try:
             next_item = next(iterator)
             yield (False, cached_item)
@@ -5019,7 +5019,7 @@ class PCMReaderDeHead(PCMReader):
         elif self.pcm_frames > 0:
             # remove PCM frames from beginning of stream
             # until all truncation is accounted for
-            while (self.pcm_frames > 0):
+            while self.pcm_frames > 0:
                 frame = self.pcmreader.read(pcm_frames)
                 if frame.frames == 0:
                     # truncation longer than entire stream
@@ -5471,7 +5471,7 @@ class ExecProgressQueue(object):
 
         # while the pool still contains running jobs
         try:
-            while (len(job_pool) > 0):
+            while len(job_pool) > 0:
                 # wait for zero or more jobs to finish (may timeout)
                 (rlist,
                  wlist,
@@ -5510,7 +5510,7 @@ class ExecProgressQueue(object):
                         # then raise exception to caller
                         # once working jobs are finished
                         self.__raised_exception__ = result
-                        while (len(self.__queued_jobs__) > 0):
+                        while len(self.__queued_jobs__) > 0:
                             self.__queued_jobs__.popleft()
 
                     # remove job from pool

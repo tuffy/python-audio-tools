@@ -288,7 +288,7 @@ def perform_lookup(disc_id,
         return matches
 
     try:
-        while (True):
+        while True:
             (track_count,
              id1,
              id2,

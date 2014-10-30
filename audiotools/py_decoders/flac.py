@@ -77,7 +77,7 @@ class FlacDecoder(object):
         per metadata block where block_reader is a BitstreamReader substream"""
 
         (last_block, block_id, block_size) = self.reader.parse("1u 7u 24u")
-        while (last_block == 0):
+        while last_block == 0:
             yield (block_id, block_size, self.reader.substream(block_size))
             (last_block, block_id, block_size) = self.reader.parse("1u 7u 24u")
         else:
@@ -427,7 +427,7 @@ class FlacDecoder(object):
     def read_utf8(self):
         total_bytes = self.reader.unary(0)
         value = self.reader.read(7 - total_bytes)
-        while (total_bytes > 1):
+        while total_bytes > 1:
             value = ((value << 6) | self.reader.parse("2p 6u")[0])
             total_bytes -= 1
         return value

@@ -110,7 +110,7 @@ class FlacMetaData(MetaData):
 
         self.block_list = new_blocks
 
-        while (len(blocks) > 0):
+        while len(blocks) > 0:
             self.add_block(blocks.pop(0))
 
     def __setattr__(self, attr, value):
@@ -270,7 +270,7 @@ class FlacMetaData(MetaData):
 
         last = 0
 
-        while (last != 1):
+        while last != 1:
             (last, block_type, block_length) = reader.parse("1u7u24u")
 
             if block_type == 0:    # STREAMINFO
@@ -1638,7 +1638,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
 
             stop = 0
-            while (stop == 0):
+            while stop == 0:
                 (stop, length) = parse("1u 7p 24u", False, old_file.read(4))
                 old_file.read(length)
 
@@ -2159,7 +2159,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 total_size = remaining_size + 8
                 header_len -= format_byte_size("4b 32u 4b")
 
-            while (header_len):
+            while header_len:
                 block_data = BitstreamRecorder(True)
                 (chunk_id, chunk_size) = r.parse("4b 32u")
                 # ensure chunk ID is valid
@@ -2230,7 +2230,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 r.skip_bytes(1)
                 footer_len -= 1
 
-            while (footer_len):
+            while footer_len:
                 block_data = BitstreamRecorder(True)
                 (chunk_id, chunk_size) = r.parse("4b 32u")
 
@@ -2392,7 +2392,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 total_size = remaining_size + 8
                 header_len -= format_byte_size("4b 32u 4b")
 
-            while (header_len):
+            while header_len:
                 block_data = BitstreamRecorder(0)
                 (chunk_id, chunk_size) = r.parse("4b 32u")
                 # ensure chunk ID is valid
@@ -2468,7 +2468,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 r.skip_bytes(1)
                 footer_len -= 1
 
-            while (footer_len):
+            while footer_len:
                 block_data = BitstreamRecorder(0)
                 (chunk_id, chunk_size) = r.parse("4b 32u")
 
@@ -2614,7 +2614,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             stop = 0
 
-            while (stop == 0):
+            while stop == 0:
                 (stop, header_type, length) = reader.parse("1u 7u 24u")
                 if header_type not in valid_header_types:
                     from audiotools.text import ERR_FLAC_INVALID_BLOCK
@@ -2781,7 +2781,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             if output_filename is not None:
                 with open(output_filename, "wb") as output_f:
                     input_f.seek(stream_offset, 0)
-                    while (stream_size > 0):
+                    while stream_size > 0:
                         s = input_f.read(4096)
                         if len(s) > stream_size:
                             s = s[0:stream_size]
@@ -3132,7 +3132,7 @@ class OggFlacAudio(FlacAudio):
         page.sequence_number = sequence_number
         sequence_number += 1
         new_ogg.write(page)
-        while (not page.stream_end):
+        while not page.stream_end:
             page = original_ogg.read()
             page.sequence_number = sequence_number
             sequence_number += 1
@@ -3392,7 +3392,7 @@ class OggFlacAudio(FlacAudio):
             if output_filename is not None:
                 with open(output_filename, "wb") as output_f:
                     input_f.seek(stream_offset, 0)
-                    while (stream_size > 0):
+                    while stream_size > 0:
                         s = input_f.read(4096)
                         if len(s) > stream_size:
                             s = s[0:stream_size]

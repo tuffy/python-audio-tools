@@ -150,7 +150,7 @@ class OpusAudio(VorbisAudio):
                 page = reader.read()
                 pcm_samples = page.granule_position
 
-                while (not page.stream_end):
+                while not page.stream_end:
                     page = reader.read()
                     pcm_samples = max(pcm_samples, page.granule_position)
 
@@ -320,7 +320,7 @@ class OpusAudio(VorbisAudio):
         page.sequence_number = sequence_number
         sequence_number += 1
         new_ogg.write(page)
-        while (not page.stream_end):
+        while not page.stream_end:
             page = original_ogg.read_page()
             page.sequence_number = sequence_number
             page.bitstream_serial_number = self.__serial_number__
@@ -432,7 +432,7 @@ class OpusAudio(VorbisAudio):
 
         try:
             page = reader.read()
-            while (not page.stream_end):
+            while not page.stream_end:
                 page = reader.read()
         except (IOError, ValueError) as err:
             raise InvalidOpus(str(err))

@@ -1340,7 +1340,7 @@ try:
 
             def focused_nodes():
                 (widget, node) = self.get_focus()
-                while (not node.is_root()):
+                while not node.is_root():
                     yield node.get_key()
                     node = node.get_parent()
                 else:
@@ -2652,7 +2652,7 @@ def select_metadata(metadata_choices, msg, use_default=False):
         return metadata_choices[0]
     else:
         choice = None
-        while (choice not in range(0, len(metadata_choices))):
+        while choice not in range(0, len(metadata_choices)):
             from audiotools.text import (LAB_SELECT_BEST_MATCH)
             for (i, choice) in enumerate(metadata_choices):
                 msg.output(u"%d) %s" % (i + 1, choice[0].album_name))
@@ -2816,7 +2816,7 @@ class PlayerTTY(object):
         try:
             tty.setcbreak(stdin.fileno())
             try:
-                while (not self.playing_finished):
+                while not self.playing_finished:
                     (frames_sent, frames_total) = self.progress()
                     output_line = self.progress_line(frames_sent, frames_total)
                     msg.ansi_clearline()

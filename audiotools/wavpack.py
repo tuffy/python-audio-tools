@@ -35,7 +35,7 @@ def __riff_chunk_ids__(data_size, data):
     else:
         data_size -= 12
 
-    while (data_size > 0):
+    while data_size > 0:
         (chunk_id, chunk_size) = data.parse("4b 32u")
         data_size -= 8
         if (chunk_size % 2) == 1:
@@ -259,7 +259,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         def blocks_iter(reader):
             try:
-                while (True):
+                while True:
                     (wvpk, block_size) = reader.parse("4b 32u 192p")
                     if wvpk == b"wvpk":
                         yield (block_size - 24,
@@ -288,7 +288,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         """
 
         for (block_size, block_data) in self.blocks(reader):
-            while (block_size > 0):
+            while block_size > 0:
                 (metadata_function,
                  nondecoder_data,
                  actual_size_1_less,
@@ -533,7 +533,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                     from audiotools.text import ERR_WAVPACK_INVALID_FMT
                     raise InvalidWavPack(ERR_WAVPACK_INVALID_FMT)
                 else:
-                    while (True):
+                    while True:
                         (chunk_id, chunk_size) = data.parse("4b 32u")
                         if chunk_id == b"fmt ":
                             return data.substream(chunk_size)

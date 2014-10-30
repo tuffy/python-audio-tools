@@ -114,7 +114,7 @@ def encode_shn(filename,
     # split PCMReader into block_size chunks
     # and continue until the number of PCM frames is 0
     frame = pcmreader.read(block_size)
-    while (len(frame) > 0):
+    while len(frame) > 0:
         # if the chunk isn't block_size frames long,
         # issue a command to change it
         if frame.frames != block_size:
@@ -190,7 +190,7 @@ def encode_shn(filename,
     # must be padded to a multiple of 4 bytes
     # or its reference decoder explodes
     writer.byte_align()
-    while ((int(bytes_written) % 4) != 0):
+    while (int(bytes_written) % 4) != 0:
         writer.write(8, 0)
     writer.close()
 
@@ -268,7 +268,7 @@ def best_energy(residuals):
 
     partition_sum = sum(map(abs, residuals))
     rice_parameter = 0
-    while ((len(residuals) * (2 ** rice_parameter)) < partition_sum):
+    while (len(residuals) * (2 ** rice_parameter)) < partition_sum:
         rice_parameter += 1
 
     return rice_parameter
@@ -285,7 +285,7 @@ def all_zeroes(samples):
 def wasted_bps(samples):
     def wasted_bits(s):
         w = 0
-        while ((s & 1) == 0):
+        while (s & 1) == 0:
             w += 1
             s >>= 1
         return w

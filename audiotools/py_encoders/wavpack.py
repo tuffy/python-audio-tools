@@ -356,7 +356,7 @@ def encode_wavpack(filename,
 
     # walk through PCM reader's FrameLists
     frame = pcmreader.read(block_size)
-    while (len(frame) > 0):
+    while len(frame) > 0:
         context.total_frames += frame.frames
         context.md5sum.update(
             frame.to_bytes(False, pcmreader.bits_per_sample >= 16))
@@ -680,7 +680,7 @@ def write_block(writer,
 def bits(sample):
     sample = abs(sample)
     total = 0
-    while (sample > 0):
+    while sample > 0:
         total += 1
         sample >>= 1
     return total
@@ -693,7 +693,7 @@ def wasted_bps(sample):
         return INFINITY
     else:
         total = 0
-        while ((sample % 2) == 0):
+        while (sample % 2) == 0:
             total += 1
             sample //= 2
         return total
@@ -1332,7 +1332,7 @@ def write_bitstream(writer, channels, entropies):
 
     i = 0
 
-    while (i < (len(channels) * len(channels[0]))):
+    while i < (len(channels) * len(channels[0])):
         r = channels[i % len(channels)][i // len(channels)]
 
         if (((entropies[0][0] < 2) and (entropies[1][0] < 2) and

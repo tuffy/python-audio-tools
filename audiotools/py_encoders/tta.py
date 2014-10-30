@@ -38,7 +38,7 @@ def encode_tta(file, pcmreader):
 
     # encode FrameLists from PCMReader to temporary space
     framelist = pcmreader.read(block_size)
-    while (len(framelist) > 0):
+    while len(framelist) > 0:
         frame_sizes.append(encode_tta_frame(writer,
                                             pcmreader.bits_per_sample,
                                             framelist))
@@ -193,9 +193,9 @@ def tta_filter(bps, predicted):
             sum_ = round_ + sum([l * m for (l, m) in zip(dl, qm)])
 
             # truncate sum to a 32-bit signed integer
-            while (sum_ >= (2 ** 31)):
+            while sum_ >= (2 ** 31):
                 sum_ -= (2 ** 32)
-            while (sum_ < -(2 ** 31)):
+            while sum_ < -(2 ** 31):
                 sum_ += (2 ** 32)
 
             residuals.append(predicted[i] - (sum_ >> shift))

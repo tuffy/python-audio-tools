@@ -207,7 +207,7 @@ class C_string(object):
 
         s = []
         char = reader.read_bytes(terminator_size)
-        while (char != terminator):
+        while char != terminator:
             s.append(char)
             char = reader.read_bytes(terminator_size)
 
@@ -1204,7 +1204,7 @@ class ID3v22Comment(MetaData):
 
         frames = []
 
-        while (remaining_size > 6):
+        while remaining_size > 6:
             (frame_id, frame_size) = reader.parse("3b 24u")
 
             if frame_id == b"\x00" * 3:
@@ -1896,7 +1896,7 @@ class ID3v23Comment(ID3v22Comment):
 
         frames = []
 
-        while (remaining_size > 10):
+        while remaining_size > 10:
             (frame_id, frame_size, frame_flags) = reader.parse("4b 32u 16u")
 
             if frame_id == b"\x00" * 4:
@@ -2322,7 +2322,7 @@ class ID3v24Comment(ID3v23Comment):
 
         frames = []
 
-        while (remaining_size > 10):
+        while remaining_size > 10:
             frame_id = reader.read_bytes(4)
             frame_size = decode_syncsafe32(reader.read(32))
             flags = reader.read(16)

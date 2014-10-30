@@ -116,7 +116,7 @@ class RIFF_File_Chunk(RIFF_Chunk):
 
         self.__wav_file__.seek(self.__offset__)
         to_read = self.__size__
-        while (to_read > 0):
+        while to_read > 0:
             s = self.__wav_file__.read(min(0x100000, to_read))
             if len(s) == 0:
                 return False
@@ -133,7 +133,7 @@ class RIFF_File_Chunk(RIFF_Chunk):
         f.write(struct.pack("<I", self.__size__))
         self.__wav_file__.seek(self.__offset__)
         to_write = self.__size__
-        while (to_write > 0):
+        while to_write > 0:
             s = self.__wav_file__.read(min(0x100000, to_write))
             f.write(s)
             to_write -= len(s)
@@ -184,7 +184,7 @@ def validate_header(header):
 
         fmt_found = False
 
-        while (header_size > 0):
+        while header_size > 0:
             # ensure each chunk header is valid
             (chunk_id, chunk_size) = wave_file.parse("4b 32u")
             if not frozenset(chunk_id).issubset(WaveAudio.PRINTABLE_ASCII):
@@ -254,7 +254,7 @@ def validate_footer(footer, data_bytes_written):
             wave_file.skip_bytes(1)
             total_size -= 1
 
-        while (total_size > 0):
+        while total_size > 0:
             (chunk_id, chunk_size) = wave_file.parse("4b 32u")
             if not frozenset(chunk_id).issubset(WaveAudio.PRINTABLE_ASCII):
                 from audiotools.text import ERR_WAV_INVALID_CHUNK
@@ -458,7 +458,7 @@ class WaveReader(object):
             fmt_chunk_read = False
 
         # walk through chunks until "data" chunk encountered
-        while (total_size > 0):
+        while total_size > 0:
             try:
                 (chunk_id,
                  chunk_size) = self.stream.parse("4b 32u")
@@ -827,7 +827,7 @@ class WaveAudio(WaveContainer):
             else:
                 total_size -= 4
 
-            while (total_size > 0):
+            while total_size > 0:
                 # read the chunk header and ensure its validity
                 try:
                     (chunk_id,
@@ -925,7 +925,7 @@ class WaveAudio(WaveContainer):
                 current_block.build("4b 32u 4b", (riff, size, wave))
                 total_size = size - 4
 
-            while (total_size > 0):
+            while total_size > 0:
                 # transfer each chunk header
                 (chunk_id, chunk_size) = wave_file.parse("4b 32u")
                 if not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII):
@@ -1010,7 +1010,7 @@ class WaveAudio(WaveContainer):
             data_bytes_written = 0
             signed = (pcmreader.bits_per_sample > 8)
             s = pcmreader.read(FRAMELIST_SIZE).to_bytes(False, signed)
-            while (len(s) > 0):
+            while len(s) > 0:
                 data_bytes_written += len(s)
                 f.write(s)
                 s = pcmreader.read(FRAMELIST_SIZE).to_bytes(False, signed)

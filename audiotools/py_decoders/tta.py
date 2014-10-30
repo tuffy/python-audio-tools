@@ -58,9 +58,9 @@ def tta_filter(bps, residuals):
             sum_ = round_ + sum([l * m for (l, m) in zip(dl, qm)])
 
             # truncate sum to a 32-bit signed integer
-            while (sum_ >= (2 ** 31)):
+            while sum_ >= (2 ** 31):
                 sum_ -= (2 ** 32)
-            while (sum_ < -(2 ** 31)):
+            while sum_ < -(2 ** 31):
                 sum_ += (2 ** 32)
 
             filtered.append(residuals[i] + (sum_ >> shift))

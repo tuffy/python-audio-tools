@@ -104,7 +104,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         # got RIFF/WAVE header,
                         # so parse wave blocks as needed
                         total_size = len(verbatim_bytes) - 12
-                        while (total_size >= 8):
+                        while total_size >= 8:
                             (chunk_id, chunk_size) = wave.parse("4b 32u")
                             total_size -= 8
                             if chunk_id == b'fmt ':
@@ -138,7 +138,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
                         # got FORM/AIFF header
                         # so parse aiff blocks as needed
                         total_size = len(verbatim_bytes) - 12
-                        while (total_size >= 8):
+                        while total_size >= 8:
                             (chunk_id, chunk_size) = aiff.parse("4b 32u")
                             total_size -= 8
                             if chunk_id == b'COMM':
@@ -316,7 +316,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
             # otherwise, check the header for foreign chunks
             total_size = len(head) - bitstream.format_byte_size("4b 32u 4b")
-            while (total_size >= 8):
+            while total_size >= 8:
                 (chunk_id, chunk_size) = header.parse("4b 32u")
                 total_size -= bitstream.format_byte_size("4b 32u")
                 if chunk_id not in (b'fmt ', b'data'):
@@ -468,7 +468,7 @@ class ShortenAudio(WaveContainer, AiffContainer):
 
             # otherwise, check the header for foreign chunks
             total_size = len(head) - bitstream.format_byte_size("4b 32u 4b")
-            while (total_size >= 8):
+            while total_size >= 8:
                 (chunk_id, chunk_size) = header.parse("4b 32u")
                 total_size -= bitstream.format_byte_size("4b 32u")
                 if chunk_id not in (b'COMM', b'SSND'):

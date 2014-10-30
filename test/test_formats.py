@@ -343,7 +343,7 @@ class AudioFileTest(unittest.TestCase):
                                               BLANK_PCM_Reader(5))
             with track.to_pcm() as pcmreader:
                 frame = pcmreader.read(4096)
-                while (len(frame) > 0):
+                while len(frame) > 0:
                     frame = pcmreader.read(4096)
 
     @FORMAT_AUDIOFILE
@@ -769,7 +769,7 @@ class AudioFileTest(unittest.TestCase):
             # read all the PCM frames from the file
             pcmreader = temp_track.to_pcm()
             f = pcmreader.read(4000)
-            while (len(f) > 0):
+            while len(f) > 0:
                 f = pcmreader.read(4000)
 
             self.assertEqual(len(f), 0)
@@ -929,7 +929,7 @@ class AudioFileTest(unittest.TestCase):
                     # hash its data when read to end
                     raw_data = md5()
                     frame = pcmreader.read(4096)
-                    while (len(frame) > 0):
+                    while len(frame) > 0:
                         raw_data.update(frame.to_bytes(False, True))
                         frame = pcmreader.read(4096)
 
@@ -945,7 +945,7 @@ class AudioFileTest(unittest.TestCase):
                     # hash its data again and ensure a match
                     rewound_raw_data = md5()
                     frame = pcmreader.read(4096)
-                    while (len(frame) > 0):
+                    while len(frame) > 0:
                         rewound_raw_data.update(frame.to_bytes(False, True))
                         frame = pcmreader.read(4096)
                     self.assertEqual(raw_data.digest(),
@@ -964,7 +964,7 @@ class AudioFileTest(unittest.TestCase):
                         desired_remaining_frames = (total_pcm_frames -
                                                     actual_position)
                         frame = pcmreader.read(4096)
-                        while (len(frame) > 0):
+                        while len(frame) > 0:
                             actual_remaining_frames += frame.frames
                             frame = pcmreader.read(4096)
 
@@ -2534,7 +2534,7 @@ class ALACFileTest(LosslessFileTest):
         md5sum_decoder = md5()
         with alac.to_pcm() as d:
             f = d.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum_decoder.update(f.to_bytes(False, True))
                 f = d.read(audiotools.FRAMELIST_SIZE)
         self.assertEqual(md5sum_decoder.digest(), pcmreader.digest())
@@ -2572,7 +2572,7 @@ class ALACFileTest(LosslessFileTest):
         md5sum_decoder = md5()
         with alac.to_pcm() as d:
             f = d.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum_decoder.update(f.to_bytes(False, True))
                 f = d.read(audiotools.FRAMELIST_SIZE)
         self.assertEqual(md5sum_decoder.digest(), pcmreader.digest())
@@ -2613,7 +2613,7 @@ class ALACFileTest(LosslessFileTest):
         md5sum_decoder = md5()
         with alac.to_pcm() as d:
             f = d.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum_decoder.update(f.to_bytes(False, True))
                 f = d.read(audiotools.FRAMELIST_SIZE)
         self.assertEqual(md5sum_decoder.digest(), pcmreader.digest())
@@ -2633,7 +2633,7 @@ class ALACFileTest(LosslessFileTest):
         md5sum_decoder = md5()
         with alac.to_pcm() as d:
             f = d.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum_decoder.update(f.to_bytes(False, True))
                 f = d.read(audiotools.FRAMELIST_SIZE)
         self.assertEqual(md5sum_decoder.digest(), pcmreader.digest())
@@ -2774,7 +2774,7 @@ class ALACFileTest(LosslessFileTest):
         for g in self.__stream_variations__():
             md5sum = md5()
             f = g.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum.update(f.to_bytes(False, True))
                 f = g.read(audiotools.FRAMELIST_SIZE)
             self.assertEqual(md5sum.digest(), g.digest())
@@ -2783,7 +2783,7 @@ class ALACFileTest(LosslessFileTest):
         for g in self.__multichannel_stream_variations__():
             md5sum = md5()
             f = g.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum.update(f.to_bytes(False, True))
                 f = g.read(audiotools.FRAMELIST_SIZE)
             self.assertEqual(md5sum.digest(), g.digest())
@@ -3845,7 +3845,7 @@ class FlacFileTest(TestForeignAiffChunks,
         for g in self.__stream_variations__():
             md5sum = md5()
             f = g.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum.update(f.to_bytes(False, True))
                 f = g.read(audiotools.FRAMELIST_SIZE)
             self.assertEqual(md5sum.digest(), g.digest())
@@ -3878,7 +3878,7 @@ class FlacFileTest(TestForeignAiffChunks,
         md5sum = md5()
         d = self.decoder(open(temp_file.name, "rb"))
         f = d.read(audiotools.FRAMELIST_SIZE)
-        while (len(f) > 0):
+        while len(f) > 0:
             md5sum.update(f.to_bytes(False, True))
             f = d.read(audiotools.FRAMELIST_SIZE)
         d.close()
@@ -3888,7 +3888,7 @@ class FlacFileTest(TestForeignAiffChunks,
         md5sum = md5()
         d = self.decoder(Filewrapper(open(temp_file.name, "rb")))
         f = d.read(audiotools.FRAMELIST_SIZE)
-        while (len(f) > 0):
+        while len(f) > 0:
             md5sum.update(f.to_bytes(False, True))
             f = d.read(audiotools.FRAMELIST_SIZE)
         d.close()
@@ -5176,7 +5176,7 @@ class ShortenFileTest(TestForeignWaveChunks,
         for g in self.__stream_variations__():
             md5sum = md5()
             f = g.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum.update(f.to_bytes(False, True))
                 f = g.read(audiotools.FRAMELIST_SIZE)
             self.assertEqual(md5sum.digest(), g.digest())
@@ -5221,7 +5221,7 @@ class ShortenFileTest(TestForeignWaveChunks,
                        self.decoder(Filewrapper(open(temp_file.name, "rb")))]:
             md5sum = md5()
             f = shndec.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum.update(f.to_bytes(False, True))
                 f = shndec.read(audiotools.FRAMELIST_SIZE)
             shndec.close()
@@ -5279,7 +5279,7 @@ class ShortenFileTest(TestForeignWaveChunks,
                        self.decoder(Filewrapper(open(temp_file.name, "rb")))]:
             md5sum = md5()
             f = shndec.read(audiotools.BUFFER_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum.update(f.to_bytes(False, True))
                 f = shndec.read(audiotools.BUFFER_SIZE)
             shndec.close()
@@ -6115,7 +6115,7 @@ class WavPackFileTest(TestForeignWaveChunks,
 
             md5sum = md5()
             f = wavpack.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum.update(f.to_bytes(False, True))
                 f = wavpack.read(audiotools.FRAMELIST_SIZE)
             wavpack.close()
@@ -6150,7 +6150,7 @@ class WavPackFileTest(TestForeignWaveChunks,
 
             md5sum = md5()
             f = wavpack.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum.update(f.to_bytes(False, True))
                 f = wavpack.read(audiotools.FRAMELIST_SIZE)
             wavpack.close()
@@ -6911,7 +6911,7 @@ class TTAFileTest(LosslessFileTest):
 
             md5sum = md5()
             f = tta.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum.update(f.to_bytes(False, True))
                 f = tta.read(audiotools.FRAMELIST_SIZE)
             tta.close()
@@ -6955,7 +6955,7 @@ class TTAFileTest(LosslessFileTest):
 
             md5sum = md5()
             f = tta.read(audiotools.FRAMELIST_SIZE)
-            while (len(f) > 0):
+            while len(f) > 0:
                 md5sum.update(f.to_bytes(False, True))
                 f = tta.read(audiotools.FRAMELIST_SIZE)
             tta.close()

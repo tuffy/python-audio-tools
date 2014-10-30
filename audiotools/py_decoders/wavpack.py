@@ -24,7 +24,7 @@ from hashlib import md5
 
 
 def sub_blocks(reader, sub_blocks_size):
-    while (sub_blocks_size > 0):
+    while sub_blocks_size > 0:
         sub_block = Sub_Block.read(reader)
         yield sub_block
         sub_blocks_size -= sub_block.total_size()
@@ -122,7 +122,7 @@ class WavPackDecoder(object):
 
         channels = []
 
-        while (True):  # in place of a do-while loop
+        while True:  # in place of a do-while loop
             try:
                 block_header = Block_Header.read(self.reader)
             except (ValueError, IOError):
@@ -288,7 +288,7 @@ def read_block(block_header, sub_blocks_size, sub_blocks_data):
     residuals_read = False
     extended_integers_read = False
 
-    while (sub_blocks_size > 0):
+    while sub_blocks_size > 0:
         (metadata_function,
          nondecoder_data,
          actual_size_1_less,
@@ -604,7 +604,7 @@ def read_bitstream(block_header, entropies, sub_block_data):
 
     u = None
     i = 0
-    while (i < (block_header.block_samples * channel_count)):
+    while i < (block_header.block_samples * channel_count):
         if (u is None) and (entropies[0][0] < 2) and (entropies[1][0] < 2):
             # handle long run of 0 residuals
             zeroes = read_egc(sub_block_data)

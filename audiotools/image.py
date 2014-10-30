@@ -103,7 +103,7 @@ class __JPEG__(ImageMetrics):
                 raise InvalidJPEG(ERR_IMAGE_INVALID_JPEG_MARKER)
             segment_type = reader.read(8)
 
-            while (segment_type != 0xDA):
+            while segment_type != 0xDA:
                 if segment_type not in {0xD8, 0xD9}:
                     yield (segment_type, reader.substream(reader.read(16) - 2))
                 else:
@@ -155,7 +155,7 @@ class __PNG__(ImageMetrics):
                 from audiotools.text import ERR_IMAGE_INVALID_PNG
                 raise InvalidPNG(ERR_IMAGE_INVALID_PNG)
             (chunk_length, chunk_type) = reader.parse("32u 4b")
-            while (chunk_type != b'IEND'):
+            while chunk_type != b'IEND':
                 yield (chunk_type,
                        chunk_length,
                        reader.substream(chunk_length))
@@ -328,7 +328,7 @@ class __TIFF__(ImageMetrics):
         from io import BytesIO
 
         def tags(file, order):
-            while (True):
+            while True:
                 reader = BitstreamReader(file, order)
                 # read all the tags in an IFD
                 tag_count = reader.read(16)

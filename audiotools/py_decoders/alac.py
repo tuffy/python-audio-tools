@@ -26,7 +26,7 @@ from operator import concat
 
 def log2(i):
     bits = -1
-    while (i):
+    while i:
         bits += 1
         i >>= 1
     return bits
@@ -122,7 +122,7 @@ class ALACDecoder(object):
         # finally, set our stream to the "mdat" atom
         self.reader.setpos(stream_start)
         (atom_size, atom_name) = self.reader.parse("32u 4b")
-        while (atom_name != b"mdat"):
+        while atom_name != b"mdat":
             self.reader.skip_bytes(atom_size - 8)
             (atom_size, atom_name) = self.reader.parse("32u 4b")
 
@@ -132,7 +132,7 @@ class ALACDecoder(object):
         for (last, next_atom) in iter_last(iter(atom_names)):
             try:
                 (length, stream_atom) = reader.parse("32u 4b")
-                while (stream_atom != next_atom):
+                while stream_atom != next_atom:
                     reader.skip_bytes(length - 8)
                     (length, stream_atom) = reader.parse("32u 4b")
                 if last:
@@ -150,7 +150,7 @@ class ALACDecoder(object):
         # otherwise, read one ALAC frameset's worth of frame data
         frameset_data = []
         frame_channels = self.reader.read(3) + 1
-        while (frame_channels != 0x8):
+        while frame_channels != 0x8:
             frameset_data.extend(self.read_frame(frame_channels))
             frame_channels = self.reader.read(3) + 1
         self.reader.byte_align()
@@ -304,7 +304,7 @@ class ALACDecoder(object):
         sign_modifier = 0
         i = 0
 
-        while (i < sample_count):
+        while i < sample_count:
             # get an unsigned residual based on "history"
             # and on "sample_size" as a lst resort
             k = min(log2(history // (2 ** 9) + 3), self.maximum_k)
@@ -394,7 +394,7 @@ class ALACDecoder(object):
                 if residual > 0:
                     predictor_num = len(qlp_coefficients) - 1
 
-                    while ((predictor_num >= 0) and residual > 0):
+                    while (predictor_num >= 0) and residual > 0:
                         val = (buf[0] -
                                buf[len(qlp_coefficients) - predictor_num])
 
@@ -413,7 +413,7 @@ class ALACDecoder(object):
                     # the same as above, but we break if residual goes positive
                     predictor_num = len(qlp_coefficients) - 1
 
-                    while ((predictor_num >= 0) and residual < 0):
+                    while (predictor_num >= 0) and (residual < 0):
                         val = (buf[0] -
                                buf[len(qlp_coefficients) - predictor_num])
 

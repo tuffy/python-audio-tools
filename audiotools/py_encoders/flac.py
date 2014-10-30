@@ -145,7 +145,7 @@ def encode_flac(filename,
 
     flac_frame = BitstreamRecorder(0)
 
-    while (len(frame) > 0):
+    while len(frame) > 0:
         frame_offsets.append((current_offset, frame.frames))
         streaminfo.input_update(frame)
 
@@ -346,7 +346,7 @@ def write_utf8(writer, value):
         writer.unary(0, total_bytes)
         writer.write(7 - total_bytes, value >> shift)
         shift -= 6
-        while (shift >= 0):
+        while shift >= 0:
             writer.write(2, 2)
             writer.write(6, (value >> shift) & 0x3F)
             shift -= 6
@@ -365,7 +365,7 @@ def encode_subframe(writer, options, bits_per_sample, samples):
 
     def wasted(s):
         w = 0
-        while ((s & 1) == 0):
+        while (s & 1) == 0:
             w += 1
             s >>= 1
         return w
@@ -532,7 +532,7 @@ def encode_residuals(writer, options, order, block_size, residuals):
 def best_rice_parameter(options, residuals):
     partition_sum = sum(map(abs, residuals))
     rice_parameter = 0
-    while ((len(residuals) * (2 ** rice_parameter)) < partition_sum):
+    while (len(residuals) * (2 ** rice_parameter)) < partition_sum:
         if rice_parameter < options.max_rice_parameter:
             rice_parameter += 1
         else:

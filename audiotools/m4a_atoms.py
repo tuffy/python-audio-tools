@@ -62,7 +62,7 @@ def parse_sub_atoms(data_size, reader, parsers):
 
     leaf_atoms = []
 
-    while (data_size > 0):
+    while data_size > 0:
         (leaf_size, leaf_name) = reader.parse("32u 4b")
         leaf_atoms.append(
             parsers.get(leaf_name, M4A_Leaf_Atom).parse(

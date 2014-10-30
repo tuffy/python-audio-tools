@@ -39,7 +39,7 @@ def get_m4a_atom(reader, *atoms):
 
         try:
             (length, stream_atom) = reader.parse("32u 4b")
-            while (stream_atom != next_atom):
+            while stream_atom != next_atom:
                 if (length - 8) >= 0:
                     reader.skip_bytes(length - 8)
                     (length, stream_atom) = reader.parse("32u 4b")
@@ -68,7 +68,7 @@ def get_m4a_atom_offset(reader, *atoms):
         try:
             (length, stream_atom) = reader.parse("32u 4b")
             offset += 8
-            while (stream_atom != next_atom):
+            while stream_atom != next_atom:
                 if (length - 8) > 0:
                     reader.skip_bytes(length - 8)
                     offset += (length - 8)
@@ -95,7 +95,7 @@ def has_m4a_atom(reader, *atoms):
 
         try:
             (length, stream_atom) = reader.parse("32u 4b")
-            while (stream_atom != next_atom):
+            while stream_atom != next_atom:
                 if (length - 8) > 0:
                     reader.skip_bytes(length - 8)
                     (length, stream_atom) = reader.parse("32u 4b")
@@ -1329,7 +1329,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         alac_frames_per_chunk = 5
         frame_byte_sizes = frame_byte_sizes[:]
         chunk_offsets = [mdat_offset + 8]
-        while (len(frame_byte_sizes) > 0):
+        while len(frame_byte_sizes) > 0:
             chunk_size = sum(frame_byte_sizes[0:alac_frames_per_chunk])
             chunk_offsets.append(chunk_offsets[-1] + chunk_size)
             frame_byte_sizes = frame_byte_sizes[alac_frames_per_chunk:]

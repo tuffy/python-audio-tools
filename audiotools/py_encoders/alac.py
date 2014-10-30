@@ -80,7 +80,7 @@ def encode_mdat(file, pcmreader,
 
     # read FrameList objects until stream is empty
     frame = pcmreader.read(block_size)
-    while (len(frame) > 0):
+    while len(frame) > 0:
         total_pcm_frames += frame.frames
         frame_byte_size = Counter()
         mdat.add_callback(frame_byte_size.add)
@@ -520,7 +520,7 @@ def encode_residuals(writer, options, sample_size, residuals):
     sign_modifier = 0
 
     i = 0
-    while (i < len(residuals)):
+    while i < len(residuals):
         if residuals[i] >= 0:
             unsigned = residuals[i] * 2
         else:
@@ -543,7 +543,7 @@ def encode_residuals(writer, options, sample_size, residuals):
                 k = min(7 - LOG2(history) + ((history + 16) // 2 ** 6),
                         options.maximum_K)
                 zeroes = 0
-                while ((i < len(residuals)) and (residuals[i] == 0)):
+                while (i < len(residuals)) and (residuals[i] == 0):
                     zeroes += 1
                     i += 1
                 encode_residual(writer, zeroes, k, 16)

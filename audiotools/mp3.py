@@ -172,7 +172,7 @@ class MP3Audio(AudioFile):
                      sample_rate,
                      pad) = reader.parse("11u 2u 2u 1p 4u 2u 1u 9p")
 
-                    while (frame_sync == 0x7FF):
+                    while frame_sync == 0x7FF:
                         self.__pcm_frames__ += \
                             self.PCM_FRAMES_PER_MPEG_FRAME[layer]
 

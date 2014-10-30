@@ -60,7 +60,7 @@ class PacketReader(object):
 
         segment = self.read_segment()
         segments.append(segment)
-        while (len(segment) == 255):
+        while len(segment) == 255:
             segment = self.read_segment()
             segments.append(segment)
 
@@ -76,7 +76,7 @@ def packet_to_segments(packet):
     if len(packet) == 0:
         yield b""
     else:
-        while (len(packet) > 0):
+        while len(packet) > 0:
             if len(packet) == 255:
                 yield packet
                 yield b""

@@ -169,7 +169,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
         elif (code == 211) or (code == 210):
             # multiple exact or inexact matches
             line = next(query)
-            while (not line.startswith(u".")):
+            while not line.startswith(u"."):
                 match = QUERY_RESULT.match(line)
                 if match is not None:
                     matches.append((match.group(1),
@@ -201,7 +201,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
                 # FIXME - check response code here
                 freedb = {}
                 line = next(query)
-                while (not line.startswith(u".")):
+                while not line.startswith(u"."):
                     if not line.startswith(u"#"):
                         entry = FREEDB_LINE.match(line)
                         if entry is not None:
@@ -268,7 +268,7 @@ def freedb_command(freedb_server, freedb_port, cmd, *args):
     try:
         # yield lines of output
         line = request.readline()
-        while (len(line) > 0):
+        while len(line) > 0:
             yield line.decode("UTF-8", "replace")
             line = request.readline()
     finally:

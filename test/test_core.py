@@ -187,7 +187,7 @@ class PCMCat(unittest.TestCase):
         # ensure all the substreams are read correctly
         samples = []
         f = reader.read(2)
-        while (len(f) > 0):
+        while len(f) > 0:
             samples.extend(list(f))
             f = reader.read(2)
 
@@ -218,7 +218,7 @@ class BufferedPCMReader(unittest.TestCase):
     def test_pcm(self):
         def frame_lengths(reader, pcm_frames):
             frame = reader.read(pcm_frames)
-            while (len(frame) > 0):
+            while len(frame) > 0:
                 yield frame.frames
                 frame = reader.read(pcm_frames)
             else:
@@ -263,7 +263,7 @@ class BufferedPCMReader(unittest.TestCase):
         total_frames = 4096 * 1000
         reader = audiotools.BufferedPCMReader(
             Variable_Reader(EXACT_BLANK_PCM_Reader(total_frames)))
-        while (total_frames > 0):
+        while total_frames > 0:
             frames = min(total_frames, random.choice(range(1, 1000)))
             frame = reader.read(frames)
             self.assertEqual(frame.frames, frames)
@@ -274,7 +274,7 @@ class BufferedPCMReader(unittest.TestCase):
         reader = audiotools.BufferedPCMReader(
             EXACT_BLANK_PCM_Reader(44100))
         f = reader.read(4096)
-        while (len(f) > 0):
+        while len(f) > 0:
             f = reader.read(4096)
 
         self.assertEqual(len(f), 0)
@@ -320,7 +320,7 @@ class LimitedPCMReader(unittest.TestCase):
             self.assertEqual(reader.bits_per_sample, 16)
 
             f = reader.read(2)
-            while (len(f) > 0):
+            while len(f) > 0:
                 reader_samples.extend(list(f))
                 f = reader.read(2)
 
@@ -388,7 +388,7 @@ class PCMReaderWindow(unittest.TestCase):
                 # ensure reads generate the proper window of samples
                 samples = []
                 f = reader.read(2)
-                while (len(f) > 0):
+                while len(f) > 0:
                     samples.extend(list(f))
                     f = reader.read(2)
 
@@ -462,7 +462,7 @@ class Sines(unittest.TestCase):
 
             # read the base data from the stream
             f = stream.read(4096)
-            while (len(f) > 0):
+            while len(f) > 0:
                 f = stream.read(4096)
 
             # ensure subsequent reads return empty FrameLists
@@ -530,7 +530,7 @@ class CDDA(unittest.TestCase):
         # verify whole disc
         checksum = md5()
         frame = cdda.read(44100)
-        while (len(frame) > 0):
+        while len(frame) > 0:
             checksum.update(frame.to_bytes(False, True))
             frame = cdda.read(44100)
         self.assertEqual(self.reader.hexdigest(),
@@ -843,7 +843,7 @@ class PCMConverter(unittest.TestCase):
 
                 # read contents of converted stream
                 f = reader.read(4096)
-                while (len(f) > 0):
+                while len(f) > 0:
                     f = reader.read(4096)
 
                 # ensure subsequent reads return empty FrameLists
@@ -4478,7 +4478,7 @@ class TestReplayGain(unittest.TestCase):
 
         # read FrameLists from ReplayGainReader
         f = reader.read(4096)
-        while (len(f) > 0):
+        while len(f) > 0:
             f = reader.read(4096)
 
         # ensure subsequent reads return empty FrameLists

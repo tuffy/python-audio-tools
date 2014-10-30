@@ -50,7 +50,7 @@ def limited_transfer_data(from_function, to_function, max_bytes):
 
     BUFFER_SIZE = 0x100000
     s = from_function(BUFFER_SIZE)
-    while ((len(s) > 0) and (max_bytes > 0)):
+    while (len(s) > 0) and (max_bytes > 0):
         if len(s) > max_bytes:
             s = s[0:max_bytes]
         to_function(s)
@@ -147,7 +147,7 @@ class ApeTagItem(object):
 
         key = []
         c = reader.read_bytes(1)
-        while (c != b"\x00"):
+        while c != b"\x00":
             key.append(c)
             c = reader.read_bytes(1)
 
@@ -613,7 +613,7 @@ class ApeTag(MetaData):
         data = BytesIO(self[key].data)
         description = []
         c = data.read(1)
-        while (c != b'\x00'):
+        while c != b'\x00':
             description.append(c)
             c = data.read(1)
 

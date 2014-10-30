@@ -101,7 +101,7 @@ def validate_header(header):
 
         comm_found = False
 
-        while (header_size > 0):
+        while header_size > 0:
             # ensure each chunk header is valid
             (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
             if frozenset(chunk_id).issubset(AiffAudio.PRINTABLE_ASCII):
@@ -173,7 +173,7 @@ def validate_footer(footer, ssnd_bytes_written):
             aiff_file.skip_bytes(1)
             total_size -= 1
 
-        while (total_size > 0):
+        while total_size > 0:
             (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
             if frozenset(chunk_id).issubset(AiffAudio.PRINTABLE_ASCII):
                 total_size -= 8
@@ -296,7 +296,7 @@ class AIFF_File_Chunk(AIFF_Chunk):
 
         self.__aiff_file__.seek(self.__offset__)
         to_read = self.__size__
-        while (to_read > 0):
+        while to_read > 0:
             s = self.__aiff_file__.read(min(0x100000, to_read))
             if len(s) == 0:
                 return False
@@ -313,7 +313,7 @@ class AIFF_File_Chunk(AIFF_Chunk):
         f.write(struct.pack(">I", self.__size__))
         self.__aiff_file__.seek(self.__offset__)
         to_write = self.__size__
-        while (to_write > 0):
+        while to_write > 0:
             s = self.__aiff_file__.read(min(0x100000, to_write))
             f.write(s)
             to_write -= len(s)
@@ -376,7 +376,7 @@ class AiffReader(object):
             comm_chunk_read = False
 
         # walk through chunks until "SSND" chunk encountered
-        while (total_size > 0):
+        while total_size > 0:
             try:
                 (chunk_id,
                  chunk_size) = self.stream.parse("4b 32u")
@@ -634,7 +634,7 @@ class AiffAudio(AiffContainer):
             else:
                 total_size -= 4
 
-            while (total_size > 0):
+            while total_size > 0:
                 # read the chunk header and ensure its validity
                 try:
                     data = aiff_file.read(8)
@@ -911,7 +911,7 @@ class AiffAudio(AiffContainer):
                 current_block.build("4b 32u 4b", (form, size, aiff))
                 total_size = size - 4
 
-            while (total_size > 0):
+            while total_size > 0:
                 # transfer each chunk header
                 (chunk_id, chunk_size) = aiff_file.parse("4b 32u")
                 if not frozenset(chunk_id).issubset(self.PRINTABLE_ASCII):
@@ -985,7 +985,7 @@ class AiffAudio(AiffContainer):
             # write PCM data to output file
             SSND_bytes_written = 0
             s = pcmreader.read(FRAMELIST_SIZE).to_bytes(True, True)
-            while (len(s) > 0):
+            while len(s) > 0:
                 SSND_bytes_written += len(s)
                 f.write(s)
                 s = pcmreader.read(FRAMELIST_SIZE).to_bytes(True, True)

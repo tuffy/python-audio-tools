@@ -81,7 +81,7 @@ class SHNDecoder(object):
                 if header.startswith(b"RIFF") and header.endswith(b"WAVE"):
                     # got RIFF/WAVE header, so parse wave blocks as needed
                     total_size = len(verbatim_bytes) - 12
-                    while (total_size > 0):
+                    while total_size > 0:
                         (chunk_id, chunk_size) = wave.parse("4b 32u")
                         total_size -= 8
                         if chunk_id == b'fmt ':
@@ -111,7 +111,7 @@ class SHNDecoder(object):
                 if header.startswith(b"FORM") and header.endswith(b"AIFF"):
                     # got FORM/AIFF header, so parse aiff blocks as needed
                     total_size = len(verbatim_bytes) - 12
-                    while (total_size > 0):
+                    while total_size > 0:
                         (chunk_id, chunk_size) = aiff.parse("4b 32u")
                         total_size -= 8
                         if chunk_id == b'COMM':
@@ -190,7 +190,7 @@ class SHNDecoder(object):
         c = 0
         samples = []
         unshifted = []
-        while (True):
+        while True:
             command = self.unsigned(2)
             if (((0 <= command) and (command <= 3) or
                  (7 <= command) and (command <= 8))):
