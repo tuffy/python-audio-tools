@@ -495,26 +495,28 @@ class ID3v22_T__Frame(object):
 
         import re
 
-        if self.id in self.NUMERICAL_IDS:
-            unicode_value = self.__unicode__()
-            int_string = re.search(r'\d+', unicode_value)
-            if int_string is not None:
-                int_value = int(int_string.group(0))
-                if int_value == 0:
-                    total_string = re.search(r'/\D*?(\d+)', unicode_value)
-                    if total_string is not None:
-                        # don't return placeholder 0 value
-                        # when a track_total value is present
-                        # but track_number value is 0
-                        return None
-                    else:
-                        return int_value
-                else:
-                    return int_value
-            else:
-                return None
-        else:
+        if self.id not in self.NUMERICAL_IDS:
             raise TypeError()
+
+        unicode_value = self.__unicode__()
+
+        int_string = re.search(r'\d+', unicode_value)
+        if int_string is None:
+            return None
+
+        int_value = int(int_string.group(0))
+        if (int_value == 0) and (u"/" in unicode_value):
+            total_value = re.search(r'\d+',
+                                    unicode_value.split(u"/")[1])
+            if total_value is not None:
+                # don't return placeholder 0 value
+                # when a _total value is present
+                # but _number value is 0
+                return None
+            else:
+                return int_value
+        else:
+            return int_value
 
     def total(self):
         """if the frame is numerical, returns the track/album_total portion
@@ -522,14 +524,20 @@ class ID3v22_T__Frame(object):
 
         import re
 
-        if self.id in self.NUMERICAL_IDS:
-            int_value = re.search(r'/\D*?(\d+)', self.__unicode__())
-            if int_value is not None:
-                return int(int_value.group(1))
-            else:
-                return None
-        else:
+        if self.id not in self.NUMERICAL_IDS:
             raise TypeError()
+
+        unicode_value = self.__unicode__()
+
+        if u"/" not in unicode_value:
+            return None
+
+        int_string = re.search(r'\d+', unicode_value.split(u"/")[1])
+
+        if int_string is not None:
+            return int(int_string.group(0))
+        else:
+            return None
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -1324,9 +1332,9 @@ class ID3v22Comment(MetaData):
         if attr in self.ATTRIBUTE_MAP:
             try:
                 frame = self[self.ATTRIBUTE_MAP[attr]][0]
-                if attr in ('track_number', 'album_number'):
+                if attr in {'track_number', 'album_number'}:
                     return frame.number()
-                elif attr in ('track_total', 'album_total'):
+                elif attr in {'track_total', 'album_total'}:
                     return frame.total()
                 else:
                     return frame.__unicode__()
@@ -1338,100 +1346,49 @@ class ID3v22Comment(MetaData):
             return MetaData.__getattribute__(self, attr)
 
     def __setattr__(self, attr, value):
+        def swap_number(unicode_value, new_number):
+            import re
+
+            return re.sub(r'\d+', __padded__(new_number), unicode_value, 1)
+
+        def swap_slashed_number(unicode_value, new_number):
+            if u"/" in unicode_value:
+                (first, second) = unicode_value.split(u"/", 1)
+                return u"/".join([first, swap_number(second, new_number)])
+            else:
+                return u"/".join([unicode_value, __padded__(new_number)])
+
         if attr in self.ATTRIBUTE_MAP:
             if value is not None:
-                import re
-
                 frame_id = self.ATTRIBUTE_MAP[attr]
 
-                if attr == 'track_number':
+                if attr in {'track_number', 'album_number'}:
                     try:
-                        # substitute the first set of digits
-                        # with our padded value
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
-                            re.sub(r'\d+',
-                                   __padded__(value),
-                                   self[frame_id][0].__unicode__(),
-                                   1))
+                            swap_number(self[frame_id][0].__unicode__(),
+                                        value))
                     except KeyError:
-                        # no frame found with track_number's ID,
+                        # no frame found with track/album_number's ID,
                         # so create a new frame for it
                         # with the value padded appropriately
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
-                            __number_pair__(value, self.track_total))
-                elif attr == 'track_total':
+                            __padded__(value))
+                elif attr in {'track_total', 'album_total'}:
                     try:
-                        # if the value has a u"/" followed by some digits
-                        if (re.search(
-                                r'/\D*\d+',
-                                self[frame_id][0].__unicode__()) is not None):
-                            # substitute second set of digits after u"/"
-                            # with our padded value
-                            new_frame = self.TEXT_FRAME.converted(
-                                frame_id,
-                                re.sub(r'(/\D*)(\d+)',
-                                       u"\\g<1>" + __padded__(value),
-                                       self[frame_id][0].__unicode__(),
-                                       1))
-                        else:
-                            # otherwise, just append our padded value
-                            new_frame = self.TEXT_FRAME.converted(
-                                frame_id,
-                                u"%s/%s" % (self[frame_id][0].__unicode__(),
-                                            __padded__(value)))
+                        new_frame = self.TEXT_FRAME.converted(
+                            frame_id,
+                            swap_slashed_number(
+                                self[frame_id][0].__unicode__(),
+                                value))
                     except KeyError:
                         # no frame found with track_total's ID
                         # so create a new frame for it
                         # with the value padded appropriately
                         new_frame = self.TEXT_FRAME.converted(
                             frame_id,
-                            __number_pair__(self.track_number, value))
-                elif attr == 'album_number':
-                    try:
-                        # substitute the first set of digits
-                        # with our padded value
-                        new_frame = self.TEXT_FRAME.converted(
-                            frame_id,
-                            re.sub(r'\d+',
-                                   __padded__(value),
-                                   self[frame_id][0].__unicode__(),
-                                   1))
-                    except KeyError:
-                        # no frame found with track_number's ID,
-                        # so create a new frame for it
-                        # with the value padded appropriately
-                        new_frame = self.TEXT_FRAME.converted(
-                            frame_id,
-                            __number_pair__(value, self.album_total))
-                elif attr == 'album_total':
-                    try:
-                        # if the value has a u"/" followed by some digits
-                        if (re.search(
-                                r'/\D*\d+',
-                                self[frame_id][0].__unicode__()) is not None):
-                            # substitute second set of digits after u"/"
-                            # with our padded value
-                            new_frame = self.TEXT_FRAME.converted(
-                                frame_id,
-                                re.sub(r'(/\D*)(\d+)',
-                                       u"\\g<1>" + __padded__(value),
-                                       self[frame_id][0].__unicode__(),
-                                       1))
-                        else:
-                            # otherwise, just append our padded value
-                            new_frame = self.TEXT_FRAME.converted(
-                                frame_id,
-                                u"%s/%s" % (self[frame_id][0].__unicode__(),
-                                            __padded__(value)))
-                    except KeyError:
-                        # no frame found with album_total's ID
-                        # so create a new frame for it
-                        # with the value padded appropriately
-                        new_frame = self.TEXT_FRAME.converted(
-                            frame_id,
-                            __number_pair__(self.album_number, value))
+                            __number_pair__(None, value))
                 elif attr == 'comment':
                     new_frame = self.COMMENT_FRAME.converted(
                         frame_id, value)
@@ -1451,56 +1408,47 @@ class ID3v22Comment(MetaData):
             MetaData.__setattr__(self, attr, value)
 
     def __delattr__(self, attr):
+        import re
+
+        def zero_number(unicode_value):
+            return re.sub(r'\d+', u"0", unicode_value, 1)
+
         if attr in self.ATTRIBUTE_MAP:
             updated_frames = []
             delete_frame_id = self.ATTRIBUTE_MAP[attr]
             for frame in self:
                 if frame.id == delete_frame_id:
-                    if (attr == 'track_number') or (attr == 'album_number'):
-                        import re
-
-                        # if *_number field contains a slashed total
-                        if (re.search(r'\d+.*?/.*?\d+',
-                                      frame.__unicode__()) is not None):
+                    if attr in {'track_number', 'album_number'}:
+                        current_value = frame.__unicode__()
+                        if u"/" in current_value:
+                            # if *_number field contains a slashed total,
                             # replace unslashed portion with 0
                             updated_frames.append(
                                 self.TEXT_FRAME.converted(
                                     frame.id,
-                                    re.sub(r'\d+',
-                                           u"0",
-                                           frame.__unicode__(),
-                                           1)))
+                                    zero_number(current_value)))
                         else:
                             # otherwise, remove *_number field
                             continue
-                    elif ((attr == 'track_total') or
-                          (attr == 'album_total')):
-                        import re
-
-                        # if *_number is nonzero
-                        _number = re.search(
-                            r'\d+', frame.__unicode__().split(u"/")[0])
-                        if (((_number is not None) and
-                             (int(_number.group(0)) != 0))):
-                            # if field contains a slashed total
-                            # remove slashed total from field
-                            updated_frames.append(
-                                self.TEXT_FRAME.converted(
-                                    frame.id,
-                                    re.sub(r'\s*/\D*\d+.*',
-                                           u"",
-                                           frame.__unicode__(),
-                                           1)))
-                        else:
-                            # if field contains a slashed total
-                            # remove field entirely
-                            if (re.search(r'/.*?\d+',
-                                          frame.__unicode__()) is not None):
-                                continue
+                    elif attr in {'track_total', 'album_total'}:
+                        current_value = frame.__unicode__()
+                        if u"/" in current_value:
+                            (first, second) = current_value.split(u"/", 1)
+                            number = re.search(r'\d+', first)
+                            if ((number is not None) and
+                                (int(number.group(0)) != 0)):
+                                # field contains nonzero number part
+                                # so remove only slashed part
+                                updated_frames.append(
+                                    self.TEXT_FRAME.converted(
+                                        frame.id, first.rstrip()))
                             else:
-                                # no number or total,
-                                # so pass frame through unchanged
-                                updated_frames.append(frame)
+                                # number part is zero, so remove entire tag
+                                continue
+                        else:
+                            # oddball tag with no slash
+                            # so pass it through unchanged
+                            updated_frames.append(frame)
                     else:
                         # handle the textual fields
                         # which are simply deleted outright

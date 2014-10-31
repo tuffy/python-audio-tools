@@ -5350,8 +5350,7 @@ class FlacMetaData(MetaDataTest):
         self.assertEqual(metadata.track_total, 4)
         del(metadata.track_number)
         self.assertEqual(metadata.get_block(4).comment_strings,
-                         [u"TRACKTOTAL=4",
-                          u"TRACKTOTAL=3"])
+                         [u"TRACKTOTAL=4"])
         self.assertEqual(metadata.track_total, 4)
         self.assertIsNone(metadata.track_number)
 
@@ -5419,8 +5418,7 @@ class FlacMetaData(MetaDataTest):
         self.assertEqual(metadata.album_total, 5)
         del(metadata.album_number)
         self.assertEqual(metadata.get_block(4).comment_strings,
-                         [u"DISCTOTAL=5",
-                          u"DISCTOTAL=4"])
+                         [u"DISCTOTAL=5"])
         self.assertEqual(metadata.album_total, 5)
 
         # deleting album_total removes DISCTOTAL/TOTALDISCS fields
@@ -7422,8 +7420,7 @@ class VorbisCommentTest(MetaDataTest):
         self.assertEqual(metadata.track_total, 4)
         del(metadata.track_number)
         self.assertEqual(metadata.comment_strings,
-                         [u"TRACKTOTAL=4",
-                          u"TRACKTOTAL=3"])
+                         [u"TRACKTOTAL=4"])
         self.assertEqual(metadata.track_total, 4)
         self.assertIsNone(metadata.track_number)
 
@@ -7478,8 +7475,7 @@ class VorbisCommentTest(MetaDataTest):
         self.assertEqual(metadata.album_total, 5)
         del(metadata.album_number)
         self.assertEqual(metadata.comment_strings,
-                         [u"DISCTOTAL=5",
-                          u"DISCTOTAL=4"])
+                         [u"DISCTOTAL=5"])
         self.assertEqual(metadata.album_total, 5)
 
         # deleting album_total removes DISCTOTAL/TOTALDISCS fields
@@ -7589,7 +7585,7 @@ class VorbisCommentTest(MetaDataTest):
                 self.assertEqual(metadata.track_name, u"New Track Name")
                 self.assertEqual(metadata.track_number, 2)
 
-                metadata.track_name = "New Track Name 2"
+                metadata.track_name = u"New Track Name 2"
                 metadata.track_number = 3
                 track.set_metadata(metadata)
                 metadata = track.get_metadata()

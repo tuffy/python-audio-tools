@@ -137,6 +137,48 @@ class ApeTagItem(object):
     def __unicode__(self):
         return self.data.rstrip(b"\x00").decode('utf-8', 'replace')
 
+    def number(self):
+        """returns the track/album_number portion of a slashed number pair"""
+
+        import re
+
+        unicode_value = self.__unicode__()
+
+        int_string = re.search(r'\d+', unicode_value)
+        if int_string is None:
+            return None
+
+        int_value = int(int_string.group(0))
+        if (int_value == 0) and (u"/" in unicode_value):
+            total_value = re.search(r'\d+',
+                                    unicode_value.split(u"/")[1])
+            if total_value is not None:
+                # don't return placeholder 0 value
+                # when a _total value is present
+                # but _number value is 0
+                return None
+            else:
+                return int_value
+        else:
+            return int_value
+
+    def total(self):
+        """returns the track/album_total portion of a slashed number pair"""
+
+        import re
+
+        unicode_value = self.__unicode__()
+
+        if u"/" not in unicode_value:
+            return None
+
+        int_string = re.search(r'\d+', unicode_value.split(u"/")[1])
+
+        if int_string is not None:
+            return int(int_string.group(0))
+        else:
+            return None
+
     @classmethod
     def parse(cls, reader):
         """returns an ApeTagItem parsed from the given BitstreamReader"""
@@ -324,75 +366,14 @@ class ApeTag(MetaData):
             raise KeyError(key)
 
     def __getattr__(self, attr):
-        import re
-
-        if attr == 'track_number':
+        if attr in self.ATTRIBUTE_MAP:
             try:
-                track_text = self[b"Track"].__unicode__()
-                track = re.search(r'\d+', track_text)
-                if track is not None:
-                    track_number = int(track.group(0))
-                    if ((track_number == 0) and
-                        (re.search(r'/.*?(\d+)',
-                                   track_text) is not None)):
-                        # if track_total is nonzero and track_number is 0
-                        # track_number is a placeholder
-                        # so treat track_number as None
-                        return None
-                    else:
-                        return track_number
+                if attr in {'track_number', 'album_number'}:
+                    return self[self.ATTRIBUTE_MAP[attr]].number()
+                elif attr in {'track_total', 'album_total'}:
+                    return self[self.ATTRIBUTE_MAP[attr]].total()
                 else:
-                    # "Track" isn't an integer
-                    return None
-            except KeyError:
-                # no "Track" in list of items
-                return None
-        elif attr == 'track_total':
-            try:
-                track = re.search(r'/.*?(\d+)', self[b"Track"].__unicode__())
-                if track is not None:
-                    return int(track.group(1))
-                else:
-                    # no slashed integer field in "Track"
-                    return None
-            except KeyError:
-                # no "Track" in list of items
-                return None
-        elif attr == 'album_number':
-            try:
-                media_text = self[b"Media"].__unicode__()
-                media = re.search(r'\d+', media_text)
-                if media is not None:
-                    album_number = int(media.group(0))
-                    if ((album_number == 0) and
-                        (re.search(r'/.*?(\d+)',
-                                   media_text) is not None)):
-                        # if album_total is nonzero and album_number is 0
-                        # album_number is a placeholder
-                        # so treat album_number as None
-                        return None
-                    else:
-                        return album_number
-                else:
-                    # "Media" isn't an integer
-                    return None
-            except KeyError:
-                # no "Media" in list of items
-                return None
-        elif attr == 'album_total':
-            try:
-                media = re.search(r'/.*?(\d+)', self[b"Media"].__unicode__())
-                if media is not None:
-                    return int(media.group(1))
-                else:
-                    # no slashed integer field in "Media"
-                    return None
-            except KeyError:
-                # no "Media" in list of items
-                return None
-        elif attr in self.ATTRIBUTE_MAP:
-            try:
-                return self[self.ATTRIBUTE_MAP[attr]].__unicode__()
+                    return self[self.ATTRIBUTE_MAP[attr]].__unicode__()
             except KeyError:
                 return None
         elif attr in MetaData.FIELDS:
@@ -403,71 +384,39 @@ class ApeTag(MetaData):
     # if an attribute is updated (e.g. self.track_name)
     # make sure to update the corresponding dict pair
     def __setattr__(self, attr, value):
-        if attr in self.ATTRIBUTE_MAP:
-            if value is not None:
-                import re
+        def swap_number(unicode_value, new_number):
+            import re
 
-                if attr == 'track_number':
+            return re.sub(r'\d+', u"%d" % (new_number), unicode_value, 1)
+
+        def swap_slashed_number(unicode_value, new_number):
+            if u"/" in unicode_value:
+                (first, second) = unicode_value.split(u"/", 1)
+                return u"/".join([first, swap_number(second, new_number)])
+            else:
+                return u"/".join([unicode_value, u"%d" % (new_number)])
+
+        if attr in self.ATTRIBUTE_MAP:
+            key = self.ATTRIBUTE_MAP[attr]
+            if value is not None:
+                if attr in {'track_number', 'album_number'}:
                     try:
-                        self[b'Track'].data = (re.sub(
-                            r'\d+',
-                            u"%d" % (value),
-                            self[b'Track'].__unicode__(),
-                            1).encode("utf-8"))
+                        current_value = self[key].__unicode__()
+                        self[key] = self.ITEM.string(
+                            key, swap_number(current_value, value))
                     except KeyError:
-                        self[b'Track'] = self.ITEM.string(
-                            b'Track',
-                            __number_pair__(value, self.track_total))
-                elif attr == 'track_total':
+                        self[key] = self.ITEM.string(
+                            key, __number_pair__(value, None))
+                elif attr in {'track_total', 'album_total'}:
                     try:
-                        if (re.search(
-                                r'/\D*\d+',
-                                self[b'Track'].__unicode__()) is not None):
-                            self[b'Track'].data = (re.sub(
-                                r'(/\D*)(\d+)',
-                                u"\\g<1>" + u"%d" % (value),
-                                self[b'Track'].__unicode__(),
-                                1).encode("utf-8"))
-                        else:
-                            self[b'Track'].data = (u"%s/%d" % (
-                                self[b'Track'].__unicode__(),
-                                value)).encode("utf-8")
+                        current_value = self[key].__unicode__()
+                        self[key] = self.ITEM.string(
+                            key, swap_slashed_number(current_value, value))
                     except KeyError:
-                        self[b'Track'] = self.ITEM.string(
-                            b'Track',
-                            __number_pair__(self.track_number, value))
-                elif attr == 'album_number':
-                    try:
-                        self[b'Media'].data = (re.sub(
-                            r'\d+',
-                            u"%d" % (value),
-                            self[b'Media'].__unicode__(),
-                            1).encode("utf-8"))
-                    except KeyError:
-                        self[b'Media'] = self.ITEM.string(
-                            b'Media',
-                            __number_pair__(value, self.album_total))
-                elif attr == 'album_total':
-                    try:
-                        if (re.search(
-                                r'/\D*\d+',
-                                self[b'Media'].__unicode__()) is not None):
-                            self[b'Media'].data = (re.sub(
-                                r'(/\D*)(\d+)',
-                                u"\\g<1>" + u"%d" % (value),
-                                self[b'Media'].__unicode__(),
-                                1).encode("utf-8"))
-                        else:
-                            self[b'Media'].data = (u"%s/%d" % (
-                                self[b'Media'].__unicode__(),
-                                value)).encode("utf-8")
-                    except KeyError:
-                        self[b'Media'] = self.ITEM.string(
-                            b'Media',
-                            __number_pair__(self.album_number, value))
+                        self[key] = self.ITEM.string(
+                            key, __number_pair__(None, value))
                 else:
-                    self[self.ATTRIBUTE_MAP[attr]] = self.ITEM.string(
-                        self.ATTRIBUTE_MAP[attr], value)
+                    self[key] = self.ITEM.string(key, value)
             else:
                 delattr(self, attr)
         else:
@@ -476,85 +425,46 @@ class ApeTag(MetaData):
     def __delattr__(self, attr):
         import re
 
-        if attr == 'track_number':
-            try:
-                # if "Track" field contains a slashed total
-                if (re.search(r'\d+.*?/.*?\d+',
-                              self[b'Track'].__unicode__()) is not None):
-                    # replace unslashed portion with 0
-                    self[b'Track'].data = (re.sub(
-                        r'\d+',
-                        u"0",
-                        self[b'Track'].__unicode__(),
-                        1).encode("utf-8"))
-                else:
-                    # otherwise, remove "Track" field
-                    del(self[b'Track'])
-            except KeyError:
-                pass
-        elif attr == 'track_total':
-            try:
-                track_number = re.search(
-                    r'\d+', self[b"Track"].__unicode__().split(u"/")[0])
-                # if track number is nonzero
-                if (((track_number is not None) and
-                     (int(track_number.group(0)) != 0))):
-                    # if "Track" field contains a slashed total
-                    # remove slashed total from "Track" field
-                    self[b'Track'].data = (re.sub(
-                        r'\s*/.*',
-                        u"",
-                        self[b'Track'].__unicode__()).encode("utf-8"))
-                else:
-                    # if "Track" field contains a slashed total
-                    if (re.search(r'/\D*?\d+',
-                                  self[b'Track'].__unicode__()) is not None):
-                        # remove "Track" field entirely
-                        del(self[b'Track'])
-            except KeyError:
-                pass
-        elif attr == 'album_number':
-            try:
-                # if "Media" field contains a slashed total
-                if (re.search(r'\d+.*?/.*?\d+',
-                              self[b'Media'].__unicode__()) is not None):
-                    # replace unslashed portion with 0
-                    self[b'Media'].data = (
-                        re.sub(r'\d+',
-                               u"0",
-                               self[b'Media'].__unicode__(),
-                               1).encode("utf-8"))
-                else:
-                    # otherwise, remove "Media" field
-                    del(self[b'Media'])
-            except KeyError:
-                pass
-        elif attr == 'album_total':
-            try:
-                track_number = re.search(
-                    r'\d+', self[b"Media"].__unicode__().split(u"/")[0])
-                # if track number is nonzero
-                if (((track_number is not None) and
-                     (int(track_number.group(0)) != 0))):
-                    # if "Media" field contains a slashed total
-                    # remove slashed total from "Media" field
-                    self[b'Media'].data = (re.sub(
-                        r'\s*/.*',
-                        u"",
-                        self[b'Media'].__unicode__()).encode("utf-8"))
-                else:
-                    # if "Media" field contains a slashed total
-                    if (re.search(r'/\D*?\d+',
-                                  self[b'Media'].__unicode__()) is not None):
-                        # remove "Media" field entirely
-                        del(self[b'Media'])
-            except KeyError:
-                pass
-        elif attr in self.ATTRIBUTE_MAP:
-            try:
-                del(self[self.ATTRIBUTE_MAP[attr]])
-            except KeyError:
-                pass
+        def zero_number(unicode_value):
+            return re.sub(r'\d+', u"0", unicode_value, 1)
+
+        if attr in self.ATTRIBUTE_MAP:
+            key = self.ATTRIBUTE_MAP[attr]
+
+            if attr in {'track_number', 'album_number'}:
+                try:
+                    tag = self[key]
+                    if tag.total() is None:
+                        # if no slashed _total field, delete entire tag
+                        del(self[key])
+                    else:
+                        # otherwise replace initial portion with 0
+                        self[key] = self.ITEM.string(
+                            key, zero_number(tag.__unicode__()))
+                except KeyError:
+                    # no tag to delete
+                    pass
+            elif attr in {'track_total', 'album_total'}:
+                try:
+                    tag = self[key]
+                    if tag.total() is not None:
+                        if tag.number() is not None:
+                            self[key] = self.ITEM.string(
+                                key,
+                                tag.__unicode__().split(u"/", 1)[0].rstrip())
+                        else:
+                            del(self[key])
+                    else:
+                        # no total portion, so nothing to do
+                        pass
+                except KeyError:
+                    # no tag to delete portion of
+                    pass
+            else:
+                try:
+                    del(self[key])
+                except KeyError:
+                    pass
         elif attr in MetaData.FIELDS:
             pass
         else:
