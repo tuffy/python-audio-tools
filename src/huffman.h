@@ -152,4 +152,11 @@ int compile_bw_huffman_table(bw_huffman_table_t** table,
                              unsigned int total_frequencies,
                              bs_endianness endianness);
 
+/*returns a string and value into huffman_frequency entry, such as:
+  ("1", 0)   -> bits 1      value = 0
+  ("01", 1)  -> bits 0 1    value = 1
+  ("001", 2) -> bits 0 0 1  value = 2
+  ("000", 3) -> bits 0 0 0  value = 3*/
+struct huffman_frequency
+bw_str_to_frequency(const char *s, int value);
 #endif

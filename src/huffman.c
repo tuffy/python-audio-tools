@@ -557,6 +557,24 @@ bw_fix_tree(bw_huffman_table_t *table,
     }
 }
 
+struct huffman_frequency
+bw_str_to_frequency(const char *s, int value)
+{
+    struct huffman_frequency frequency;
+
+    frequency.bits = 0;
+    frequency.length = 0;
+
+    for (; *s != '\0'; s++) {
+        frequency.bits = ((frequency.bits << 1) | (*s == '0' ? 0 : 1));
+        frequency.length++;
+    }
+
+    frequency.value = value;
+
+    return frequency;
+}
+
 #ifdef EXECUTABLE
 
 #include "parson.h"

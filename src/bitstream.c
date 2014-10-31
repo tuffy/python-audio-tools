@@ -6015,11 +6015,12 @@ writer_perform_huffman(BitstreamWriter* writer,
                        bs_endianness endianness)
 {
     bw_huffman_table_t* table;
-    struct huffman_frequency frequencies[] = {{3, 2, 0},
-                                              {2, 2, 1},
-                                              {1, 2, 2},
-                                              {1, 3, 3},
-                                              {0, 3, 4}};
+    struct huffman_frequency frequencies[] =
+        {bw_str_to_frequency("11", 0),
+         bw_str_to_frequency("10", 1),
+         bw_str_to_frequency("01", 2),
+         bw_str_to_frequency("001", 3),
+         bw_str_to_frequency("000", 4)};
     const unsigned int total_frequencies = 5;
 
     assert(compile_bw_huffman_table(&table,
