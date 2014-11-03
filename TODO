@@ -7156,7 +7156,7 @@
     - [X] tracktag
     - [X] trackverify
 *** TODO Update Python-based decoders
-    - [ ] alac
+    - [X] alac
     - [ ] flac
     - [ ] shn
     - [ ] tta
@@ -7167,7 +7167,7 @@
     - [ ] shn
     - [ ] tta
     - [ ] wavpack
-*** TODO Update documentation
+*** DONE Update documentation
 *** TODO Update unit tests
     - [ ] test
     - [ ] test_core

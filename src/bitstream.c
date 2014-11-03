@@ -3641,11 +3641,12 @@ int main(int argc, char* argv[]) {
     br_pos_t* pos;
     struct sigaction new_action, old_action;
 
-    struct huffman_frequency frequencies[] = {{3, 2, 0},
-                                              {2, 2, 1},
-                                              {1, 2, 2},
-                                              {1, 3, 3},
-                                              {0, 3, 4}};
+    struct huffman_frequency frequencies[] =
+        {bw_str_to_frequency("11", 0),
+         bw_str_to_frequency("10", 1),
+         bw_str_to_frequency("01", 2),
+         bw_str_to_frequency("001", 3),
+         bw_str_to_frequency("000", 4)};
     br_huffman_table_t *be_table;
     br_huffman_table_t *le_table;
 

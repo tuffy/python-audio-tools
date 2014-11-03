@@ -197,7 +197,7 @@ class FlacDecoder(object):
 
         # unpack the 4 bit block size field
         # which is the total PCM frames in the FLAC frame
-        # and may require up to 16 more bits if the frame is usually-sized
+        # and may require up to 16 more bits if the frame is unusually-sized
         # (which typically happens at the end of the stream)
         if block_size_bits == 0x6:
             block_size = self.reader.read(8) + 1
@@ -360,8 +360,8 @@ class FlacDecoder(object):
 
         # which are applied to the running LPC calculation
         for residual in residuals:
-            samples.append((sum([coeff * sample for (coeff, sample) in
-                                 zip(qlp_coeffs, samples[-order:])]) >>
+            samples.append((sum(coeff * sample for (coeff, sample) in
+                                zip(qlp_coeffs, samples[-order:])) >>
                             qlp_shift_needed) + residual)
 
         return samples

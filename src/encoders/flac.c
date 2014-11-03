@@ -1381,7 +1381,8 @@ flacenc_encode_residuals(BitstreamWriter* bs,
     bs->write(bs, 4, best_partition_order);
 
     for (p = 0; p < best_residual_partitions->len; p++) {
-        unsigned rice_parameter = (unsigned)(best_rice_parameters->_[p]);
+        const unsigned rice_parameter = (unsigned)(best_rice_parameters->_[p]);
+        register const unsigned LSB_mask = ((1 << rice_parameter) - 1);
         const int* partition_ = best_residual_partitions->_[p]->_;
         const unsigned partition_len = best_residual_partitions->_[p]->len;
         unsigned i;
@@ -1392,18 +1393,13 @@ flacenc_encode_residuals(BitstreamWriter* bs,
             write(bs, 5, rice_parameter);
 
         for (i = 0; i < partition_len; i++) {
-            register unsigned u;
-            register unsigned MSB;
-            register unsigned LSB;
-            if (partition_[i] >= 0) {
-                u = partition_[i] << 1;
-            } else {
-                u = ((-partition_[i] - 1) << 1) | 1;
-            }
-            MSB = u >> rice_parameter;
-            LSB = u - (MSB << rice_parameter);
-            write_unary(bs, 1, MSB);
-            write(bs, rice_parameter, LSB);
+            register const int signed_value = partition_[i];
+            register const unsigned unsigned_value =
+                (signed_value >= 0) ?
+                (signed_value << 1) :
+                ((-signed_value - 1) << 1) | 1;
+            write_unary(bs, 1, unsigned_value >> rice_parameter);
+            write(bs, rice_parameter, unsigned_value & LSB_mask);
         }
     }
 }
