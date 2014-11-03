@@ -3111,6 +3111,25 @@ br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size)
     buf->size = new_size;
 }
 
+void
+br_buf_gc(struct br_buffer *buf)
+{
+    const unsigned current_size = buf->size - buf->pos;
+    if (current_size) {
+        memmove(buf->data, buf->data + buf->pos, current_size);
+        /*shrink memory size so that "data" is no larger than "size"
+          since br_buffer has no allowance for unused bytes*/
+        buf->data = realloc(buf->data, current_size);
+        buf->pos = 0;
+        buf->size = current_size;
+    } else {
+        /*buffer is currently empty*/
+        free(buf->data);
+        buf->data = NULL;
+        buf->pos = buf->size = 0;
+    }
+}
+
 
 unsigned
 br_buf_read(struct br_buffer *buf, uint8_t *data, unsigned size)

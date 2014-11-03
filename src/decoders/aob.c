@@ -633,6 +633,7 @@ read_sector(DVDA_Sector_Reader* reader,
                              sector_data, 1, 1);
             }
 #endif
+            br_buf_gc(sector);
             br_buf_extend(sector, sector_data, (unsigned)bytes_read);
 
             /*then move on to next sector*/
@@ -690,6 +691,7 @@ open_packet_reader(DVDA_Sector_Reader* sectors,
     packets->end_sector = end_sector;
 
     packets->sectors = sectors;
+    packets->reader = br_open_buffer(NULL, 0, BS_BIG_ENDIAN);
 
     packets->total_sectors = end_sector - start_sector;
     seek_sector(sectors, start_sector);
@@ -702,7 +704,7 @@ read_audio_packet(DVDA_Packet_Reader* packets,
                   struct bs_buffer* packet_data)
 {
     if (packets->total_sectors) {
-        BitstreamReader* reader = br_open_buffer(NULL, 0, BS_BIG_ENDIAN);
+        BitstreamReader* reader = packets->reader;
         struct br_buffer* buffer = reader->input.buffer;
         if (!read_sector(packets->sectors, buffer)) {
             if (br_buf_empty(buffer)) {
@@ -827,6 +829,7 @@ read_audio_packet(DVDA_Packet_Reader* packets,
 static void
 close_packet_reader(DVDA_Packet_Reader* packets)
 {
+    packets->reader->close(packets->reader);
     free(packets);
 }
 

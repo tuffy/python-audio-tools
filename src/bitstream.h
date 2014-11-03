@@ -1492,6 +1492,8 @@ struct br_buffer {
     unsigned size;
 };
 
+/*allocates new br_buffer struct with no data
+  must be freed with br_buf_free()*/
 static inline struct br_buffer*
 br_buf_new(void)
 {
@@ -1502,6 +1504,7 @@ br_buf_new(void)
     return buf;
 }
 
+/*deallocates a br_buffer struct and any data it may have*/
 static inline void
 br_buf_free(struct br_buffer *buf)
 {
@@ -1509,15 +1512,23 @@ br_buf_free(struct br_buffer *buf)
     free(buf);
 }
 
+/*returns 1 if the buffer is empty*/
 static inline int
 br_buf_empty(const struct br_buffer *buf)
 {
     return buf->pos == buf->size;
 }
 
+/*appends the given data to the buffer*/
 void
 br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size);
 
+/*cleans out already read data from the buffer
+  note that this will invalidate any position values!*/
+void
+br_buf_gc(struct br_buffer *buf);
+
+/*returns the next character in the buffer, or EOF if no characters remain*/
 static inline int
 br_buf_getc(struct br_buffer *buf)
 {
@@ -1528,23 +1539,30 @@ br_buf_getc(struct br_buffer *buf)
     }
 }
 
+/*reads "size" amount of bytes from the buffer to "data"
+  returns the amount of bytes actually read
+  which may be less than the amount requested*/
 unsigned
 br_buf_read(struct br_buffer *buf, uint8_t *data, unsigned size);
 
+/*gets the current position in the buffer*/
 static inline void
 br_buf_getpos(const struct br_buffer *buf, unsigned *pos)
 {
     *pos = buf->pos;
 }
 
+/*sets the position in the buffer*/
 static inline void
 br_buf_setpos(struct br_buffer *buf, unsigned pos)
 {
     buf->pos = pos;
 }
 
+/*analagous to fseek, sets a position in the buffer*/
 int
 br_buf_fseek(struct br_buffer *buf, long position, int whence);
+
 
 /*******************************************************************
  *                       write buffer-specific                     *
