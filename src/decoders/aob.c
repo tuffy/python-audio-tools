@@ -622,7 +622,6 @@ read_sector(DVDA_Sector_Reader* reader,
                                         sizeof(uint8_t),
                                         SECTOR_SIZE,
                                         aob->file);
-        br_buf_extend(sector, sector_data, (unsigned)bytes_read);
 
         if (bytes_read == SECTOR_SIZE) {
             /*sector read successfully*/
@@ -634,6 +633,7 @@ read_sector(DVDA_Sector_Reader* reader,
                              sector_data, 1, 1);
             }
 #endif
+            br_buf_extend(sector, sector_data, (unsigned)bytes_read);
 
             /*then move on to next sector*/
             reader->current.sector++;

@@ -1170,13 +1170,9 @@ bw_write_bits_c(BitstreamWriter* bs, unsigned int count, unsigned int value);
 
 /*bs->write_signed(bs, count, value)  methods*/
 void
-bw_write_signed_bits_f_e_r_be(BitstreamWriter* bs, unsigned int count,
-                              int value);
+bw_write_signed_bits_be(BitstreamWriter* bs, unsigned int count, int value);
 void
-bw_write_signed_bits_f_e_r_le(BitstreamWriter* bs, unsigned int count,
-                              int value);
-void
-bw_write_signed_bits_c(BitstreamWriter* bs, unsigned int count, int value);
+bw_write_signed_bits_le(BitstreamWriter* bs, unsigned int count, int value);
 
 
 /*bs->write_64(bs, count, value)  methods*/
@@ -1198,14 +1194,11 @@ bw_write_bits64_c(BitstreamWriter* bs, unsigned int count, uint64_t value);
 
 /*bs->write_signed_64(bs, count, value)  methods*/
 void
-bw_write_signed_bits64_f_e_r_be(BitstreamWriter* bs, unsigned int count,
-                                int64_t value);
+bw_write_signed_bits64_be(BitstreamWriter* bs, unsigned int count,
+                          int64_t value);
 void
-bw_write_signed_bits64_f_e_r_le(BitstreamWriter* bs, unsigned int count,
-                                int64_t value);
-void
-bw_write_signed_bits64_c(BitstreamWriter* bs, unsigned int count,
-                         int64_t value);
+bw_write_signed_bits64_le(BitstreamWriter* bs, unsigned int count,
+                          int64_t value);
 
 
 /*bs->write_bigint(bs, count, value)  methods*/
@@ -1241,24 +1234,18 @@ bw_write_bits_bigint_c(BitstreamWriter* bs,
 
 /*bs->write_signed_bigint(bs, count, value)  methods*/
 void
-bw_write_signed_bits_bigint_f_e_r_be(BitstreamWriter* bs,
-                                     unsigned int count,
-                                     const mpz_t value);
+bw_write_signed_bits_bigint_be(BitstreamWriter* bs,
+                               unsigned int count,
+                               const mpz_t value);
 void
-bw_write_signed_bits_bigint_f_e_r_le(BitstreamWriter* bs,
-                                     unsigned int count,
-                                     const mpz_t value);
-void
-bw_write_signed_bits_bigint_c(BitstreamWriter* bs,
-                              unsigned int count,
-                              const mpz_t value);
+bw_write_signed_bits_bigint_le(BitstreamWriter* bs,
+                               unsigned int count,
+                               const mpz_t value);
 
 
 /*bs->write_unary(bs, stop_bit, value)  methods*/
 void
-bw_write_unary_f_e_r(BitstreamWriter* bs, int stop_bit, unsigned int value);
-void
-bw_write_unary_c(BitstreamWriter* bs, int stop_bit, unsigned int value);
+bw_write_unary(BitstreamWriter* bs, int stop_bit, unsigned int value);
 
 
 /*bs->set_endianness(bs, endianness)  methods*/
