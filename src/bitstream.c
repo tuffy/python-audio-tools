@@ -114,6 +114,7 @@ __base_bitstreamreader__(bs_endianness endianness)
     /*bs->seek = ???*/
 
     bs->substream = br_substream;
+    bs->enqueue = br_enqueue;
 
     /*bs->close_internal_stream = ???*/
     /*bs->free = ???*/
@@ -204,6 +205,76 @@ br_open_buffer(const uint8_t *buffer,
 
     bs->close_internal_stream = br_close_internal_stream_b;
     bs->free = br_free_b;
+
+    return bs;
+}
+
+BitstreamQueue*
+br_open_queue(bs_endianness endianness)
+{
+    BitstreamQueue *bs = malloc(sizeof(BitstreamQueue));
+
+    bs->endianness = endianness;
+    bs->type = BR_QUEUE;
+    bs->input.queue = br_queue_new();
+    bs->state = 0;
+    bs->callbacks = NULL;
+    bs->exceptions = NULL;
+    bs->exceptions_used = NULL;
+
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        bs->read = br_read_bits_q_be;
+        bs->read_signed = br_read_signed_bits_be;
+        bs->read_64 = br_read_bits64_q_be;
+        bs->read_signed_64 = br_read_signed_bits64_be;
+        bs->read_bigint = br_read_bits_bigint_q_be;
+        bs->read_signed_bigint = br_read_signed_bits_bigint_be;
+        bs->skip = br_skip_bits_q_be;
+        bs->unread = br_unread_bit_be;
+        bs->read_unary = br_read_unary_q_be;
+        bs->skip_unary = br_skip_unary_q_be;
+        break;
+    case BS_LITTLE_ENDIAN:
+        bs->read = br_read_bits_q_le;
+        bs->read_signed = br_read_signed_bits_le;
+        bs->read_64 = br_read_bits64_q_le;
+        bs->read_signed_64 = br_read_signed_bits64_le;
+        bs->read_bigint = br_read_bits_bigint_q_le;
+        bs->read_signed_bigint = br_read_signed_bits_bigint_le;
+        bs->skip = br_skip_bits_q_le;
+        bs->unread = br_unread_bit_le;
+        bs->read_unary = br_read_unary_q_le;
+        bs->skip_unary = br_skip_unary_q_le;
+        break;
+    }
+
+    bs->set_endianness = br_set_endianness_q;
+    bs->read_huffman_code = br_read_huffman_code_q;
+    bs->read_bytes = br_read_bytes_q;
+    bs->skip_bytes = br_skip_bytes;
+    bs->parse = br_parse;
+    bs->byte_aligned = br_byte_aligned;
+    bs->byte_align = br_byte_align;
+
+    bs->add_callback = br_add_callback;
+    bs->push_callback = br_push_callback;
+    bs->pop_callback = br_pop_callback;
+    bs->call_callbacks = br_call_callbacks;
+
+    bs->getpos = br_getpos_q;
+    bs->setpos = br_setpos_q;
+    bs->seek = br_seek_q;
+
+    bs->substream = br_substream;
+    bs->enqueue = br_enqueue;
+
+    bs->close_internal_stream = br_close_internal_stream_q;
+    bs->free = br_free_q;
+    bs->close = br_close_q;
+
+    bs->size = br_size_q;
+    bs->extend = br_extend_q;
 
     return bs;
 }
@@ -351,6 +422,10 @@ FUNC_READ_BITS_BE(br_read_bits_b_be,
                   unsigned int, br_buf_getc, bs->input.buffer)
 FUNC_READ_BITS_LE(br_read_bits_b_le,
                   unsigned int, br_buf_getc, bs->input.buffer)
+FUNC_READ_BITS_BE(br_read_bits_q_be,
+                  unsigned int, br_queue_getc, bs->input.queue)
+FUNC_READ_BITS_LE(br_read_bits_q_le,
+                  unsigned int, br_queue_getc, bs->input.queue)
 FUNC_READ_BITS_BE(br_read_bits_e_be,
                   unsigned int, ext_getc, bs->input.external)
 FUNC_READ_BITS_LE(br_read_bits_e_le,
@@ -394,6 +469,10 @@ FUNC_READ_BITS_BE(br_read_bits64_b_be,
                   uint64_t, br_buf_getc, bs->input.buffer)
 FUNC_READ_BITS_LE(br_read_bits64_b_le,
                   uint64_t, br_buf_getc, bs->input.buffer)
+FUNC_READ_BITS_BE(br_read_bits64_q_be,
+                  uint64_t, br_queue_getc, bs->input.queue)
+FUNC_READ_BITS_LE(br_read_bits64_q_le,
+                  uint64_t, br_queue_getc, bs->input.queue)
 FUNC_READ_BITS_BE(br_read_bits64_e_be,
                   uint64_t, ext_getc, bs->input.external)
 FUNC_READ_BITS_LE(br_read_bits64_e_le,
@@ -474,6 +553,8 @@ FUNC_READ_BITS_BIGINT_BE(br_read_bits_bigint_f_be, fgetc,
                          bs->input.file)
 FUNC_READ_BITS_BIGINT_BE(br_read_bits_bigint_b_be, br_buf_getc,
                          bs->input.buffer)
+FUNC_READ_BITS_BIGINT_BE(br_read_bits_bigint_q_be, br_queue_getc,
+                         bs->input.queue)
 FUNC_READ_BITS_BIGINT_BE(br_read_bits_bigint_e_be, ext_getc,
                          bs->input.external)
 
@@ -526,6 +607,8 @@ FUNC_READ_BITS_BIGINT_LE(br_read_bits_bigint_f_le, fgetc,
                          bs->input.file)
 FUNC_READ_BITS_BIGINT_LE(br_read_bits_bigint_b_le, br_buf_getc,
                          bs->input.buffer)
+FUNC_READ_BITS_BIGINT_LE(br_read_bits_bigint_q_le, br_queue_getc,
+                         bs->input.queue)
 FUNC_READ_BITS_BIGINT_LE(br_read_bits_bigint_e_le, ext_getc,
                          bs->input.external)
 
@@ -666,6 +749,7 @@ br_read_signed_bits_bigint_le(BitstreamReader* bs,
   }
 FUNC_SKIP_BITS_BE(br_skip_bits_f_be, fgetc, bs->input.file)
 FUNC_SKIP_BITS_BE(br_skip_bits_b_be, br_buf_getc, bs->input.buffer)
+FUNC_SKIP_BITS_BE(br_skip_bits_q_be, br_queue_getc, bs->input.queue)
 FUNC_SKIP_BITS_BE(br_skip_bits_e_be, ext_getc, bs->input.external)
 
 #define FUNC_SKIP_BITS_LE(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG) \
@@ -709,6 +793,7 @@ FUNC_SKIP_BITS_BE(br_skip_bits_e_be, ext_getc, bs->input.external)
   }
 FUNC_SKIP_BITS_LE(br_skip_bits_f_le, fgetc, bs->input.file)
 FUNC_SKIP_BITS_LE(br_skip_bits_b_le, br_buf_getc, bs->input.buffer)
+FUNC_SKIP_BITS_LE(br_skip_bits_q_le, br_queue_getc, bs->input.queue)
 FUNC_SKIP_BITS_LE(br_skip_bits_e_le, ext_getc, bs->input.external)
 
 void
@@ -788,6 +873,10 @@ FUNC_READ_UNARY(br_read_unary_b_be,
                 br_buf_getc, bs->input.buffer, read_unary_table_be)
 FUNC_READ_UNARY(br_read_unary_b_le,
                 br_buf_getc, bs->input.buffer, read_unary_table_le)
+FUNC_READ_UNARY(br_read_unary_q_be,
+                br_queue_getc, bs->input.queue, read_unary_table_be)
+FUNC_READ_UNARY(br_read_unary_q_le,
+                br_queue_getc, bs->input.queue, read_unary_table_le)
 FUNC_READ_UNARY(br_read_unary_e_be,
                 ext_getc, bs->input.external, read_unary_table_be)
 FUNC_READ_UNARY(br_read_unary_e_le,
@@ -833,6 +922,10 @@ FUNC_SKIP_UNARY(br_skip_unary_b_be,
                 br_buf_getc, bs->input.buffer, read_unary_table_be)
 FUNC_SKIP_UNARY(br_skip_unary_b_le,
                 br_buf_getc, bs->input.buffer, read_unary_table_le)
+FUNC_SKIP_UNARY(br_skip_unary_q_be,
+                br_queue_getc, bs->input.queue, read_unary_table_be)
+FUNC_SKIP_UNARY(br_skip_unary_q_le,
+                br_queue_getc, bs->input.queue, read_unary_table_le)
 FUNC_SKIP_UNARY(br_skip_unary_e_be,
                 ext_getc, bs->input.external, read_unary_table_be)
 FUNC_SKIP_UNARY(br_skip_unary_e_le,
@@ -915,6 +1008,30 @@ br_set_endianness_b(BitstreamReader *bs, bs_endianness endianness)
 }
 
 void
+br_set_endianness_q(BitstreamReader *bs, bs_endianness endianness)
+{
+    __br_set_endianness__(bs, endianness);
+    switch (endianness) {
+    case BS_LITTLE_ENDIAN:
+        bs->read = br_read_bits_q_le;
+        bs->read_64 = br_read_bits64_q_le;
+        bs->read_bigint = br_read_bits_bigint_q_le;
+        bs->skip = br_skip_bits_q_le;
+        bs->read_unary = br_read_unary_q_le;
+        bs->skip_unary = br_skip_unary_q_le;
+        break;
+    case BS_BIG_ENDIAN:
+        bs->read = br_read_bits_q_be;
+        bs->read_64 = br_read_bits64_q_be;
+        bs->read_bigint = br_read_bits_bigint_q_be;
+        bs->skip = br_skip_bits_q_be;
+        bs->read_unary = br_read_unary_q_be;
+        bs->skip_unary = br_skip_unary_q_be;
+        break;
+    }
+}
+
+void
 br_set_endianness_e(BitstreamReader *bs, bs_endianness endianness)
 {
     __br_set_endianness__(bs, endianness);
@@ -975,6 +1092,7 @@ br_set_endianness_c(BitstreamReader *bs, bs_endianness endianness)
     }
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_f, fgetc, bs->input.file)
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_b, br_buf_getc, bs->input.buffer)
+FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_q, br_queue_getc, bs->input.queue)
 FUNC_READ_HUFFMAN_CODE(br_read_huffman_code_e, ext_getc, bs->input.external)
 
 int
@@ -1021,75 +1139,43 @@ br_read_bytes_f(struct BitstreamReader_s* bs,
     }
 }
 
-void
-br_read_bytes_b(struct BitstreamReader_s* bs,
-                uint8_t* bytes,
-                unsigned int byte_count)
-{
-    if (bs->state == 0) {
-        /*stream is byte-aligned, so perform optimized read*/
-
-        /*buf_read bytes from buffer to output*/
-        if (br_buf_read(bs->input.buffer,
-                        bytes,
-                        byte_count) == byte_count) {
-            struct bs_callback* callback;
-            /*if sufficient bytes were read
-              perform callbacks on the read bytes*/
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next) {
-                bs_callback_f callback_func = callback->callback;
-                void* callback_data = callback->data;
-                unsigned int i;
-                for (i = 0; i < byte_count; i++) {
-                    callback_func(bytes[i], callback_data);
-                }
-            }
-        } else {
-            br_abort(bs);
-        }
-    } else {
-        /*stream is not byte-aligned, so perform multiple reads*/
-        for (; byte_count; byte_count--) {
-            *bytes++ = bs->read(bs, 8);
-        }
-    }
-}
-
-void
-br_read_bytes_e(struct BitstreamReader_s* bs,
-                uint8_t* bytes,
-                unsigned int byte_count)
-{
-    if (bs->state == 0) {
-        /*stream is byte-aligned, so perform optimized read*/
-
-        /*ext_fread bytes from handle to putput*/
-        if (ext_fread(bs->input.external, bytes, byte_count) == byte_count) {
-            struct bs_callback* callback;
-            /*if sufficient bytes were read
-              perform callbacks on the read bytes*/
-            for (callback = bs->callbacks;
-                 callback != NULL;
-                 callback = callback->next) {
-                bs_callback_f callback_func = callback->callback;
-                void* callback_data = callback->data;
-                unsigned i;
-                for (i = 0; i < byte_count; i++) {
-                    callback_func(bytes[i], callback_data);
-                }
-            }
-        } else {
-            br_abort(bs);
-        }
-    } else {
-        /*stream is not byte-aligned, so perform multiple reads*/
-        for (; byte_count; byte_count--) {
-            *bytes++ = bs->read(bs, 8);
-        }
-    }
-}
+#define READ_BYTES_FUNC(FUNC_NAME, READ_FUNC, READ_ARG)               \
+  void                                                                \
+  FUNC_NAME(struct BitstreamReader_s* bs,                             \
+                  uint8_t* bytes,                                     \
+                  unsigned int byte_count)                            \
+  {                                                                   \
+      if (bs->state == 0) {                                           \
+          /*stream is byte-aligned, so perform optimized read*/       \
+                                                                      \
+          /*buf_read bytes from buffer to output*/                    \
+          if (READ_FUNC(READ_ARG, bytes, byte_count) == byte_count) { \
+              struct bs_callback* callback;                           \
+              /*if sufficient bytes were read*/                       \
+              /*perform callbacks on the read bytes*/                 \
+              for (callback = bs->callbacks;                          \
+                   callback != NULL;                                  \
+                   callback = callback->next) {                       \
+                  bs_callback_f callback_func = callback->callback;   \
+                  void* callback_data = callback->data;               \
+                  unsigned int i;                                     \
+                  for (i = 0; i < byte_count; i++) {                  \
+                      callback_func(bytes[i], callback_data);         \
+                  }                                                   \
+              }                                                       \
+          } else {                                                    \
+              br_abort(bs);                                           \
+          }                                                           \
+      } else {                                                        \
+          /*stream is not byte-aligned, so perform multiple reads*/   \
+          for (; byte_count; byte_count--) {                          \
+              *bytes++ = bs->read(bs, 8);                             \
+          }                                                           \
+      }                                                               \
+  }
+READ_BYTES_FUNC(br_read_bytes_b, br_buf_read, bs->input.buffer)
+READ_BYTES_FUNC(br_read_bytes_q, br_queue_read, bs->input.queue)
+READ_BYTES_FUNC(br_read_bytes_e, ext_fread, bs->input.external)
 
 void
 br_read_bytes_c(struct BitstreamReader_s* bs,
@@ -1225,6 +1311,23 @@ br_getpos_b(BitstreamReader* bs)
 }
 
 br_pos_t*
+br_getpos_q(BitstreamReader* bs)
+{
+    struct br_queue* queue = bs->input.queue;
+    br_pos_t* pos = malloc(sizeof(br_pos_t));
+
+    /*increment reference count to keep track of active positions*/
+    queue->pos_count++;
+
+    pos->reader = bs;
+    pos->position.queue.pos = queue->pos;
+    pos->position.queue.pos_count = &queue->pos_count;
+    pos->state = bs->state;
+    pos->del = br_pos_del_q;
+    return pos;
+}
+
+br_pos_t*
 br_getpos_e(BitstreamReader* bs)
 {
     struct br_external_input* input = bs->input.external;
@@ -1279,6 +1382,16 @@ br_setpos_b(BitstreamReader* bs, const br_pos_t* pos)
 }
 
 void
+br_setpos_q(BitstreamReader* bs, const br_pos_t* pos)
+{
+    if (pos->reader != bs) {
+        br_abort(bs);
+    }
+    bs->input.queue->pos = pos->position.queue.pos;
+    bs->state = pos->state;
+}
+
+void
 br_setpos_e(BitstreamReader* bs, const br_pos_t* pos)
 {
     struct br_external_input* input = bs->input.external;
@@ -1316,6 +1429,14 @@ br_pos_del_b(br_pos_t* pos)
 }
 
 void
+br_pos_del_q(br_pos_t* pos)
+{
+    /*decrement reference count of open positions*/
+    *pos->position.queue.pos_count -= 1;
+    free(pos);
+}
+
+void
 br_pos_del_e(br_pos_t* pos)
 {
     pos->position.external.free_pos(pos->position.external.pos);
@@ -1343,6 +1464,15 @@ br_seek_b(BitstreamReader* bs, long position, bs_whence whence)
 }
 
 void
+br_seek_q(BitstreamReader* bs, long position, bs_whence whence)
+{
+    bs->state = 0;
+    if (br_queue_fseek(bs->input.queue, position, whence)) {
+        br_abort(bs);
+    }
+}
+
+void
 br_seek_e(BitstreamReader* bs, long position, bs_whence whence)
 {
     bs->state = 0;
@@ -1358,35 +1488,51 @@ br_seek_c(BitstreamReader* bs, long position, bs_whence whence)
 }
 
 
-struct BitstreamReader_s*
-br_substream(struct BitstreamReader_s *stream, unsigned bytes)
+BitstreamReader*
+br_substream(BitstreamReader* bs, unsigned bytes)
 {
-    BitstreamReader *substream = br_open_buffer(NULL, 0, stream->endianness);
+    BitstreamReader *substream = br_open_buffer(NULL, 0, bs->endianness);
     struct br_buffer *buffer = substream->input.buffer;
     const unsigned BUF_SIZE = 1 << 20;
 
-    if (!setjmp(*br_try(stream))) {
+    if (!setjmp(*br_try(bs))) {
         /*read input stream in chunks to avoid allocating
           a whole lot of data upfront
           in case "bytes" is much larger than the input stream*/
         while (bytes) {
             const unsigned to_read = MIN(BUF_SIZE, bytes);
             buffer->data = realloc(buffer->data, buffer->size + to_read);
-            stream->read_bytes(stream, buffer->data + buffer->size, to_read);
+            bs->read_bytes(bs, buffer->data + buffer->size, to_read);
             buffer->size += to_read;
             bytes -= to_read;
         }
-        br_etry(stream);
+        br_etry(bs);
         return substream;
     } else {
         /*be sure to close partial substream before re-raising abort*/
         substream->close(substream);
-        br_etry(stream);
-        br_abort(stream);
+        br_etry(bs);
+        br_abort(bs);
         return NULL;  /*won't get here*/
     }
 }
 
+void
+br_enqueue(BitstreamReader* bs, unsigned bytes, BitstreamQueue* queue)
+{
+    /*read input stream in chunks to avoid allocating
+      a lot of data upfront
+      in case "bytes" is much larger than the input stream*/
+    const unsigned BUF_SIZE = 1 << 20;
+    struct br_queue* output = queue->input.queue;
+    while (bytes) {
+        const unsigned to_read = MIN(BUF_SIZE, bytes);
+        br_queue_resize_for(output, to_read);
+        bs->read_bytes(bs, br_queue_end(output), to_read);
+        output->size += to_read;
+        bytes -= to_read;
+    }
+}
 
 void
 br_close_methods(BitstreamReader* bs)
@@ -1425,6 +1571,13 @@ br_close_internal_stream_b(BitstreamReader* bs)
 {
     /*swap read methods with closed methods*/
     br_close_methods(bs);
+}
+
+void
+br_close_internal_stream_q(BitstreamQueue* bs)
+{
+    /*swap read methods with closed methods*/
+    br_close_methods((BitstreamReader*)bs);
 }
 
 void
@@ -1486,6 +1639,39 @@ br_free_b(BitstreamReader* bs)
 }
 
 void
+br_free_q(BitstreamQueue* bs)
+{
+    struct bs_exception *e_node;
+    struct bs_exception *e_next;
+
+    /*deallocate queue*/
+    br_queue_free(bs->input.queue);
+
+    /*deallocate callbacks*/
+    while (bs->callbacks != NULL) {
+        bs->pop_callback((BitstreamReader*)bs, NULL);
+    }
+
+    /*deallocate exceptions*/
+    if (bs->exceptions != NULL) {
+        fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
+    }
+    for (e_node = bs->exceptions; e_node != NULL; e_node = e_next) {
+        e_next = e_node->next;
+        free(e_node);
+    }
+
+    /*deallocate used exceptions*/
+    for (e_node = bs->exceptions_used; e_node != NULL; e_node = e_next) {
+        e_next = e_node->next;
+        free(e_node);
+    }
+
+    /*deallocate the struct itself*/
+    free(bs);
+}
+
+void
 br_free_e(BitstreamReader* bs)
 {
     /*free internal file-like object, if necessary*/
@@ -1503,6 +1689,27 @@ br_close(BitstreamReader* bs)
     bs->free(bs);
 }
 
+void
+br_close_q(BitstreamQueue* bs)
+{
+    bs->close_internal_stream(bs);
+    bs->free(bs);
+}
+
+unsigned
+br_size_q(const BitstreamQueue *bs)
+{
+    return br_queue_size(bs->input.queue);
+}
+
+void
+br_extend_q(BitstreamQueue *bs, unsigned byte_count, const uint8_t* data)
+{
+    struct br_queue *queue = bs->input.queue;
+    br_queue_resize_for(queue, byte_count);
+    memcpy(br_queue_end(queue), data, byte_count);
+    queue->size += byte_count;
+}
 
 #ifdef DEBUG
 void
@@ -3141,46 +3348,89 @@ br_buf_read(struct br_buffer *buf, uint8_t *data, unsigned size)
     return to_read;
 }
 
-int
-br_buf_fseek(struct br_buffer *buf, long position, int whence)
+#define FUNC_FSEEK(FUNC_NAME, TYPE)                             \
+  int                                                           \
+  FUNC_NAME(TYPE buf, long position, int whence)                \
+  {                                                             \
+      switch (whence) {                                         \
+      case 0:  /*SEEK_SET*/                                     \
+          if (position < 0) {                                   \
+              /*can't seek before the beginning of the buffer*/ \
+              return -1;                                        \
+          } else if (position > buf->size) {                    \
+              /*can't seek past the end of the buffer*/         \
+              return -1;                                        \
+          } else {                                              \
+              buf->pos = (unsigned)position;                    \
+              return 0;                                         \
+          }                                                     \
+      case 1:  /*SEEK_CUR*/                                     \
+          if ((position < 0) && (-position > buf->pos)) {       \
+              /*can't seek past the beginning of the buffer*/   \
+              return -1;                                        \
+          } else if ((position > 0) && (position > (buf->size - buf->pos))) { \
+              /*can't seek past the end of the buffer*/         \
+              return -1;                                        \
+          } else {                                              \
+              buf->pos += position;                             \
+              return 0;                                         \
+          }                                                     \
+      case 2:  /*SEEK_END*/                                     \
+          if (position > 0) {                                   \
+              /*can't seek past the end of the buffer*/         \
+              return -1;                                        \
+          } else if (-position > buf->size) {                   \
+              /*can't seek past the beginning of the buffer*/   \
+              return -1;                                        \
+          } else {                                              \
+              buf->pos = buf->size + (unsigned)position;        \
+              return 0;                                         \
+          }                                                     \
+      default:                                                  \
+          /*unknown "whence"*/                                  \
+          return -1;                                            \
+      }                                                         \
+  }
+FUNC_FSEEK(br_buf_fseek, struct br_buffer*)
+FUNC_FSEEK(br_queue_fseek, struct br_queue*)
+
+
+/*******************************************************************
+ *                          queue-specific                         *
+ *******************************************************************/
+
+
+unsigned
+br_queue_read(struct br_queue *buf, uint8_t *data, unsigned size)
 {
-    switch (whence) {
-    case 0:  /*SEEK_SET*/
-        if (position < 0) {
-            /*can't seek before the beginning of the buffer*/
-            return -1;
-        } else if (position > buf->size) {
-            /*can't seek past the end of the buffer*/
-            return -1;
-        } else {
-            buf->pos = (unsigned)position;
-            return 0;
-        }
-    case 1:  /*SEEK_CUR*/
-        if ((position < 0) && (-position > buf->pos)) {
-            /*can't seek past the beginning of the buffer*/
-            return -1;
-        } else if ((position > 0) && (position > (buf->size - buf->pos))) {
-            /*can't seek past the end of the buffer*/
-            return -1;
-        } else {
-            buf->pos += position;
-            return 0;
-        }
-    case 2:  /*SEEK_END*/
-        if (position > 0) {
-            /*can't seek past the end of the buffer*/
-            return -1;
-        } else if (-position > buf->size) {
-            /*can't seek past the beginning of the buffer*/
-            return -1;
-        } else {
-            buf->pos = buf->size + (unsigned)position;
-            return 0;
-        }
-    default:
-        /*unknown "whence"*/
-        return -1;
+    const unsigned remaining_space = br_queue_size(buf);
+    const unsigned to_read = MIN(size, remaining_space);
+    memcpy(data, buf->data + buf->pos, to_read);
+    buf->pos += to_read;
+    return to_read;
+}
+
+void
+br_queue_resize_for(struct br_queue *buf, unsigned additional_bytes)
+{
+    unsigned current_space;
+
+    /*garbage-collect initial data if there is any
+      and there are no outstanding getpos positions*/
+    if (buf->pos && (!buf->pos_count)) {
+        const unsigned buf_size = br_queue_size(buf);
+        memmove(buf->data, buf->data + buf->pos, buf_size);
+        buf->pos = 0;
+        buf->size = buf_size;
+    }
+
+    /*if additional space is still required,
+      realloc more space to fit*/
+    current_space = br_queue_available_size(buf);
+
+    if (current_space < additional_bytes) {
+        buf->maximum_size += (additional_bytes - current_space);
+        buf->data = realloc(buf->data, buf->maximum_size);
     }
 }
 
@@ -3643,8 +3893,10 @@ int main(int argc, char* argv[]) {
     BitstreamReader* reader;
     BitstreamReader* subreader;
     BitstreamReader* subsubreader;
+    BitstreamQueue* queue;
     br_pos_t* pos;
     struct sigaction new_action, old_action;
+    const uint8_t buffer_data[] = {0xB1, 0xED, 0x3B, 0xC1};
 
     struct huffman_frequency frequencies[] =
         {bw_str_to_frequency("11", 0),
@@ -3705,6 +3957,48 @@ int main(int argc, char* argv[]) {
 
     fseek(temp_file, 0, SEEK_SET);
 
+    /*test a big-endian buffer*/
+    reader = br_open_buffer(buffer_data, 4, BS_BIG_ENDIAN);
+    test_big_endian_reader(reader, be_table);
+    test_big_endian_parse(reader);
+    test_try(reader, be_table);
+    test_callbacks_reader(reader, 14, 18, be_table, 14);
+    reader->free(reader);
+
+    /*test a big-endian queue*/
+    queue = br_open_queue(BS_BIG_ENDIAN);
+    assert(queue->size(queue) == 0);
+    queue->extend(queue, 4, buffer_data);
+    assert(queue->size(queue) == 4);
+    test_big_endian_reader((BitstreamReader*)queue, be_table);
+    test_big_endian_parse((BitstreamReader*)queue);
+    test_try((BitstreamReader*)queue, be_table);
+    test_callbacks_reader((BitstreamReader*)queue, 14, 18, be_table, 14);
+    queue->skip_bytes((BitstreamReader*)queue, 4);
+    assert(queue->size(queue) == 0);
+    queue->extend(queue, 4, buffer_data);
+    assert(queue->size(queue) == 4);
+    test_big_endian_reader((BitstreamReader*)queue, be_table);
+    test_big_endian_parse((BitstreamReader*)queue);
+    test_try((BitstreamReader*)queue, be_table);
+    test_callbacks_reader((BitstreamReader*)queue, 14, 18, be_table, 14);
+    queue->skip_bytes((BitstreamReader*)queue, 4);
+    assert(queue->size(queue) == 0);
+
+    fseek(temp_file, 0, SEEK_SET);
+
+    reader = br_open(temp_file, BS_BIG_ENDIAN);
+    reader->enqueue(reader, 4, queue);
+    reader->free(reader);
+    assert(queue->size(queue) == 4);
+    test_big_endian_reader((BitstreamReader*)queue, be_table);
+    test_big_endian_parse((BitstreamReader*)queue);
+    test_try((BitstreamReader*)queue, be_table);
+    test_callbacks_reader((BitstreamReader*)queue, 14, 18, be_table, 14);
+    queue->free(queue);
+
+    fseek(temp_file, 0, SEEK_SET);
+
     /*test a big-endian stream using external functions*/
     reader = br_open_external(temp_file,
                               BS_BIG_ENDIAN,
@@ -3740,6 +4034,48 @@ int main(int argc, char* argv[]) {
     reader = br_open(temp_file2, BS_BIG_ENDIAN);
     test_close_errors(reader, be_table);
     reader->close(reader);
+
+    /*test a little-endian buffer*/
+    reader = br_open_buffer(buffer_data, 4, BS_LITTLE_ENDIAN);
+    test_little_endian_reader(reader, le_table);
+    test_little_endian_parse(reader);
+    test_try(reader, le_table);
+    test_callbacks_reader(reader, 14, 18, le_table, 14);
+    reader->free(reader);
+
+    /*test a little-endian queue*/
+    queue = br_open_queue(BS_LITTLE_ENDIAN);
+    assert(queue->size(queue) == 0);
+    queue->extend(queue, 4, buffer_data);
+    assert(queue->size(queue) == 4);
+    test_little_endian_reader((BitstreamReader*)queue, le_table);
+    test_little_endian_parse((BitstreamReader*)queue);
+    test_try((BitstreamReader*)queue, le_table);
+    test_callbacks_reader((BitstreamReader*)queue, 14, 18, le_table, 14);
+    queue->skip_bytes((BitstreamReader*)queue, 4);
+    assert(queue->size(queue) == 0);
+    queue->extend(queue, 4, buffer_data);
+    assert(queue->size(queue) == 4);
+    test_little_endian_reader((BitstreamReader*)queue, le_table);
+    test_little_endian_parse((BitstreamReader*)queue);
+    test_try((BitstreamReader*)queue, le_table);
+    test_callbacks_reader((BitstreamReader*)queue, 14, 18, le_table, 14);
+    queue->skip_bytes((BitstreamReader*)queue, 4);
+    assert(queue->size(queue) == 0);
+
+    fseek(temp_file, 0, SEEK_SET);
+
+    reader = br_open(temp_file, BS_LITTLE_ENDIAN);
+    reader->enqueue(reader, 4, queue);
+    reader->free(reader);
+    assert(queue->size(queue) == 4);
+    test_little_endian_reader((BitstreamReader*)queue, le_table);
+    test_little_endian_parse((BitstreamReader*)queue);
+    test_try((BitstreamReader*)queue, le_table);
+    test_callbacks_reader((BitstreamReader*)queue, 14, 18, le_table, 14);
+    queue->free(queue);
+
+    fseek(temp_file, 0, SEEK_SET);
 
     /*test a little-endian stream using external functions*/
     reader = br_open_external(temp_file,
