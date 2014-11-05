@@ -267,7 +267,7 @@ oggiterator_next_packet(OggPacketIterator *iterator,
                         bs_endianness endianness,
                         ogg_status *result)
 {
-    BitstreamReader *packet = br_open_buffer(NULL, 0, endianness);
+    BitstreamQueue *packet = br_open_queue(endianness);
     uint8_t *segment_data;
     uint8_t segment_length;
 
@@ -275,12 +275,15 @@ oggiterator_next_packet(OggPacketIterator *iterator,
         if ((*result = oggiterator_next_segment(iterator,
                                                 &segment_data,
                                                 &segment_length)) == OGG_OK) {
-            br_buf_extend(packet->input.buffer, segment_data, segment_length);
+            packet->push(packet, segment_length, segment_data);
         }
     } while ((*result == OGG_OK) && (segment_length == 255));
 
     if (*result == OGG_OK) {
-        return packet;
+        BitstreamReader *converted =
+            packet->substream((BitstreamReader*)packet, packet->size(packet));
+        packet->close(packet);
+        return converted;
     } else {
         packet->close(packet);
         return NULL;

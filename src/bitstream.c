@@ -55,6 +55,290 @@ const static struct read_unary read_unary_table_le[0x200][2] =
 #include "read_unary_table_le.h"
     ;
 
+
+/*******************************************************************
+ *                       function definitions                      *
+ * These are used internally by the bitstream module but shouldn't *
+ * be used elsewhere.  Stick with the exposed methods if possible. *
+ *******************************************************************/
+
+/*******************************************************************
+ *                       read buffer-specific                      *
+ *******************************************************************/
+
+struct br_buffer {
+    uint8_t *data;
+    unsigned pos;
+    unsigned size;
+};
+
+/*allocates new br_buffer struct with no data
+  must be freed with br_buf_free()*/
+static inline struct br_buffer*
+br_buf_new(void)
+{
+    struct br_buffer *buf = malloc(sizeof(struct br_buffer));
+    buf->data = NULL;
+    buf->pos = 0;
+    buf->size = 0;
+    return buf;
+}
+
+/*deallocates a br_buffer struct and any data it may have*/
+static inline void
+br_buf_free(struct br_buffer *buf)
+{
+    free(buf->data);
+    free(buf);
+}
+
+/*returns 1 if the buffer is empty*/
+static inline int
+br_buf_empty(const struct br_buffer *buf)
+{
+    return buf->pos == buf->size;
+}
+
+/*appends the given data to the buffer*/
+static void
+br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size)
+{
+    const unsigned new_size = buf->size + size;
+    buf->data = realloc(buf->data, new_size);
+    memcpy(buf->data + buf->size, data, size);
+    buf->size = new_size;
+}
+
+/*returns the next character in the buffer, or EOF if no characters remain*/
+static inline int
+br_buf_getc(struct br_buffer *buf)
+{
+    if (buf->pos < buf->size) {
+        return buf->data[buf->pos++];
+    } else {
+        return EOF;
+    }
+}
+
+/*reads "size" amount of bytes from the buffer to "data"
+  returns the amount of bytes actually read
+  which may be less than the amount requested*/
+static unsigned
+br_buf_read(struct br_buffer *buf, uint8_t *data, unsigned size)
+{
+    const unsigned remaining_space = buf->size - buf->pos;
+    const unsigned to_read = MIN(size, remaining_space);
+    memcpy(data, buf->data + buf->pos, to_read);
+    buf->pos += to_read;
+    return to_read;
+}
+
+/*gets the current position in the buffer*/
+static inline void
+br_buf_getpos(const struct br_buffer *buf, unsigned *pos)
+{
+    *pos = buf->pos;
+}
+
+/*sets the position in the buffer*/
+static inline void
+br_buf_setpos(struct br_buffer *buf, unsigned pos)
+{
+    buf->pos = pos;
+}
+
+/*analagous to fseek, sets a position in the buffer*/
+static int
+br_buf_fseek(struct br_buffer *buf, long position, int whence);
+
+
+
+/*******************************************************************
+ *                          queue-specific                         *
+ *******************************************************************/
+
+struct br_queue {
+    uint8_t *data;         /*data bytes*/
+    unsigned pos;          /*current position of reader*/
+    unsigned size;         /*amount of actually populated bytes*/
+    unsigned maximum_size; /*total size of "data"*/
+    unsigned pos_count;    /*number of live getpos positions*/
+};
+
+static inline struct br_queue*
+br_queue_new(void)
+{
+    struct br_queue *queue = malloc(sizeof(struct br_queue));
+    queue->data = NULL;
+    queue->pos = 0;
+    queue->size = 0;
+    queue->maximum_size = 0;
+    queue->pos_count = 0;
+    return queue;
+}
+
+static inline void
+br_queue_free(struct br_queue *buf)
+{
+    free(buf->data);
+    free(buf);
+}
+
+static inline int
+br_queue_getc(struct br_queue *buf)
+{
+    if (buf->pos < buf->size) {
+        return buf->data[buf->pos++];
+    } else {
+        return EOF;
+    }
+}
+
+static unsigned
+br_queue_read(struct br_queue *buf, uint8_t *data, unsigned size)
+{
+    const unsigned remaining_space = buf->size - buf->pos;
+    const unsigned to_read = MIN(size, remaining_space);
+    memcpy(data, buf->data + buf->pos, to_read);
+    buf->pos += to_read;
+    return to_read;
+}
+
+/*analagous to fseek, sets position in the queue*/
+static int
+br_queue_fseek(struct br_queue *buf, long position, int whence);
+
+/*returns the number of bytes available to be read*/
+static inline unsigned
+br_queue_size(const struct br_queue *buf)
+{
+    return buf->size - buf->pos;
+}
+
+/*returns the number of bytes that can be written before resizing*/
+static inline unsigned
+br_queue_available_size(const struct br_queue *buf)
+{
+    return buf->maximum_size - buf->size;
+}
+
+/*resize queue to hold the given number of additional bytes*/
+static void
+br_queue_resize_for(struct br_queue *buf, unsigned additional_bytes)
+{
+    unsigned current_space;
+
+    /*garbage-collect initial data if there is any
+      and there are no outstanding getpos positions*/
+    if (buf->pos && (!buf->pos_count)) {
+        const unsigned buf_size = br_queue_size(buf);
+        if (buf_size) {
+            memmove(buf->data, buf->data + buf->pos, buf_size);
+        }
+        buf->pos = 0;
+        buf->size = buf_size;
+    }
+
+    /*if additional space is still required,
+      realloc more space to fit*/
+    current_space = br_queue_available_size(buf);
+
+    if (current_space < additional_bytes) {
+        buf->maximum_size += (additional_bytes - current_space);
+        buf->data = realloc(buf->data, buf->maximum_size);
+    }
+}
+
+/*returns the tail of the queue where new bytes can be added*/
+static inline uint8_t*
+br_queue_end(struct br_queue *buf)
+{
+    return buf->data + buf->size;
+}
+
+
+/*******************************************************************
+ *                       write buffer-specific                     *
+ *******************************************************************/
+
+struct bw_buffer {
+    unsigned pos;         /*the current position in the buffer*/
+    unsigned max_pos;     /*the farthest written data*/
+    unsigned buffer_size; /*the total buffer size*/
+    uint8_t* buffer;      /*the buffer data itself*/
+};
+
+static inline struct bw_buffer*
+bw_buf_new(void)
+{
+    struct bw_buffer* buf = malloc(sizeof(struct bw_buffer));
+    buf->pos = buf->max_pos = buf->buffer_size = 0;
+    buf->buffer = NULL;
+    return buf;
+}
+
+static inline void
+bw_buf_free(struct bw_buffer* buf)
+{
+    free(buf->buffer);
+    free(buf);
+}
+
+static inline int
+bw_buf_putc(int c, struct bw_buffer* buf)
+{
+    if (buf->pos == buf->buffer_size) {
+        buf->buffer_size += 4096;
+        buf->buffer = realloc(buf->buffer, buf->buffer_size);
+    }
+    buf->buffer[buf->pos++] = (uint8_t)c;
+    buf->max_pos = MAX(buf->max_pos, buf->pos);
+    return c;
+}
+
+static void
+bw_buf_write(struct bw_buffer* buf, const uint8_t *data, unsigned data_size)
+{
+    const unsigned available_bytes = buf->buffer_size - buf->pos;
+    if (available_bytes < data_size) {
+        buf->buffer_size += (data_size - available_bytes);
+        buf->buffer = realloc(buf->buffer, buf->buffer_size);
+    }
+    memcpy(buf->buffer + buf->pos, data, data_size);
+    buf->pos += data_size;
+    buf->max_pos = MAX(buf->max_pos, buf->pos);
+}
+
+static inline void
+bw_buf_getpos(const struct bw_buffer* buf, unsigned *pos)
+{
+    *pos = buf->pos;
+}
+
+/*returns 0 on a successful seek, EOF if a seek error occurs
+  (usually if one sets a position on a buffer that's been reset)*/
+static inline int
+bw_buf_setpos(struct bw_buffer* buf, unsigned pos)
+{
+    if (pos <= buf->max_pos) {
+        buf->pos = pos;
+        return 0;
+    } else {
+        return EOF;
+    }
+}
+
+static inline unsigned
+bw_buf_size(const struct bw_buffer* buf) {
+    return buf->max_pos;
+}
+
+static inline void
+bw_buf_reset(struct bw_buffer* buf) {
+    buf->pos = buf->max_pos = 0;
+}
+
+
 /*returns a base BitstreamReader with many fields filled in
   and the rest to be filled in by the final implementation*/
 static BitstreamReader*
@@ -274,7 +558,7 @@ br_open_queue(bs_endianness endianness)
     bs->close = br_close_q;
 
     bs->size = br_size_q;
-    bs->extend = br_extend_q;
+    bs->push = br_push_q;
     bs->reset = br_reset_q;
 
     return bs;
@@ -1704,7 +1988,7 @@ br_size_q(const BitstreamQueue *bs)
 }
 
 void
-br_extend_q(BitstreamQueue *bs, unsigned byte_count, const uint8_t* data)
+br_push_q(BitstreamQueue *bs, unsigned byte_count, const uint8_t* data)
 {
     struct br_queue *queue = bs->input.queue;
     br_queue_resize_for(queue, byte_count);
@@ -3320,31 +3604,8 @@ FUNC_CALL_CALLBACKS(br_call_callbacks, BitstreamReader)
 FUNC_CALL_CALLBACKS(bw_call_callbacks, BitstreamWriter)
 
 
-/*******************************************************************
- *                       read buffer-specific                      *
- *******************************************************************/
-
-void
-br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size)
-{
-    const unsigned new_size = buf->size + size;
-    buf->data = realloc(buf->data, new_size);
-    memcpy(buf->data + buf->size, data, size);
-    buf->size = new_size;
-}
-
-unsigned
-br_buf_read(struct br_buffer *buf, uint8_t *data, unsigned size)
-{
-    const unsigned remaining_space = buf->size - buf->pos;
-    const unsigned to_read = MIN(size, remaining_space);
-    memcpy(data, buf->data + buf->pos, to_read);
-    buf->pos += to_read;
-    return to_read;
-}
-
 #define FUNC_FSEEK(FUNC_NAME, TYPE)                             \
-  int                                                           \
+  static int                                                           \
   FUNC_NAME(TYPE buf, long position, int whence)                \
   {                                                             \
       switch (whence) {                                         \
@@ -3389,65 +3650,6 @@ br_buf_read(struct br_buffer *buf, uint8_t *data, unsigned size)
 FUNC_FSEEK(br_buf_fseek, struct br_buffer*)
 FUNC_FSEEK(br_queue_fseek, struct br_queue*)
 
-
-/*******************************************************************
- *                          queue-specific                         *
- *******************************************************************/
-
-
-unsigned
-br_queue_read(struct br_queue *buf, uint8_t *data, unsigned size)
-{
-    const unsigned remaining_space = br_queue_size(buf);
-    const unsigned to_read = MIN(size, remaining_space);
-    memcpy(data, buf->data + buf->pos, to_read);
-    buf->pos += to_read;
-    return to_read;
-}
-
-void
-br_queue_resize_for(struct br_queue *buf, unsigned additional_bytes)
-{
-    unsigned current_space;
-
-    /*garbage-collect initial data if there is any
-      and there are no outstanding getpos positions*/
-    if (buf->pos && (!buf->pos_count)) {
-        const unsigned buf_size = br_queue_size(buf);
-        if (buf_size) {
-            memmove(buf->data, buf->data + buf->pos, buf_size);
-        }
-        buf->pos = 0;
-        buf->size = buf_size;
-    }
-
-    /*if additional space is still required,
-      realloc more space to fit*/
-    current_space = br_queue_available_size(buf);
-
-    if (current_space < additional_bytes) {
-        buf->maximum_size += (additional_bytes - current_space);
-        buf->data = realloc(buf->data, buf->maximum_size);
-    }
-}
-
-/*******************************************************************
- *                       write buffer-specific                     *
- *******************************************************************/
-
-
-void
-bw_buf_write(struct bw_buffer* buf, const uint8_t *data, unsigned data_size)
-{
-    const unsigned available_bytes = buf->buffer_size - buf->pos;
-    if (available_bytes < data_size) {
-        buf->buffer_size += (data_size - available_bytes);
-        buf->buffer = realloc(buf->buffer, buf->buffer_size);
-    }
-    memcpy(buf->buffer + buf->pos, data, data_size);
-    buf->pos += data_size;
-    buf->max_pos = MAX(buf->max_pos, buf->pos);
-}
 
 void
 bw_pos_stack_push(struct bw_pos_stack** stack, bw_pos_t* pos)
@@ -3965,7 +4167,7 @@ int main(int argc, char* argv[]) {
     /*test a big-endian queue*/
     queue = br_open_queue(BS_BIG_ENDIAN);
     assert(queue->size(queue) == 0);
-    queue->extend(queue, 4, buffer_data);
+    queue->push(queue, 4, buffer_data);
     assert(queue->size(queue) == 4);
     test_big_endian_reader((BitstreamReader*)queue, be_table);
     test_big_endian_parse((BitstreamReader*)queue);
@@ -3973,7 +4175,7 @@ int main(int argc, char* argv[]) {
     test_callbacks_reader((BitstreamReader*)queue, 14, 18, be_table, 14);
     queue->skip_bytes((BitstreamReader*)queue, 4);
     assert(queue->size(queue) == 0);
-    queue->extend(queue, 4, buffer_data);
+    queue->push(queue, 4, buffer_data);
     assert(queue->size(queue) == 4);
     test_big_endian_reader((BitstreamReader*)queue, be_table);
     test_big_endian_parse((BitstreamReader*)queue);
@@ -4043,7 +4245,7 @@ int main(int argc, char* argv[]) {
     /*test a little-endian queue*/
     queue = br_open_queue(BS_LITTLE_ENDIAN);
     assert(queue->size(queue) == 0);
-    queue->extend(queue, 4, buffer_data);
+    queue->push(queue, 4, buffer_data);
     assert(queue->size(queue) == 4);
     test_little_endian_reader((BitstreamReader*)queue, le_table);
     test_little_endian_parse((BitstreamReader*)queue);
@@ -4051,7 +4253,7 @@ int main(int argc, char* argv[]) {
     test_callbacks_reader((BitstreamReader*)queue, 14, 18, le_table, 14);
     queue->skip_bytes((BitstreamReader*)queue, 4);
     assert(queue->size(queue) == 0);
-    queue->extend(queue, 4, buffer_data);
+    queue->push(queue, 4, buffer_data);
     assert(queue->size(queue) == 4);
     test_little_endian_reader((BitstreamReader*)queue, le_table);
     test_little_endian_parse((BitstreamReader*)queue);

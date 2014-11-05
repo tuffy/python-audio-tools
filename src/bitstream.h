@@ -423,9 +423,9 @@ typedef struct BitstreamQueue_s {
 
     /*extends the queue with the given amount of data*/
     void
-    (*extend)(struct BitstreamQueue_s* bs,
-              unsigned byte_count,
-              const uint8_t* data);
+    (*push)(struct BitstreamQueue_s* bs,
+            unsigned byte_count,
+            const uint8_t* data);
 
     /*removes all data in the queue*/
     void
@@ -878,9 +878,9 @@ unsigned
 br_size_q(const BitstreamQueue *bs);
 
 
-/*bs->extend(bs, byte_count, data)  method*/
+/*bs->push(bs, byte_count, data)  method*/
 void
-br_extend_q(BitstreamQueue *bs, unsigned byte_count, const uint8_t* data);
+br_push_q(BitstreamQueue *bs, unsigned byte_count, const uint8_t* data);
 
 
 /*bs->reset(bs)  method*/
@@ -1620,229 +1620,6 @@ bs_format_size(const char* format);
 unsigned
 bs_format_byte_size(const char* format);
 
-
-/*******************************************************************
- *                       read buffer-specific                      *
- *******************************************************************/
-
-struct br_buffer {
-    uint8_t *data;
-    unsigned pos;
-    unsigned size;
-};
-
-/*allocates new br_buffer struct with no data
-  must be freed with br_buf_free()*/
-static inline struct br_buffer*
-br_buf_new(void)
-{
-    struct br_buffer *buf = malloc(sizeof(struct br_buffer));
-    buf->data = NULL;
-    buf->pos = 0;
-    buf->size = 0;
-    return buf;
-}
-
-/*deallocates a br_buffer struct and any data it may have*/
-static inline void
-br_buf_free(struct br_buffer *buf)
-{
-    free(buf->data);
-    free(buf);
-}
-
-/*returns 1 if the buffer is empty*/
-static inline int
-br_buf_empty(const struct br_buffer *buf)
-{
-    return buf->pos == buf->size;
-}
-
-/*appends the given data to the buffer*/
-void
-br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size);
-
-/*returns the next character in the buffer, or EOF if no characters remain*/
-static inline int
-br_buf_getc(struct br_buffer *buf)
-{
-    if (buf->pos < buf->size) {
-        return buf->data[buf->pos++];
-    } else {
-        return EOF;
-    }
-}
-
-/*reads "size" amount of bytes from the buffer to "data"
-  returns the amount of bytes actually read
-  which may be less than the amount requested*/
-unsigned
-br_buf_read(struct br_buffer *buf, uint8_t *data, unsigned size);
-
-/*gets the current position in the buffer*/
-static inline void
-br_buf_getpos(const struct br_buffer *buf, unsigned *pos)
-{
-    *pos = buf->pos;
-}
-
-/*sets the position in the buffer*/
-static inline void
-br_buf_setpos(struct br_buffer *buf, unsigned pos)
-{
-    buf->pos = pos;
-}
-
-/*analagous to fseek, sets a position in the buffer*/
-int
-br_buf_fseek(struct br_buffer *buf, long position, int whence);
-
-
-
-/*******************************************************************
- *                          queue-specific                         *
- *******************************************************************/
-
-struct br_queue {
-    uint8_t *data;         /*data bytes*/
-    unsigned pos;          /*current position of reader*/
-    unsigned size;         /*amount of actually populated bytes*/
-    unsigned maximum_size; /*total size of "data"*/
-    unsigned pos_count;    /*number of live getpos positions*/
-};
-
-static inline struct br_queue*
-br_queue_new(void)
-{
-    struct br_queue *queue = malloc(sizeof(struct br_queue));
-    queue->data = NULL;
-    queue->pos = 0;
-    queue->size = 0;
-    queue->maximum_size = 0;
-    queue->pos_count = 0;
-    return queue;
-}
-
-static inline void
-br_queue_free(struct br_queue *buf)
-{
-    free(buf->data);
-    free(buf);
-}
-
-static inline int
-br_queue_getc(struct br_queue *buf)
-{
-    if (buf->pos < buf->size) {
-        return buf->data[buf->pos++];
-    } else {
-        return EOF;
-    }
-}
-
-unsigned
-br_queue_read(struct br_queue *buf, uint8_t *data, unsigned size);
-
-/*analagous to fseek, sets position in the queue*/
-int
-br_queue_fseek(struct br_queue *buf, long position, int whence);
-
-/*returns the number of bytes available to be read*/
-static inline unsigned
-br_queue_size(const struct br_queue *buf)
-{
-    return buf->size - buf->pos;
-}
-
-/*returns the number of bytes that can be written before resizing*/
-static inline unsigned
-br_queue_available_size(const struct br_queue *buf)
-{
-    return buf->maximum_size - buf->size;
-}
-
-/*resize queue to hold the given number of additional bytes*/
-void
-br_queue_resize_for(struct br_queue *buf, unsigned additional_bytes);
-
-/*returns the tail of the queue where new bytes can be added*/
-static inline uint8_t*
-br_queue_end(struct br_queue *buf)
-{
-    return buf->data + buf->size;
-}
-
-
-/*******************************************************************
- *                       write buffer-specific                     *
- *******************************************************************/
-
-struct bw_buffer {
-    unsigned pos;         /*the current position in the buffer*/
-    unsigned max_pos;     /*the farthest written data*/
-    unsigned buffer_size; /*the total buffer size*/
-    uint8_t* buffer;      /*the buffer data itself*/
-};
-
-static inline struct bw_buffer*
-bw_buf_new(void)
-{
-    struct bw_buffer* buf = malloc(sizeof(struct bw_buffer));
-    buf->pos = buf->max_pos = buf->buffer_size = 0;
-    buf->buffer = NULL;
-    return buf;
-}
-
-static inline void
-bw_buf_free(struct bw_buffer* buf)
-{
-    free(buf->buffer);
-    free(buf);
-}
-
-static inline int
-bw_buf_putc(int c, struct bw_buffer* buf)
-{
-    if (buf->pos == buf->buffer_size) {
-        buf->buffer_size += 4096;
-        buf->buffer = realloc(buf->buffer, buf->buffer_size);
-    }
-    buf->buffer[buf->pos++] = (uint8_t)c;
-    buf->max_pos = MAX(buf->max_pos, buf->pos);
-    return c;
-}
-
-void
-bw_buf_write(struct bw_buffer* buf, const uint8_t *data, unsigned data_size);
-
-static inline void
-bw_buf_getpos(const struct bw_buffer* buf, unsigned *pos)
-{
-    *pos = buf->pos;
-}
-
-/*returns 0 on a successful seek, EOF if a seek error occurs
-  (usually if one sets a position on a buffer that's been reset)*/
-static inline int
-bw_buf_setpos(struct bw_buffer* buf, unsigned pos)
-{
-    if (pos <= buf->max_pos) {
-        buf->pos = pos;
-        return 0;
-    } else {
-        return EOF;
-    }
-}
-
-static inline unsigned
-bw_buf_size(const struct bw_buffer* buf) {
-    return buf->max_pos;
-}
-
-static inline void
-bw_buf_reset(struct bw_buffer* buf) {
-    buf->pos = buf->max_pos = 0;
-}
 
 /*******************************************************************
  *                       bw_pos_stack handlers                     *
