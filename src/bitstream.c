@@ -275,6 +275,7 @@ br_open_queue(bs_endianness endianness)
 
     bs->size = br_size_q;
     bs->extend = br_extend_q;
+    bs->reset = br_reset_q;
 
     return bs;
 }
@@ -1710,6 +1711,20 @@ br_extend_q(BitstreamQueue *bs, unsigned byte_count, const uint8_t* data)
     memcpy(br_queue_end(queue), data, byte_count);
     queue->size += byte_count;
 }
+
+
+void
+br_reset_q(BitstreamQueue *bs)
+{
+    bs->state = 0;
+
+    /*if there are no outstanding getpos positions
+      br_queue_resize_for will garbage-collect leftover space
+      automatically, otherwise new data will be appended
+      so that rewinding remains possible*/
+    bs->input.queue->pos = bs->input.queue->size;
+}
+
 
 #ifdef DEBUG
 void
@@ -3419,7 +3434,9 @@ br_queue_resize_for(struct br_queue *buf, unsigned additional_bytes)
       and there are no outstanding getpos positions*/
     if (buf->pos && (!buf->pos_count)) {
         const unsigned buf_size = br_queue_size(buf);
-        memmove(buf->data, buf->data + buf->pos, buf_size);
+        if (buf_size) {
+            memmove(buf->data, buf->data + buf->pos, buf_size);
+        }
         buf->pos = 0;
         buf->size = buf_size;
     }

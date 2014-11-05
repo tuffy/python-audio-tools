@@ -430,9 +430,11 @@ class DVDATitle(object):
         for track in self.tracks[0:-1]:
             offsets.append(offsets[-1] + (track.pts_length // PTS_PER_FRAME))
 
-        return DiscID(offsets=offsets,
-                      total_length=self.pts_length // DVDAudio.PTS_PER_SECOND,
-                      track_count=len(self))
+        return DiscID(
+            offsets=offsets,
+            total_length=self.pts_length // DVDAudio.PTS_PER_SECOND,
+            track_count=len(self),
+            playable_length=self.pts_length // DVDAudio.PTS_PER_SECOND)
 
     def musicbrainz_disc_id(self):
         """returns a MusicBrainz DiscID object"""

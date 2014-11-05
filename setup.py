@@ -617,7 +617,7 @@ class audiotools_decoders(Extension):
                                               "Opus decoding",
                                               False))
 
-        if sys.platform == "linux2":
+        if sys.platform.startswith("linux"):
             defines.extend([("DVD_STRUCT_IN_LINUX_CDROM_H", None),
                             ("HAVE_LINUX_DVD_STRUCT", None),
                             ("HAS_UNPROT", None)])

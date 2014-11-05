@@ -426,6 +426,10 @@ typedef struct BitstreamQueue_s {
     (*extend)(struct BitstreamQueue_s* bs,
               unsigned byte_count,
               const uint8_t* data);
+
+    /*removes all data in the queue*/
+    void
+    (*reset)(struct BitstreamQueue_s* bs);
 } BitstreamQueue;
 
 
@@ -877,6 +881,11 @@ br_size_q(const BitstreamQueue *bs);
 /*bs->extend(bs, byte_count, data)  method*/
 void
 br_extend_q(BitstreamQueue *bs, unsigned byte_count, const uint8_t* data);
+
+
+/*bs->reset(bs)  method*/
+void
+br_reset_q(BitstreamQueue *bs);
 
 
 /*Called by the read functions if one attempts to read past
