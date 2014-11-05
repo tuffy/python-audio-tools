@@ -39,12 +39,10 @@ extern PyTypeObject decoders_MP3DecoderType;
 extern PyTypeObject decoders_OpusDecoderType;
 #endif
 extern PyTypeObject decoders_TTADecoderType;
-extern PyTypeObject decoders_DVDA_Title_Type;
 extern PyTypeObject decoders_Sine_Mono_Type;
 extern PyTypeObject decoders_Sine_Stereo_Type;
 extern PyTypeObject decoders_Sine_Simple_Type;
 extern PyTypeObject decoders_SameSample_Type;
-extern PyTypeObject decoders_CPPMDecoderType;
 
 MOD_INIT(decoders)
 {
@@ -92,14 +90,6 @@ MOD_INIT(decoders)
 
     decoders_TTADecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_TTADecoderType) < 0)
-        return MOD_ERROR_VAL;
-
-    decoders_CPPMDecoderType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&decoders_CPPMDecoderType) < 0)
-        return MOD_ERROR_VAL;
-
-    decoders_DVDA_Title_Type.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&decoders_DVDA_Title_Type) < 0)
         return MOD_ERROR_VAL;
 
     decoders_Sine_Mono_Type.tp_new = PyType_GenericNew;
@@ -159,14 +149,6 @@ MOD_INIT(decoders)
     Py_INCREF(&decoders_TTADecoderType);
     PyModule_AddObject(m, "TTADecoder",
                        (PyObject *)&decoders_TTADecoderType);
-
-    Py_INCREF(&decoders_CPPMDecoderType);
-    PyModule_AddObject(m, "CPPMDecoder",
-                       (PyObject *)&decoders_CPPMDecoderType);
-
-    Py_INCREF(&decoders_DVDA_Title_Type);
-    PyModule_AddObject(m, "DVDA_Title",
-                       (PyObject *)&decoders_DVDA_Title_Type);
 
     Py_INCREF(&decoders_Sine_Mono_Type);
     PyModule_AddObject(m, "Sine_Mono",

@@ -553,11 +553,7 @@ class audiotools_decoders(Extension):
                    "src/decoders/alac.c",
                    "src/decoders/wavpack.c",
                    "src/decoders/tta.c",
-                   "src/decoders/mlp.c",
-                   "src/decoders/aobpcm.c",
-                   "src/decoders/aob.c",
                    "src/decoders/sine.c",
-                   "src/decoders/mod_cppm.c",
                    "src/decoders.c"]
         libraries = set()
         extra_link_args = []
@@ -616,14 +612,6 @@ class audiotools_decoders(Extension):
             self.__library_manifest__.append(("opusfile",
                                               "Opus decoding",
                                               False))
-
-        if sys.platform.startswith("linux"):
-            defines.extend([("DVD_STRUCT_IN_LINUX_CDROM_H", None),
-                            ("HAVE_LINUX_DVD_STRUCT", None),
-                            ("HAS_UNPROT", None)])
-            sources.extend(["src/decoders/cppm.c",
-                            "src/decoders/ioctl.c",
-                            "src/decoders/dvd_css.c"])
 
         Extension.__init__(self,
                            "audiotools.decoders",
@@ -874,8 +862,6 @@ scripts = ["audiotools-config",
            "coverdump",
            "covertag",
            "coverview",
-           "dvda2track",
-           "dvdainfo",
            "track2cd",
            "track2track",
            "trackcat",

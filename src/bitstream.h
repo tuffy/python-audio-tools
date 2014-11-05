@@ -1662,11 +1662,6 @@ br_buf_empty(const struct br_buffer *buf)
 void
 br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size);
 
-/*cleans out already read data from the buffer
-  note that this will invalidate any position values!*/
-void
-br_buf_gc(struct br_buffer *buf);
-
 /*returns the next character in the buffer, or EOF if no characters remain*/
 static inline int
 br_buf_getc(struct br_buffer *buf)

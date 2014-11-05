@@ -16,7 +16,6 @@ huffman \
 bitstream \
 ttaenc \
 ttadec \
-aobdec \
 opusenc
 
 all: $(BINARIES)
@@ -57,15 +56,6 @@ wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o
 ttaenc: $(OBJS) encoders/tta.c encoders/tta.h
 	$(CC) $(FLAGS) -o ttaenc encoders/tta.c $(OBJS) -DSTANDALONE
 
-aobdec: decoders/aob.c decoders/aob.h $(OBJS) mlp.o aobpcm.o buffer.o
-	$(CC) $(FLAGS) -o aobdec decoders/aob.c $(OBJS) mlp.o aobpcm.o buffer.o -DSTANDALONE -lm
-
-# mlpdec: decoders/mlp.c decoders/mlp.h array.o bitstream.o
-# 	$(CC) $(FLAGS) -o mlpdec decoders/mlp.c array.o bitstream.o -DSTANDALONE
-
-dvdadec: dvda/dvda.c dvda/dvda.h bitstream.a
-	$(CC) $(FLAGS) -o dvdadec dvda/dvda.c bitstream.a -DSTANDALONE
-
 vorbisenc: $(OBJS) encoders/vorbis.c
 	$(CC) $(FLAGS) -o vorbisenc encoders/vorbis.c $(OBJS) -DSTANDALONE -lvorbis -logg -lvorbisenc
 
@@ -89,12 +79,6 @@ md5.o: common/md5.c common/md5.h
 
 flac.o: decoders/flac.c decoders/flac.h
 	$(CC) $(FLAGS) -c decoders/flac.c -DSTANDALONE
-
-mlp.o: decoders/mlp.c decoders/mlp.h
-	$(CC) $(FLAGS) -c decoders/mlp.c -DSTANDALONE
-
-aobpcm.o: decoders/aobpcm.c decoders/aobpcm.h
-	$(CC) $(FLAGS) -c decoders/aobpcm.c -DSTANDALONE
 
 ogg.o: ogg.c ogg.h
 	$(CC) $(FLAGS) -c ogg.c -DSTANDALONE
