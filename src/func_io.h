@@ -126,28 +126,6 @@ ext_fread(struct br_external_input* stream,
           uint8_t* data,
           unsigned data_size);
 
-/*analagous to fsetpos
-
-  moves current stream position to pos
-  which has been returned by ext_tell_r
-
-  returns 0 on success, EOF on failure*/
-int
-ext_setpos_r(struct br_external_input *stream, void *pos);
-
-/*analagous to fgetpos
-
-  returns current position as pos
-  which may be fed to ext_seek_r
-
-  returns NULL if an error occurs*/
-void*
-ext_getpos_r(struct br_external_input *stream);
-
-/*frees a pos returned by ext_tell_r*/
-void
-ext_free_pos_r(struct br_external_input *stream, void *pos);
-
 /*analagous to fseek
 
   moves current stream position to position
@@ -215,10 +193,6 @@ ext_setpos_w(struct bw_external_output *stream, void *pos);
   returns NULL if an error occurs*/
 void*
 ext_getpos_w(struct bw_external_output *stream);
-
-/*frees a pos returned by ext_tell_w*/
-void
-ext_free_pos_w(struct bw_external_output *stream, void *pos);
 
 /*analagous to fflush,
   this sends all buffered bytes to write function

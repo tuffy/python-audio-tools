@@ -58,7 +58,7 @@ reader_buffer_empty(const struct br_external_input* stream)
 }
 
 /*returns the amount of bytes currently in the buffer*/
-static int
+static inline int
 reader_buffer_size(const struct br_external_input* stream)
 {
     return stream->buffer.size - stream->buffer.pos;
@@ -146,33 +146,6 @@ ext_fread(struct br_external_input* stream,
 
     /*all bytes processed successfully*/
     return initial_data_size;
-}
-
-int
-ext_setpos_r(struct br_external_input *stream, void *pos)
-{
-    if (stream->setpos != NULL) {
-        return stream->setpos(stream->user_data, pos);
-    } else {
-        return EOF;
-    }
-}
-
-void*
-ext_getpos_r(struct br_external_input *stream){
-    if (stream->getpos != NULL) {
-        return stream->getpos(stream->user_data);
-    } else {
-        return NULL;
-    }
-}
-
-void
-ext_free_pos_r(struct br_external_input *stream, void *pos)
-{
-    if ((pos != NULL) && (stream->free_pos != NULL)) {
-        stream->free_pos(pos);
-    }
 }
 
 int
@@ -297,7 +270,7 @@ empty_writer_buffer(struct bw_external_output* stream)
 
 /*returns the total bytes that can fit in the buffer
   before it becomes full*/
-static unsigned
+static inline unsigned
 writer_buffer_remaining_size(const struct bw_external_output* stream)
 {
     return stream->buffer.maximum_size - stream->buffer.pos;
@@ -370,14 +343,6 @@ ext_getpos_w(struct bw_external_output *stream)
     } else {
         /*some error occurred when flushing stream*/
         return NULL;
-    }
-}
-
-void
-ext_free_pos_w(struct bw_external_output *stream, void *pos)
-{
-    if (pos != NULL) {
-        stream->free_pos(pos);
     }
 }
 

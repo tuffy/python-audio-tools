@@ -34,268 +34,300 @@
 typedef int(*qsort_cmp)(const void *x, const void *y);
 
 #define ARRAY_FUNC_DEFINITION(TYPE, CONTENT_TYPE, LINK_TYPE, CONTENT_TYPE_MIN, CONTENT_TYPE_MAX, CONTENT_TYPE_ACCUMULATOR, FORMAT_STRING)    \
-struct TYPE##_s* TYPE##_new(void)                               \
-{                                                               \
-    struct TYPE##_s* a = malloc(sizeof(struct TYPE##_s));       \
-    a->_ = malloc(sizeof(CONTENT_TYPE) * 1);                    \
-    a->len = 0;                                                 \
-    a->total_size = 1;                                          \
-                                                                \
-    a->del = TYPE##_del;                                        \
-    a->resize = TYPE##_resize;                                  \
-    a->resize_for = TYPE##_resize_for;                          \
-    a->reset = TYPE##_reset;                                    \
-    a->reset_for = TYPE##_reset_for;                            \
-    a->append = TYPE##_append;                                  \
-    a->vappend = TYPE##_vappend;                                \
-    a->mappend = TYPE##_mappend;                                \
-    a->vset = TYPE##_vset;                                      \
-    a->mset = TYPE##_mset;                                      \
-    a->extend = TYPE##_extend;                                  \
-    a->equals = TYPE##_equals;                                  \
-    a->min = TYPE##_min;                                        \
-    a->max = TYPE##_max;                                        \
-    a->sum = TYPE##_sum;                                        \
-    a->copy = TYPE##_copy;                                      \
-    a->link = TYPE##_link;                                      \
-    a->swap = TYPE##_swap;                                      \
-    a->head = TYPE##_head;                                      \
-    a->tail = TYPE##_tail;                                      \
-    a->de_head = TYPE##_de_head;                                \
-    a->de_tail = TYPE##_de_tail;                                \
-    a->split = TYPE##_split;                                    \
-    a->concat = TYPE##_concat;                                  \
-    a->reverse = TYPE##_reverse;                                \
-    a->sort = TYPE##_sort;                                      \
-    a->print = TYPE##_print;                                    \
-                                                                \
-    return a;                                                   \
-}                                                               \
-                                                                \
-void TYPE##_del(TYPE *array)                                    \
-{                                                               \
-    free(array->_);                                             \
-    free(array);                                                \
-}                                                               \
-                                                                \
-void TYPE##_resize(TYPE *array, unsigned minimum)               \
-{                                                               \
-    if (minimum > array->total_size) {                          \
-        array->total_size = minimum;                            \
-        array->_ = realloc(array->_,                            \
-                           sizeof(CONTENT_TYPE) * minimum);     \
-    }                                                           \
-}                                                               \
-                                                                \
-void TYPE##_resize_for(TYPE *array, unsigned additional_items)  \
-{                                                               \
-    array->resize(array, array->len + additional_items);        \
-}                                                               \
-                                                                \
-void TYPE##_reset(TYPE *array)                                  \
-{                                                               \
-    array->len = 0;                                             \
-}                                                               \
-                                                                \
-void TYPE##_reset_for(TYPE *array, unsigned minimum)            \
-{                                                               \
-    array->reset(array);                                        \
-    array->resize(array, minimum);                              \
-}                                                               \
-                                                                \
-void TYPE##_append(TYPE *array, CONTENT_TYPE value)             \
-{                                                               \
-    if (array->len == array->total_size)                        \
-        array->resize(array, array->total_size * 2);            \
-                                                                \
-    array->_[array->len++] = value;                             \
-}                                                               \
-                                                                \
-void TYPE##_vappend(TYPE *array, unsigned count, ...)           \
-{                                                               \
-    va_list ap;                                                 \
-                                                                \
-    array->resize(array, array->len + count);                   \
-    va_start(ap, count);                                        \
-    for (; count > 0; count--) {                                \
-        const CONTENT_TYPE i = va_arg(ap, CONTENT_TYPE);        \
-        array->_[array->len++] = i;                             \
-    }                                                           \
-    va_end(ap);                                                 \
-}                                                               \
-                                                                \
-void TYPE##_mappend(TYPE *array, unsigned count, CONTENT_TYPE value) \
+struct TYPE##_s*                                                     \
+TYPE##_new(void)                                                     \
 {                                                                    \
-    array->resize(array, array->len + count);                        \
-    for (; count > 0; count--) {                                     \
-        array->_[array->len++] = value;                              \
+    struct TYPE##_s* a = malloc(sizeof(struct TYPE##_s));            \
+    a->_ = malloc(sizeof(CONTENT_TYPE) * 1);                         \
+    a->len = 0;                                                      \
+    a->total_size = 1;                                               \
+                                                                     \
+    a->del = TYPE##_del;                                             \
+    a->resize = TYPE##_resize;                                       \
+    a->resize_for = TYPE##_resize_for;                               \
+    a->reset = TYPE##_reset;                                         \
+    a->reset_for = TYPE##_reset_for;                                 \
+    a->append = TYPE##_append;                                       \
+    a->vappend = TYPE##_vappend;                                     \
+    a->mappend = TYPE##_mappend;                                     \
+    a->vset = TYPE##_vset;                                           \
+    a->mset = TYPE##_mset;                                           \
+    a->extend = TYPE##_extend;                                       \
+    a->equals = TYPE##_equals;                                       \
+    a->min = TYPE##_min;                                             \
+    a->max = TYPE##_max;                                             \
+    a->sum = TYPE##_sum;                                             \
+    a->copy = TYPE##_copy;                                           \
+    a->link = TYPE##_link;                                           \
+    a->swap = TYPE##_swap;                                           \
+    a->head = TYPE##_head;                                           \
+    a->tail = TYPE##_tail;                                           \
+    a->de_head = TYPE##_de_head;                                     \
+    a->de_tail = TYPE##_de_tail;                                     \
+    a->split = TYPE##_split;                                         \
+    a->concat = TYPE##_concat;                                       \
+    a->reverse = TYPE##_reverse;                                     \
+    a->sort = TYPE##_sort;                                           \
+    a->print = TYPE##_print;                                         \
+                                                                     \
+    return a;                                                        \
+}                                                                    \
+                                                                     \
+void                                                                 \
+TYPE##_del(TYPE *self)                                               \
+{                                                                    \
+    free(self->_);                                                   \
+    free(self);                                                      \
+}                                                                    \
+                                                                     \
+void                                                                 \
+TYPE##_resize(TYPE *self, unsigned minimum)                          \
+{                                                                    \
+    if (minimum > self->total_size) {                                \
+        self->total_size = minimum;                                  \
+        self->_ = realloc(self->_,                                   \
+                          sizeof(CONTENT_TYPE) * minimum);           \
     }                                                                \
 }                                                                    \
                                                                      \
-void TYPE##_vset(TYPE *array, unsigned count, ...)                   \
+void                                                                 \
+TYPE##_resize_for(TYPE *self, unsigned additional_items)             \
+{                                                                    \
+    self->resize(self, self->len + additional_items);                \
+}                                                                    \
+                                                                     \
+void                                                                 \
+TYPE##_reset(TYPE *self)                                             \
+{                                                                    \
+    self->len = 0;                                                   \
+}                                                                    \
+                                                                     \
+void                                                                 \
+TYPE##_reset_for(TYPE *self, unsigned minimum)                       \
+{                                                                    \
+    self->reset(self);                                               \
+    self->resize(self, minimum);                                     \
+}                                                                    \
+                                                                     \
+void                                                                 \
+TYPE##_append(TYPE *self, CONTENT_TYPE value)                        \
+{                                                                    \
+    if (self->len == self->total_size)                               \
+        self->resize(self, self->total_size * 2);                    \
+                                                                     \
+    self->_[self->len++] = value;                                    \
+}                                                                    \
+                                                                     \
+void                                                                 \
+TYPE##_vappend(TYPE *self, unsigned count, ...)                      \
 {                                                                    \
     va_list ap;                                                      \
                                                                      \
-    array->reset_for(array, count);                                  \
+    self->resize(self, self->len + count);                           \
     va_start(ap, count);                                             \
     for (; count > 0; count--) {                                     \
         const CONTENT_TYPE i = va_arg(ap, CONTENT_TYPE);             \
-        array->_[array->len++] = i;                                  \
+        self->_[self->len++] = i;                                    \
     }                                                                \
     va_end(ap);                                                      \
 }                                                                    \
                                                                      \
-void TYPE##_mset(TYPE *array, unsigned count, CONTENT_TYPE value)    \
+void                                                                 \
+TYPE##_mappend(TYPE *self, unsigned count, CONTENT_TYPE value)       \
 {                                                                    \
-    array->reset_for(array, count);                                  \
+    self->resize(self, self->len + count);                           \
     for (; count > 0; count--) {                                     \
-        array->_[array->len++] = value;                              \
+        self->_[self->len++] = value;                                \
     }                                                                \
 }                                                                    \
                                                                      \
-void TYPE##_extend(TYPE *array, const TYPE *to_add)                  \
+void                                                                 \
+TYPE##_vset(TYPE *self, unsigned count, ...)                         \
 {                                                                    \
-    array->concat(array, to_add, array);                             \
+    va_list ap;                                                      \
+                                                                     \
+    self->reset_for(self, count);                                    \
+    va_start(ap, count);                                             \
+    for (; count > 0; count--) {                                     \
+        const CONTENT_TYPE i = va_arg(ap, CONTENT_TYPE);             \
+        self->_[self->len++] = i;                                    \
+    }                                                                \
+    va_end(ap);                                                      \
 }                                                                    \
                                                                      \
-int TYPE##_equals(const TYPE *array, const TYPE *compare)            \
+void                                                                 \
+TYPE##_mset(TYPE *self, unsigned count,                              \
+            CONTENT_TYPE value)                                      \
 {                                                                    \
-    assert(array->_ != NULL);                                        \
-    assert(compare->_ != NULL);                                      \
-    if (array->len == compare->len) {                                \
-        return (memcmp(array->_, compare->_,                         \
-                       sizeof(CONTENT_TYPE) * array->len) == 0);     \
+    self->reset_for(self, count);                                    \
+    for (; count > 0; count--) {                                     \
+        self->_[self->len++] = value;                                \
+    }                                                                \
+}                                                                    \
+                                                                     \
+void                                                                 \
+TYPE##_extend(TYPE *self,                                            \
+              const TYPE *to_add)                                    \
+{                                                                    \
+    self->concat(self, to_add, self);                                \
+}                                                                    \
+                                                                     \
+int                                                                  \
+TYPE##_equals(const TYPE *self,                                      \
+              const TYPE *compare)                                   \
+{                                                                    \
+    assert(self->_);                                                 \
+    assert(compare->_);                                              \
+    if (self->len == compare->len) {                                 \
+        return (memcmp(self->_, compare->_,                          \
+                       sizeof(CONTENT_TYPE) * self->len) == 0);      \
     } else {                                                         \
         return 0;                                                    \
     }                                                                \
 }                                                                    \
                                                                      \
-CONTENT_TYPE TYPE##_min(const TYPE *array)                           \
+CONTENT_TYPE                                                         \
+TYPE##_min(const TYPE *self)                                         \
 {                                                                    \
     CONTENT_TYPE min = CONTENT_TYPE_MAX;                             \
     unsigned i;                                                      \
                                                                      \
-    assert(array->_ != NULL);                                        \
-    for (i = 0; i < array->len; i++)                                 \
-    if (array->_[i] < min)                                           \
-        min = array->_[i];                                           \
+    assert(self->_);                                                 \
+    for (i = 0; i < self->len; i++)                                  \
+    if (self->_[i] < min)                                            \
+        min = self->_[i];                                            \
                                                                      \
     return min;                                                      \
 }                                                                    \
                                                                      \
-CONTENT_TYPE TYPE##_max(const TYPE *array)                           \
+CONTENT_TYPE                                                         \
+TYPE##_max(const TYPE *self)                                         \
 {                                                                    \
     CONTENT_TYPE max = CONTENT_TYPE_MIN;                             \
     unsigned i;                                                      \
                                                                      \
-    assert(array->_ != NULL);                                        \
-    for (i = 0; i < array->len; i++)                                 \
-        if (array->_[i] > max)                                       \
-            max = array->_[i];                                       \
+    assert(self->_);                                                 \
+    for (i = 0; i < self->len; i++)                                  \
+        if (self->_[i] > max)                                        \
+            max = self->_[i];                                        \
                                                                      \
     return max;                                                      \
 }                                                                    \
                                                                      \
-CONTENT_TYPE TYPE##_sum(const TYPE *array)                           \
+CONTENT_TYPE                                                         \
+TYPE##_sum(const TYPE *self)                                         \
 {                                                                    \
     CONTENT_TYPE accumulator = CONTENT_TYPE_ACCUMULATOR;             \
-    const CONTENT_TYPE *data = array->_;                             \
-    unsigned size = array->len;                                      \
+    const CONTENT_TYPE *data = self->_;                              \
+    unsigned size = self->len;                                       \
     unsigned i;                                                      \
                                                                      \
-    assert(array->_ != NULL);                                        \
+    assert(self->_);                                                 \
     for (i = 0; i < size; i++)                                       \
         accumulator += data[i];                                      \
                                                                      \
     return accumulator;                                              \
 }                                                                    \
                                                                      \
-void TYPE##_copy(const TYPE *array, TYPE *copy)                      \
+void                                                                 \
+TYPE##_copy(const TYPE *self,                                        \
+            TYPE *copy)                                              \
 {                                                                    \
-    if (array != copy) {                                             \
-        copy->resize(copy, array->len);                              \
-        memcpy(copy->_, array->_,                                    \
-               array->len * sizeof(CONTENT_TYPE));                   \
-        copy->len = array->len;                                      \
+    if (self != copy) {                                              \
+        copy->resize(copy, self->len);                               \
+        memcpy(copy->_, self->_,                                     \
+               self->len * sizeof(CONTENT_TYPE));                    \
+        copy->len = self->len;                                       \
     }                                                                \
 }                                                                    \
                                                                      \
-void TYPE##_link(const TYPE *array, LINK_TYPE *link)                 \
+void                                                                 \
+TYPE##_link(const TYPE *self,                                        \
+            LINK_TYPE *link)                                         \
 {                                                                    \
-    link->_ = array->_;                                              \
-    link->len = array->len;                                          \
+    link->_ = self->_;                                               \
+    link->len = self->len;                                           \
 }                                                                    \
                                                                      \
-void TYPE##_swap(TYPE *array, TYPE *swap)                            \
+void                                                                 \
+TYPE##_swap(TYPE *self, TYPE *swap)                                  \
 {                                                                    \
     TYPE temp;                                                       \
-    temp._ = array->_;                                               \
-    temp.len = array->len;                                           \
-    temp.total_size = array->total_size;                             \
-    array->_ = swap->_;                                              \
-    array->len = swap->len;                                          \
-    array->total_size = swap->total_size;                            \
+    temp._ = self->_;                                                \
+    temp.len = self->len;                                            \
+    temp.total_size = self->total_size;                              \
+    self->_ = swap->_;                                               \
+    self->len = swap->len;                                           \
+    self->total_size = swap->total_size;                             \
     swap->_ = temp._;                                                \
     swap->len = temp.len;                                            \
     swap->total_size = temp.total_size;                              \
 }                                                                    \
                                                                      \
-void TYPE##_head(const TYPE *array, unsigned count, TYPE *head)      \
+void                                                                 \
+TYPE##_head(const TYPE *self, unsigned count,                        \
+            TYPE *head)                                              \
 {                                                                    \
-    const unsigned to_copy = MIN(count, array->len);                 \
+    const unsigned to_copy = MIN(count, self->len);                  \
                                                                      \
-    if (head != array) {                                             \
+    if (head != self) {                                              \
         head->resize(head, to_copy);                                 \
-        memcpy(head->_, array->_, sizeof(CONTENT_TYPE) * to_copy);   \
+        memcpy(head->_, self->_, sizeof(CONTENT_TYPE) * to_copy);    \
         head->len = to_copy;                                         \
     } else {                                                         \
         head->len = to_copy;                                         \
     }                                                                \
 }                                                                    \
                                                                      \
-void TYPE##_tail(const TYPE *array, unsigned count, TYPE *tail)      \
+void                                                                 \
+TYPE##_tail(const TYPE *self, unsigned count,                        \
+            TYPE *tail)                                              \
 {                                                                    \
-    const unsigned to_copy = MIN(count, array->len);                 \
+    const unsigned to_copy = MIN(count, self->len);                  \
                                                                      \
-    if (tail != array) {                                             \
+    if (tail != self) {                                              \
         tail->resize(tail, to_copy);                                 \
-        memcpy(tail->_, array->_ + (array->len - to_copy),           \
+        memcpy(tail->_, self->_ + (self->len - to_copy),             \
                sizeof(CONTENT_TYPE) * to_copy);                      \
         tail->len = to_copy;                                         \
     } else {                                                         \
-        memmove(tail->_, array->_ + (array->len - to_copy),          \
+        memmove(tail->_, self->_ + (self->len - to_copy),            \
                 sizeof(CONTENT_TYPE) * to_copy);                     \
         tail->len = to_copy;                                         \
     }                                                                \
 }                                                                    \
                                                                      \
-void TYPE##_de_head(const TYPE *array, unsigned count, TYPE *tail)   \
+void                                                                 \
+TYPE##_de_head(const TYPE *self, unsigned count,                     \
+               TYPE *tail)                                           \
 {                                                                    \
     unsigned to_copy;                                                \
-    count = MIN(count, array->len);                                  \
-    to_copy = array->len - count;                                    \
+    count = MIN(count, self->len);                                   \
+    to_copy = self->len - count;                                     \
                                                                      \
-    if (tail != array) {                                             \
+    if (tail != self) {                                              \
         tail->resize(tail, to_copy);                                 \
-        memcpy(tail->_, array->_ + count,                            \
+        memcpy(tail->_, self->_ + count,                             \
                sizeof(CONTENT_TYPE) * to_copy);                      \
         tail->len = to_copy;                                         \
     } else {                                                         \
-        memmove(tail->_, array->_ + count,                           \
+        memmove(tail->_, self->_ + count,                            \
                 sizeof(CONTENT_TYPE) * to_copy);                     \
         tail->len = to_copy;                                         \
     }                                                                \
 }                                                                    \
                                                                      \
-void TYPE##_de_tail(const TYPE *array, unsigned count, TYPE *head)   \
+void                                                                 \
+TYPE##_de_tail(const TYPE *self, unsigned count,                     \
+               TYPE *head)                                           \
 {                                                                    \
     unsigned to_copy;                                                \
-    count = MIN(count, array->len);                                  \
-    to_copy = array->len - count;                                    \
+    count = MIN(count, self->len);                                   \
+    to_copy = self->len - count;                                     \
                                                                      \
-    if (head != array) {                                             \
+    if (head != self) {                                              \
         head->resize(head, to_copy);                                 \
-        memcpy(head->_, array->_,                                    \
+        memcpy(head->_, self->_,                                     \
                sizeof(CONTENT_TYPE) * to_copy);                      \
         head->len = to_copy;                                         \
     } else {                                                         \
@@ -303,295 +335,326 @@ void TYPE##_de_tail(const TYPE *array, unsigned count, TYPE *head)   \
     }                                                                \
 }                                                                    \
                                                                      \
-void TYPE##_split(const TYPE *array, unsigned count, TYPE *head, TYPE *tail) \
-{                                                                       \
-    /*ensure we don't try to move too many items*/                  \
-    const unsigned to_head = MIN(count, array->len);                \
-    const unsigned to_tail = array->len - to_head;                  \
-                                                                    \
-    if ((head == array) && (tail == array)) {                       \
-        /*do nothing*/                                              \
-        return;                                                     \
-    } else if (head == tail) {                                      \
-        /*copy all data to head*/                                   \
-        array->copy(array, head);                                   \
-    } else if ((head != array) && (tail == array)) {                \
-        /*move "count" values to head and shift the rest down*/     \
-        head->resize(head, to_head);                                \
-        memcpy(head->_, array->_, sizeof(CONTENT_TYPE) * to_head);  \
-        head->len = to_head;                                        \
-                                                                    \
-        memmove(tail->_, array->_ + to_head,                        \
-                sizeof(CONTENT_TYPE) * to_tail);                    \
-        tail->len = to_tail;                                        \
-    } else if ((head == array) && (tail != array)) {                \
+void                                                                 \
+TYPE##_split(const TYPE *self, unsigned count,                       \
+             TYPE *head, TYPE *tail)                                 \
+{                                                                    \
+    /*ensure we don't try to move too many items*/                   \
+    const unsigned to_head = MIN(count, self->len);                  \
+    const unsigned to_tail = self->len - to_head;                    \
+                                                                     \
+    if ((head == self) && (tail == self)) {                          \
+        /*do nothing*/                                               \
+        return;                                                      \
+    } else if (head == tail) {                                       \
+        /*copy all data to head*/                                    \
+        self->copy(self, head);                                      \
+    } else if ((head != self) && (tail == self)) {                   \
+        /*move "count" values to head and shift the rest down*/      \
+        head->resize(head, to_head);                                 \
+        memcpy(head->_, self->_, sizeof(CONTENT_TYPE) * to_head);    \
+        head->len = to_head;                                         \
+                                                                     \
+        memmove(tail->_, self->_ + to_head,                          \
+                sizeof(CONTENT_TYPE) * to_tail);                     \
+        tail->len = to_tail;                                         \
+    } else if ((head == self) && (tail != self)) {                   \
         /*move "count" values from our end to tail and reduce our size*/ \
-        tail->resize(tail, to_tail);                                \
-        memcpy(tail->_, array->_ + to_head,                         \
-               sizeof(CONTENT_TYPE) * to_tail);                     \
-        tail->len = to_tail;                                        \
-                                                                    \
-        head->len = to_head;                                        \
-    } else {                                                        \
+        tail->resize(tail, to_tail);                                 \
+        memcpy(tail->_, self->_ + to_head,                           \
+               sizeof(CONTENT_TYPE) * to_tail);                      \
+        tail->len = to_tail;                                         \
+                                                                     \
+        head->len = to_head;                                         \
+    } else {                                                         \
         /*copy "count" values to "head" and the remainder to "tail"*/ \
-        head->resize(head, to_head);                                \
-        memcpy(head->_, array->_,                                   \
-               sizeof(CONTENT_TYPE) * to_head);                     \
-        head->len = to_head;                                        \
-                                                                    \
-        tail->resize(tail, to_tail);                                \
-        memcpy(tail->_, array->_ + to_head,                         \
-               sizeof(CONTENT_TYPE) * to_tail);                     \
-        tail->len = to_tail;                                        \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void TYPE##_concat(const struct TYPE##_s *array,                    \
-                   const struct TYPE##_s *tail,                     \
-                   struct TYPE##_s *combined)                       \
-{                                                                   \
-    if (array == combined) {                                        \
-        /*extend array with values from tail*/                      \
-        combined->resize_for(combined, tail->len);                  \
-        memcpy(combined->_ + combined->len,                         \
-               tail->_,                                             \
-               sizeof(CONTENT_TYPE) * tail->len);                   \
-        combined->len += tail->len;                                 \
-    } else {                                                        \
-        /*concatenate array and tail to combined*/                  \
-        combined->reset_for(combined, array->len + tail->len);      \
-        memcpy(combined->_,                                         \
-               array->_,                                            \
-               sizeof(CONTENT_TYPE) * array->len);                  \
-        memcpy(combined->_ + array->len,                            \
-               tail->_,                                             \
-               sizeof(CONTENT_TYPE) * tail->len);                   \
-        combined->len = array->len + tail->len;                     \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void TYPE##_reverse(TYPE *array)                                    \
-{                                                                   \
-    unsigned i;                                                     \
-    unsigned j;                                                     \
-    CONTENT_TYPE *data = array->_;                                  \
-                                                                    \
-    if (array->len > 0) {                                           \
-        for (i = 0, j = array->len - 1; i < j; i++, j--) {          \
-            const CONTENT_TYPE x = data[i];                         \
-            data[i] = data[j];                                      \
-            data[j] = x;                                            \
-        }                                                           \
-    }                                                               \
-}                                                                   \
-                                                                    \
-int TYPE##_cmp(const CONTENT_TYPE *x, const CONTENT_TYPE *y)        \
-{                                                                   \
-    return *x - *y;                                                 \
-}                                                                   \
-                                                                    \
-void TYPE##_sort(TYPE *array)                                       \
-{                                                                   \
-    qsort(array->_, (size_t)(array->len),                           \
-          sizeof(CONTENT_TYPE), (qsort_cmp)TYPE##_cmp);             \
-}                                                                   \
-                                                                    \
-void TYPE##_print(const TYPE *array, FILE *output)                  \
-{                                                                   \
-    unsigned i;                                                     \
-                                                                    \
-    putc('[', output);                                              \
-    if (array->len == 1) {                                          \
-        fprintf(output, FORMAT_STRING, array->_[0]);                \
-    } else if (array->len > 1) {                                    \
-        for (i = 0; i < array->len - 1; i++)                        \
-            fprintf(output, FORMAT_STRING ", ", array->_[i]);       \
-        fprintf(output, FORMAT_STRING, array->_[i]);                \
-    }                                                               \
-    putc(']', output);                                              \
-}                                                                   \
-                                                                    \
-struct LINK_TYPE##_s* LINK_TYPE##_new(void)                         \
-{                                                                   \
-    struct LINK_TYPE##_s* array =                                   \
-        malloc(sizeof(struct LINK_TYPE##_s));                       \
-    array->_ = NULL;                                                \
-    array->len = 0;                                                 \
-                                                                    \
-    array->del = LINK_TYPE##_del;                                   \
-    array->reset = LINK_TYPE##_reset;                               \
-    array->equals = LINK_TYPE##_equals;                             \
-    array->min = LINK_TYPE##_min;                                   \
-    array->max = LINK_TYPE##_max;                                   \
-    array->sum = LINK_TYPE##_sum;                                   \
-    array->copy = LINK_TYPE##_copy;                                 \
-    array->link = LINK_TYPE##_link;                                 \
-    array->swap = LINK_TYPE##_swap;                                 \
-    array->head = LINK_TYPE##_head;                                 \
-    array->tail = LINK_TYPE##_tail;                                 \
-    array->de_head = LINK_TYPE##_de_head;                           \
-    array->de_tail = LINK_TYPE##_de_tail;                           \
-    array->split = LINK_TYPE##_split;                               \
-    array->print = LINK_TYPE##_print;                               \
-                                                                    \
-    return array;                                                   \
-}                                                                   \
-                                                                    \
-void LINK_TYPE##_del(LINK_TYPE *array)                              \
-{                                                                   \
-    free(array);                                                    \
-}                                                                   \
-                                                                    \
-void LINK_TYPE##_reset(LINK_TYPE *array)                            \
-{                                                                   \
-    array->len = 0;                                                 \
-}                                                                   \
-                                                                    \
-int LINK_TYPE##_equals(const LINK_TYPE *array, const LINK_TYPE *compare) \
-{                                                                   \
-    assert(array->_ != NULL);                                       \
-    assert(compare->_ != NULL);                                     \
-    if (array->len == compare->len) {                               \
-        return (memcmp(array->_, compare->_,                        \
-                       sizeof(CONTENT_TYPE) * array->len) == 0);    \
-    } else {                                                        \
-        return 0;                                                   \
-    }                                                               \
-}                                                                   \
-                                                                    \
-CONTENT_TYPE LINK_TYPE##_min(const LINK_TYPE *array)                \
-{                                                                   \
-    CONTENT_TYPE min = CONTENT_TYPE_MAX;                            \
-    unsigned i;                                                     \
-                                                                    \
-    assert(array->_ != NULL);                                       \
-    for (i = 0; i < array->len; i++)                                \
-    if (array->_[i] < min)                                          \
-        min = array->_[i];                                          \
-                                                                    \
-    return min;                                                     \
-}                                                                   \
-                                                                    \
-CONTENT_TYPE LINK_TYPE##_max(const LINK_TYPE *array)                \
-{                                                                   \
-    CONTENT_TYPE max = CONTENT_TYPE_MIN;                            \
-    unsigned i;                                                     \
-                                                                    \
-    assert(array->_ != NULL);                                       \
-    for (i = 0; i < array->len; i++)                                \
-        if (array->_[i] > max)                                      \
-            max = array->_[i];                                      \
-                                                                    \
-    return max;                                                     \
-}                                                                   \
-                                                                    \
-CONTENT_TYPE LINK_TYPE##_sum(const LINK_TYPE *array)                \
-{                                                                   \
-    CONTENT_TYPE accumulator = CONTENT_TYPE_ACCUMULATOR;            \
-    const CONTENT_TYPE *data = array->_;                            \
-    unsigned size = array->len;                                     \
-    unsigned i;                                                     \
-                                                                    \
-    assert(array->_ != NULL);                                       \
-    for (i = 0; i < size; i++)                                      \
-        accumulator += data[i];                                     \
-                                                                    \
-    return accumulator;                                             \
-}                                                                   \
-                                                                    \
-void LINK_TYPE##_copy(const LINK_TYPE *array, TYPE *copy)           \
-{                                                                   \
-    copy->resize(copy, array->len);                                 \
-    memcpy(copy->_, array->_, array->len * sizeof(CONTENT_TYPE));   \
-    copy->len = array->len;                                         \
-}                                                                   \
-                                                                    \
-void LINK_TYPE##_link(const LINK_TYPE *array, LINK_TYPE *link)      \
-{                                                                   \
-    link->_ = array->_;                                             \
-    link->len = array->len;                                         \
-}                                                                   \
-                                                                    \
-void LINK_TYPE##_swap(LINK_TYPE *array, LINK_TYPE *swap)            \
-{                                                                   \
-    LINK_TYPE temp;                                                 \
-    temp._ = array->_;                                              \
-    temp.len = array->len;                                          \
-    array->_ = swap->_;                                             \
-    array->len = swap->len;                                         \
-    swap->_ = temp._;                                               \
-    swap->len = temp.len;                                           \
-}                                                                   \
-                                                                    \
-void LINK_TYPE##_head(const LINK_TYPE *array, unsigned count, LINK_TYPE *head) \
-{                                                                   \
-    const unsigned to_copy = MIN(count, array->len);                \
-    assert(array->_ != NULL);                                       \
-    head->_ = array->_;                                             \
-    head->len = to_copy;                                            \
-}                                                                   \
-                                                                    \
-void LINK_TYPE##_tail(const LINK_TYPE *array, unsigned count, LINK_TYPE *tail) \
-{                                                                   \
-    const unsigned to_copy = MIN(count, array->len);                \
-    assert(array->_ != NULL);                                       \
-    tail->_ = array->_ + (array->len - to_copy);                    \
-    tail->len = to_copy;                                            \
-}                                                                   \
-                                                                    \
-void LINK_TYPE##_de_head(const LINK_TYPE *array, unsigned count, LINK_TYPE *tail) \
-{                                                                   \
-    unsigned to_copy;                                               \
-    assert(array->_ != NULL);                                       \
-    count = MIN(count, array->len);                                 \
-    to_copy = array->len - count;                                   \
-                                                                    \
-    tail->_ = array->_ + count;                                     \
-    tail->len = to_copy;                                            \
-}                                                                   \
-                                                                    \
-void LINK_TYPE##_de_tail(const LINK_TYPE *array, unsigned count, LINK_TYPE *head) \
-{                                                                   \
-    head->_ = array->_;                                             \
-    head->len = array->len - MIN(count, array->len);                \
-}                                                                   \
-                                                                    \
-void LINK_TYPE##_split(const LINK_TYPE *array, unsigned count,      \
-                       LINK_TYPE *head, LINK_TYPE *tail)            \
-{                                                                   \
-    /*ensure we don't try to move too many items*/                  \
-    const unsigned to_head = MIN(count, array->len);                \
-    const unsigned to_tail = array->len - to_head;                  \
-    assert(array->_ != NULL);                                       \
-                                                                    \
-    if ((head == array) && (tail == array)) {                       \
-        /*do nothing*/                                              \
-        return;                                                     \
-    } else if (head == tail) {                                      \
-        /*copy all data to head*/                                   \
-        head->_ = array->_;                                         \
-        head->len = array->len;                                     \
-    } else {                                                        \
-        head->_ = array->_;                                         \
-        head->len = to_head;                                        \
-        tail->_ = array->_ + to_head;                               \
-        tail->len = to_tail;                                        \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void LINK_TYPE##_print(const LINK_TYPE *array, FILE *output)        \
-{                                                                   \
-    unsigned i;                                                     \
-                                                                    \
-    putc('[', output);                                              \
-    if (array->len == 1) {                                          \
-        fprintf(output, FORMAT_STRING, array->_[0]);                \
-    } else if (array->len > 1) {                                    \
-        for (i = 0; i < array->len - 1; i++)                        \
-            fprintf(output, FORMAT_STRING ", ", array->_[i]);       \
-        fprintf(output, FORMAT_STRING, array->_[i]);                \
-    }                                                               \
-    putc(']', output);                                              \
+        head->resize(head, to_head);                                 \
+        memcpy(head->_, self->_,                                     \
+               sizeof(CONTENT_TYPE) * to_head);                      \
+        head->len = to_head;                                         \
+                                                                     \
+        tail->resize(tail, to_tail);                                 \
+        memcpy(tail->_, self->_ + to_head,                           \
+               sizeof(CONTENT_TYPE) * to_tail);                      \
+        tail->len = to_tail;                                         \
+    }                                                                \
+}                                                                    \
+                                                                     \
+void                                                                 \
+TYPE##_concat(const struct TYPE##_s *self,                           \
+              const struct TYPE##_s *tail,                           \
+              struct TYPE##_s *combined)                             \
+{                                                                    \
+    if (self == combined) {                                          \
+        /*extend array with values from tail*/                       \
+        combined->resize_for(combined, tail->len);                   \
+        memcpy(combined->_ + combined->len,                          \
+               tail->_,                                              \
+               sizeof(CONTENT_TYPE) * tail->len);                    \
+        combined->len += tail->len;                                  \
+    } else {                                                         \
+        /*concatenate array and tail to combined*/                   \
+        combined->reset_for(combined, self->len + tail->len);        \
+        memcpy(combined->_,                                          \
+               self->_,                                              \
+               sizeof(CONTENT_TYPE) * self->len);                    \
+        memcpy(combined->_ + self->len,                              \
+               tail->_,                                              \
+               sizeof(CONTENT_TYPE) * tail->len);                    \
+        combined->len = self->len + tail->len;                       \
+    }                                                                \
+}                                                                    \
+                                                                     \
+void                                                                 \
+TYPE##_reverse(TYPE *self)                                           \
+{                                                                    \
+    unsigned i;                                                      \
+    unsigned j;                                                      \
+    CONTENT_TYPE *data = self->_;                                    \
+                                                                     \
+    if (self->len > 0) {                                             \
+        for (i = 0, j = self->len - 1; i < j; i++, j--) {            \
+            const CONTENT_TYPE x = data[i];                          \
+            data[i] = data[j];                                       \
+            data[j] = x;                                             \
+        }                                                            \
+    }                                                                \
+}                                                                    \
+                                                                     \
+int                                                                  \
+TYPE##_cmp(const CONTENT_TYPE *x, const CONTENT_TYPE *y)             \
+{                                                                    \
+    return *x - *y;                                                  \
+}                                                                    \
+                                                                     \
+void                                                                 \
+TYPE##_sort(TYPE *self)                                              \
+{                                                                    \
+    qsort(self->_, (size_t)(self->len),                              \
+          sizeof(CONTENT_TYPE), (qsort_cmp)TYPE##_cmp);              \
+}                                                                    \
+                                                                     \
+void                                                                 \
+TYPE##_print(const TYPE *self, FILE *output)                         \
+{                                                                    \
+    unsigned i;                                                      \
+                                                                     \
+    putc('[', output);                                               \
+    if (self->len == 1) {                                            \
+        fprintf(output, FORMAT_STRING, self->_[0]);                  \
+    } else if (self->len > 1) {                                      \
+        for (i = 0; i < self->len - 1; i++)                          \
+            fprintf(output, FORMAT_STRING ", ", self->_[i]);         \
+        fprintf(output, FORMAT_STRING, self->_[i]);                  \
+    }                                                                \
+    putc(']', output);                                               \
+}                                                                    \
+                                                                     \
+LINK_TYPE*                                                           \
+LINK_TYPE##_new(void)                                                \
+{                                                                    \
+    struct LINK_TYPE##_s* array =                                    \
+        malloc(sizeof(struct LINK_TYPE##_s));                        \
+    array->_ = NULL;                                                 \
+    array->len = 0;                                                  \
+                                                                     \
+    array->del = LINK_TYPE##_del;                                    \
+    array->reset = LINK_TYPE##_reset;                                \
+    array->equals = LINK_TYPE##_equals;                              \
+    array->min = LINK_TYPE##_min;                                    \
+    array->max = LINK_TYPE##_max;                                    \
+    array->sum = LINK_TYPE##_sum;                                    \
+    array->copy = LINK_TYPE##_copy;                                  \
+    array->link = LINK_TYPE##_link;                                  \
+    array->swap = LINK_TYPE##_swap;                                  \
+    array->head = LINK_TYPE##_head;                                  \
+    array->tail = LINK_TYPE##_tail;                                  \
+    array->de_head = LINK_TYPE##_de_head;                            \
+    array->de_tail = LINK_TYPE##_de_tail;                            \
+    array->split = LINK_TYPE##_split;                                \
+    array->print = LINK_TYPE##_print;                                \
+                                                                     \
+    return array;                                                    \
+}                                                                    \
+                                                                     \
+void                                                                 \
+LINK_TYPE##_del(LINK_TYPE *self)                                     \
+{                                                                    \
+    free(self);                                                      \
+}                                                                    \
+                                                                     \
+void                                                                 \
+LINK_TYPE##_reset(LINK_TYPE *self)                                   \
+{                                                                    \
+    self->len = 0;                                                   \
+}                                                                    \
+                                                                     \
+int                                                                  \
+LINK_TYPE##_equals(const LINK_TYPE *self,                            \
+                   const LINK_TYPE *compare)                         \
+{                                                                    \
+    assert(self->_);                                                 \
+    assert(compare->_);                                              \
+    if (self->len == compare->len) {                                 \
+        return (memcmp(self->_, compare->_,                          \
+                       sizeof(CONTENT_TYPE) * self->len) == 0);      \
+    } else {                                                         \
+        return 0;                                                    \
+    }                                                                \
+}                                                                    \
+                                                                     \
+CONTENT_TYPE                                                         \
+LINK_TYPE##_min(const LINK_TYPE *self)                               \
+{                                                                    \
+    CONTENT_TYPE min = CONTENT_TYPE_MAX;                             \
+    unsigned i;                                                      \
+                                                                     \
+    assert(self->_);                                                 \
+    for (i = 0; i < self->len; i++)                                  \
+    if (self->_[i] < min)                                            \
+        min = self->_[i];                                            \
+                                                                     \
+    return min;                                                      \
+}                                                                    \
+                                                                     \
+CONTENT_TYPE                                                         \
+LINK_TYPE##_max(const LINK_TYPE *self)                               \
+{                                                                    \
+    CONTENT_TYPE max = CONTENT_TYPE_MIN;                             \
+    unsigned i;                                                      \
+                                                                     \
+    assert(self->_);                                                 \
+    for (i = 0; i < self->len; i++)                                  \
+        if (self->_[i] > max)                                        \
+            max = self->_[i];                                        \
+                                                                     \
+    return max;                                                      \
+}                                                                    \
+                                                                     \
+CONTENT_TYPE                                                         \
+LINK_TYPE##_sum(const LINK_TYPE *self)                               \
+{                                                                    \
+    CONTENT_TYPE accumulator = CONTENT_TYPE_ACCUMULATOR;             \
+    const CONTENT_TYPE *data = self->_;                              \
+    unsigned size = self->len;                                       \
+    unsigned i;                                                      \
+                                                                     \
+    assert(self->_);                                                 \
+    for (i = 0; i < size; i++)                                       \
+        accumulator += data[i];                                      \
+                                                                     \
+    return accumulator;                                              \
+}                                                                    \
+                                                                     \
+void                                                                 \
+LINK_TYPE##_copy(const LINK_TYPE *self,                              \
+                 TYPE *copy)                                         \
+{                                                                    \
+    copy->resize(copy, self->len);                                   \
+    memcpy(copy->_, self->_, self->len * sizeof(CONTENT_TYPE));      \
+    copy->len = self->len;                                           \
+}                                                                    \
+                                                                     \
+void                                                                 \
+LINK_TYPE##_link(const LINK_TYPE *self,                              \
+                 LINK_TYPE *link)                                    \
+{                                                                    \
+    link->_ = self->_;                                               \
+    link->len = self->len;                                           \
+}                                                                    \
+                                                                     \
+void                                                                 \
+LINK_TYPE##_swap(LINK_TYPE *self,                                    \
+                 LINK_TYPE *swap)                                    \
+{                                                                    \
+    LINK_TYPE temp;                                                  \
+    temp._ = self->_;                                                \
+    temp.len = self->len;                                            \
+    self->_ = swap->_;                                               \
+    self->len = swap->len;                                           \
+    swap->_ = temp._;                                                \
+    swap->len = temp.len;                                            \
+}                                                                    \
+                                                                     \
+void                                                                 \
+LINK_TYPE##_head(const LINK_TYPE *self, unsigned count,              \
+                 LINK_TYPE *head)                                    \
+{                                                                    \
+    const unsigned to_copy = MIN(count, self->len);                  \
+    assert(self->_);                                                 \
+    head->_ = self->_;                                               \
+    head->len = to_copy;                                             \
+}                                                                    \
+                                                                     \
+void                                                                 \
+LINK_TYPE##_tail(const LINK_TYPE *self, unsigned count,              \
+                 LINK_TYPE *tail)                                    \
+{                                                                    \
+    const unsigned to_copy = MIN(count, self->len);                  \
+    assert(self->_);                                                 \
+    tail->_ = self->_ + (self->len - to_copy);                       \
+    tail->len = to_copy;                                             \
+}                                                                    \
+                                                                     \
+void                                                                 \
+LINK_TYPE##_de_head(const LINK_TYPE *self, unsigned count,           \
+                    LINK_TYPE *tail)                                 \
+{                                                                    \
+    unsigned to_copy;                                                \
+    assert(self->_);                                                 \
+    count = MIN(count, self->len);                                   \
+    to_copy = self->len - count;                                     \
+                                                                     \
+    tail->_ = self->_ + count;                                       \
+    tail->len = to_copy;                                             \
+}                                                                    \
+                                                                     \
+void                                                                 \
+LINK_TYPE##_de_tail(const LINK_TYPE *self, unsigned count,           \
+                    LINK_TYPE *head)                                 \
+{                                                                    \
+    head->_ = self->_;                                               \
+    head->len = self->len - MIN(count, self->len);                   \
+}                                                                    \
+                                                                     \
+void                                                                 \
+LINK_TYPE##_split(const LINK_TYPE *self, unsigned count,             \
+                  LINK_TYPE *head, LINK_TYPE *tail)                  \
+{                                                                    \
+    /*ensure we don't try to move too many items*/                   \
+    const unsigned to_head = MIN(count, self->len);                  \
+    const unsigned to_tail = self->len - to_head;                    \
+    assert(self->_);                                                 \
+                                                                     \
+    if ((head == self) && (tail == self)) {                          \
+        /*do nothing*/                                               \
+        return;                                                      \
+    } else if (head == tail) {                                       \
+        /*copy all data to head*/                                    \
+        head->_ = self->_;                                           \
+        head->len = self->len;                                       \
+    } else {                                                         \
+        head->_ = self->_;                                           \
+        head->len = to_head;                                         \
+        tail->_ = self->_ + to_head;                                 \
+        tail->len = to_tail;                                         \
+    }                                                                \
+}                                                                    \
+                                                                     \
+void                                                                 \
+LINK_TYPE##_print(const LINK_TYPE *self, FILE *output)               \
+{                                                                    \
+    unsigned i;                                                      \
+                                                                     \
+    putc('[', output);                                               \
+    if (self->len == 1) {                                            \
+        fprintf(output, FORMAT_STRING, self->_[0]);                  \
+    } else if (self->len > 1) {                                      \
+        for (i = 0; i < self->len - 1; i++)                          \
+            fprintf(output, FORMAT_STRING ", ", self->_[i]);         \
+        fprintf(output, FORMAT_STRING, self->_[i]);                  \
+    }                                                                \
+    putc(']', output);                                               \
 }
 
 ARRAY_FUNC_DEFINITION(a_int, int, l_int, INT_MIN, INT_MAX, 0, "%d")
@@ -629,205 +692,221 @@ struct TYPE##_s* TYPE##_new(void)                              \
     return a;                                                  \
 }                                                              \
                                                                \
-void TYPE##_del(TYPE *array)                                   \
+void                                                           \
+TYPE##_del(TYPE *self)                                         \
 {                                                              \
     unsigned i;                                                \
                                                                \
-    for (i = 0; i < array->total_size; i++)                    \
-        array->_[i]->del(array->_[i]);                         \
+    for (i = 0; i < self->total_size; i++)                     \
+        self->_[i]->del(self->_[i]);                           \
                                                                \
-    free(array->_);                                            \
-    free(array);                                               \
+    free(self->_);                                             \
+    free(self);                                                \
 }                                                              \
                                                                \
-void TYPE##_resize(TYPE *array, unsigned minimum)              \
+void                                                           \
+TYPE##_resize(TYPE *self, unsigned minimum)                    \
 {                                                              \
-    if (minimum > array->total_size) {                         \
-        array->_ = realloc(array->_,                           \
+    if (minimum > self->total_size) {                          \
+        self->_ = realloc(self->_,                             \
                            sizeof(ARRAY_TYPE*) * minimum);     \
-        while (array->total_size < minimum) {                  \
-            array->_[array->total_size++] = ARRAY_TYPE##_new();     \
-        }                                                           \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void TYPE##_reset(TYPE *array)                                      \
-{                                                                   \
-    unsigned i;                                                     \
-    for (i = 0; i < array->total_size; i++)                         \
-        array->_[i]->reset(array->_[i]);                            \
-    array->len = 0;                                                 \
-}                                                                   \
-                                                                    \
-ARRAY_TYPE* TYPE##_append(TYPE *array)                              \
-{                                                                   \
-    if (array->len == array->total_size)                            \
-        array->resize(array, array->total_size * 2);                \
-                                                                    \
-    return array->_[array->len++];                                  \
-}                                                                   \
-                                                                    \
-void TYPE##_extend(TYPE *array, const TYPE *to_add)                 \
-{                                                                   \
-    unsigned i;                                                     \
-    const unsigned len = to_add->len;                               \
-    for (i = 0; i < len; i++) {                                     \
-        to_add->_[i]->COPY_METH(to_add->_[i], array->append(array)); \
-    }                                                               \
-}                                                                   \
-                                                                    \
-int TYPE##_equals(const TYPE *array, const TYPE *compare)           \
-{                                                                   \
-    unsigned i;                                                     \
-                                                                    \
-    if (array->len == compare->len) {                               \
-        for (i = 0; i < array->len; i++)                            \
-            if (!array->_[i]->equals(array->_[i], compare->_[i]))   \
-                return 0;                                           \
-                                                                    \
-        return 1;                                                   \
-    } else                                                          \
-        return 0;                                                   \
-}                                                                   \
-                                                                    \
-void TYPE##_copy(const TYPE *array, TYPE *copy)                     \
-{                                                                   \
-    unsigned i;                                                     \
-                                                                    \
-    if (array != copy) {                                            \
-        copy->reset(copy);                                          \
-        for (i = 0; i < array->len; i++)                            \
-            array->_[i]->COPY_METH(array->_[i], copy->append(copy)); \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void TYPE##_swap(TYPE *array, TYPE *swap)                           \
-{                                                                   \
-    TYPE temp;                                                      \
-    temp._ = array->_;                                              \
-    temp.len = array->len;                                          \
-    temp.total_size = array->total_size;                            \
-    array->_ = swap->_;                                             \
-    array->len = swap->len;                                         \
-    array->total_size = swap->total_size;                           \
-    swap->_ = temp._;                                               \
-    swap->len = temp.len;                                           \
-    swap->total_size = temp.total_size;                             \
-}                                                                   \
-                                                                    \
-void TYPE##_split(const TYPE *array, unsigned count,                \
-                  TYPE *head, TYPE *tail)                           \
-{                                                                   \
-    /*ensure we don't try to move too many items*/                  \
-    unsigned to_head = MIN(count, array->len);                      \
-    unsigned i;                                                     \
-                                                                    \
-    if ((head == array) && (tail == array)) {                       \
-        /*do nothing*/                                              \
-        return;                                                     \
-    } else if ((head != array) && (tail == array)) {                \
-        TYPE *temp;                                                 \
-        /*move "count" values to head and shift the rest down*/     \
-                                                                    \
-        head->reset(head);                                          \
-        for (i = 0; i < to_head; i++)                               \
-            array->_[i]->swap(array->_[i], head->append(head));     \
-                                                                    \
-        temp = TYPE##_new();                                        \
-        for (; i < array->len; i++)                                 \
-            array->_[i]->swap(array->_[i], temp->append(temp));     \
-                                                                    \
-        temp->swap(temp, tail);                                     \
-        temp->del(temp);                                            \
-    } else if ((head == array) && (tail != array)) {                \
+        while (self->total_size < minimum) {                   \
+            self->_[self->total_size++] = ARRAY_TYPE##_new();  \
+        }                                                      \
+    }                                                          \
+}                                                              \
+                                                               \
+void                                                           \
+TYPE##_reset(TYPE *self)                                       \
+{                                                              \
+    unsigned i;                                                \
+    for (i = 0; i < self->total_size; i++)                     \
+        self->_[i]->reset(self->_[i]);                         \
+    self->len = 0;                                             \
+}                                                              \
+                                                               \
+ARRAY_TYPE*                                                    \
+TYPE##_append(TYPE *self)                                      \
+{                                                              \
+    if (self->len == self->total_size)                         \
+        self->resize(self, self->total_size * 2);              \
+                                                               \
+    return self->_[self->len++];                               \
+}                                                              \
+                                                               \
+void                                                           \
+TYPE##_extend(TYPE *self,                                      \
+              const TYPE *to_add)                              \
+{                                                              \
+    unsigned i;                                                \
+    const unsigned len = to_add->len;                          \
+    for (i = 0; i < len; i++) {                                \
+        to_add->_[i]->COPY_METH(to_add->_[i],                  \
+                                self->append(self));           \
+    }                                                          \
+}                                                              \
+                                                               \
+int                                                            \
+TYPE##_equals(const TYPE *self,                                \
+              const TYPE *compare)                             \
+{                                                              \
+    unsigned i;                                                \
+                                                               \
+    if (self->len == compare->len) {                           \
+        for (i = 0; i < self->len; i++)                        \
+            if (!self->_[i]->equals(self->_[i], compare->_[i])) \
+                return 0;                                      \
+                                                               \
+        return 1;                                              \
+    } else                                                     \
+        return 0;                                              \
+}                                                              \
+                                                               \
+void                                                           \
+TYPE##_copy(const TYPE *self, TYPE *copy)                      \
+{                                                              \
+    unsigned i;                                                \
+                                                               \
+    if (self != copy) {                                        \
+        copy->reset(copy);                                     \
+        for (i = 0; i < self->len; i++)                        \
+            self->_[i]->COPY_METH(self->_[i],                  \
+                                  copy->append(copy));         \
+    }                                                          \
+}                                                              \
+                                                               \
+void                                                           \
+TYPE##_swap(TYPE *self, TYPE *swap)                            \
+{                                                              \
+    TYPE temp;                                                 \
+    temp._ = self->_;                                          \
+    temp.len = self->len;                                      \
+    temp.total_size = self->total_size;                        \
+    self->_ = swap->_;                                         \
+    self->len = swap->len;                                     \
+    self->total_size = swap->total_size;                       \
+    swap->_ = temp._;                                          \
+    swap->len = temp.len;                                      \
+    swap->total_size = temp.total_size;                        \
+}                                                              \
+                                                               \
+void                                                           \
+TYPE##_split(const TYPE *self, unsigned count,                 \
+             TYPE *head, TYPE *tail)                           \
+{                                                              \
+    /*ensure we don't try to move too many items*/             \
+    unsigned to_head = MIN(count, self->len);                  \
+    unsigned i;                                                \
+                                                               \
+    if ((head == self) && (tail == self)) {                    \
+        /*do nothing*/                                         \
+        return;                                                \
+    } else if ((head != self) && (tail == self)) {             \
+        TYPE *temp;                                            \
+        /*move "count" values to head and shift the rest down*/ \
+                                                               \
+        head->reset(head);                                     \
+        for (i = 0; i < to_head; i++)                          \
+            self->_[i]->swap(self->_[i], head->append(head));  \
+                                                               \
+        temp = TYPE##_new();                                   \
+        for (; i < self->len; i++)                             \
+            self->_[i]->swap(self->_[i], temp->append(temp));  \
+                                                               \
+        temp->swap(temp, tail);                                \
+        temp->del(temp);                                       \
+    } else if ((head == self) && (tail != self)) {             \
         /*move "count" values from our end to tail and reduce our size*/ \
-                                                                    \
-        tail->reset(tail);                                          \
-        for (i = to_head; i < array->len; i++) {                    \
-            array->_[i]->swap(array->_[i], tail->append(tail));     \
-            array->_[i]->reset(array->_[i]);                        \
-        }                                                           \
-        head->len = to_head;                                        \
-    } else {                                                        \
+                                                               \
+        tail->reset(tail);                                     \
+        for (i = to_head; i < self->len; i++) {                \
+            self->_[i]->swap(self->_[i], tail->append(tail));  \
+            self->_[i]->reset(self->_[i]);                     \
+        }                                                      \
+        head->len = to_head;                                   \
+    } else {                                                   \
         /*copy "count" values to "head" and the remainder to "tail"*/ \
-                                                                    \
-        head->reset(head);                                          \
-        tail->reset(tail);                                          \
-        for (i = 0; i < to_head; i++)                               \
-            array->_[i]->COPY_METH(array->_[i], head->append(head)); \
-                                                                    \
-        for (; i < array->len; i++)                                 \
-            array->_[i]->COPY_METH(array->_[i], tail->append(tail)); \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void TYPE##_cross_split(const TYPE *array, unsigned count,          \
-                        TYPE *head, TYPE *tail)                     \
-{                                                                   \
-    unsigned i;                                                     \
-                                                                    \
-    if ((head == array) && (tail == array)) {                       \
-        /*do nothing*/                                              \
-    } else if (head == tail) {                                      \
-        array->copy(array, head);                                   \
-    } else if ((head != array) && (tail == array)) {                \
-        head->reset(head);                                          \
-        for (i = 0; i < array->len; i++) {                          \
-            array->_[i]->split(array->_[i],                         \
-                               count,                               \
-                               head->append(head),                  \
-                               tail->_[i]);                         \
-        }                                                           \
-    } else if ((head == array) && (tail != array)) {                \
-        tail->reset(tail);                                          \
-        for (i = 0; i < array->len; i++) {                          \
-            array->_[i]->split(array->_[i],                         \
-                               count,                               \
-                               head->_[i],                          \
-                               tail->append(tail));                 \
-        }                                                           \
-    } else {                                                        \
-        head->reset(head);                                          \
-        tail->reset(tail);                                          \
-        for (i = 0; i < array->len; i++) {                          \
-            array->_[i]->split(array->_[i],                         \
-                               count,                               \
-                               head->append(head),                  \
-                               tail->append(tail));                 \
-        }                                                           \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void TYPE##_reverse(TYPE *array)                                    \
-{                                                                   \
-    unsigned i;                                                     \
-    unsigned j;                                                     \
-    ARRAY_TYPE **data = array->_;                                   \
-                                                                    \
-    if (array->len > 0) {                                           \
-        for (i = 0, j = array->len - 1; i < j; i++, j--) {          \
-            ARRAY_TYPE *x = data[i];                                \
-            data[i] = data[j];                                      \
-            data[j] = x;                                            \
-        }                                                           \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void TYPE##_print(const TYPE *array, FILE *output)                  \
-{                                                                   \
-    unsigned i;                                                     \
-                                                                    \
-    putc('[', output);                                              \
-    if (array->len == 1) {                                          \
-        array->_[0]->print(array->_[0], output);                    \
-    } else if (array->len > 1) {                                    \
-        for (i = 0; i < array->len - 1; i++) {                      \
-            array->_[i]->print(array->_[i], output);                \
-            fprintf(output, ", ");                                  \
-        }                                                           \
-        array->_[i]->print(array->_[i], output);                    \
-    }                                                               \
-    putc(']', output);                                              \
+                                                               \
+        head->reset(head);                                     \
+        tail->reset(tail);                                     \
+        for (i = 0; i < to_head; i++)                          \
+            self->_[i]->COPY_METH(self->_[i], head->append(head)); \
+                                                               \
+        for (; i < self->len; i++)                             \
+            self->_[i]->COPY_METH(self->_[i], tail->append(tail)); \
+    }                                                          \
+}                                                              \
+                                                               \
+void                                                           \
+TYPE##_cross_split(const TYPE *self, unsigned count,           \
+                   TYPE *head, TYPE *tail)                     \
+{                                                              \
+    unsigned i;                                                \
+                                                               \
+    if ((head == self) && (tail == self)) {                    \
+        /*do nothing*/                                         \
+    } else if (head == tail) {                                 \
+        self->copy(self, head);                                \
+    } else if ((head != self) && (tail == self)) {             \
+        head->reset(head);                                     \
+        for (i = 0; i < self->len; i++) {                      \
+            self->_[i]->split(self->_[i],                      \
+                               count,                          \
+                               head->append(head),             \
+                               tail->_[i]);                    \
+        }                                                      \
+    } else if ((head == self) && (tail != self)) {             \
+        tail->reset(tail);                                     \
+        for (i = 0; i < self->len; i++) {                      \
+            self->_[i]->split(self->_[i],                      \
+                               count,                          \
+                               head->_[i],                     \
+                               tail->append(tail));            \
+        }                                                      \
+    } else {                                                   \
+        head->reset(head);                                     \
+        tail->reset(tail);                                     \
+        for (i = 0; i < self->len; i++) {                      \
+            self->_[i]->split(self->_[i],                      \
+                               count,                          \
+                               head->append(head),             \
+                               tail->append(tail));            \
+        }                                                      \
+    }                                                          \
+}                                                              \
+                                                               \
+void                                                           \
+TYPE##_reverse(TYPE *self)                                     \
+{                                                              \
+    unsigned i;                                                \
+    unsigned j;                                                \
+    ARRAY_TYPE **data = self->_;                               \
+                                                               \
+    if (self->len > 0) {                                       \
+        for (i = 0, j = self->len - 1; i < j; i++, j--) {      \
+            ARRAY_TYPE *x = data[i];                           \
+            data[i] = data[j];                                 \
+            data[j] = x;                                       \
+        }                                                      \
+    }                                                          \
+}                                                              \
+                                                               \
+void                                                           \
+TYPE##_print(const TYPE *self, FILE *output)                   \
+{                                                              \
+    unsigned i;                                                \
+                                                               \
+    putc('[', output);                                         \
+    if (self->len == 1) {                                      \
+        self->_[0]->print(self->_[0], output);                 \
+    } else if (self->len > 1) {                                \
+        for (i = 0; i < self->len - 1; i++) {                  \
+            self->_[i]->print(self->_[i], output);             \
+            fprintf(output, ", ");                             \
+        }                                                      \
+        self->_[i]->print(self->_[i], output);                 \
+    }                                                          \
+    putc(']', output);                                         \
 }
 
 ARRAY_A_FUNC_DEFINITION(aa_int, a_int, copy)
@@ -865,166 +944,181 @@ TYPE##_new(void)                                              \
     return a;                                                 \
 }                                                             \
                                                               \
-void TYPE##_del(TYPE *array)                                  \
+void                                                          \
+TYPE##_del(TYPE *self)                                        \
 {                                                             \
     unsigned i;                                               \
                                                               \
-    for (i = 0; i < array->total_size; i++)                   \
-        array->_[i]->del(array->_[i]);                        \
+    for (i = 0; i < self->total_size; i++)                    \
+        self->_[i]->del(self->_[i]);                          \
                                                               \
-    free(array->_);                                           \
-    free(array);                                              \
+    free(self->_);                                            \
+    free(self);                                               \
 }                                                             \
                                                               \
-void TYPE##_resize(TYPE *array, unsigned minimum)             \
+void                                                          \
+TYPE##_resize(TYPE *self, unsigned minimum)                   \
 {                                                             \
-    if (minimum > array->total_size) {                        \
-        array->_ = realloc(array->_,                          \
+    if (minimum > self->total_size) {                         \
+        self->_ = realloc(self->_,                            \
                            sizeof(ARRAY_TYPE*) * minimum);    \
-        while (array->total_size < minimum) {                 \
-            array->_[array->total_size++] = ARRAY_TYPE##_new();     \
-        }                                                           \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void TYPE##_reset(TYPE *array)                                      \
-{                                                                   \
-    unsigned i;                                                     \
-    for (i = 0; i < array->total_size; i++)                         \
-        array->_[i]->reset(array->_[i]);                            \
-    array->len = 0;                                                 \
-}                                                                   \
-                                                                    \
-ARRAY_TYPE* TYPE##_append(TYPE *array)                              \
-{                                                                   \
-    if (array->len == array->total_size)                            \
-        array->resize(array, array->total_size * 2);                \
-                                                                    \
-    return array->_[array->len++];                                  \
-}                                                                   \
-                                                                    \
-void TYPE##_extend(TYPE *array, const TYPE *to_add)                 \
-{                                                                   \
-    unsigned i;                                                     \
-    const unsigned len = to_add->len;                               \
-    for (i = 0; i < len; i++) {                                     \
-        to_add->_[i]->COPY_METH(to_add->_[i], array->append(array)); \
-    }                                                               \
-}                                                                   \
-int TYPE##_equals(const TYPE *array, const TYPE *compare)           \
-{                                                                   \
-    unsigned i;                                                     \
-                                                                    \
-    if (array->len == compare->len) {                               \
-        for (i = 0; i < array->len; i++)                            \
-            if (!array->_[i]->equals(array->_[i], compare->_[i]))   \
-                return 0;                                           \
-                                                                    \
-        return 1;                                                   \
-    } else                                                          \
-        return 0;                                                   \
-}                                                                   \
-void TYPE##_copy(const TYPE *array, TYPE *copy)                     \
-{                                                                   \
-    unsigned i;                                                     \
-                                                                    \
-    if (array != copy) {                                            \
-        copy->reset(copy);                                          \
-        for (i = 0; i < array->len; i++)                            \
-            array->_[i]->COPY_METH(array->_[i], copy->append(copy)); \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void TYPE##_swap(TYPE *array, TYPE *swap)                           \
-{                                                                   \
-    TYPE temp;                                                      \
-    temp._ = array->_;                                              \
-    temp.len = array->len;                                          \
-    temp.total_size = array->total_size;                            \
-    array->_ = swap->_;                                             \
-    array->len = swap->len;                                         \
-    array->total_size = swap->total_size;                           \
-    swap->_ = temp._;                                               \
-    swap->len = temp.len;                                           \
-    swap->total_size = temp.total_size;                             \
-}                                                                   \
-                                                                    \
-void TYPE##_split(const TYPE *array, unsigned count,                \
-                  TYPE *head, TYPE *tail)                           \
-{                                                                   \
-    /*ensure we don't try to move too many items*/                  \
-    unsigned to_head = MIN(count, array->len);                      \
-    unsigned i;                                                     \
-                                                                    \
-    if ((head == array) && (tail == array)) {                       \
-        /*do nothing*/                                              \
-        return;                                                     \
-    } else if ((head != array) && (tail == array)) {                \
-        TYPE *temp;                                                 \
-        /*move "count" values to head and shift the rest down*/     \
-                                                                    \
-        head->reset(head);                                          \
-        for (i = 0; i < to_head; i++)                               \
-            array->_[i]->swap(array->_[i], head->append(head));     \
-                                                                    \
-        temp = TYPE##_new();                                        \
-        for (; i < array->len; i++)                                 \
-            array->_[i]->swap(array->_[i], temp->append(temp));     \
-                                                                    \
-        temp->swap(temp, tail);                                     \
-        temp->del(temp);                                            \
-    } else if ((head == array) && (tail != array)) {                \
+        while (self->total_size < minimum) {                  \
+            self->_[self->total_size++] = ARRAY_TYPE##_new(); \
+        }                                                     \
+    }                                                         \
+}                                                             \
+                                                              \
+void                                                          \
+TYPE##_reset(TYPE *self)                                      \
+{                                                             \
+    unsigned i;                                               \
+    for (i = 0; i < self->total_size; i++)                    \
+        self->_[i]->reset(self->_[i]);                        \
+    self->len = 0;                                            \
+}                                                             \
+                                                              \
+ARRAY_TYPE*                                                   \
+TYPE##_append(TYPE *self)                                     \
+{                                                             \
+    if (self->len == self->total_size)                        \
+        self->resize(self, self->total_size * 2);             \
+                                                              \
+    return self->_[self->len++];                              \
+}                                                             \
+                                                              \
+void                                                          \
+TYPE##_extend(TYPE *self, const TYPE *to_add)                 \
+{                                                             \
+    unsigned i;                                               \
+    const unsigned len = to_add->len;                         \
+    for (i = 0; i < len; i++) {                               \
+        to_add->_[i]->COPY_METH(to_add->_[i], self->append(self)); \
+    }                                                         \
+}                                                             \
+                                                              \
+int                                                           \
+TYPE##_equals(const TYPE *self, const TYPE *compare)          \
+{                                                             \
+    unsigned i;                                               \
+                                                              \
+    if (self->len == compare->len) {                          \
+        for (i = 0; i < self->len; i++)                       \
+            if (!self->_[i]->equals(self->_[i], compare->_[i])) \
+                return 0;                                     \
+                                                              \
+        return 1;                                             \
+    } else                                                    \
+        return 0;                                             \
+}                                                             \
+                                                              \
+void                                                          \
+TYPE##_copy(const TYPE *self,                                 \
+            TYPE *copy)                                       \
+{                                                             \
+    unsigned i;                                               \
+                                                              \
+    if (self != copy) {                                       \
+        copy->reset(copy);                                    \
+        for (i = 0; i < self->len; i++)                       \
+            self->_[i]->COPY_METH(self->_[i],                 \
+                                  copy->append(copy));        \
+    }                                                         \
+}                                                             \
+                                                              \
+void                                                          \
+TYPE##_swap(TYPE *self, TYPE *swap)                           \
+{                                                             \
+    TYPE temp;                                                \
+    temp._ = self->_;                                         \
+    temp.len = self->len;                                     \
+    temp.total_size = self->total_size;                       \
+    self->_ = swap->_;                                        \
+    self->len = swap->len;                                    \
+    self->total_size = swap->total_size;                      \
+    swap->_ = temp._;                                         \
+    swap->len = temp.len;                                     \
+    swap->total_size = temp.total_size;                       \
+}                                                             \
+                                                              \
+void                                                          \
+TYPE##_split(const TYPE *self, unsigned count,                \
+             TYPE *head, TYPE *tail)                          \
+{                                                             \
+    /*ensure we don't try to move too many items*/            \
+    unsigned to_head = MIN(count, self->len);                 \
+    unsigned i;                                               \
+                                                              \
+    if ((head == self) && (tail == self)) {                   \
+        /*do nothing*/                                        \
+        return;                                               \
+    } else if ((head != self) && (tail == self)) {            \
+        TYPE *temp;                                           \
+        /*move "count" values to head and shift the rest down*/ \
+                                                              \
+        head->reset(head);                                    \
+        for (i = 0; i < to_head; i++)                         \
+            self->_[i]->swap(self->_[i], head->append(head)); \
+                                                              \
+        temp = TYPE##_new();                                  \
+        for (; i < self->len; i++)                            \
+            self->_[i]->swap(self->_[i], temp->append(temp)); \
+                                                              \
+        temp->swap(temp, tail);                               \
+        temp->del(temp);                                      \
+    } else if ((head == self) && (tail != self)) {            \
         /*move "count" values from our end to tail and reduce our size*/ \
-                                                                    \
-        tail->reset(tail);                                          \
-        for (i = to_head; i < array->len; i++) {                    \
-            array->_[i]->swap(array->_[i], tail->append(tail));     \
-            array->_[i]->reset(array->_[i]);                        \
-        }                                                           \
-        head->len = to_head;                                        \
-    } else {                                                        \
+                                                              \
+        tail->reset(tail);                                    \
+        for (i = to_head; i < self->len; i++) {               \
+            self->_[i]->swap(self->_[i], tail->append(tail)); \
+            self->_[i]->reset(self->_[i]);                    \
+        }                                                     \
+        head->len = to_head;                                  \
+    } else {                                                  \
         /*copy "count" values to "head" and the remainder to "tail"*/ \
-                                                                    \
-        head->reset(head);                                          \
-        tail->reset(tail);                                          \
-        for (i = 0; i < to_head; i++)                               \
-            array->_[i]->COPY_METH(array->_[i], head->append(head)); \
-                                                                    \
-        for (; i < array->len; i++)                                 \
-            array->_[i]->COPY_METH(array->_[i], tail->append(tail)); \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void TYPE##_reverse(TYPE *array)                                    \
-{                                                                   \
-    unsigned i;                                                     \
-    unsigned j;                                                     \
-    ARRAY_TYPE **data = array->_;                                   \
-                                                                    \
-    if (array->len > 0) {                                           \
-        for (i = 0, j = array->len - 1; i < j; i++, j--) {          \
-            ARRAY_TYPE *x = data[i];                                \
-            data[i] = data[j];                                      \
-            data[j] = x;                                            \
-        }                                                           \
-    }                                                               \
-}                                                                   \
-                                                                    \
-void TYPE##_print(const TYPE *array, FILE *output)                  \
-{                                                                   \
-    unsigned i;                                                     \
-                                                                    \
-    putc('[', output);                                              \
-    if (array->len == 1) {                                          \
-        array->_[0]->print(array->_[0], output);                    \
-    } else if (array->len > 1) {                                    \
-        for (i = 0; i < array->len - 1; i++) {                      \
-            array->_[i]->print(array->_[i], output);                \
-            fprintf(output, ", ");                                  \
-        }                                                           \
-        array->_[i]->print(array->_[i], output);                    \
-    }                                                               \
-    putc(']', output);                                              \
+                                                              \
+        head->reset(head);                                    \
+        tail->reset(tail);                                    \
+        for (i = 0; i < to_head; i++)                         \
+            self->_[i]->COPY_METH(self->_[i], head->append(head)); \
+                                                              \
+        for (; i < self->len; i++)                            \
+            self->_[i]->COPY_METH(self->_[i], tail->append(tail)); \
+    }                                                         \
+}                                                             \
+                                                              \
+void                                                          \
+TYPE##_reverse(TYPE *self)                                    \
+{                                                             \
+    unsigned i;                                               \
+    unsigned j;                                               \
+    ARRAY_TYPE **data = self->_;                              \
+                                                              \
+    if (self->len > 0) {                                      \
+        for (i = 0, j = self->len - 1; i < j; i++, j--) {     \
+            ARRAY_TYPE *x = data[i];                          \
+            data[i] = data[j];                                \
+            data[j] = x;                                      \
+        }                                                     \
+    }                                                         \
+}                                                             \
+                                                              \
+void                                                          \
+TYPE##_print(const TYPE *self, FILE *output)                  \
+{                                                             \
+    unsigned i;                                               \
+                                                              \
+    putc('[', output);                                        \
+    if (self->len == 1) {                                     \
+        self->_[0]->print(self->_[0], output);                \
+    } else if (self->len > 1) {                               \
+        for (i = 0; i < self->len - 1; i++) {                 \
+            self->_[i]->print(self->_[i], output);            \
+            fprintf(output, ", ");                            \
+        }                                                     \
+        self->_[i]->print(self->_[i], output);                \
+    }                                                         \
+    putc(']', output);                                        \
 }
 
 ARRAY_AA_FUNC_DEFINITION(aaa_int, aa_int, copy)
@@ -1051,8 +1145,8 @@ a_obj_dummy_print(void* obj, FILE* output)
 
 struct a_obj_s*
 a_obj_new(void* (*copy)(void* obj),
-            void (*free)(void* obj),
-            void (*print)(void* obj, FILE* output))
+          void (*free)(void* obj),
+          void (*print)(void* obj, FILE* output))
 {
     struct a_obj_s* a = malloc(sizeof(struct a_obj_s));
     a->len = 0;
@@ -1101,179 +1195,183 @@ a_obj_new(void* (*copy)(void* obj),
 }
 
 void
-a_obj_del(struct a_obj_s *array)
+a_obj_del(a_obj *self)
 {
-    while (array->len) {
-        array->free_obj(array->_[--array->len]);
+    while (self->len) {
+        self->free_obj(self->_[--self->len]);
     }
-    free(array->_);
-    free(array);
-}
-
-void a_obj_resize(a_obj *array, unsigned minimum)
-{
-    if (minimum > array->total_size) {
-        array->total_size = minimum;
-        array->_ = realloc(array->_, sizeof(void*) * minimum);
-    }
-}
-
-void a_obj_resize_for(a_obj *array, unsigned additional_items)
-{
-    array->resize(array, array->len + additional_items);
+    free(self->_);
+    free(self);
 }
 
 void
-a_obj_reset(struct a_obj_s *array)
+a_obj_resize(a_obj *self, unsigned minimum)
 {
-    while (array->len) {
-        array->free_obj(array->_[--array->len]);
+    if (minimum > self->total_size) {
+        self->total_size = minimum;
+        self->_ = realloc(self->_, sizeof(void*) * minimum);
     }
 }
 
-void a_obj_reset_for(a_obj *array, unsigned minimum)
+void
+a_obj_resize_for(a_obj *self, unsigned additional_items)
 {
-    array->reset(array);
-    array->resize(array, minimum);
+    self->resize(self, self->len + additional_items);
 }
 
 void
-a_obj_append(struct a_obj_s *array, void* value)
+a_obj_reset(a_obj *self)
 {
-    if (array->len == array->total_size)
-        array->resize(array, array->total_size * 2);
-
-    array->_[array->len++] = array->copy_obj(value);
+    while (self->len) {
+        self->free_obj(self->_[--self->len]);
+    }
 }
 
-void a_obj_vappend(struct a_obj_s *array, unsigned count, ...)
+void
+a_obj_reset_for(a_obj *self, unsigned minimum)
+{
+    self->reset(self);
+    self->resize(self, minimum);
+}
+
+void
+a_obj_append(a_obj *self, void* value)
+{
+    if (self->len == self->total_size)
+        self->resize(self, self->total_size * 2);
+
+    self->_[self->len++] = self->copy_obj(value);
+}
+
+void
+a_obj_vappend(a_obj *self, unsigned count, ...)
 {
     void* i;
     va_list ap;
 
-    array->resize(array, array->len + count);
+    self->resize(self, self->len + count);
     va_start(ap, count);
     for (; count > 0; count--) {
         i = va_arg(ap, void*);
-        array->_[array->len++] = array->copy_obj(i);
+        self->_[self->len++] = self->copy_obj(i);
     }
     va_end(ap);
 }
 
 void
-a_obj_mappend(struct a_obj_s *array, unsigned count, void* value)
+a_obj_mappend(a_obj *self, unsigned count, void* value)
 {
-    array->resize(array, array->len + count);
+    self->resize(self, self->len + count);
     for (; count > 0; count--) {
-        array->_[array->len++] = array->copy_obj(value);
+        self->_[self->len++] = self->copy_obj(value);
     }
 }
 
 void
-a_obj_set(struct a_obj_s *array, unsigned index, void* value)
+a_obj_set(a_obj *self, unsigned index, void* value)
 {
-    assert(index < array->len);
-    array->free_obj(array->_[index]);
-    array->_[index] = array->copy_obj(value);
+    assert(index < self->len);
+    self->free_obj(self->_[index]);
+    self->_[index] = self->copy_obj(value);
 }
 
-void a_obj_vset(struct a_obj_s *array, unsigned count, ...)
+void a_obj_vset(a_obj *self, unsigned count, ...)
 {
     void* i;
     va_list ap;
 
-    array->reset_for(array, count);
+    self->reset_for(self, count);
     va_start(ap, count);
     for (; count > 0; count--) {
         i = va_arg(ap, void*);
-        array->_[array->len++] = array->copy_obj(i);
+        self->_[self->len++] = self->copy_obj(i);
     }
     va_end(ap);
 }
 
 void
-a_obj_mset(struct a_obj_s *array, unsigned count, void* value)
+a_obj_mset(a_obj *self, unsigned count, void* value)
 {
-    array->reset_for(array, count);
+    self->reset_for(self, count);
     for (; count > 0; count--) {
-        array->_[array->len++] = array->copy_obj(value);
+        self->_[self->len++] = self->copy_obj(value);
     }
 }
 
 void
-a_obj_extend(struct a_obj_s *array, const struct a_obj_s *to_add)
+a_obj_extend(a_obj *self, const a_obj *to_add)
 {
-    array->concat(array, to_add, array);
+    self->concat(self, to_add, self);
 }
 
 void
-a_obj_copy(const struct a_obj_s *array, struct a_obj_s *copy)
+a_obj_copy(const a_obj *self, a_obj *copy)
 {
-    if (array != copy) {
+    if (self != copy) {
         unsigned i;
 
-        copy->reset_for(copy, array->len);
-        for (i = 0; i < array->len; i++) {
-            copy->_[copy->len++] = array->copy_obj(array->_[i]);
+        copy->reset_for(copy, self->len);
+        for (i = 0; i < self->len; i++) {
+            copy->_[copy->len++] = self->copy_obj(self->_[i]);
         }
     }
 }
 
 void
-a_obj_swap(a_obj *array, a_obj *swap)
+a_obj_swap(a_obj *self, a_obj *swap)
 {
     a_obj temp;
-    temp._ = array->_;
-    temp.len = array->len;
-    temp.total_size = array->total_size;
-    array->_ = swap->_;
-    array->len = swap->len;
-    array->total_size = swap->total_size;
+    temp._ = self->_;
+    temp.len = self->len;
+    temp.total_size = self->total_size;
+    self->_ = swap->_;
+    self->len = swap->len;
+    self->total_size = swap->total_size;
     swap->_ = temp._;
     swap->len = temp.len;
     swap->total_size = temp.total_size;
 }
 
 void
-a_obj_head(const struct a_obj_s *array, unsigned count,
-           struct a_obj_s *head)
+a_obj_head(const a_obj *self, unsigned count,
+           a_obj *head)
 {
-    const unsigned to_copy = MIN(count, array->len);
+    const unsigned to_copy = MIN(count, self->len);
 
-    if (head != array) {
+    if (head != self) {
         unsigned i;
         head->reset_for(head, to_copy);
         for (i = 0; i < to_copy; i++) {
-            head->_[head->len++] = array->copy_obj(array->_[i]);
+            head->_[head->len++] = self->copy_obj(self->_[i]);
         }
     } else {
         while (head->len > to_copy) {
-            array->free_obj(head->_[--head->len]);
+            self->free_obj(head->_[--head->len]);
         }
     }
 }
 
 void
-a_obj_tail(const struct a_obj_s *array, unsigned count,
-           struct a_obj_s *tail)
+a_obj_tail(const a_obj *self, unsigned count,
+           a_obj *tail)
 {
-    const unsigned to_copy = MIN(count, array->len);
+    const unsigned to_copy = MIN(count, self->len);
 
-    if (tail != array) {
+    if (tail != self) {
         unsigned i;
 
         tail->reset_for(tail, to_copy);
-        for (i = array->len - to_copy; i < array->len; i++) {
-            tail->_[tail->len++] = array->copy_obj(array->_[i]);
+        for (i = self->len - to_copy; i < self->len; i++) {
+            tail->_[tail->len++] = self->copy_obj(self->_[i]);
         }
     } else {
-        struct a_obj_s* temp = a_obj_new(array->copy_obj,
-                                             array->free_obj,
-                                             array->print_obj);
+        a_obj* temp = a_obj_new(self->copy_obj,
+                                self->free_obj,
+                                self->print_obj);
         unsigned i;
         temp->resize(temp, to_copy);
-        for (i = array->len - to_copy; i < array->len; i++) {
-            temp->_[temp->len++] = array->copy_obj(array->_[i]);
+        for (i = self->len - to_copy; i < self->len; i++) {
+            temp->_[temp->len++] = self->copy_obj(self->_[i]);
         }
         temp->swap(temp, tail);
         temp->del(temp);
@@ -1281,50 +1379,50 @@ a_obj_tail(const struct a_obj_s *array, unsigned count,
 }
 
 void
-a_obj_de_head(const struct a_obj_s *array, unsigned count,
-              struct a_obj_s *tail)
+a_obj_de_head(const a_obj *self, unsigned count,
+              a_obj *tail)
 {
-    array->tail(array, array->len - MIN(count, array->len), tail);
+    self->tail(self, self->len - MIN(count, self->len), tail);
 }
 
 void
-a_obj_de_tail(const struct a_obj_s *array, unsigned count,
-                struct a_obj_s *head)
+a_obj_de_tail(const a_obj *self, unsigned count,
+              a_obj *head)
 {
-    array->head(array, array->len - MIN(count, array->len), head);
+    self->head(self, self->len - MIN(count, self->len), head);
 }
 
 void
-a_obj_split(const struct a_obj_s *array, unsigned count,
-            struct a_obj_s *head, struct a_obj_s *tail)
+a_obj_split(const a_obj *self, unsigned count,
+            a_obj *head, a_obj *tail)
 {
-    const unsigned to_head = MIN(count, array->len);
-    const unsigned to_tail = array->len - to_head;
+    const unsigned to_head = MIN(count, self->len);
+    const unsigned to_tail = self->len - to_head;
 
-    if ((head == array) && (tail == array)) {
+    if ((head == self) && (tail == self)) {
         /*do nothing*/
         return;
     } else if (head == tail) {
         /*copy all data to head*/
-        array->copy(array, head);
-    } else if ((head == array) && (tail != array)) {
-        array->tail(array, to_tail, tail);
-        array->head(array, to_head, head);
+        self->copy(self, head);
+    } else if ((head == self) && (tail != self)) {
+        self->tail(self, to_tail, tail);
+        self->head(self, to_head, head);
     } else {
-        array->head(array, to_head, head);
-        array->tail(array, to_tail, tail);
+        self->head(self, to_head, head);
+        self->tail(self, to_tail, tail);
     }
 }
 
 void
-a_obj_concat(const struct a_obj_s *array,
-             const struct a_obj_s *tail,
-             struct a_obj_s *combined)
+a_obj_concat(const a_obj *self,
+             const a_obj *tail,
+             a_obj *combined)
 {
     unsigned i;
 
-    if (array == combined) {
-        /*extend array with values from tail*/
+    if (self == combined) {
+        /*extend self with values from tail*/
 
         combined->resize_for(combined, tail->len);
 
@@ -1332,12 +1430,12 @@ a_obj_concat(const struct a_obj_s *array,
             combined->_[combined->len++] = combined->copy_obj(tail->_[i]);
         }
     } else {
-        /*concatenate array and tail to combined*/
+        /*concatenate self and tail to combined*/
 
-        combined->reset_for(combined, array->len + tail->len);
+        combined->reset_for(combined, self->len + tail->len);
 
-        for (i = 0; i < array->len; i++) {
-            combined->_[combined->len++] = combined->copy_obj(array->_[i]);
+        for (i = 0; i < self->len; i++) {
+            combined->_[combined->len++] = combined->copy_obj(self->_[i]);
         }
         for (i = 0; i < tail->len; i++) {
             combined->_[combined->len++] = combined->copy_obj(tail->_[i]);
@@ -1346,18 +1444,18 @@ a_obj_concat(const struct a_obj_s *array,
 }
 
 void
-a_obj_print(const struct a_obj_s *array, FILE* output)
+a_obj_print(const a_obj *self, FILE* output)
 {
     unsigned i;
     putc('[', output);
-    if (array->len == 1) {
-        array->print_obj(array->_[0], output);
-    } else if (array->len > 1) {
-        for (i = 0; i < array->len - 1; i++) {
-            array->print_obj(array->_[i], output);
+    if (self->len == 1) {
+        self->print_obj(self->_[0], output);
+    } else if (self->len > 1) {
+        for (i = 0; i < self->len - 1; i++) {
+            self->print_obj(self->_[i], output);
             fprintf(output, ", ");
         }
-        array->print_obj(array->_[i], output);
+        self->print_obj(self->_[i], output);
     }
     putc(']', output);
 }

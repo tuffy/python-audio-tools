@@ -64,256 +64,343 @@
 /*arrays of plain C primitives such as int, double, unsigned, etc.*/
 /******************************************************************/
 
-#define ARRAY_TYPE_DEFINITION(TYPE, CONTENT_TYPE, LINK_TYPE)   \
-struct LINK_TYPE##_s;                                          \
-struct TYPE##_s {                                              \
-    CONTENT_TYPE *_;                                           \
-    unsigned len;                                              \
-    unsigned total_size;                                       \
-                                                                \
-    /*deletes the array and any allocated data it contains*/    \
-    void (*del)(struct TYPE##_s *array);                        \
-                                                                \
-    /*resizes the array to fit at least "minimum" items*/       \
-    void (*resize)(struct TYPE##_s *array, unsigned minimum);   \
-                                                                \
-    /*resizes the array to fit "additional_items"*/             \
-    void (*resize_for)(struct TYPE##_s *array,                  \
-                       unsigned additional_items);              \
-                                                                \
-    /*deletes any data in the array and resets its contents*/   \
-    /*so that it can be re-populated with new data*/            \
-    void (*reset)(struct TYPE##_s *array);                      \
-                                                                \
-    /*deletes any data in the array,*/                          \
-    /*resizes its contents to fit "minimum" number of items,*/  \
-    /*and resets it contents so it can be re-populated*/        \
-    void (*reset_for)(struct TYPE##_s *array,                   \
-                      unsigned minimum);                        \
-                                                                \
-    /*appends a single value to the array*/                     \
-    void (*append)(struct TYPE##_s *array, CONTENT_TYPE value); \
-                                                                \
-    /*appends several values to the array*/                     \
-    void (*vappend)(struct TYPE##_s *array, unsigned count, ...);   \
-                                                                    \
+#define ARRAY_TYPE_DEFINITION(TYPE, CONTENT_TYPE, LINK_TYPE)            \
+struct LINK_TYPE##_s;                                                   \
+struct TYPE##_s {                                                       \
+    CONTENT_TYPE *_;                                                    \
+    unsigned len;                                                       \
+    unsigned total_size;                                                \
+                                                                        \
+    /*deletes the array and any allocated data it contains*/            \
+    void (*del)(struct TYPE##_s *self);                                 \
+                                                                        \
+    /*resizes the array to fit at least "minimum" items*/               \
+    void (*resize)(struct TYPE##_s *self, unsigned minimum);            \
+                                                                        \
+    /*resizes the array to fit "additional_items"*/                     \
+    void (*resize_for)(struct TYPE##_s *self,                           \
+                       unsigned additional_items);                      \
+                                                                        \
+    /*deletes any data in the array and resets its contents*/           \
+    /*so that it can be re-populated with new data*/                    \
+    void (*reset)(struct TYPE##_s *self);                               \
+                                                                        \
+    /*deletes any data in the array,*/                                  \
+    /*resizes its contents to fit "minimum" number of items,*/          \
+    /*and resets it contents so it can be re-populated*/                \
+    void (*reset_for)(struct TYPE##_s *self,                            \
+                      unsigned minimum);                                \
+                                                                        \
+    /*appends a single value to the array*/                             \
+    void (*append)(struct TYPE##_s *self, CONTENT_TYPE value);          \
+                                                                        \
+    /*appends several values to the array*/                             \
+    void (*vappend)(struct TYPE##_s *self, unsigned count, ...);        \
+                                                                        \
     /*appends "value", "count" number of times*/                        \
-    void (*mappend)(struct TYPE##_s *array, unsigned count,             \
+    void (*mappend)(struct TYPE##_s *self, unsigned count,              \
                     CONTENT_TYPE value);                                \
                                                                         \
     /*sets the array to new values, removing any old ones*/             \
-    void (*vset)(struct TYPE##_s *array, unsigned count, ...);          \
+    void (*vset)(struct TYPE##_s *self, unsigned count, ...);           \
                                                                         \
     /*sets the array to single values, removing any old ones*/          \
-    void (*mset)(struct TYPE##_s *array, unsigned count,                \
+    void (*mset)(struct TYPE##_s *self, unsigned count,                 \
                  CONTENT_TYPE value);                                   \
                                                                         \
     /*appends all the items in "to_add" to this array*/                 \
-    void (*extend)(struct TYPE##_s *array,                              \
+    void (*extend)(struct TYPE##_s *self,                               \
                    const struct TYPE##_s *to_add);                      \
                                                                         \
     /*returns 1 if all items in array equal those in compare,*/         \
     /*returns 0 if not*/                                                \
-    int (*equals)(const struct TYPE##_s *array,                         \
+    int (*equals)(const struct TYPE##_s *self,                          \
                   const struct TYPE##_s *compare);                      \
                                                                         \
     /*returns the smallest value in the array,*/                        \
     /*or INT_MAX if the array is empty*/                                \
-    CONTENT_TYPE (*min)(const struct TYPE##_s *array);                  \
+    CONTENT_TYPE (*min)(const struct TYPE##_s *self);                   \
                                                                         \
     /*returns the largest value in the array,*/                         \
     /*or INT_MIN if the array is empty*/                                \
-    CONTENT_TYPE (*max)(const struct TYPE##_s *array);                  \
+    CONTENT_TYPE (*max)(const struct TYPE##_s *self);                   \
                                                                         \
     /*returns the sum of all items in the array*/                       \
-    CONTENT_TYPE (*sum)(const struct TYPE##_s *array);                  \
+    CONTENT_TYPE (*sum)(const struct TYPE##_s *self);                   \
                                                                         \
     /*makes "copy" a duplicate of this array*/                          \
-    void (*copy)(const struct TYPE##_s *array,                          \
+    void (*copy)(const struct TYPE##_s *self,                           \
                  struct TYPE##_s *copy);                                \
                                                                         \
     /*links the contents of this array to a read-only array*/           \
-    void (*link)(const struct TYPE##_s *array,                          \
+    void (*link)(const struct TYPE##_s *self,                           \
                  struct LINK_TYPE##_s *link);                           \
                                                                         \
     /*swaps the contents of this array with another array*/             \
-    void (*swap)(struct TYPE##_s *array, struct TYPE##_s *swap);        \
+    void (*swap)(struct TYPE##_s *self, struct TYPE##_s *swap);         \
                                                                         \
     /*moves "count" number of items from the start of this array*/      \
     /*to "head", or as many as possible*/                               \
-    void (*head)(const struct TYPE##_s *array, unsigned count,          \
+    void (*head)(const struct TYPE##_s *self, unsigned count,           \
                  struct TYPE##_s *head);                                \
                                                                         \
     /*moves "count" number of items from the end of this array*/        \
     /*to "tail", or as many as possible*/                               \
-    void (*tail)(const struct TYPE##_s *array, unsigned count,          \
+    void (*tail)(const struct TYPE##_s *self, unsigned count,           \
                  struct TYPE##_s *tail);                                \
                                                                         \
     /*moves all except the first "count" number of items*/              \
     /*from this array to "tail", or as many as possible*/               \
-    void (*de_head)(const struct TYPE##_s *array, unsigned count,       \
+    void (*de_head)(const struct TYPE##_s *self, unsigned count,        \
                     struct TYPE##_s *tail);                             \
                                                                         \
     /*moves all except the last "count" number of items*/               \
     /*from this array to "head", or as many as possible*/               \
-    void (*de_tail)(const struct TYPE##_s *array, unsigned count,       \
+    void (*de_tail)(const struct TYPE##_s *self, unsigned count,        \
                     struct TYPE##_s *head);                             \
                                                                         \
     /*splits the array into "head" and "tail" arrays*/                  \
     /*such that "head" contains a copy of up to "count" items*/         \
     /*while "tail" contains the rest*/                                  \
-    void (*split)(const struct TYPE##_s *array, unsigned count,         \
+    void (*split)(const struct TYPE##_s *self, unsigned count,          \
                   struct TYPE##_s *head, struct TYPE##_s *tail);        \
                                                                         \
     /*concatenates "array" and "tail" into a single array*/             \
     /*and places the result in "combined"*/                             \
-    void (*concat)(const struct TYPE##_s *array,                        \
+    void (*concat)(const struct TYPE##_s *self,                         \
                    const struct TYPE##_s *tail,                         \
                    struct TYPE##_s *combined);                          \
                                                                         \
     /*reverses the items in the array*/                                 \
-    void (*reverse)(struct TYPE##_s *array);                            \
+    void (*reverse)(struct TYPE##_s *self);                             \
                                                                         \
     /*sorts the items in the array*/                                    \
-    void (*sort)(struct TYPE##_s *array);                               \
+    void (*sort)(struct TYPE##_s *self);                                \
                                                                         \
-    void (*print)(const struct TYPE##_s *array, FILE* output);          \
+    void (*print)(const struct TYPE##_s *self, FILE* output);           \
 };                                                                      \
 typedef struct TYPE##_s TYPE;                                           \
-struct TYPE##_s* TYPE##_new(void);                                      \
-void TYPE##_del(struct TYPE##_s *array);                                \
-void TYPE##_resize(struct TYPE##_s *array, unsigned minimum);           \
-void TYPE##_resize_for(struct TYPE##_s *array, unsigned additional_items); \
-void TYPE##_reset(struct TYPE##_s *array);                              \
-void TYPE##_reset_for(struct TYPE##_s *array, unsigned minimum);        \
-void TYPE##_append(struct TYPE##_s *array, CONTENT_TYPE value);         \
-void TYPE##_vappend(struct TYPE##_s *array, unsigned count, ...);       \
-void TYPE##_mappend(struct TYPE##_s *array, unsigned count,             \
-                    CONTENT_TYPE value);                                \
-void TYPE##_vset(struct TYPE##_s *array, unsigned count, ...);          \
-void TYPE##_mset(struct TYPE##_s *array, unsigned count,                \
-                 CONTENT_TYPE value);                                   \
-void TYPE##_extend(struct TYPE##_s *array,                              \
-                   const struct TYPE##_s *to_add);                      \
-int TYPE##_equals(const struct TYPE##_s *array,                         \
-                  const struct TYPE##_s *compare);                      \
-CONTENT_TYPE TYPE##_min(const struct TYPE##_s *array);                  \
-CONTENT_TYPE TYPE##_max(const struct TYPE##_s *array);                  \
-CONTENT_TYPE TYPE##_sum(const struct TYPE##_s *array);                  \
-void TYPE##_copy(const struct TYPE##_s *array, struct TYPE##_s *copy);  \
-void TYPE##_link(const struct TYPE##_s *array,                          \
-                 struct LINK_TYPE##_s *link);                           \
-void TYPE##_swap(struct TYPE##_s *array, struct TYPE##_s *swap);        \
-void TYPE##_head(const struct TYPE##_s *array, unsigned count,          \
-                  struct TYPE##_s *head);                               \
-void TYPE##_tail(const struct TYPE##_s *array, unsigned count,          \
-                 struct TYPE##_s *tail);                                \
-void TYPE##_de_head(const struct TYPE##_s *array, unsigned count,       \
-                    struct TYPE##_s *tail);                             \
-void TYPE##_de_tail(const struct TYPE##_s *array, unsigned count,       \
-                    struct TYPE##_s *head);                             \
-void TYPE##_split(const struct TYPE##_s *array, unsigned count,         \
-                   struct TYPE##_s *head, struct TYPE##_s *tail);       \
-void TYPE##_concat(const struct TYPE##_s *array,                        \
-                   const struct TYPE##_s *tail,                         \
-                   struct TYPE##_s *combined);                          \
-void TYPE##_reverse(struct TYPE##_s *array);                            \
-void TYPE##_sort(struct TYPE##_s *array);                               \
-void TYPE##_print(const struct TYPE##_s *array, FILE* output);          \
+struct TYPE##_s*                                                        \
+                                                                        \
+TYPE##_new(void);                                                       \
+                                                                        \
+void                                                                    \
+TYPE##_del(TYPE *self);                                                 \
+                                                                        \
+void                                                                    \
+TYPE##_resize(TYPE *self, unsigned minimum);                            \
+                                                                        \
+void                                                                    \
+TYPE##_resize_for(TYPE *self, unsigned additional_items);               \
+                                                                        \
+void                                                                    \
+TYPE##_reset(TYPE *self);                                               \
+                                                                        \
+void                                                                    \
+TYPE##_reset_for(TYPE *self, unsigned minimum);                         \
+                                                                        \
+void                                                                    \
+TYPE##_append(TYPE *self, CONTENT_TYPE value);                          \
+                                                                        \
+void                                                                    \
+TYPE##_vappend(TYPE *self, unsigned count, ...);                        \
+                                                                        \
+void                                                                    \
+TYPE##_mappend(TYPE *self, unsigned count,                              \
+               CONTENT_TYPE value);                                     \
+                                                                        \
+void                                                                    \
+TYPE##_vset(TYPE *self, unsigned count, ...);                           \
+                                                                        \
+void                                                                    \
+TYPE##_mset(TYPE *self, unsigned count,                                 \
+            CONTENT_TYPE value);                                        \
+                                                                        \
+void                                                                    \
+TYPE##_extend(TYPE *self,                                               \
+              const TYPE *to_add);                                      \
+                                                                        \
+int                                                                     \
+TYPE##_equals(const TYPE *self,                                         \
+              const TYPE *compare);                                     \
+                                                                        \
+CONTENT_TYPE                                                            \
+TYPE##_min(const TYPE *self);                                           \
+                                                                        \
+CONTENT_TYPE                                                            \
+TYPE##_max(const TYPE *self);                                           \
+                                                                        \
+CONTENT_TYPE                                                            \
+TYPE##_sum(const TYPE *self);                                           \
+                                                                        \
+void                                                                    \
+TYPE##_copy(const TYPE *self,                                           \
+            TYPE *copy);                                                \
+                                                                        \
+void                                                                    \
+TYPE##_link(const TYPE *self,                                           \
+            struct LINK_TYPE##_s *link);                                \
+                                                                        \
+void                                                                    \
+TYPE##_swap(TYPE *self, TYPE *swap);                                    \
+                                                                        \
+void                                                                    \
+TYPE##_head(const TYPE *self, unsigned count,                           \
+            TYPE *head);                                                \
+                                                                        \
+void                                                                    \
+TYPE##_tail(const TYPE *self, unsigned count,                           \
+            TYPE *tail);                                                \
+                                                                        \
+void                                                                    \
+TYPE##_de_head(const TYPE *self, unsigned count,                        \
+               TYPE *tail);                                             \
+                                                                        \
+void                                                                    \
+TYPE##_de_tail(const TYPE *self, unsigned count,                        \
+               TYPE *head);                                             \
+                                                                        \
+void                                                                    \
+TYPE##_split(const TYPE *self, unsigned count,                          \
+             TYPE *head, TYPE *tail);                                   \
+                                                                        \
+void                                                                    \
+TYPE##_concat(const TYPE *self,                                         \
+              const TYPE *tail,                                         \
+              TYPE *combined);                                          \
+                                                                        \
+void                                                                    \
+TYPE##_reverse(TYPE *self);                                             \
+                                                                        \
+void                                                                    \
+TYPE##_sort(TYPE *self);                                                \
+                                                                        \
+void                                                                    \
+TYPE##_print(const TYPE *self, FILE* output);                           \
                                                                         \
 struct LINK_TYPE##_s {                                                  \
     const CONTENT_TYPE *_;                                              \
     unsigned len;                                                       \
                                                                         \
     /*deletes the array and any allocated data it contains*/            \
-    void (*del)(struct LINK_TYPE##_s *array);                           \
+    void (*del)(struct LINK_TYPE##_s *self);                            \
                                                                         \
     /*deletes any data in the array and resets its contents*/           \
     /*so that it can be linked to new data*/                            \
-    void (*reset)(struct LINK_TYPE##_s *array);                         \
+    void (*reset)(struct LINK_TYPE##_s *self);                          \
                                                                         \
     /*returns 1 if all items in array equal those in compare,*/         \
     /*returns 0 if not*/                                                \
-    int (*equals)(const struct LINK_TYPE##_s *array,                    \
+    int (*equals)(const struct LINK_TYPE##_s *self,                     \
                   const struct LINK_TYPE##_s *compare);                 \
                                                                         \
     /*returns the smallest value in the array,*/                        \
-    CONTENT_TYPE (*min)(const struct LINK_TYPE##_s *array);             \
+    CONTENT_TYPE (*min)(const struct LINK_TYPE##_s *self);              \
                                                                         \
     /*returns the largest value in the array,*/                         \
-    CONTENT_TYPE (*max)(const struct LINK_TYPE##_s *array);             \
+    CONTENT_TYPE (*max)(const struct LINK_TYPE##_s *self);              \
                                                                         \
     /*returns the sum of all items in the array*/                       \
-    CONTENT_TYPE (*sum)(const struct LINK_TYPE##_s *array);             \
+    CONTENT_TYPE (*sum)(const struct LINK_TYPE##_s *self);              \
                                                                         \
     /*makes "copy" a duplicate of this array*/                          \
-    void (*copy)(const struct LINK_TYPE##_s *array,                     \
+    void (*copy)(const struct LINK_TYPE##_s *self,                      \
                  struct TYPE##_s *copy);                                \
                                                                         \
     /*links the contents of this array to a read-only array*/           \
-    void (*link)(const struct LINK_TYPE##_s *array,                     \
+    void (*link)(const struct LINK_TYPE##_s *self,                      \
                  struct LINK_TYPE##_s *link);                           \
                                                                         \
     /*swaps the contents of this array with another array*/             \
-    void (*swap)(struct LINK_TYPE##_s *array,                           \
+    void (*swap)(struct LINK_TYPE##_s *self,                            \
                  struct LINK_TYPE##_s *swap);                           \
                                                                         \
     /*moves "count" number of items from the start of this array*/      \
     /*to "head", or as many as possible*/                               \
-    void (*head)(const struct LINK_TYPE##_s *array, unsigned count,     \
+    void (*head)(const struct LINK_TYPE##_s *self, unsigned count,      \
                  struct LINK_TYPE##_s *head);                           \
                                                                         \
     /*moves "count" number of items from the start of this array*/      \
     /*to "head", or as many as possible*/                               \
-    void (*tail)(const struct LINK_TYPE##_s *array, unsigned count,     \
+    void (*tail)(const struct LINK_TYPE##_s *self, unsigned count,      \
                  struct LINK_TYPE##_s *tail);                           \
                                                                         \
     /*moves all except the first "count" number of items*/              \
     /*from this array to "tail", or as many as possible*/               \
-    void (*de_head)(const struct LINK_TYPE##_s *array, unsigned count,  \
+    void (*de_head)(const struct LINK_TYPE##_s *self, unsigned count,   \
                     struct LINK_TYPE##_s *tail);                        \
                                                                         \
     /*moves all except the last "count" number of items*/               \
     /*from this array to "head", or as many as possible*/               \
-    void (*de_tail)(const struct LINK_TYPE##_s *array, unsigned count,  \
+    void (*de_tail)(const struct LINK_TYPE##_s *self, unsigned count,   \
                     struct LINK_TYPE##_s *head);                        \
                                                                         \
     /*splits the array into "head" and "tail" arrays*/                  \
     /*such that "head" contains a copy of up to "count" items*/         \
     /*while "tail" contains the rest*/                                  \
-    void (*split)(const struct LINK_TYPE##_s *array, unsigned count,    \
+    void (*split)(const struct LINK_TYPE##_s *self, unsigned count,     \
                   struct LINK_TYPE##_s *head, struct LINK_TYPE##_s *tail); \
                                                                         \
-    void (*print)(const struct LINK_TYPE##_s *array, FILE* output);     \
+    void (*print)(const struct LINK_TYPE##_s *self, FILE* output);      \
 };                                                                      \
 typedef struct LINK_TYPE##_s LINK_TYPE;                                 \
-struct LINK_TYPE##_s* LINK_TYPE##_new(void);                            \
-void LINK_TYPE##_del(struct LINK_TYPE##_s *array);                      \
-void LINK_TYPE##_reset(struct LINK_TYPE##_s *array);                    \
-int LINK_TYPE##_equals(const struct LINK_TYPE##_s *array,               \
-                       const struct LINK_TYPE##_s *compare);            \
-CONTENT_TYPE LINK_TYPE##_min(const struct LINK_TYPE##_s *array);        \
-CONTENT_TYPE LINK_TYPE##_max(const struct LINK_TYPE##_s *array);        \
-CONTENT_TYPE LINK_TYPE##_sum(const struct LINK_TYPE##_s *array);        \
-void LINK_TYPE##_copy(const struct LINK_TYPE##_s *array,                \
-                      struct TYPE##_s *copy);                           \
-void LINK_TYPE##_link(const struct LINK_TYPE##_s *array,                \
-                      struct LINK_TYPE##_s *link);                      \
-void LINK_TYPE##_swap(struct LINK_TYPE##_s *array,                      \
-                      struct LINK_TYPE##_s *swap);                      \
-void LINK_TYPE##_head(const struct LINK_TYPE##_s *array, unsigned count, \
-                      struct LINK_TYPE##_s *head);                      \
-void LINK_TYPE##_tail(const struct LINK_TYPE##_s *array, unsigned count, \
-                      struct LINK_TYPE##_s *tail);                      \
-void LINK_TYPE##_de_head(const struct LINK_TYPE##_s *array, unsigned count, \
-                         struct LINK_TYPE##_s *tail);                   \
-void LINK_TYPE##_de_tail(const struct LINK_TYPE##_s *array, unsigned count, \
-                         struct LINK_TYPE##_s *head);                   \
-void LINK_TYPE##_split(const struct LINK_TYPE##_s *array,               \
-                       unsigned count,                                  \
-                       struct LINK_TYPE##_s *head,                      \
-                       struct LINK_TYPE##_s *tail);                     \
-void LINK_TYPE##_print(const struct LINK_TYPE##_s *array, FILE* output);
+                                                                        \
+LINK_TYPE*                                                              \
+LINK_TYPE##_new(void);                                                  \
+                                                                        \
+void                                                                    \
+LINK_TYPE##_del(LINK_TYPE *self);                                       \
+                                                                        \
+void                                                                    \
+LINK_TYPE##_reset(LINK_TYPE *self);                                     \
+                                                                        \
+int                                                                     \
+LINK_TYPE##_equals(const LINK_TYPE *self,                               \
+                   const LINK_TYPE *compare);                           \
+                                                                        \
+CONTENT_TYPE                                                            \
+LINK_TYPE##_min(const LINK_TYPE *self);                                 \
+                                                                        \
+CONTENT_TYPE                                                            \
+LINK_TYPE##_max(const LINK_TYPE *self);                                 \
+                                                                        \
+CONTENT_TYPE                                                            \
+LINK_TYPE##_sum(const LINK_TYPE *self);                                 \
+                                                                        \
+void                                                                    \
+LINK_TYPE##_copy(const LINK_TYPE *self,                                 \
+                 struct TYPE##_s *copy);                                \
+                                                                        \
+void                                                                    \
+LINK_TYPE##_link(const LINK_TYPE *self,                                 \
+                 LINK_TYPE *link);                                      \
+                                                                        \
+void                                                                    \
+LINK_TYPE##_swap(LINK_TYPE *self,                                       \
+                 LINK_TYPE *swap);                                      \
+                                                                        \
+void                                                                    \
+LINK_TYPE##_head(const LINK_TYPE *self, unsigned count,                 \
+                 LINK_TYPE *head);                                      \
+                                                                        \
+void                                                                    \
+LINK_TYPE##_tail(const LINK_TYPE *self, unsigned count,                 \
+                 LINK_TYPE *tail);                                      \
+                                                                        \
+void                                                                    \
+LINK_TYPE##_de_head(const LINK_TYPE *self, unsigned count,              \
+                    LINK_TYPE *tail);                                   \
+                                                                        \
+void                                                                    \
+LINK_TYPE##_de_tail(const LINK_TYPE *self, unsigned count,              \
+                    LINK_TYPE *head);                                   \
+                                                                        \
+void                                                                    \
+LINK_TYPE##_split(const LINK_TYPE *self, unsigned count,                \
+                  LINK_TYPE *head, LINK_TYPE *tail);                    \
+                                                                        \
+void                                                                    \
+LINK_TYPE##_print(const LINK_TYPE *self, FILE* output);
 
 ARRAY_TYPE_DEFINITION(a_int, int, l_int)
 ARRAY_TYPE_DEFINITION(a_double, double, l_double)
@@ -321,79 +408,105 @@ ARRAY_TYPE_DEFINITION(a_unsigned, unsigned, l_unsigned)
 
 
 /******************************************************************/
-/*        arrays of arrays such as array_i, array_f, etc.         */
+/*         arrays of arrays such as a_int, a_double etc.          */
 /******************************************************************/
 
-#define ARRAY_A_TYPE_DEFINITION(TYPE, ARRAY_TYPE)               \
-struct TYPE##_s {                                               \
-    struct ARRAY_TYPE##_s **_;                                  \
-    unsigned len;                                               \
-    unsigned total_size;                                        \
-                                                                \
-    /*deletes the array and any allocated data it contains*/    \
-    void (*del)(struct TYPE##_s *array);                        \
-                                                                \
-    /*resizes the array to fit at least "minimum" items*/       \
-    void (*resize)(struct TYPE##_s *array, unsigned minimum);   \
-                                                                \
-    /*deletes any data in the array and resets its contents*/   \
-    /*so that it can be re-populated with new data*/            \
-    void (*reset)(struct TYPE##_s *array);                      \
+#define ARRAY_A_TYPE_DEFINITION(TYPE, ARRAY_TYPE)                       \
+struct TYPE##_s {                                                       \
+    struct ARRAY_TYPE##_s **_;                                          \
+    unsigned len;                                                       \
+    unsigned total_size;                                                \
+                                                                        \
+    /*deletes the array and any allocated data it contains*/            \
+    void (*del)(struct TYPE##_s *self);                                 \
+                                                                        \
+    /*resizes the array to fit at least "minimum" items*/               \
+    void (*resize)(struct TYPE##_s *self, unsigned minimum);            \
+                                                                        \
+    /*deletes any data in the array and resets its contents*/           \
+    /*so that it can be re-populated with new data*/                    \
+    void (*reset)(struct TYPE##_s *self);                               \
                                                                         \
     /*returns a freshly appended array which values can be added to*/   \
     /*this array should *not* be deleted once it is done being used*/   \
-    struct ARRAY_TYPE##_s* (*append)(struct TYPE##_s *array);           \
+    struct ARRAY_TYPE##_s* (*append)(struct TYPE##_s *self);            \
                                                                         \
     /*appends all the items in "to_add" to this array*/                 \
-    void (*extend)(struct TYPE##_s *array,                              \
+    void (*extend)(struct TYPE##_s *self,                               \
                    const struct TYPE##_s *to_add);                      \
                                                                         \
     /*returns 1 if all items in array equal those in compare,*/         \
     /*returns 0 if not*/                                                \
-    int (*equals)(const struct TYPE##_s *array,                         \
+    int (*equals)(const struct TYPE##_s *self,                          \
                   const struct TYPE##_s *compare);                      \
                                                                         \
     /*makes "copy" a duplicate of this array*/                          \
-    void (*copy)(const struct TYPE##_s *array, struct TYPE##_s *copy);  \
+    void (*copy)(const struct TYPE##_s *self, struct TYPE##_s *copy);   \
                                                                         \
     /*swaps the contents of this array with another array*/             \
-    void (*swap)(struct TYPE##_s *array, struct TYPE##_s *swap);        \
+    void (*swap)(struct TYPE##_s *self, struct TYPE##_s *swap);         \
                                                                         \
     /*splits the array into "head" and "tail" arrays*/                  \
     /*such that "head" contains a copy of up to "count" items*/         \
     /*while "tail" contains the rest*/                                  \
-    void (*split)(const struct TYPE##_s *array, unsigned count,         \
+    void (*split)(const struct TYPE##_s *self, unsigned count,          \
                   struct TYPE##_s *head, struct TYPE##_s *tail);        \
                                                                         \
     /*splits each sub-array into "head" and "tail" arrays*/             \
     /*such that each "head" contains a copy of up to "count" items*/    \
     /*while each "tail" contains the rest*/                             \
-    void (*cross_split)(const struct TYPE##_s *array, unsigned count,   \
+    void (*cross_split)(const struct TYPE##_s *self, unsigned count,    \
                         struct TYPE##_s *head, struct TYPE##_s *tail);  \
                                                                         \
     /*reverses the items in the array*/                                 \
-    void (*reverse)(struct TYPE##_s *array);                            \
+    void (*reverse)(struct TYPE##_s *self);                             \
                                                                         \
-    void (*print)(const struct TYPE##_s *array, FILE* output);          \
+    void (*print)(const struct TYPE##_s *self, FILE* output);           \
 };                                                                      \
 typedef struct TYPE##_s TYPE;                                           \
-struct TYPE##_s* TYPE##_new(void);                                      \
-void TYPE##_del(struct TYPE##_s *array);                                \
-void TYPE##_resize(struct TYPE##_s *array, unsigned minimum);           \
-void TYPE##_reset(struct TYPE##_s *array);                              \
-struct ARRAY_TYPE##_s* TYPE##_append(struct TYPE##_s *array);           \
-void TYPE##_extend(struct TYPE##_s *array,                              \
-                   const struct TYPE##_s *to_add);                      \
-int TYPE##_equals(const struct TYPE##_s *array,                         \
-                  const struct TYPE##_s *compare);                      \
-void TYPE##_copy(const struct TYPE##_s *array, struct TYPE##_s *copy);  \
-void TYPE##_swap(struct TYPE##_s *array, struct TYPE##_s *swap);        \
-void TYPE##_reverse(struct TYPE##_s *array);                            \
-void TYPE##_split(const struct TYPE##_s *array, unsigned count,         \
-                    struct TYPE##_s *head, struct TYPE##_s *tail);      \
-void TYPE##_cross_split(const struct TYPE##_s *array, unsigned count,   \
-                          struct TYPE##_s *head, struct TYPE##_s *tail); \
-void TYPE##_print(const struct TYPE##_s *array, FILE* output);
+                                                                        \
+TYPE*                                                                   \
+TYPE##_new(void);                                                       \
+                                                                        \
+void                                                                    \
+TYPE##_del(TYPE *self);                                                 \
+                                                                        \
+void                                                                    \
+TYPE##_resize(TYPE *self, unsigned minimum);                            \
+                                                                        \
+void                                                                    \
+TYPE##_reset(TYPE *self);                                               \
+                                                                        \
+ARRAY_TYPE*                                                             \
+TYPE##_append(TYPE *self);                                              \
+                                                                        \
+void                                                                    \
+TYPE##_extend(TYPE *self,                                               \
+              const TYPE *to_add);                                      \
+                                                                        \
+int                                                                     \
+TYPE##_equals(const TYPE *self,                                         \
+              const TYPE *compare);                                     \
+                                                                        \
+void                                                                    \
+TYPE##_copy(const TYPE *self, TYPE *copy);                              \
+                                                                        \
+void                                                                    \
+TYPE##_swap(TYPE *self, TYPE *swap);                                    \
+                                                                        \
+void                                                                    \
+TYPE##_split(const TYPE *self, unsigned count,                          \
+             TYPE *head, TYPE *tail);                                   \
+                                                                        \
+void                                                                    \
+TYPE##_cross_split(const TYPE *self, unsigned count,                    \
+                   TYPE *head, TYPE *tail);                             \
+                                                                        \
+void                                                                    \
+TYPE##_reverse(TYPE *self);                                             \
+                                                                        \
+void                                                                    \
+TYPE##_print(const TYPE *self, FILE* output);
 
 ARRAY_A_TYPE_DEFINITION(aa_int, a_int)
 ARRAY_A_TYPE_DEFINITION(aa_double, a_double)
@@ -401,73 +514,97 @@ ARRAY_A_TYPE_DEFINITION(al_int, l_int)
 ARRAY_A_TYPE_DEFINITION(al_double, l_double)
 
 /******************************************************************/
-/*   arrays of arrays of arrays such as array_ia, array_fa, etc.  */
+/*   arrays of arrays of arrays such as aa_int, aa_double, etc.   */
 /******************************************************************/
 
-#define ARRAY_AA_TYPE_DEFINITION(TYPE, ARRAY_TYPE)  \
-struct TYPE##_s {                                   \
-    struct ARRAY_TYPE##_s **_;                      \
-    unsigned len;                                   \
-    unsigned total_size;                            \
-                                                                \
-    /*deletes the array and any allocated data it contains*/    \
-    void (*del)(struct TYPE##_s *array);                        \
-                                                                \
-    /*resizes the array to fit at least "minimum" items*/       \
-    void (*resize)(struct TYPE##_s *array, unsigned minimum);   \
-                                                                \
-    /*deletes any data in the array and resets its contents*/   \
-    /*so that it can be re-populated with new data*/            \
-    void (*reset)(struct TYPE##_s *array);                      \
+#define ARRAY_AA_TYPE_DEFINITION(TYPE, ARRAY_TYPE)                      \
+struct TYPE##_s {                                                       \
+    struct ARRAY_TYPE##_s **_;                                          \
+    unsigned len;                                                       \
+    unsigned total_size;                                                \
+                                                                        \
+    /*deletes the array and any allocated data it contains*/            \
+    void (*del)(struct TYPE##_s *self);                                 \
+                                                                        \
+    /*resizes the array to fit at least "minimum" items*/               \
+    void (*resize)(struct TYPE##_s *self, unsigned minimum);            \
+                                                                        \
+    /*deletes any data in the array and resets its contents*/           \
+    /*so that it can be re-populated with new data*/                    \
+    void (*reset)(struct TYPE##_s *self);                               \
                                                                         \
     /*returns a freshly appended array_i which values can be added to*/ \
     /*this array should *not* be deleted once it is done being used*/   \
-    struct ARRAY_TYPE##_s* (*append)(struct TYPE##_s *array);           \
+    struct ARRAY_TYPE##_s* (*append)(struct TYPE##_s *self);            \
                                                                         \
     /*appends all the items in "to_add" to this array*/                 \
-    void (*extend)(struct TYPE##_s *array,                              \
+    void (*extend)(struct TYPE##_s *self,                               \
                    const struct TYPE##_s *to_add);                      \
                                                                         \
     /*returns 1 if all items in array equal those in compare,*/         \
     /*returns 0 if not*/                                                \
-    int (*equals)(const struct TYPE##_s *array,                         \
+    int (*equals)(const struct TYPE##_s *self,                          \
                   const struct TYPE##_s *compare);                      \
                                                                         \
     /*makes "copy" a duplicate of this array*/                          \
-    void (*copy)(const struct TYPE##_s *array,                          \
+    void (*copy)(const struct TYPE##_s *self,                           \
                  struct TYPE##_s *copy);                                \
                                                                         \
     /*swaps the contents of this array with another array*/             \
-    void (*swap)(struct TYPE##_s *array, struct TYPE##_s *swap);        \
+    void (*swap)(struct TYPE##_s *self, struct TYPE##_s *swap);         \
                                                                         \
     /*splits the array into "head" and "tail" arrays*/                  \
     /*such that "head" contains a copy of up to "count" items*/         \
     /*while "tail" contains the rest*/                                  \
-    void (*split)(const struct TYPE##_s *array, unsigned count,         \
+    void (*split)(const struct TYPE##_s *self, unsigned count,          \
                   struct TYPE##_s *head, struct TYPE##_s *tail);        \
                                                                         \
     /*reverses the items in the array*/                                 \
-    void (*reverse)(struct TYPE##_s *array);                            \
+    void (*reverse)(struct TYPE##_s *self);                             \
                                                                         \
-    void (*print)(const struct TYPE##_s *array, FILE* output);          \
+    void (*print)(const struct TYPE##_s *self, FILE* output);           \
 };                                                                      \
 typedef struct TYPE##_s TYPE;                                           \
-struct TYPE##_s* TYPE##_new(void);                                      \
-void TYPE##_del(struct TYPE##_s *array);                                \
-void TYPE##_resize(struct TYPE##_s *array, unsigned minimum);           \
-void TYPE##_reset(struct TYPE##_s *array);                              \
-struct ARRAY_TYPE##_s* TYPE##_append(struct TYPE##_s *array);           \
-void TYPE##_extend(struct TYPE##_s *array,                              \
-                   const struct TYPE##_s *to_add);                      \
-int TYPE##_equals(const struct TYPE##_s *array,                         \
-                  const struct TYPE##_s *compare);                      \
-void TYPE##_copy(const struct TYPE##_s *array,                          \
-                 struct TYPE##_s *copy);                                \
-void TYPE##_swap(struct TYPE##_s *array, struct TYPE##_s *swap);        \
-void TYPE##_reverse(struct TYPE##_s *array);                            \
-void TYPE##_split(const struct TYPE##_s *array, unsigned count,         \
-                  struct TYPE##_s *head, struct TYPE##_s *tail);        \
-void TYPE##_print(const struct TYPE##_s *array, FILE* output);
+                                                                        \
+struct TYPE##_s*                                                        \
+TYPE##_new(void);                                                       \
+                                                                        \
+void                                                                    \
+TYPE##_del(TYPE *self);                                                 \
+                                                                        \
+void                                                                    \
+TYPE##_resize(TYPE *self, unsigned minimum);                            \
+                                                                        \
+void                                                                    \
+TYPE##_reset(TYPE *self);                                               \
+                                                                        \
+ARRAY_TYPE*                                                             \
+TYPE##_append(TYPE *self);                                              \
+                                                                        \
+void                                                                    \
+TYPE##_extend(TYPE *self,                                               \
+              const TYPE *to_add);                                      \
+                                                                        \
+int                                                                     \
+TYPE##_equals(const TYPE *self,                                         \
+              const TYPE *compare);                                     \
+                                                                        \
+void                                                                    \
+TYPE##_copy(const TYPE *self,                                           \
+            TYPE *copy);                                                \
+                                                                        \
+void                                                                    \
+TYPE##_swap(TYPE *self, TYPE *swap);                                    \
+                                                                        \
+void                                                                    \
+TYPE##_split(const TYPE *self, unsigned count,                          \
+             TYPE *head, TYPE *tail);                                   \
+                                                                        \
+void                                                                    \
+TYPE##_reverse(TYPE *self);                                             \
+                                                                        \
+void                                                                    \
+TYPE##_print(const TYPE *self, FILE* output);
 
 ARRAY_AA_TYPE_DEFINITION(aaa_int, aa_int)
 ARRAY_AA_TYPE_DEFINITION(aaa_double, aa_double)
@@ -494,86 +631,86 @@ struct a_obj_s {
     void (*print_obj)(void* obj, FILE* output);
 
     /*deletes the array and any allocated data it contains*/
-    void (*del)(struct a_obj_s *array);
+    void (*del)(struct a_obj_s *self);
 
     /*resizes the array to fit at least "minimum" number of items,
       if necessary*/
-    void (*resize)(struct a_obj_s *array, unsigned minimum);
+    void (*resize)(struct a_obj_s *self, unsigned minimum);
 
     /*resizes the array to fit "additional_items" number of new items,
       if necessary*/
-    void (*resize_for)(struct a_obj_s *array, unsigned additional_items);
+    void (*resize_for)(struct a_obj_s *self, unsigned additional_items);
 
     /*deletes any data in the array and resets its contents
       so that it can be re-populated with new data*/
-    void (*reset)(struct a_obj_s *array);
+    void (*reset)(struct a_obj_s *self);
 
     /*deletes any data in the array,
       resizes its contents to fit "minimum" number of items,
       and resets it contents so it can be re-populated with new data*/
-    void (*reset_for)(struct a_obj_s *array, unsigned minimum);
+    void (*reset_for)(struct a_obj_s *self, unsigned minimum);
 
     /*appends a single value to the array*/
-    void (*append)(struct a_obj_s *array, void* value);
+    void (*append)(struct a_obj_s *self, void* value);
 
     /*appends several values to the array*/
-    void (*vappend)(struct a_obj_s *array, unsigned count, ...);
+    void (*vappend)(struct a_obj_s *self, unsigned count, ...);
 
     /*appends "value", "count" number of times*/
-    void (*mappend)(struct a_obj_s *array, unsigned count, void* value);
+    void (*mappend)(struct a_obj_s *self, unsigned count, void* value);
 
     /*deletes the item at the given index
       and sets it to the new value*/
-    void (*set)(struct a_obj_s *array, unsigned index, void* value);
+    void (*set)(struct a_obj_s *self, unsigned index, void* value);
 
     /*sets the array to new values, removing any old ones*/
-    void (*vset)(struct a_obj_s *array, unsigned count, ...);
+    void (*vset)(struct a_obj_s *self, unsigned count, ...);
 
     /*sets the array to single values, removing any old ones*/
-    void (*mset)(struct a_obj_s *array, unsigned count, void* value);
+    void (*mset)(struct a_obj_s *self, unsigned count, void* value);
 
     /*appends all the items in "to_add" to this array*/
-    void (*extend)(struct a_obj_s *array, const struct a_obj_s *to_add);
+    void (*extend)(struct a_obj_s *self, const struct a_obj_s *to_add);
 
     /*makes "copy" a duplicate of this array*/
-    void (*copy)(const struct a_obj_s *array, struct a_obj_s *copy);
+    void (*copy)(const struct a_obj_s *self, struct a_obj_s *copy);
 
     /*swaps the contents of this array with another array*/
-    void (*swap)(struct a_obj_s *array, struct a_obj_s *swap);
+    void (*swap)(struct a_obj_s *self, struct a_obj_s *swap);
 
     /*moves "count" number of items from the start of this array
       to "head", or as many as possible*/
-    void (*head)(const struct a_obj_s *array, unsigned count,
+    void (*head)(const struct a_obj_s *self, unsigned count,
                  struct a_obj_s *head);
 
     /*moves "count" number of items from the end of this array
       to "tail", or as many as possible*/
-    void (*tail)(const struct a_obj_s *array, unsigned count,
+    void (*tail)(const struct a_obj_s *self, unsigned count,
                  struct a_obj_s *tail);
 
     /*moves all except the first "count" number of items
       from this array to "tail", or as many as possible*/
-    void (*de_head)(const struct a_obj_s *array, unsigned count,
+    void (*de_head)(const struct a_obj_s *self, unsigned count,
                     struct a_obj_s *tail);
 
     /*moves all except the last "count" number of items
       from this array to "head", or as many as possible*/
-    void (*de_tail)(const struct a_obj_s *array, unsigned count,
+    void (*de_tail)(const struct a_obj_s *self, unsigned count,
                     struct a_obj_s *head);
 
     /*splits the array into "head" and "tail" arrays
       such that "head" contains a copy of up to "count" items
       while "tail" contains the rest*/
-    void (*split)(const struct a_obj_s *array, unsigned count,
+    void (*split)(const struct a_obj_s *self, unsigned count,
                   struct a_obj_s *head, struct a_obj_s *tail);
 
     /*concatenates "array" and "tail" into a single array*/
     /*and places the result in "combined"*/
-    void (*concat)(const struct a_obj_s *array,
+    void (*concat)(const struct a_obj_s *self,
                    const struct a_obj_s *tail,
                    struct a_obj_s *combined);
 
-    void (*print)(const struct a_obj_s *array, FILE* output);
+    void (*print)(const struct a_obj_s *self, FILE* output);
 };
 
 typedef struct a_obj_s a_obj;
@@ -592,36 +729,79 @@ a_obj_dummy_print(void* obj, FILE* output);
 
 /*copy, free and print functions may be NULL,
   indicating no copy, free or print operations are necessary for object*/
-struct a_obj_s* a_obj_new(void* (*copy)(void* obj),
-                          void (*free)(void* obj),
-                          void (*print)(void* obj, FILE* output));
-void a_obj_del(struct a_obj_s *array);
-void a_obj_resize(struct a_obj_s *array, unsigned minimum);
-void a_obj_resize_for(struct a_obj_s *array, unsigned additional_items);
-void a_obj_reset(struct a_obj_s *array);
-void a_obj_reset_for(struct a_obj_s *array, unsigned minimum);
-void a_obj_append(struct a_obj_s *array, void* value);
-void a_obj_vappend(struct a_obj_s *array, unsigned count, ...);
-void a_obj_mappend(struct a_obj_s *array, unsigned count, void* value);
-void a_obj_set(struct a_obj_s *array, unsigned index, void* value);
-void a_obj_vset(struct a_obj_s *array, unsigned count, ...);
-void a_obj_mset(struct a_obj_s *array, unsigned count, void* value);
-void a_obj_extend(struct a_obj_s *array, const struct a_obj_s *to_add);
-void a_obj_copy(const struct a_obj_s *array, struct a_obj_s *copy);
-void a_obj_swap(struct a_obj_s *array, struct a_obj_s *swap);
-void a_obj_head(const struct a_obj_s *array, unsigned count,
-                struct a_obj_s *head);
-void a_obj_tail(const struct a_obj_s *array, unsigned count,
-                struct a_obj_s *tail);
-void a_obj_de_head(const struct a_obj_s *array, unsigned count,
-                   struct a_obj_s *tail);
-void a_obj_de_tail(const struct a_obj_s *array, unsigned count,
-                   struct a_obj_s *head);
-void a_obj_split(const struct a_obj_s *array, unsigned count,
-                 struct a_obj_s *head, struct a_obj_s *tail);
-void a_obj_concat(const struct a_obj_s *array,
-                  const struct a_obj_s *tail,
-                  struct a_obj_s *combined);
-void a_obj_print(const struct a_obj_s *array, FILE* output);
+a_obj*
+a_obj_new(void* (*copy)(void* obj),
+          void (*free)(void* obj),
+          void (*print)(void* obj, FILE* output));
+
+void
+a_obj_del(a_obj *self);
+
+void
+a_obj_resize(a_obj *self, unsigned minimum);
+
+void
+a_obj_resize_for(a_obj *self, unsigned additional_items);
+
+void
+a_obj_reset(a_obj *self);
+
+void
+a_obj_reset_for(a_obj *self, unsigned minimum);
+
+void
+a_obj_append(a_obj *self, void* value);
+
+void
+a_obj_vappend(a_obj *self, unsigned count, ...);
+
+void
+a_obj_mappend(a_obj *self, unsigned count, void* value);
+
+void
+a_obj_set(a_obj *self, unsigned index, void* value);
+
+void
+a_obj_vset(a_obj *self, unsigned count, ...);
+
+void
+a_obj_mset(a_obj *self, unsigned count, void* value);
+
+void
+a_obj_extend(a_obj *self, const a_obj *to_add);
+
+void
+a_obj_copy(const a_obj *self, a_obj *copy);
+
+void
+a_obj_swap(a_obj *self, a_obj *swap);
+
+void
+a_obj_head(const a_obj *self, unsigned count,
+           a_obj *head);
+
+void
+a_obj_tail(const a_obj *self, unsigned count,
+           a_obj *tail);
+
+void
+a_obj_de_head(const a_obj *self, unsigned count,
+              a_obj *tail);
+
+void
+a_obj_de_tail(const a_obj *self, unsigned count,
+              a_obj *head);
+
+void
+a_obj_split(const a_obj *self, unsigned count,
+            a_obj *head, a_obj *tail);
+
+void
+a_obj_concat(const a_obj *self,
+             const a_obj *tail,
+             a_obj *combined);
+
+void
+a_obj_print(const a_obj *self, FILE* output);
 
 #endif
