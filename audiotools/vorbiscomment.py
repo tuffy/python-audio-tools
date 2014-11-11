@@ -328,16 +328,16 @@ class VorbisComment(MetaData):
                 try:
                     new_key = {"track_total":u"TRACKNUMBER",
                                "album_total":u"DISCNUMBER"}[attr]
-                    current_values = self[new_key]
+                    slashed_values = self[new_key]
 
-                    for i in range(len(current_values)):
-                        current_value = current_values[i]
+                    for i in range(len(slashed_values)):
+                        current_value = slashed_values[i]
                         if u"/" in current_value:
                             (first, second) = current_value.split(u"/", 1)
                             if has_number(second):
-                                current_values[i] = u"/".join(
+                                slashed_values[i] = u"/".join(
                                     [first, swap_number(second, value)])
-                                self[new_key] = current_values
+                                self[new_key] = slashed_values
                                 return
                 except KeyError:
                     # no TRACKNUMBER/DISCNUMBER field found

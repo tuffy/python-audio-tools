@@ -514,7 +514,8 @@ class audiotools_pcmconverter(Extension):
                                     "src/samplerate/samplerate.c",
                                     "src/samplerate/src_sinc.c",
                                     "src/samplerate/src_zoh.c",
-                                    "src/samplerate/src_linear.c"])
+                                    "src/samplerate/src_linear.c"],
+                           define_macros=[("HAS_PYTHON", None)])
 
 
 class audiotools_replaygain(Extension):
@@ -527,14 +528,15 @@ class audiotools_replaygain(Extension):
                                     "src/bitstream.c",
                                     "src/buffer.c",
                                     "src/func_io.c",
-                                    "src/mini-gmp.c"])
+                                    "src/mini-gmp.c"],
+                           define_macros=[("HAS_PYTHON", None)])
 
 
 class audiotools_decoders(Extension):
     def __init__(self, system_libraries):
         self.__library_manifest__ = []
 
-        defines = [("VERSION", VERSION)]
+        defines = [("VERSION", VERSION), ("HAS_PYTHON", None)]
         sources = ["src/array.c",
                    "src/pcmconv.c",
                    "src/common/md5.c",
@@ -629,7 +631,7 @@ class audiotools_decoders(Extension):
 class audiotools_encoders(Extension):
     def __init__(self, system_libraries):
         self.__library_manifest__ = []
-        defines = [("VERSION", VERSION)]
+        defines = [("VERSION", VERSION), ("HAS_PYTHON", None)]
         sources = ["src/array.c",
                    "src/pcmconv.c",
                    "src/bitstream.c",
@@ -748,7 +750,8 @@ class audiotools_bitstream(Extension):
                                     "src/buffer.c",
                                     "src/func_io.c",
                                     "src/mini-gmp.c",
-                                    "src/huffman.c"])
+                                    "src/huffman.c"],
+                           define_macros=[("HAS_PYTHON", None)])
 
 
 class audiotools_ogg(Extension):
@@ -761,7 +764,8 @@ class audiotools_ogg(Extension):
                                     "src/bitstream.c",
                                     "src/func_io.c",
                                     "src/mini-gmp.c",
-                                    "src/buffer.c"])
+                                    "src/buffer.c"],
+                           define_macros=[("HAS_PYTHON", None)])
 
 
 class audiotools_accuraterip(Extension):

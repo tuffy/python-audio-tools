@@ -165,7 +165,7 @@ struct TYPE##_s {                                                       \
     void (*split)(const struct TYPE##_s *self, unsigned count,          \
                   struct TYPE##_s *head, struct TYPE##_s *tail);        \
                                                                         \
-    /*concatenates "array" and "tail" into a single array*/             \
+    /*concatenates "self" and "tail" into a single array*/              \
     /*and places the result in "combined"*/                             \
     void (*concat)(const struct TYPE##_s *self,                         \
                    const struct TYPE##_s *tail,                         \

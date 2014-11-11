@@ -1,6 +1,6 @@
 #ifndef BITSTREAM_H
 #define BITSTREAM_H
-#ifndef STANDALONE
+#ifdef HAS_PYTHON
 #include <Python.h>
 #endif
 #include <stdio.h>
@@ -1656,7 +1656,7 @@ bw_pos_t*
 bw_pos_stack_pop(struct bw_pos_stack** stack);
 
 
-#ifndef STANDALONE
+#ifdef HAS_PYTHON
 /*******************************************************************
  *                          Python-specific                        *
  *******************************************************************/

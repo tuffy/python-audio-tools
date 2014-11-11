@@ -1474,6 +1474,38 @@ br_skip_bytes(BitstreamReader* self, unsigned int count)
 void
 br_parse(BitstreamReader* self, const char* format, ...)
 {
+    /*cache function pointers for reuse*/
+    unsigned int
+    (*read)(BitstreamReader*, unsigned int) = self->read;
+
+    int
+    (*read_signed)(BitstreamReader*, unsigned int) = self->read_signed;
+
+    uint64_t
+    (*read_64)(BitstreamReader*, unsigned int) = self->read_64;
+
+    int64_t
+    (*read_signed_64)(BitstreamReader*, unsigned int) = self->read_signed_64;
+
+    void
+    (*read_bigint)(BitstreamReader*,
+                   unsigned int,
+                   mpz_t) = self->read_bigint;
+
+    void
+    (*read_signed_bigint)(BitstreamReader*,
+                          unsigned int,
+                          mpz_t) = self->read_signed_bigint;
+
+    void
+    (*read_bytes)(BitstreamReader*, uint8_t*, unsigned in) = self->read_bytes;
+
+    void
+    (*skip)(BitstreamReader*, unsigned int) = self->skip;
+
+    void
+    (*skip_bytes)(BitstreamReader*, unsigned int) = self->skip_bytes;
+
     va_list ap;
     bs_instruction_t inst;
 
@@ -1487,53 +1519,53 @@ br_parse(BitstreamReader* self, const char* format, ...)
         case BS_INST_UNSIGNED:
             for (; times; times--) {
                 unsigned *value = va_arg(ap, unsigned*);
-                *value = self->read(self, size);
+                *value = read(self, size);
             }
             break;
         case BS_INST_SIGNED:
             for (; times; times--) {
                 int *value = va_arg(ap, int*);
-                *value = self->read_signed(self, size);
+                *value = read_signed(self, size);
             }
             break;
         case BS_INST_UNSIGNED64:
             for (; times; times--) {
                 uint64_t *value = va_arg(ap, uint64_t*);
-                *value = self->read_64(self, size);
+                *value = read_64(self, size);
             }
             break;
         case BS_INST_SIGNED64:
             for (; times; times--) {
                 int64_t *value = va_arg(ap, int64_t*);
-                *value = self->read_signed_64(self, size);
+                *value = read_signed_64(self, size);
             }
             break;
         case BS_INST_UNSIGNED_BIGINT:
             for (; times; times--) {
                 mpz_t *value = va_arg(ap, mpz_t*);
-                self->read_bigint(self, size, *value);
+                read_bigint(self, size, *value);
             }
             break;
         case BS_INST_SIGNED_BIGINT:
             for (; times; times--) {
                 mpz_t *value = va_arg(ap, mpz_t*);
-                self->read_signed_bigint(self, size, *value);
+                read_signed_bigint(self, size, *value);
             }
             break;
         case BS_INST_SKIP:
             for (; times; times--) {
-                self->skip(self, size);
+                skip(self, size);
             }
             break;
         case BS_INST_SKIP_BYTES:
             for (; times; times--) {
-                self->skip_bytes(self, size);
+                skip_bytes(self, size);
             }
             break;
         case BS_INST_BYTES:
             for (; times; times--) {
                 uint8_t *value = va_arg(ap, uint8_t*);
-                self->read_bytes(self, value, size);
+                read_bytes(self, value, size);
             }
             break;
         case BS_INST_ALIGN:
@@ -2910,6 +2942,36 @@ bw_write_bytes_c(BitstreamWriter* self,
 void
 bw_build(BitstreamWriter* self, const char* format, ...)
 {
+    /*cache function pointers for reuse*/
+    void
+    (*write)(BitstreamWriter*, unsigned int, unsigned int) = self->write;
+
+    void
+    (*write_signed)(BitstreamWriter*, unsigned int, int) = self->write_signed;
+
+    void
+    (*write_64)(BitstreamWriter*,
+                unsigned int, uint64_t) = self->write_64;
+
+    void
+    (*write_signed_64)(BitstreamWriter*,
+                       unsigned int, int64_t) = self->write_signed_64;
+
+    void
+    (*write_bigint)(BitstreamWriter*,
+                    unsigned int,
+                    const mpz_t) = self->write_bigint;
+
+    void
+    (*write_signed_bigint)(BitstreamWriter*,
+                           unsigned int,
+                           const mpz_t) = self->write_signed_bigint;
+
+    void
+    (*write_bytes)(BitstreamWriter*,
+                   const uint8_t*,
+                   unsigned int) = self->write_bytes;
+
     va_list ap;
     bs_instruction_t inst;
 
@@ -2923,62 +2985,62 @@ bw_build(BitstreamWriter* self, const char* format, ...)
         case BS_INST_UNSIGNED:
             for (; times; times--) {
                 const unsigned value = va_arg(ap, unsigned);
-                self->write(self, size, value);
+                write(self, size, value);
             }
             break;
         case BS_INST_SIGNED:
             for (; times; times--) {
                 const int value = va_arg(ap, int);
-                self->write_signed(self, size, value);
+                write_signed(self, size, value);
             }
             break;
         case BS_INST_UNSIGNED64:
             for (; times; times--) {
                 const uint64_t value = va_arg(ap, uint64_t);
-                self->write_64(self, size, value);
+                write_64(self, size, value);
             }
             break;
         case BS_INST_SIGNED64:
             for (; times; times--) {
                 const int64_t value = va_arg(ap, int64_t);
-                self->write_signed_64(self, size, value);
+                write_signed_64(self, size, value);
             }
             break;
         case BS_INST_UNSIGNED_BIGINT:
             for (; times; times--) {
                 mpz_t *value = va_arg(ap, mpz_t*);
-                self->write_bigint(self, size, *value);
+                write_bigint(self, size, *value);
             }
             break;
         case BS_INST_SIGNED_BIGINT:
             for (; times; times--) {
                 mpz_t *value = va_arg(ap, mpz_t*);
-                self->write_signed_bigint(self, size, *value);
+                write_signed_bigint(self, size, *value);
             }
             break;
         case BS_INST_SKIP:
             for (; times; times--) {
-                self->write(self, size, 0);
+                write(self, size, 0);
             }
             break;
         case BS_INST_SKIP_BYTES:
             for (; times; times--) {
                 /*somewhat inefficient,
                   but byte skipping is rare for BitstreamWriters anyway*/
-                self->write(self, size, 0);
-                self->write(self, size, 0);
-                self->write(self, size, 0);
-                self->write(self, size, 0);
-                self->write(self, size, 0);
-                self->write(self, size, 0);
-                self->write(self, size, 0);
-                self->write(self, size, 0);
+                write(self, size, 0);
+                write(self, size, 0);
+                write(self, size, 0);
+                write(self, size, 0);
+                write(self, size, 0);
+                write(self, size, 0);
+                write(self, size, 0);
+                write(self, size, 0);
             }
             break;
         case BS_INST_BYTES:
             for (; times; times--) {
                 const uint8_t *value = va_arg(ap, uint8_t*);
-                self->write_bytes(self, value, size);
+                write_bytes(self, value, size);
             }
             break;
         case BS_INST_ALIGN:
@@ -3628,7 +3690,7 @@ bw_pos_stack_pop(struct bw_pos_stack** stack)
     return pos;
 }
 
-#ifndef STANDALONE
+#ifdef HAS_PYTHON
 
 unsigned
 br_read_python(PyObject *reader,

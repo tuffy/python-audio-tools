@@ -63,7 +63,7 @@ opusenc: $(OBJS) encoders/opus.c
 	$(CC) $(FLAGS) -o opusenc encoders/opus.c $(OBJS) -DSTANDALONE `pkg-config --cflags --libs opus ogg`
 
 huffman: huffman.c huffman.h parson.o
-	$(CC) $(FLAGS) -o huffman huffman.c parson.o -DSTANDALONE -DEXECUTABLE
+	$(CC) $(FLAGS) -o huffman huffman.c parson.o -DEXECUTABLE
 
 pcm.o: pcm.c pcm.h
 	$(CC) $(FLAGS) -c pcm.c -DSTANDALONE
@@ -72,7 +72,7 @@ pcmconv.o: pcmconv.c pcmconv.h
 	$(CC) $(FLAGS) -c pcmconv.c -DSTANDALONE
 
 bitstream.o: bitstream.c bitstream.h
-	$(CC) $(FLAGS) -c bitstream.c -DSTANDALONE
+	$(CC) $(FLAGS) -c bitstream.c
 
 md5.o: common/md5.c common/md5.h
 	$(CC) $(FLAGS) -c common/md5.c -DSTANDALONE
@@ -105,7 +105,7 @@ bitstream.a: bitstream.o huffman.o func_io.o mini-gmp.o
 	$(AR) -r $@ bitstream.o huffman.o func_io.o mini-gmp.o
 
 bitstream: bitstream.c bitstream.h huffman.o func_io.o mini-gmp.o
-	$(CC) $(FLAGS) bitstream.c huffman.o func_io.o mini-gmp.o -DEXECUTABLE -DSTANDALONE -DDEBUG -o $@
+	$(CC) $(FLAGS) bitstream.c huffman.o func_io.o mini-gmp.o -DEXECUTABLE -DDEBUG -o $@
 
 array: array.c array.h
 	$(CC) $(FLAGS) array.c -DEXECUTABLE -o $@
