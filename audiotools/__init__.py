@@ -5299,10 +5299,6 @@ def accuraterip_sheet_lookup(sheet, total_pcm_frames, sample_rate,
                           accuraterip_port)
 
 
-from audiotools.dvda import DVDAudio
-from audiotools.dvda import InvalidDVDA
-
-
 def output_progress(u, current, total):
     """given a unicode string and current/total integers,
     returns a u'[<current>/<total>]  <string>'  unicode string
