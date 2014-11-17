@@ -358,6 +358,12 @@ typedef br_huffman_entry_t br_huffman_table_t[0x200];
 typedef struct BitstreamReader_s {
     BITSTREAMREADER_TYPE
 
+    /*returns the remaining size of the stream in bytes
+      this is only applicable for substreams and queues
+      otherwise it always returns 0*/
+    unsigned
+    (*size)(const struct BitstreamReader_s* self);
+
     /*closes the BistreamReader's internal stream
 
      * for FILE objects, performs fclose
@@ -396,6 +402,12 @@ typedef struct BitstreamReader_s {
 typedef struct BitstreamQueue_s {
     BITSTREAMREADER_TYPE
 
+    /*returns the remaining size of the stream in bytes
+      this is only applicable for substreams and queues
+      otherwise it always returns 0*/
+    unsigned
+    (*size)(const struct BitstreamQueue_s* self);
+
     /*closes the BistreamQueue's internal stream
 
      once the substream is closed,
@@ -417,10 +429,6 @@ typedef struct BitstreamQueue_s {
     /*calls close_internal_stream(), followed by free()*/
     void
     (*close)(struct BitstreamQueue_s* self);
-
-    /*returns the number of unprocessed bytes on the queue*/
-    unsigned
-    (*size)(const struct BitstreamQueue_s* self);
 
     /*extends the queue with the given amount of data*/
     void
@@ -831,6 +839,15 @@ void
 br_seek_c(BitstreamReader* self, long position, bs_whence whence);
 
 
+/*bs->size(bs)  methods*/
+unsigned
+br_size_f_e_c(const BitstreamReader* self);
+unsigned
+br_size_b(const BitstreamReader* self);
+unsigned
+br_size_q(const BitstreamQueue* self);
+
+
 /*bs->substream(bs, bytes)  method*/
 BitstreamReader*
 br_substream(BitstreamReader* self, unsigned bytes);
@@ -877,11 +894,6 @@ void
 br_close(BitstreamReader* self);
 void
 br_close_q(BitstreamQueue* self);
-
-
-/*bs->size(bs)  method*/
-unsigned
-br_size_q(const BitstreamQueue* self);
 
 
 /*bs->push(bs, byte_count, data)  method*/

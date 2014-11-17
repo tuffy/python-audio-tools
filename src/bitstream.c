@@ -99,6 +99,12 @@ br_buf_empty(const struct br_buffer *buf)
     return buf->pos == buf->size;
 }
 
+static inline unsigned
+br_buf_size(const struct br_buffer *buf)
+{
+    return buf->size - buf->pos;
+}
+
 /*appends the given data to the buffer*/
 static void
 br_buf_extend(struct br_buffer *buf, const uint8_t *data, unsigned size)
@@ -386,6 +392,8 @@ __base_bitstreamreader__(bs_endianness endianness)
     bs->substream = br_substream;
     bs->enqueue = br_enqueue;
 
+    /*bs->size = ???*/
+
     /*bs->close_internal_stream = ???*/
     /*bs->free = ???*/
     bs->close = br_close;
@@ -428,6 +436,7 @@ br_open(FILE *f, bs_endianness endianness)
     bs->setpos = br_setpos_f;
     bs->seek = br_seek_f;
 
+    bs->size = br_size_f_e_c;
 
     bs->close_internal_stream = br_close_internal_stream_f;
     bs->free = br_free_f;
@@ -472,6 +481,8 @@ br_open_buffer(const uint8_t *buffer,
     bs->getpos = br_getpos_b;
     bs->setpos = br_setpos_b;
     bs->seek = br_seek_b;
+
+    bs->size = br_size_b;
 
     bs->close_internal_stream = br_close_internal_stream_b;
     bs->free = br_free_b;
@@ -539,11 +550,12 @@ br_open_queue(bs_endianness endianness)
     bs->substream = br_substream;
     bs->enqueue = br_enqueue;
 
+    bs->size = br_size_q;
+
     bs->close_internal_stream = br_close_internal_stream_q;
     bs->free = br_free_q;
     bs->close = br_close_q;
 
-    bs->size = br_size_q;
     bs->push = br_push_q;
     bs->reset = br_reset_q;
 
@@ -600,6 +612,8 @@ br_open_external(void* user_data,
     bs->setpos = br_setpos_e;
     bs->getpos = br_getpos_e;
     bs->seek = br_seek_e;
+
+    bs->size = br_size_f_e_c;
 
     bs->close_internal_stream = br_close_internal_stream_e;
     bs->free = br_free_e;
@@ -1764,6 +1778,25 @@ br_seek_c(BitstreamReader* self, long position, bs_whence whence)
 }
 
 
+unsigned
+br_size_f_e_c(const BitstreamReader* self)
+{
+    return 0;
+}
+
+unsigned
+br_size_b(const BitstreamReader* self)
+{
+    return br_buf_size(self->input.buffer);
+}
+
+unsigned
+br_size_q(const BitstreamQueue* self)
+{
+    return br_queue_size(self->input.queue);
+}
+
+
 BitstreamReader*
 br_substream(BitstreamReader* self, unsigned bytes)
 {
@@ -1827,6 +1860,8 @@ br_close_methods(BitstreamReader* self)
 
     self->getpos = br_getpos_c;
     self->setpos = br_setpos_c;
+
+    self->size = br_size_f_e_c;
 
     self->close_internal_stream = br_close_internal_stream_c;
 }
@@ -1970,12 +2005,6 @@ br_close_q(BitstreamQueue* self)
 {
     self->close_internal_stream(self);
     self->free(self);
-}
-
-unsigned
-br_size_q(const BitstreamQueue* self)
-{
-    return br_queue_size(self->input.queue);
 }
 
 void

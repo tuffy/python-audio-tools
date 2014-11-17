@@ -7853,6 +7853,23 @@
     - [ ] cdplay
     - [ ] trackplay
     - [ ] trackverify
+** TODO Re-add DVD-A support using libdvdaudio
+   Supporting DVD-A in an external library should provide a useful decoupling.
+*** TODO Add audiotools.dvda module
+    This contains thin wrappers around libdvdaudio structures and functions.
+**** TODO Add DVDA object
+**** TODO Add Titleset object
+**** TODO Add Title object
+**** TODO Add Track object
+**** TODO Add TitleReader object
+**** TODO Add documentation
+*** TODO Re-add dvda2track script
+**** TODO Re-add dvda2track.1 man page
+*** TODO Re-add dvdainfo script
+**** TODO Re-add dvdainfo.1 man page
+*** TODO Update setup script
+    Probe for libdvdaudio and add module and scripts if present,
+    analagous to libcdio.
 * TODO Finish version 3.1
 ** TODO Make AudioFile.available() classmethod finer-grained
    That is, formats can be readable but not writable, or taggable but

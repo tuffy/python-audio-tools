@@ -55,6 +55,7 @@ def audiofiles(paths, processed_filenames, unsupported_types, messenger):
 
 def update(track, messenger):
     from tempfile import mkstemp
+    import shutil
 
     if not os.access(track.filename, os.R_OK | os.W_OK):
         raise IOError(track.filename)
@@ -67,6 +68,7 @@ def update(track, messenger):
     # perform fixes to temporary file
     try:
         fixes = track.clean(temp_path)
+        shutil.copymode(track.filename, temp_path)
     except:
         os.close(fd)
         os.unlink(temp_path)
@@ -74,10 +76,9 @@ def update(track, messenger):
 
     if len(fixes) > 0:
         # overwrite original with temporary file
-        original_mode = os.stat(track.filename).st_mode
-        os.rename(temp_path, track.filename)
-        os.chmod(track.filename, original_mode)
         os.close(fd)
+        os.unlink(track.filename)
+        shutil.move(temp_path, track.filename)
 
         # finally, display fixes performed
         display_messages(messenger, track, fixes)
