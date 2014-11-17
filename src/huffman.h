@@ -1,25 +1,37 @@
-#include "bitstream.h"
-#ifndef HUFFMAN_H
-#define HUFFMAN_H
-
 /********************************************************
- Audio Tools, a module and set of tools for manipulating audio data
+ Bitstream Library, a module for reading bits of data
+
  Copyright (C) 2007-2014  Brian Langenberger
 
- This program is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
+ The Bitstream Library is free software; you can redistribute it and/or modify
+ it under the terms of either:
 
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
+   * the GNU Lesser General Public License as published by the Free
+     Software Foundation; either version 3 of the License, or (at your
+     option) any later version.
 
- You should have received a copy of the GNU General Public License
- along with this program; if not, write to the Free Software
- Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-*******************************************************/
+ or
+
+   * the GNU General Public License as published by the Free Software
+     Foundation; either version 2 of the License, or (at your option) any
+     later version.
+
+ or both in parallel, as here.
+
+ The Bitstream Library is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ for more details.
+
+ You should have received copies of the GNU General Public License and the
+ GNU Lesser General Public License along with the GNU MP Library.  If not,
+ see https://www.gnu.org/licenses/.
+ *******************************************************/
+
+#include "bitstream.h"
+
+#ifndef __BITSTREAMLIB_HUFFMAN_H__
+#define __BITSTREAMLIB_HUFFMAN_H__
 
 struct huffman_frequency {
     unsigned int bits;   /*the bits to be consumed
