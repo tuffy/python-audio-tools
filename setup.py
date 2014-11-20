@@ -53,6 +53,7 @@ VERSION = re.search(r'VERSION\s*=\s"(.+?)"',
 
 LIBRARY_URLS = {"libcdio_paranoia": "http://www.gnu.org/software/libcdio/",
                 "libcdio": "http://www.gnu.org/software/libcdio/",
+                "libdvd-audio": "http://???",
                 "libmpg123": "http://www.mpg123.org",
                 "vorbisfile": "http://xiph.org",
                 "opusfile": "http://www.opus-codec.org",
@@ -347,6 +348,8 @@ class build_ext(_build_ext):
 
         if ext_audiotools_cdio not in self.extensions:
             libraries["libcdio"] = (["CDDA data extraction"], False)
+        if ext_audiotools_dvdaudio not in self.extensions:
+            libraries["libdvd-audio"] = (["DVD-Audio extraction"], False)
 
         all_libraries_present = (set([l[1] for l in libraries.values()]) ==
                                  set([True]))
@@ -461,10 +464,12 @@ class audiotools_cdio(Extension):
                     system_libraries.extra_compile_args("libcdio_paranoia"))
                 extra_link_args.extend(
                     system_libraries.extra_link_args("libcdio_paranoia"))
+
             sources.extend(["src/cdiomodule.c",
                             "src/array.c",
                             "src/pcmconv.c",
                             "src/pcm.c"])
+
             self.__library_manifest__.append(("libcdio",
                                               "CDDA data extraction",
                                               True))
@@ -492,6 +497,55 @@ class audiotools_cdio(Extension):
         else:
             return True
 
+
+class audiotools_dvdaudio(Extension):
+    def __init__(self, system_libraries):
+        self.__library_manifest__ = []
+        sources = []
+        libraries = set()
+        extra_compile_args = []
+        extra_link_args = []
+
+        if system_libraries.present("libdvd-audio"):
+            if system_libraries.guaranteed_present("libdvd-audio"):
+                libraries.update(set(["libdvd-audio"]))
+            else:
+                extra_compile_args.extend(
+                    system_libraries.extra_compile_args("libdvd-audio"))
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("libdvd-audio"))
+
+            sources.extend(["src/dvdamodule.c",
+                            "src/array.c",
+                            "src/pcmconv.c",
+                            "src/pcm.c"])
+
+            self.__library_manifest__.append(("libdvd-audio",
+                                              "DVD-Audio data extraction",
+                                              True))
+        else:
+            self.__library_manifest__.append(("libdvd-audio",
+                                              "DVD-Audio data extraction",
+                                              False))
+
+        Extension.__init__(
+            self,
+            "audiotools.dvda",
+            sources=sources,
+            libraries=list(libraries),
+            extra_compile_args=extra_compile_args,
+            extra_link_args=extra_link_args)
+
+    def library_manifest(self):
+        for values in self.__library_manifest__:
+            yield values
+
+    def libraries_present(self):
+        for (library, used_for, is_present) in self.library_manifest():
+            if not is_present:
+                return False
+        else:
+            return True
 
 class audiotools_pcm(Extension):
     def __init__(self):
@@ -852,6 +906,8 @@ class audiotools_output(Extension):
 
 ext_audiotools_cdio = audiotools_cdio(system_libraries)
 
+ext_audiotools_dvdaudio = audiotools_dvdaudio(system_libraries)
+
 ext_modules = [audiotools_pcm(),
                audiotools_pcmconverter(),
                audiotools_replaygain(),
@@ -883,6 +939,10 @@ if ext_audiotools_cdio.libraries_present():
     ext_modules.append(ext_audiotools_cdio)
     scripts.extend(["cd2track", "cdinfo", "cdplay"])
 
+if ext_audiotools_dvdaudio.libraries_present():
+    ext_modules.append(ext_audiotools_dvdaudio)
+    #FIXME - add DVD-A scripts here
+
 setup(name="audiotools",
       version=VERSION,
       author="Brian Langenberger",
@@ -903,6 +963,8 @@ setup(name="audiotools",
           "Operating System :: POSIX :: Linux",
           "Programming Language :: C",
           "Programming Language :: Python :: 2.7",
+          "Programming Language :: Python :: 3.3",
+          "Programming Language :: Python :: 3.4",
           "Topic :: Multimedia :: Sound/Audio",
           "Topic :: Multimedia :: Sound/Audio :: CD Audio",
           "Topic :: Multimedia :: Sound/Audio :: CD Audio :: CD Playing",
