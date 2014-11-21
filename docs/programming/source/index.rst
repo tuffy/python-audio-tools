@@ -17,6 +17,7 @@ Contents:
    audiotools_pcmconverter.rst
    audiotools_replaygain.rst
    audiotools_cdio.rst
+   audiotools_dvda.rst
    audiotools_freedb.rst
    audiotools_musicbrainz.rst
    audiotools_accuraterip.rst

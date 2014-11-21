@@ -162,13 +162,13 @@ Titleset_init(dvda_Titleset *self, PyObject *args, PyObject *kwds)
         return -1;
 
     if (titleset_number <= 0) {
-        PyErr_SetString(PyExc_ValueError, "no such titleset");
+        PyErr_SetString(PyExc_IndexError, "no such titleset");
         return -1;
     }
 
     if ((self->titleset =
          dvda_open_titleset(dvda->dvda, (unsigned)titleset_number)) == NULL) {
-        PyErr_SetString(PyExc_ValueError, "no such titleset");
+        PyErr_SetString(PyExc_IndexError, "no such titleset");
         return -1;
     }
 
@@ -195,6 +195,12 @@ Titleset_title(dvda_Titleset *self, PyObject *args)
 
     return PyObject_CallFunction(
         (PyObject*)&dvda_TitleType, "Oi", self, title);
+}
+
+static PyObject*
+Titleset_number(dvda_Titleset *self, void *closure)
+{
+    return Py_BuildValue("I", dvda_titleset_number(self->titleset));
 }
 
 static PyObject*
@@ -232,13 +238,13 @@ Title_init(dvda_Title *self, PyObject *args, PyObject *kwds)
         return -1;
 
     if (title_number <= 0) {
-        PyErr_SetString(PyExc_ValueError, "no such title");
+        PyErr_SetString(PyExc_IndexError, "no such title");
         return -1;
     }
 
     if ((self->title =
          dvda_open_title(titleset->titleset, (unsigned)title_number)) == NULL) {
-        PyErr_SetString(PyExc_ValueError, "no such title");
+        PyErr_SetString(PyExc_IndexError, "no such title");
         return -1;
     }
 
@@ -265,6 +271,12 @@ Title_track(dvda_Title *self, PyObject *args)
 
     return PyObject_CallFunction(
         (PyObject*)&dvda_TrackType, "Oi", self, track);
+}
+
+static PyObject*
+Title_number(dvda_Title *self, void *closure)
+{
+    return Py_BuildValue("I", dvda_title_number(self->title));
 }
 
 static PyObject*
@@ -308,13 +320,13 @@ Track_init(dvda_Track *self, PyObject *args, PyObject *kwds)
         return -1;
 
     if (track_number <= 0) {
-        PyErr_SetString(PyExc_ValueError, "no such track");
+        PyErr_SetString(PyExc_IndexError, "no such track");
         return -1;
     }
 
     if ((self->track =
          dvda_open_track(title->title, (unsigned)track_number)) == NULL) {
-        PyErr_SetString(PyExc_ValueError, "no such track");
+        PyErr_SetString(PyExc_IndexError, "no such track");
         return -1;
     }
 
@@ -335,6 +347,12 @@ Track_reader(dvda_Track *self, PyObject *args)
 {
     return PyObject_CallFunction(
         (PyObject*)&dvda_TrackReaderType, "O", self);
+}
+
+static PyObject*
+Track_number(dvda_Track *self, void *closure)
+{
+    return Py_BuildValue("I", dvda_track_number(self->track));
 }
 
 static PyObject*

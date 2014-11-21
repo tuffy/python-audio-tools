@@ -7855,14 +7855,14 @@
     - [ ] trackverify
 ** TODO Re-add DVD-A support using libdvdaudio
    Supporting DVD-A in an external library should provide a useful decoupling.
-*** TODO Add audiotools.dvda module
+*** DONE Add audiotools.dvda module
     This contains thin wrappers around libdvdaudio structures and functions.
 **** DONE Add DVDA object
 **** DONE Add Titleset object
 **** DONE Add Title object
 **** DONE Add Track object
 **** DONE Add TrackReader object
-**** TODO Add documentation
+**** DONE Add documentation
 *** TODO Re-add dvda2track script
 **** TODO Re-add dvda2track.1 man page
 *** TODO Re-add dvdainfo script

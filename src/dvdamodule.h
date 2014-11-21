@@ -131,9 +131,14 @@ static PyMethodDef Titleset_methods[] = {
 };
 
 static PyObject*
+Titleset_number(dvda_Titleset *self, void *closure);
+
+static PyObject*
 Titleset_titles(dvda_Titleset *self, void *closure);
 
 static PyGetSetDef Titleset_getseters[] = {
+    {"number",
+     (getter)Titleset_number, NULL, "title set number", NULL},
     {"titles",
      (getter)Titleset_titles, NULL, "titles", NULL},
     {NULL}
@@ -209,12 +214,17 @@ static PyMethodDef Title_methods[] = {
 };
 
 static PyObject*
+Title_number(dvda_Title *self, void *closure);
+
+static PyObject*
 Title_tracks(dvda_Title *self, void *closure);
 
 static PyObject*
 Title_pts_length(dvda_Title *self, void *closure);
 
 static PyGetSetDef Title_getseters[] = {
+    {"number",
+     (getter)Title_number, NULL, "title's number", NULL},
     {"tracks",
      (getter)Title_tracks, NULL, "tracks", NULL},
     {"pts_length",
@@ -292,6 +302,9 @@ static PyMethodDef Track_methods[] = {
 };
 
 static PyObject*
+Track_number(dvda_Track *self, void *closure);
+
+static PyObject*
 Track_pts_index(dvda_Track *self, void *closure);
 
 static PyObject*
@@ -304,6 +317,8 @@ static PyObject*
 Track_last_sector(dvda_Track *self, void *closure);
 
 static PyGetSetDef Track_getseters[] = {
+   {"number",
+    (getter)Track_number, NULL, "track's number", NULL},
    {"pts_index",
     (getter)Track_pts_index, NULL, "PTS index", NULL},
    {"pts_length",
