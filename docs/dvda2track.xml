@@ -10,17 +10,18 @@ Creative Commons,
 San Francisco, California, 94105, USA.
 -->
 <manpage>
-  <utility>cd2track</utility>
+  <utility>dvda2track</utility>
   <author>Brian Langenberger</author>
   <section>1</section>
-  <name>extract audio files</name>
-  <title>Compact Disc Extractor</title>
+  <name>extract audio tracks</name>
+  <title>DVD-Audio Extractor</title>
   <synopsis>[OPTIONS] [track 1] [track 2] ...</synopsis>
   <description>
-    cd2track extracts audio files from a compact disc and
+    dvda2track extracts audio files from a mounted DVD-Audio disc and
     encodes them to tracks.
-    If track numbers are given, extracts only those tracks.
-    Otherwise, extracts the entire disc.
+    If track numbers are given, extracts only those tracks
+    from the given title.
+    Otherwise it extracts the entire title.
   </description>
   <options>
     <option short="h" long="help">show a list of options and exit</option>
@@ -29,10 +30,13 @@ San Francisco, California, 94105, USA.
       prior to extracting disc
     </option>
     <option short="c" long="cdrom" arg="cdrom">
-      the CD-ROM device to extract audio from
+      the DVD-ROM device the disc is mounted to
     </option>
-    <option short="s" long="speed" arg="speed">
-      the speed to extract audio data at
+    <option short="A" long="audio-ts" arg="dir">
+      the path to the mounted disc's "AUDIO_TS" directory
+    </option>
+    <option long="title" arg="title">
+      the title number to extract tracks from
     </option>
     <option short="V" long="verbose" arg="verbosity">
       The level of output to display.
@@ -61,7 +65,7 @@ San Francisco, California, 94105, USA.
       If this option is omitted, a default format string is used.
     </option>
   </options>
-  <options category="CD lookup">
+  <options category="DVD-A lookup">
     <option long="musicbrainz-server" arg="hostname">
       the MusicBrainz server name to query for metadata
     </option>
@@ -87,13 +91,6 @@ San Francisco, California, 94105, USA.
     </option>
   </options>
   <options category="metadata">
-    <option long="album-number" arg="number">
-      the album number of this CD, if it is one in a series of albums
-    </option>
-    <option long="album-total" arg="number">
-      the total number of albums in this CD's set,
-      if it is one in a series of albums
-    </option>
     <option long="replay-gain">
       add ReplayGain metadata to newly created tracks
     </option>
@@ -101,28 +98,16 @@ San Francisco, California, 94105, USA.
       do not add ReplayGain metadata to newly created tracks
     </option>
   </options>
-  <element name="accuraterip">
-    <p>
-      Extracted tracks are automatically verified against
-      AccurateRip's online database.
-      The confidence level is the number of other people
-      who have the same rip, so a larger value indicates
-      one's own rip is consistent with those of others.
-      However, not finding one's rip in the AccurateRip
-      database does not necessarily mean the rip is bad;
-      the CD may be new, rare, or a different
-      pressing than the one in the database.
-    </p>
-  </element>
   <examples>
     <example>
       <description>
-        Extract all of the tracks from /dev/cdrom as FLAC files
-        at the default quality:
+        Extract all tracks from the DVD-A on mount point "/media/cdrom"
+        whose DVD-ROM device is "/dev/cdrom"
       </description>
       <command>
-        cd2track -t flac -c /dev/cdrom
+        dvda2track -c /dev/cdrom -A /media/cdrom/AUDIO_TS/
       </command>
     </example>
   </examples>
 </manpage>
+

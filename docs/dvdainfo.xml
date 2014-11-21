@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Copyright (C) 2007-2014  Brian Langenberger
+This work is licensed under the
+Creative Commons Attribution-Share Alike 3.0 United States License.
+To view a copy of this license, visit
+http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+Creative Commons,
+171 Second Street, Suite 300,
+San Francisco, California, 94105, USA.
+-->
+<manpage>
+  <utility>dvdainfo</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>prints information about a DVD-Audio disc</name>
+  <title>DVD-Audio Disc Information</title>
+  <synopsis>[OPTIONS]</synopsis>
+  <description>
+    dvdainfo takes a mounted DVD-Audio disc and writes information about the
+    it to standard output.
+    This information includes the length,
+    start sector, end sector, codec, sample rate, channel count
+    and bits-per-sample of each track in each title.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option long="version">display version and exit</option>
+    <option short="c" long="cdrom" arg="cdrom">
+      the CD-ROM device of the mounted disc
+    </option>
+    <option short="A" long="audio-ts" arg="dir">
+      the path to the AUDIO_TS directory in the mounted disc
+    </option>
+  </options>
+</manpage>
+

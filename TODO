@@ -7853,7 +7853,7 @@
     - [ ] cdplay
     - [ ] trackplay
     - [ ] trackverify
-** TODO Re-add DVD-A support using libdvdaudio
+** DONE Re-add DVD-A support using libdvdaudio
    Supporting DVD-A in an external library should provide a useful decoupling.
 *** DONE Add audiotools.dvda module
     This contains thin wrappers around libdvdaudio structures and functions.
@@ -7863,10 +7863,10 @@
 **** DONE Add Track object
 **** DONE Add TrackReader object
 **** DONE Add documentation
-*** TODO Re-add dvda2track script
-**** TODO Re-add dvda2track.1 man page
-*** TODO Re-add dvdainfo script
-**** TODO Re-add dvdainfo.1 man page
+*** DONE Re-add dvda2track script
+**** DONE Re-add dvda2track.1 man page
+*** DONE Re-add dvdainfo script
+**** DONE Re-add dvdainfo.1 man page
 *** DONE Update setup script
     Probe for libdvdaudio and add module and scripts if present,
     analagous to libcdio.

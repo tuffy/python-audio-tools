@@ -53,7 +53,7 @@ VERSION = re.search(r'VERSION\s*=\s"(.+?)"',
 
 LIBRARY_URLS = {"libcdio_paranoia": "http://www.gnu.org/software/libcdio/",
                 "libcdio": "http://www.gnu.org/software/libcdio/",
-                "libdvd-audio": "http://???",
+                "libdvd-audio": "http://???",  #FIXME
                 "libmpg123": "http://www.mpg123.org",
                 "vorbisfile": "http://xiph.org",
                 "opusfile": "http://www.opus-codec.org",
@@ -941,7 +941,7 @@ if ext_audiotools_cdio.libraries_present():
 
 if ext_audiotools_dvdaudio.libraries_present():
     ext_modules.append(ext_audiotools_dvdaudio)
-    #FIXME - add DVD-A scripts here
+    scripts.extend(["dvda2track", "dvdainfo"])
 
 setup(name="audiotools",
       version=VERSION,

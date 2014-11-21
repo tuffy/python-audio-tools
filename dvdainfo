@@ -1,0 +1,123 @@
+#!/usr/bin/python
+
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import sys
+import os.path
+import audiotools
+import audiotools.dvda
+import audiotools.text as _
+
+if (__name__ == '__main__'):
+    import argparse
+
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_DVDAINFO)
+
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_argument("-c", "--cdrom",
+                        dest="cdrom",
+                        default=audiotools.DEFAULT_CDROM)
+
+    parser.add_argument("-A", "--audio-ts",
+                        default=".",
+                        dest="audio_ts",
+                        metavar="DIR",
+                        help=_.OPT_AUDIO_TS)
+
+    options = parser.parse_args()
+
+    msg = audiotools.Messenger()
+    table = audiotools.output_table()
+
+    try:
+        dvda = audiotools.dvda.DVDA(options.audio_ts, options.cdrom)
+    except IOError:
+        msg.error(_.ERR_DVDA_INVALID_AUDIO_TS)
+        sys.exit(1)
+
+    titleset = dvda.titleset(1)
+
+    # header row
+    row = table.row()
+    row.add_column(_.LAB_DVDAINFO_TITLE)
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_TRACK)
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_LENGTH)
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_PTS_LENGTH, "right")
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_FIRST_SECTOR)
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_LAST_SECTOR)
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_CODEC)
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_SAMPLE_RATE, "right")
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_CHANNELS)
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_BITS_PER_SAMPLE)
+
+    table.divider_row([_.DIV] + [u" ", _.DIV] * 9)
+
+    for title in [titleset.title(i) for i in range(1, titleset.titles + 1)]:
+        for track in [title.track(j) for j in range(1, title.tracks + 1)]:
+
+            row = table.row()
+            row.add_column(u"%d" % (title.number), "right")
+            row.add_column(u" ")
+            row.add_column(u"%d" % (track.number), "right")
+            row.add_column(u" ")
+            row.add_column(u"%d:%2.2d" %
+                           (track.pts_length // 90000 // 60,
+                            track.pts_length // 90000 % 60), "right")
+            row.add_column(u" ")
+            row.add_column(u"%d" % (track.pts_length), "right")
+            row.add_column(u" ")
+            row.add_column(u"%d" % (track.first_sector), "right")
+            row.add_column(u" ")
+            row.add_column(u"%d" % (track.last_sector), "right")
+
+            try:
+                reader = track.reader()
+
+                row.add_column(u" ")
+                row.add_column({"PCM": u"PCM",
+                                "MLP": u"MLP"}[reader.codec], "right")
+                row.add_column(u" ")
+                row.add_column(audiotools.khz(reader.sample_rate), "right")
+                row.add_column(u" ")
+                row.add_column(u"%d" % (reader.channels), "right")
+                row.add_column(u" ")
+                row.add_column(u"%d" % (reader.bits_per_sample), "right")
+
+                reader.close()
+            except IOError:
+                # display empty columns instead of trying to guess
+                for i in range(8):
+                    row.add_column(u" ")
+
+        table.divider_row([_.DIV] + [u" ", _.DIV] * 9)
+
+    for row in table.format(msg.output_isatty()):
+        msg.output(row)

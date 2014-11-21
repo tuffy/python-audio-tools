@@ -23,6 +23,9 @@ DVD Objects
    If the disc is encrypted and ``cdrom_device`` is given,
    decryption will be performed automatically.
 
+   May raise :exc:`IOError` if some error occurs opening
+   the disc.
+
 .. data:: DVDA.titlesets
 
    The number of title sets on the disc, typically 1.
@@ -124,6 +127,7 @@ Track Objects
 .. method:: Track.reader()
 
    Returns a :class:`TrackReader` for reading this track's data.
+   May raise :exc:`IOError` if some error occurs opening the reader.
 
 TrackReader Objects
 -------------------
@@ -133,6 +137,8 @@ TrackReader Objects
    TrackReader is a :class:`audiotools.PCMReader` compatible object
    for extracting the audio data from a given track.
    ``track`` is a :class:`Track` object.
+
+   May raise :exc:`IOError` if some error occurs opening the reader.
 
 .. data:: TrackReader.sample_rate
 

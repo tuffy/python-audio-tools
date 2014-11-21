@@ -238,6 +238,7 @@ if (__name__ == '__main__'):
     quality = options.quality
     base_directory = options.dir
 
+    # get the CD-ROM reader
     try:
         cddareader = CDDAReader(options.cdrom, True)
         track_offsets = cddareader.track_offsets
@@ -401,14 +402,17 @@ if (__name__ == '__main__'):
             msg.os_error(err)
             sys.exit(1)
 
+        # setup individual progress bar per track
         progress = audiotools.SingleProgressDisplay(
             msg, output_filename.__unicode__())
 
+        # perform extraction over an AccurateRip window
         track_data = audiotools.PCMReaderWindow(
             cddareader,
             track_offset - seeked_offset,
             PREVIOUS_TRACK_FRAMES + track_length + NEXT_TRACK_FRAMES)
 
+        # with AccurateRip calculated during extraction
         accuraterip = AccurateRipReader(
             track_data,
             track_length,
@@ -416,6 +420,7 @@ if (__name__ == '__main__'):
             track_number == max(track_offsets.keys()))
 
         try:
+            # encode output file itself
             track = output_class.from_pcm(
                 str(output_filename),
                 replay_gain.to_pcm(

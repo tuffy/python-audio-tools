@@ -1,0 +1,438 @@
+#!/usr/bin/python
+
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2014  Brian Langenberger
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import sys
+import os
+import audiotools
+import audiotools.dvda
+import audiotools.ui
+import audiotools.text as _
+import termios
+
+
+def title_tracks(title):
+    """yields a list of Track objects from the title"""
+
+    for i in range(1, title.tracks + 1):
+        yield title.track(i)
+
+
+def title_to_musicbrainz_id(title):
+    from audiotools.musicbrainz import DiscID
+
+    first_track_number = 1
+    last_track_number = 0
+    total_length = 0
+    offsets = [150]
+
+    for track in title_tracks(title):
+        last_track_number += 1
+        total_length += track.pts_length
+        offsets.append(offsets[-1] + (track.pts_length * 75 // 90000))
+
+    return DiscID(first_track_number=first_track_number,
+                  last_track_number=last_track_number,
+                  lead_out_offset=150 + (total_length * 75 // 90000),
+                  offsets=offsets[0:-1])
+
+
+def title_to_freedb_id(title):
+    from audiotools.freedb import DiscID
+
+    offsets = [150]
+    total_length = 0
+    track_count = 0
+
+    for track in title_tracks(title):
+        offsets.append(offsets[-1] + (track.pts_length * 75 // 90000))
+        total_length += track.pts_length
+        track_count += 1
+
+    return DiscID(offsets=offsets[0:-1],
+                  total_length=total_length // 90000,
+                  track_count=track_count,
+                  playable_length=total_length // 90000)
+
+
+if (__name__ == '__main__'):
+    import argparse
+
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_DVDA2TRACK)
+
+    parser.add_argument("--version",
+                        action="version",
+                        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_argument("-I", "--interactive",
+                        action="store_true",
+                        default=False,
+                        dest="interactive",
+                        help=_.OPT_INTERACTIVE_OPTIONS)
+
+    parser.add_argument("-V", "--verbose",
+                        dest="verbosity",
+                        choices=audiotools.VERBOSITY_LEVELS,
+                        default=audiotools.DEFAULT_VERBOSITY,
+                        help=_.OPT_VERBOSE)
+
+    parser.add_argument("-c", "--cdrom",
+                        dest="cdrom",
+                        default=audiotools.DEFAULT_CDROM)
+
+    parser.add_argument("-A", "--audio-ts",
+                        default=".",
+                        dest="audio_ts",
+                        metavar="DIR",
+                        help=_.OPT_AUDIO_TS)
+
+    parser.add_argument("--title",
+                        default=1,
+                        type=int,
+                        dest="title",
+                        help=_.OPT_DVDA_TITLE)
+
+    conversion = parser.add_argument_group(_.OPT_CAT_EXTRACTION)
+
+    conversion.add_argument("-t", "--type",
+                            dest="type",
+                            choices=sorted(list(audiotools.TYPE_MAP.keys()) +
+                                           ["help"]),
+                            default=audiotools.DEFAULT_TYPE,
+                            help=_.OPT_TYPE)
+
+    conversion.add_argument("-q", "--quality",
+                            dest="quality",
+                            help=_.OPT_QUALITY)
+
+    conversion.add_argument("-d", "--dir",
+                            dest="dir",
+                            default=".",
+                            help=_.OPT_DIR)
+
+    conversion.add_argument("--format",
+                            default=None,
+                            dest="format",
+                            help=_.OPT_FORMAT)
+
+    lookup = parser.add_argument_group(_.OPT_CAT_DVDA_LOOKUP)
+
+    lookup.add_argument("--musicbrainz-server",
+                        dest="musicbrainz_server",
+                        default=audiotools.MUSICBRAINZ_SERVER,
+                        metavar="HOSTNAME")
+
+    lookup.add_argument("--musicbrainz-port",
+                        type=int,
+                        dest="musicbrainz_port",
+                        default=audiotools.MUSICBRAINZ_PORT,
+                        metavar="PORT")
+
+    lookup.add_argument("--no-musicbrainz",
+                        action="store_false",
+                        dest="use_musicbrainz",
+                        default=audiotools.MUSICBRAINZ_SERVICE,
+                        help=_.OPT_NO_MUSICBRAINZ)
+
+    lookup.add_argument("--freedb-server",
+                        dest="freedb_server",
+                        default=audiotools.FREEDB_SERVER,
+                        metavar="HOSTNAME")
+
+    lookup.add_argument("--freedb-port",
+                        type=int,
+                        dest="freedb_port",
+                        default=audiotools.FREEDB_PORT,
+                        metavar="PORT")
+
+    lookup.add_argument("--no-freedb",
+                        action="store_false",
+                        dest="use_freedb",
+                        default=audiotools.FREEDB_SERVICE,
+                        help=_.OPT_NO_FREEDB)
+
+    lookup.add_argument("-D", "--default",
+                        dest="use_default",
+                        action="store_true",
+                        default=False,
+                        help=_.OPT_DEFAULT)
+
+    metadata = parser.add_argument_group(_.OPT_CAT_METADATA)
+
+    metadata.add_argument("--replay-gain",
+                          action="store_true",
+                          default=None,
+                          dest="add_replay_gain",
+                          help=_.OPT_REPLAY_GAIN)
+
+    metadata.add_argument("--no-replay-gain",
+                          action="store_false",
+                          default=None,
+                          dest="add_replay_gain",
+                          help=_.OPT_NO_REPLAY_GAIN)
+
+    parser.add_argument("tracks",
+                        type=int,
+                        metavar="TRACK",
+                        nargs="*",
+                        help=_.OPT_TRACK_INDEX)
+
+    options = parser.parse_args()
+
+    msg = audiotools.Messenger(options.verbosity == "quiet")
+
+    # ensure interactive mode is available, if selected
+    if (options.interactive and (not audiotools.ui.AVAILABLE)):
+        audiotools.ui.not_available_message(msg)
+        sys.exit(1)
+
+    # get the AudioFile class we are converted to
+    if (options.type == 'help'):
+        audiotools.ui.show_available_formats(msg)
+        sys.exit(0)
+    else:
+        AudioType = audiotools.TYPE_MAP[options.type]
+
+    # ensure the selected compression is compatible with that class
+    if (options.quality == 'help'):
+        audiotools.ui.show_available_qualities(msg, AudioType)
+        sys.exit(0)
+    elif (options.quality is None):
+        options.quality = audiotools.__default_quality__(AudioType.NAME)
+    elif (options.quality not in AudioType.COMPRESSION_MODES):
+        msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
+                  {"quality": options.quality,
+                   "type": AudioType.NAME})
+        sys.exit(1)
+
+    quality = options.quality
+    base_directory = options.dir
+
+    # get main DVDA object
+    try:
+        dvda = audiotools.dvda.DVDA(options.audio_ts, options.cdrom)
+    except IOError:
+        msg.error(_.ERR_DVDA_INVALID_AUDIO_TS)
+        sys.exit(1)
+
+    # get selected DVDATitle from DVDAudio object
+    try:
+        title = dvda.titleset(1).title(options.title)
+    except IndexError:
+        msg.error(_.ERR_INVALID_TITLE)
+        sys.exit(1)
+
+    # use DVDATtitle object to query metadata services for metadata choices
+    try:
+        metadata_choices = audiotools.metadata_lookup(
+            musicbrainz_disc_id=title_to_musicbrainz_id(title),
+            freedb_disc_id=title_to_freedb_id(title),
+            musicbrainz_server=options.musicbrainz_server,
+            musicbrainz_port=options.musicbrainz_port,
+            freedb_server=options.freedb_server,
+            freedb_port=options.freedb_port,
+            use_musicbrainz=options.use_musicbrainz,
+            use_freedb=options.use_freedb)
+    except KeyboardInterrupt:
+        msg.ansi_clearline()
+        msg.error(_.ERR_CANCELLED)
+        sys.exit(1)
+
+    # determine which tracks to be ripped
+    if len(options.tracks) == 0:
+        tracks_to_rip = list(range(1, title.tracks + 1))
+    else:
+        tracks_to_rip = [t for t in options.tracks if
+                         t in range(1, title.tracks + 1)]
+
+    if len(tracks_to_rip) == 0:
+        # no tracks selected to rip, so do nothing
+        sys.exit(0)
+
+    # decide which metadata and output options use when extracting tracks
+    if options.interactive:
+        # pick choice using interactive widget
+        output_widget = audiotools.ui.OutputFiller(
+            track_labels=[_.LAB_TRACK_X_OF_Y % (i, title.tracks)
+                          for i in tracks_to_rip],
+            metadata_choices=[[c[i - 1] for i in tracks_to_rip]
+                              for c in metadata_choices],
+            input_filenames=[
+                audiotools.Filename("track-%d-%2.2d.dvda.wav" %
+                                    (options.title, i))
+                for i in tracks_to_rip],
+            output_directory=options.dir,
+            format_string=(options.format if
+                           (options.format is not None) else
+                           audiotools.FILENAME_FORMAT),
+            output_class=AudioType,
+            quality=options.quality,
+            completion_label=_.LAB_DVDA2TRACK_APPLY)
+
+        loop = audiotools.ui.urwid.MainLoop(
+            output_widget,
+            audiotools.ui.style(),
+            unhandled_input=output_widget.handle_text,
+            pop_ups=True)
+        try:
+            loop.run()
+            msg.ansi_clearscreen()
+        except (termios.error, IOError):
+            msg.error(_.ERR_TERMIOS_ERROR)
+            msg.info(_.ERR_TERMIOS_SUGGESTION)
+            msg.info(audiotools.ui.xargs_suggestion(sys.argv))
+            sys.exit(1)
+
+        if (not output_widget.cancelled()):
+            output_tracks = list(output_widget.output_tracks())
+        else:
+            sys.exit(0)
+    else:
+        # pick choice without using GUI
+        try:
+            output_tracks = list(
+                audiotools.ui.process_output_options(
+                    metadata_choices=[[c[i - 1] for i in tracks_to_rip]
+                                      for c in metadata_choices],
+                    input_filenames=[
+                        audiotools.Filename("track-%d-%2.2d.dvda.wav" %
+                                            (options.title, i))
+                        for i in tracks_to_rip],
+                    output_directory=options.dir,
+                    format_string=options.format,
+                    output_class=AudioType,
+                    quality=options.quality,
+                    msg=msg,
+                    use_default=options.use_default))
+        except audiotools.UnsupportedTracknameField as err:
+            err.error_msg(msg)
+            sys.exit(1)
+        except (audiotools.InvalidFilenameFormat,
+                audiotools.OutputFileIsInput,
+                audiotools.DuplicateOutputFile) as err:
+            msg.error(unicode(err))
+            sys.exit(1)
+
+    # perform actual ripping of tracks from DVD-A
+    encoded = []
+    sample_rates = set([])
+    replay_gain = None
+
+    for (track_number,
+         index,
+         (output_class,
+          output_filename,
+          output_quality,
+          output_metadata)) in zip(tracks_to_rip,
+                                   range(1, len(tracks_to_rip) + 1),
+                                   output_tracks):
+        # get track from title
+        try:
+            reader = title.track(track_number).reader()
+        except IndexError:
+            continue
+        except IOError:
+            msg.error(_.INVALID_TRACK)
+            sys.exit(1)
+
+        # make leading directories, if necessary
+        try:
+            audiotools.make_dirs(str(output_filename))
+        except OSError as err:
+            msg.os_error(err)
+            sys.exit(1)
+
+        # setup individual progress bar per track
+        progress = audiotools.SingleProgressDisplay(
+            msg, output_filename.__unicode__())
+
+        # encode output file itself
+        try:
+            # try to calculate ReplayGain during extraction
+            # if all tracks have the same sample rate
+            sample_rates.add(reader.sample_rate)
+
+            # all sample rates are identical so far
+            if len(sample_rates) == 1:
+                # setup new calculator if one hasn't been already
+                if replay_gain is None:
+                    replay_gain = \
+                        audiotools.ReplayGainCalculator(reader.sample_rate)
+
+                track_reader = replay_gain.to_pcm(reader)
+            else:
+                # sample rate mismatch, so cease calculation
+                track_reader = reader
+
+            track = output_class.from_pcm(
+                str(output_filename),
+                audiotools.PCMReaderProgress(track_reader,
+                                             reader.total_pcm_frames,
+                                             progress.update),
+                output_quality,
+                total_pcm_frames=reader.total_pcm_frames)
+            encoded.append(track)
+        except audiotools.EncodingError as err:
+            progress.clear_rows()
+            msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
+            sys.exit(1)
+        except KeyboardInterrupt:
+            progress.clear_rows()
+            try:
+                os.unlink(str(output_filename))
+            except OSError:
+                pass
+            msg.error(_.ERR_CANCELLED)
+            sys.exit(1)
+
+        track.set_metadata(output_metadata)
+        progress.clear_rows()
+
+        msg.info(
+            audiotools.output_progress(
+                _.LAB_ENCODE % {
+                    "source": _.LAB_DVDA_TRACK %
+                    {"title_number": options.title,
+                     "track_number": track_number},
+                    "destination": output_filename},
+                index, len(tracks_to_rip)))
+
+    # add ReplayGain to ripped tracks, if necessary
+    if (output_class.supports_replay_gain() and
+        (options.add_replay_gain if options.add_replay_gain is not None else
+         audiotools.ADD_REPLAYGAIN)):
+        if len(sample_rates) == 1:
+            # all sample rates were the same
+            # so grab calculated gain from inline calculation
+            for (track, (track_gain, track_peak,
+                         album_gain, album_peak)) in zip(encoded, replay_gain):
+                track.set_replay_gain(
+                    audiotools.ReplayGain(track_gain=track_gain,
+                                          track_peak=track_peak,
+                                          album_gain=album_gain,
+                                          album_peak=album_peak))
+            else:
+                msg.info(_.RG_REPLAYGAIN_ADDED)
+        else:
+            # sample rates differed
+            # so calculate gain on a per-track basis
+            rg_progress = audiotools.ReplayGainProgressDisplay(msg)
+            rg_progress.initial_message()
+            audiotools.add_replay_gain(encoded, progress=rg_progress.update)
+            rg_progress.final_message()

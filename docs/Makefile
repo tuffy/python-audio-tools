@@ -9,6 +9,8 @@ cdplay.1 \
 coverdump.1 \
 covertag.1 \
 coverview.1 \
+dvdainfo.1 \
+dvda2track.1 \
 track2cd.1 \
 track2track.1 \
 trackcat.1 \
@@ -31,6 +33,8 @@ cdplay.xml \
 coverdump.xml \
 covertag.xml \
 coverview.xml \
+dvdainfo.xml \
+dvda2track.xml \
 track2cd.xml \
 track2track.xml \
 trackcat.xml \

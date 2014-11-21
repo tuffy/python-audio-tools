@@ -406,7 +406,7 @@ TrackReader_init(dvda_TrackReader *self, PyObject *args, PyObject *kwds)
         return -1;
 
     if ((self->reader = dvda_open_track_reader(track->track)) == NULL) {
-        PyErr_SetString(PyExc_ValueError, "unable to open track reader");
+        PyErr_SetString(PyExc_IOError, "unable to open track reader");
         return -1;
     }
 

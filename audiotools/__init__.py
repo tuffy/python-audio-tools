@@ -3001,6 +3001,9 @@ class ReplayGainCalculator:
         self.__replaygain__ = ReplayGain(sample_rate)
         self.__tracks__ = []
 
+    def sample_rate(self):
+        return self.__replaygain__.sample_rate
+
     def __iter__(self):
         try:
             album_gain = self.__replaygain__.album_gain()
@@ -3018,11 +3021,10 @@ class ReplayGainCalculator:
         which can be used to calculate the ReplayGain
         for the contents of that reader"""
 
-        if pcmreader.sample_rate != self.__replaygain__.sample_rate:
+        if pcmreader.sample_rate != self.sample_rate():
             raise ValueError(
                 "sample rate mismatch, %d != %d" %
-                (pcmreader.sample_rate,
-                 self.__replaygain__.sample_rate))
+                (pcmreader.sample_rate, self.sample_rate()))
         reader = ReplayGainCalculatorReader(self.__replaygain__, pcmreader)
         self.__tracks__.append(reader)
         return reader
