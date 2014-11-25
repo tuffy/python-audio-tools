@@ -141,6 +141,117 @@ typedef struct {
   where the current state is the index of which to use*/
 typedef br_huffman_entry_t br_huffman_table_t[0x200];
 
+/*typedefs for BitstreamReader methods
+
+  One can pull them out of reader and use them like:
+
+  br_read_f read = bitstreamreader->read;
+  unsigned int value = read(bitstreamreader, bits);
+*/
+
+/*returns "count" number of unsigned bits from the current stream
+  in the current endian format up to "count" bits wide*/
+typedef unsigned int
+(*br_read_f)(struct BitstreamReader_s* self, unsigned int count);
+
+/*returns "count" number of signed bits from the current stream
+  in the current endian format up to "count" bits wide*/
+typedef int
+(*br_read_signed_f)(struct BitstreamReader_s* self, unsigned int count);
+
+/*returns "count" number of unsigned bits from the current stream
+  in the current endian format up to 64 bits wide*/
+typedef uint64_t
+(*br_read_64_f)(struct BitstreamReader_s* self, unsigned int count);
+
+/*returns "count" number of signed bits from the current stream
+  in the current endian format up to 64 bits wide*/
+typedef int64_t
+(*br_read_signed_64_f)(struct BitstreamReader_s* self, unsigned int count);
+
+/*reads "count" number of unsigned bits from the current stream
+  to the given "value" in the current endian format
+  "value" must have been initialized previously*/
+typedef void
+(*br_read_bigint_f)(struct BitstreamReader_s* self,
+                    unsigned int count,
+                    mpz_t value);
+
+/*reads "count" number of signed bits from the current stream
+  to the given "value" in the current endian format
+  "value" must have been initialized previous*/
+typedef void
+(*br_read_signed_bigint_f)(struct BitstreamReader_s* self,
+                           unsigned int count,
+                           mpz_t value);
+
+/*skips "count" number of bits from the current stream as if read
+  callbacks are called on each skipped byte*/
+typedef void
+(*br_skip_f)(struct BitstreamReader_s* self, unsigned int count);
+
+/*pushes a single 0 or 1 bit back onto the stream
+  in the current endian format
+
+  only a single bit is guaranteed to be unreadable*/
+typedef void
+(*br_unread_f)(struct BitstreamReader_s* self, int unread_bit);
+
+/*returns the number of non-stop bits before the 0 or 1 stop bit
+  from the current stream in the current endian format*/
+typedef unsigned int
+(*br_read_unary_f)(struct BitstreamReader_s* self, int stop_bit);
+
+/*skips the number of non-stop bits before the next 0 or 1 stop bit
+  from the current stream in the current endian format*/
+typedef void
+(*br_skip_unary_f)(struct BitstreamReader_s* self, int stop_bit);
+
+/*reads the next Huffman code from the stream
+  where the code tree is defined from the given compiled table*/
+typedef int
+(*br_read_huffman_code_f)(struct BitstreamReader_s* self,
+                          br_huffman_table_t table[]);
+
+/*reads "byte_count" number of 8-bit bytes and places them in "bytes"
+
+  the stream is not required to be byte-aligned,
+  but reading will often be optimized if it is
+
+  if insufficient bytes can be read, br_abort is called
+  and the contents of "bytes" are undefined*/
+typedef void
+(*br_read_bytes_f)(struct BitstreamReader_s* self,
+                   uint8_t* bytes,
+                   unsigned int byte_count);
+
+/*skips "count" number of bytes from the current stream as if read
+  callbacks are called on each skipped byte*/
+typedef void
+(*br_skip_bytes_f)(struct BitstreamReader_s* self,
+                   unsigned int byte_count);
+
+/*returns a new pos instance which can be rewound to
+  may call br_abort() if the position cannot be gotten
+  or the stream is closed*/
+typedef br_pos_t*
+(*br_getpos_f)(struct BitstreamReader_s* self);
+
+/*sets the stream's position from a pos instance
+  may call br_abort() if the position cannot be set
+  the stream is closed, or the position is from another stream*/
+typedef void
+(*br_setpos_f)(struct BitstreamReader_s* self, br_pos_t* pos);
+
+/*moves the stream directly to the given location, in bytes,
+  relative to the beginning, current or end of the stream
+
+  no callbacks are called on the intervening bytes*/
+typedef void
+(*br_seek_f)(struct BitstreamReader_s* self,
+             long position,
+             bs_whence whence);
+
 /*******************************************************************
  *                          BitstreamReader                        *
  *******************************************************************/
@@ -161,65 +272,16 @@ typedef br_huffman_entry_t br_huffman_table_t[0x200];
     struct bs_exception* exceptions;                                     \
     struct bs_exception* exceptions_used;                                \
                                                                          \
-    /*returns "count" number of unsigned bits from the current stream*/  \
-    /*in the current endian format up to "count" bits wide*/             \
-    unsigned int                                                         \
-    (*read)(struct BitstreamReader_s* self, unsigned int count);         \
-                                                                         \
-    /*returns "count" number of signed bits from the current stream*/    \
-    /*in the current endian format up to "count" bits wide*/             \
-    int                                                                  \
-    (*read_signed)(struct BitstreamReader_s* self, unsigned int count);  \
-                                                                         \
-    /*returns "count" number of unsigned bits from the current stream*/  \
-    /*in the current endian format up to 64 bits wide*/                  \
-    uint64_t                                                             \
-    (*read_64)(struct BitstreamReader_s* self, unsigned int count);      \
-                                                                         \
-    /*returns "count" number of signed bits from the current stream*/    \
-    /*in the current endian format up to 64 bits wide*/                  \
-    int64_t                                                              \
-    (*read_signed_64)(struct BitstreamReader_s* self,                    \
-                      unsigned int count);                               \
-                                                                         \
-    /*reads "count" number of unsigned bits from the current stream*/    \
-    /*to the given "value" in the current endian format*/                \
-    /*"value" must have been initialized previously*/                    \
-    void                                                                 \
-    (*read_bigint)(struct BitstreamReader_s* self,                       \
-                   unsigned int count,                                   \
-                   mpz_t value);                                         \
-                                                                         \
-    /*reads "count" number of signed bits from the current stream*/      \
-    /*to the given "value" in the current endian format*/                \
-    /*"value" must have been initialized previous*/                      \
-    void                                                                 \
-    (*read_signed_bigint)(struct BitstreamReader_s* self,                \
-                          unsigned int count,                            \
-                          mpz_t value);                                  \
-                                                                         \
-    /*skips "count" number of bits from the current stream as if read*/  \
-                                                                         \
-    /*callbacks are called on each skipped byte*/                        \
-    void                                                                 \
-    (*skip)(struct BitstreamReader_s* self, unsigned int count);         \
-                                                                         \
-    /*pushes a single 0 or 1 bit back onto the stream*/                  \
-    /*in the current endian format*/                                     \
-                                                                         \
-    /*only a single bit is guaranteed to be unreadable*/                 \
-    void                                                                 \
-    (*unread)(struct BitstreamReader_s* self, int unread_bit);           \
-                                                                         \
-    /*returns the number of non-stop bits before the 0 or 1 stop bit*/   \
-    /*from the current stream in the current endian format*/             \
-    unsigned int                                                         \
-    (*read_unary)(struct BitstreamReader_s* self, int stop_bit);         \
-                                                                         \
-    /*skips the number of non-stop bits before the next 0 or 1 stop bit*/ \
-    /*from the current stream in the current endian format*/             \
-    void                                                                 \
-    (*skip_unary)(struct BitstreamReader_s* self, int stop_bit);         \
+    br_read_f read;                                                      \
+    br_read_signed_f read_signed;                                        \
+    br_read_64_f read_64;                                                \
+    br_read_signed_64_f read_signed_64;                                  \
+    br_read_bigint_f read_bigint;                                        \
+    br_read_signed_bigint_f read_signed_bigint;                          \
+    br_skip_f skip;                                                      \
+    br_unread_f unread;                                                  \
+    br_read_unary_f read_unary;                                          \
+    br_skip_unary_f skip_unary;                                          \
                                                                          \
     /*sets the stream's format to big endian or little endian*/          \
     /*which automatically byte aligns it*/                               \
@@ -227,66 +289,45 @@ typedef br_huffman_entry_t br_huffman_table_t[0x200];
     (*set_endianness)(struct BitstreamReader_s* self,                    \
                       bs_endianness endianness);                         \
                                                                          \
-    /*reads the next Huffman code from the stream*/                      \
-    /*where the code tree is defined from the given compiled table*/     \
-    int                                                                  \
-    (*read_huffman_code)(struct BitstreamReader_s* self,                 \
-                         br_huffman_table_t table[]);                    \
-                                                                         \
-    /*reads "byte_count" number of 8-bit bytes*/                         \
-    /*and places them in "bytes"*/                                       \
-                                                                         \
-    /*the stream is not required to be byte-aligned,*/                   \
-    /*but reading will often be optimized if it is*/                     \
-                                                                         \
-    /*if insufficient bytes can be read, br_abort is called*/            \
-    /*and the contents of "bytes" are undefined*/                        \
-    void                                                                 \
-    (*read_bytes)(struct BitstreamReader_s* self,                        \
-                  uint8_t* bytes,                                        \
-                  unsigned int byte_count);                              \
-                                                                         \
-    /*skips "count" number of bytes from the current stream as if read*/ \
-                                                                         \
-    /*callbacks are called on each skipped byte*/                        \
-    void                                                                 \
-    (*skip_bytes)(struct BitstreamReader_s* self, unsigned int count);   \
+    br_read_huffman_code_f read_huffman_code;                            \
+    br_read_bytes_f read_bytes;                                          \
+    br_skip_bytes_f skip_bytes;                                          \
                                                                          \
     /*takes a format string,*/                                           \
     /*performs the indicated read operations with prefixed numeric lengths*/ \
     /*and places the results in the given argument pointers*/            \
     /*where the format actions are:*/                                    \
                                                                          \
-      /* | format | action             | argument      | */              \
-      /* |--------+--------------------+---------------| */              \
-      /* | u      | read               | unsigned int* | */              \
-      /* | s      | read_signed        | int*          | */              \
-      /* | U      | read_64            | uint64_t*     | */              \
-      /* | S      | read_signed_64     | int64_t*      | */              \
-      /* | K      | read_bigint        | mpz_t*        | */              \
-      /* | L      | read_signed_bigint | mpz_t*        | */              \
-      /* | p      | skip               | N/A           | */              \
-      /* | P      | skip_bytes         | N/A           | */              \
-      /* | b      | read_bytes         | uint8_t*      | */              \
-      /* | a      | byte_align         | N/A           | */              \
+    /* | format | action             | argument      | */                \
+    /* |--------+--------------------+---------------| */                \
+    /* | u      | read               | unsigned int* | */                \
+    /* | s      | read_signed        | int*          | */                \
+    /* | U      | read_64            | uint64_t*     | */                \
+    /* | S      | read_signed_64     | int64_t*      | */                \
+    /* | K      | read_bigint        | mpz_t*        | */                \
+    /* | L      | read_signed_bigint | mpz_t*        | */                \
+    /* | p      | skip               | N/A           | */                \
+    /* | P      | skip_bytes         | N/A           | */                \
+    /* | b      | read_bytes         | uint8_t*      | */                \
+    /* | a      | byte_align         | N/A           | */                \
                                                                          \
-      /*For example, one could read a 32 bit header as follows:*/        \
+    /*For example, one could read a 32 bit header as follows:*/          \
                                                                          \
-      /*unsigned int arg1; //  2 unsigned bits */                        \
-      /*unsigned int arg2; //  3 unsigned bits */                        \
-      /*int arg3;          //  5 signed bits   */                        \
-      /*unsigned int arg4; //  3 unsigned bits */                        \
-      /*uint64_t arg5;     // 19 unsigned bits */                        \
+    /*unsigned int arg1; //  2 unsigned bits */                          \
+    /*unsigned int arg2; //  3 unsigned bits */                          \
+    /*int arg3;          //  5 signed bits   */                          \
+    /*unsigned int arg4; //  3 unsigned bits */                          \
+    /*uint64_t arg5;     // 19 unsigned bits */                          \
                                                                          \
-      /*reader->parse(reader, "2u3u5s3u19U",              */             \
-      /*              &arg1, &arg2, &arg3, &arg4, &arg5); */             \
+    /*reader->parse(reader, "2u3u5s3u19U",              */               \
+    /*              &arg1, &arg2, &arg3, &arg4, &arg5); */               \
                                                                          \
-      /*the "*" format multiplies the next format by the given amount*/  \
-      /*For example, to read 4, signed 8 bit values:*/                   \
+    /*the "*" format multiplies the next format by the given amount*/    \
+    /*For example, to read 4, signed 8 bit values:*/                     \
                                                                          \
-      /*reader->parse(reader, "4* 8s", &arg1, &arg2, &arg3, &arg4);*/    \
+    /*reader->parse(reader, "4* 8s", &arg1, &arg2, &arg3, &arg4);*/      \
                                                                          \
-      /*an I/O error during reading will trigger a call to br_abort*/    \
+    /*an I/O error during reading will trigger a call to br_abort*/      \
                                                                          \
     void                                                                 \
     (*parse)(struct BitstreamReader_s* self, const char* format, ...);   \
@@ -326,25 +367,9 @@ typedef br_huffman_entry_t br_huffman_table_t[0x200];
     (*call_callbacks)(struct BitstreamReader_s* self,                    \
                       uint8_t byte);                                     \
                                                                          \
-    /*returns a new pos instance which can be rewound to*/               \
-    /*may call br_abort() if the position cannot be gotten*/             \
-    /*or the stream is closed*/                                          \
-    br_pos_t*                                                            \
-    (*getpos)(struct BitstreamReader_s* self);                           \
-                                                                         \
-    /*sets the stream's position from a pos instance*/                   \
-    /*may call br_abort() if the position cannot be set*/                \
-    /*the stream is closed, or the position is from another stream*/     \
-    void                                                                 \
-    (*setpos)(struct BitstreamReader_s* self, br_pos_t* pos);            \
-                                                                         \
-    /*moves the stream directly to the given location, in bytes,*/       \
-    /*relative to the beginning, current or end of the stream*/          \
-                                                                         \
-    /*no callbacks are called on the intervening bytes*/                 \
-    void                                                                 \
-    (*seek)(struct BitstreamReader_s* self,                              \
-            long position, bs_whence whence);                            \
+    br_getpos_f getpos;                                                  \
+    br_setpos_f setpos;                                                  \
+    br_seek_f seek;                                                      \
                                                                          \
     /*creates a substream from the current stream*/                      \
     /*containing the given number of bytes*/                             \
@@ -525,399 +550,6 @@ br_open_external(void* user_data,
                  ext_close_f close,
                  ext_free_f free);
 
-
-/*bs->read(bs, count)  methods*/
-unsigned int
-br_read_bits_f_be(BitstreamReader* self, unsigned int count);
-unsigned int
-br_read_bits_f_le(BitstreamReader* self, unsigned int count);
-unsigned int
-br_read_bits_b_be(BitstreamReader* self, unsigned int count);
-unsigned int
-br_read_bits_b_le(BitstreamReader* self, unsigned int count);
-unsigned int
-br_read_bits_q_be(BitstreamReader* self, unsigned int count);
-unsigned int
-br_read_bits_q_le(BitstreamReader* self, unsigned int count);
-unsigned int
-br_read_bits_e_be(BitstreamReader* self, unsigned int count);
-unsigned int
-br_read_bits_e_le(BitstreamReader* self, unsigned int count);
-unsigned int
-br_read_bits_c(BitstreamReader* self, unsigned int count);
-
-/*bs->read_signed(bs, count)  methods*/
-int
-br_read_signed_bits_be(BitstreamReader* self, unsigned int count);
-int
-br_read_signed_bits_le(BitstreamReader* self, unsigned int count);
-
-
-/*bs->read_64(bs, count)  methods*/
-uint64_t
-br_read_bits64_f_be(BitstreamReader* self, unsigned int count);
-uint64_t
-br_read_bits64_f_le(BitstreamReader* self, unsigned int count);
-uint64_t
-br_read_bits64_b_be(BitstreamReader* self, unsigned int count);
-uint64_t
-br_read_bits64_b_le(BitstreamReader* self, unsigned int count);
-uint64_t
-br_read_bits64_q_be(BitstreamReader* self, unsigned int count);
-uint64_t
-br_read_bits64_q_le(BitstreamReader* self, unsigned int count);
-uint64_t
-br_read_bits64_e_be(BitstreamReader* self, unsigned int count);
-uint64_t
-br_read_bits64_e_le(BitstreamReader* self, unsigned int count);
-uint64_t
-br_read_bits64_c(BitstreamReader* self, unsigned int count);
-
-
-/*bs->read_signed_64(bs, count)  methods*/
-int64_t
-br_read_signed_bits64_be(BitstreamReader* self, unsigned int count);
-int64_t
-br_read_signed_bits64_le(BitstreamReader* self, unsigned int count);
-
-
-/*bs->read_bigint(bs, count, value)  methods*/
-void
-br_read_bits_bigint_f_be(BitstreamReader* self,
-                         unsigned int count,
-                         mpz_t value);
-void
-br_read_bits_bigint_f_le(BitstreamReader* self,
-                         unsigned int count,
-                         mpz_t value);
-void
-br_read_bits_bigint_b_be(BitstreamReader* self,
-                         unsigned int count,
-                         mpz_t value);
-void
-br_read_bits_bigint_b_le(BitstreamReader* self,
-                         unsigned int count,
-                         mpz_t value);
-void
-br_read_bits_bigint_q_be(BitstreamReader* self,
-                         unsigned int count,
-                         mpz_t value);
-void
-br_read_bits_bigint_q_le(BitstreamReader* self,
-                         unsigned int count,
-                         mpz_t value);
-void
-br_read_bits_bigint_e_be(BitstreamReader* self,
-                         unsigned int count,
-                         mpz_t value);
-void
-br_read_bits_bigint_e_le(BitstreamReader* self,
-                         unsigned int count,
-                         mpz_t value);
-void
-br_read_bits_bigint_c(BitstreamReader* self,
-                      unsigned int count,
-                      mpz_t value);
-
-/*bs->read_signed_bigint(bs, count, value)  methods*/
-void
-br_read_signed_bits_bigint_be(BitstreamReader* self,
-                              unsigned int count,
-                              mpz_t value);
-void
-br_read_signed_bits_bigint_le(BitstreamReader* self,
-                              unsigned int count,
-                              mpz_t value);
-
-
-/*bs->skip(bs, count)  methods*/
-void
-br_skip_bits_f_be(BitstreamReader* self, unsigned int count);
-void
-br_skip_bits_f_le(BitstreamReader* self, unsigned int count);
-void
-br_skip_bits_b_be(BitstreamReader* self, unsigned int count);
-void
-br_skip_bits_b_le(BitstreamReader* self, unsigned int count);
-void
-br_skip_bits_q_be(BitstreamReader* self, unsigned int count);
-void
-br_skip_bits_q_le(BitstreamReader* self, unsigned int count);
-void
-br_skip_bits_e_be(BitstreamReader* self, unsigned int count);
-void
-br_skip_bits_e_le(BitstreamReader* self, unsigned int count);
-void
-br_skip_bits_c(BitstreamReader* self, unsigned int count);
-
-
-/*bs->unread(bs, unread_bit)  methods*/
-void
-br_unread_bit_be(BitstreamReader* self, int unread_bit);
-void
-br_unread_bit_le(BitstreamReader* self, int unread_bit);
-void
-br_unread_bit_c(BitstreamReader* self, int unread_bit);
-
-
-/*bs->read_unary(bs, stop_bit)  methods*/
-unsigned int
-br_read_unary_f_be(BitstreamReader* self, int stop_bit);
-unsigned int
-br_read_unary_f_le(BitstreamReader* self, int stop_bit);
-unsigned int
-br_read_unary_b_be(BitstreamReader* self, int stop_bit);
-unsigned int
-br_read_unary_b_le(BitstreamReader* self, int stop_bit);
-unsigned int
-br_read_unary_q_be(BitstreamReader* self, int stop_bit);
-unsigned int
-br_read_unary_q_le(BitstreamReader* self, int stop_bit);
-unsigned int
-br_read_unary_e_be(BitstreamReader* self, int stop_bit);
-unsigned int
-br_read_unary_e_le(BitstreamReader* self, int stop_bit);
-unsigned int
-br_read_unary_c(BitstreamReader* self, int stop_bit);
-
-
-/*bs->skip_unary(bs, stop_bit)  methods*/
-void
-br_skip_unary_f_be(BitstreamReader* self, int stop_bit);
-void
-br_skip_unary_f_le(BitstreamReader* self, int stop_bit);
-void
-br_skip_unary_b_be(BitstreamReader* self, int stop_bit);
-void
-br_skip_unary_b_le(BitstreamReader* self, int stop_bit);
-void
-br_skip_unary_q_be(BitstreamReader* self, int stop_bit);
-void
-br_skip_unary_q_le(BitstreamReader* self, int stop_bit);
-void
-br_skip_unary_e_be(BitstreamReader* self, int stop_bit);
-void
-br_skip_unary_e_le(BitstreamReader* self, int stop_bit);
-void
-br_skip_unary_c(BitstreamReader* self, int stop_bit);
-
-
-/*bs->set_endianness(bs, endianness)  methods*/
-void
-br_set_endianness_f(BitstreamReader* self, bs_endianness endianness);
-void
-br_set_endianness_b(BitstreamReader* self, bs_endianness endianness);
-void
-br_set_endianness_q(BitstreamReader* self, bs_endianness endianness);
-void
-br_set_endianness_e(BitstreamReader* self, bs_endianness endianness);
-void
-br_set_endianness_c(BitstreamReader* self, bs_endianness endianness);
-
-
-/*bs->read_huffman_code(bs, table)  methods*/
-int
-br_read_huffman_code_f(BitstreamReader* self,
-                       br_huffman_table_t table[]);
-int
-br_read_huffman_code_b(BitstreamReader* self,
-                       br_huffman_table_t table[]);
-int
-br_read_huffman_code_q(BitstreamReader* self,
-                       br_huffman_table_t table[]);
-int
-br_read_huffman_code_e(BitstreamReader* self,
-                       br_huffman_table_t table[]);
-int
-br_read_huffman_code_c(BitstreamReader* self,
-                       br_huffman_table_t table[]);
-
-
-/*bs->read_bytes(bs, bytes, byte_count)  methods*/
-void
-br_read_bytes_f(BitstreamReader* self,
-                uint8_t* bytes,
-                unsigned int byte_count);
-void
-br_read_bytes_b(BitstreamReader* self,
-                uint8_t* bytes,
-                unsigned int byte_count);
-void
-br_read_bytes_q(BitstreamReader* self,
-                uint8_t* bytes,
-                unsigned int byte_count);
-void
-br_read_bytes_e(BitstreamReader* self,
-                uint8_t* bytes,
-                unsigned int byte_count);
-void
-br_read_bytes_c(BitstreamReader* self,
-                uint8_t* bytes,
-                unsigned int byte_count);
-
-
-/*bs->skip_bytes(bs, count)  method*/
-void
-br_skip_bytes(BitstreamReader* self, unsigned int count);
-
-
-/*bs->parse(bs, format, ...)  method*/
-void
-br_parse(BitstreamReader* self, const char* format, ...);
-
-
-/*bs->byte_aligned(bs)  method*/
-int
-br_byte_aligned(const BitstreamReader* self);
-
-
-/*bs->byte_align(bs)  method*/
-void
-br_byte_align(BitstreamReader* self);
-
-
-/*bs->add_callback(bs, callback, data)  method*/
-void
-br_add_callback(BitstreamReader* self,
-                bs_callback_f callback,
-                void* data);
-
-
-/*bs->push_callback(bs, callback)  method*/
-void
-br_push_callback(BitstreamReader* self,
-                 struct bs_callback *callback);
-
-
-/*bs->pop_callback(bs, callback)  method*/
-void
-br_pop_callback(BitstreamReader* self,
-                struct bs_callback *callback);
-
-
-/*bs->call_callbacks(bs, byte)  method*/
-void
-br_call_callbacks(BitstreamReader* self,
-                  uint8_t byte);
-
-
-/*bs->getpos()  methods*/
-br_pos_t*
-br_getpos_f(BitstreamReader* self);
-br_pos_t*
-br_getpos_b(BitstreamReader* self);
-br_pos_t*
-br_getpos_q(BitstreamReader* self);
-br_pos_t*
-br_getpos_e(BitstreamReader* self);
-br_pos_t*
-br_getpos_c(BitstreamReader* self);
-
-
-/*bs->setpos(pos)  methods*/
-void
-br_setpos_f(BitstreamReader* self, br_pos_t* pos);
-void
-br_setpos_b(BitstreamReader* self, br_pos_t* pos);
-void
-br_setpos_q(BitstreamReader* self, br_pos_t* pos);
-void
-br_setpos_e(BitstreamReader* self, br_pos_t* pos);
-void
-br_setpos_c(BitstreamReader* self, br_pos_t* pos);
-
-
-/*pos->del()  methods*/
-void
-br_pos_del_f(br_pos_t* pos);
-void
-br_pos_del_b(br_pos_t* pos);
-void
-br_pos_del_q(br_pos_t* pos);
-void
-br_pos_del_e(br_pos_t* pos);
-
-
-/*bs->seek(bs, position, whence)  methods*/
-void
-br_seek_f(BitstreamReader* self, long position, bs_whence whence);
-void
-br_seek_b(BitstreamReader* self, long position, bs_whence whence);
-void
-br_seek_q(BitstreamReader* self, long position, bs_whence whence);
-void
-br_seek_e(BitstreamReader* self, long position, bs_whence whence);
-void
-br_seek_c(BitstreamReader* self, long position, bs_whence whence);
-
-
-/*bs->size(bs)  methods*/
-unsigned
-br_size_f_e_c(const BitstreamReader* self);
-unsigned
-br_size_b(const BitstreamReader* self);
-unsigned
-br_size_q(const BitstreamQueue* self);
-
-
-/*bs->substream(bs, bytes)  method*/
-BitstreamReader*
-br_substream(BitstreamReader* self, unsigned bytes);
-
-
-/*bs->enqueue(bs, bytes, queue)  method*/
-void
-br_enqueue(BitstreamReader* self, unsigned bytes, BitstreamQueue* queue);
-
-
-/*converts all read methods to ones that generate I/O errors
-  in the event someone tries to read from a stream
-  after it's been closed*/
-void
-br_close_methods(BitstreamReader* self);
-
-
-/*bs->close_internal_stream(bs)  methods*/
-void
-br_close_internal_stream_f(BitstreamReader* self);
-void
-br_close_internal_stream_b(BitstreamReader* self);
-void
-br_close_internal_stream_q(BitstreamQueue* self);
-void
-br_close_internal_stream_e(BitstreamReader* self);
-void
-br_close_internal_stream_c(BitstreamReader* self);
-
-
-/*bs->free(bs)  methods*/
-void
-br_free_f(BitstreamReader* self);
-void
-br_free_b(BitstreamReader* self);
-void
-br_free_q(BitstreamQueue* self);
-void
-br_free_e(BitstreamReader* self);
-
-
-/*bs->close(bs)  method*/
-void
-br_close(BitstreamReader* self);
-void
-br_close_q(BitstreamQueue* self);
-
-
-/*bs->push(bs, byte_count, data)  method*/
-void
-br_push_q(BitstreamQueue* self, unsigned byte_count, const uint8_t* data);
-
-
-/*bs->reset(bs)  method*/
-void
-br_reset_q(BitstreamQueue* self);
-
-
 /*Called by the read functions if one attempts to read past
   the end of the stream.
   If an exception stack is available (with br_try),
@@ -1005,6 +637,76 @@ struct bw_pos_stack {
     struct bw_pos_stack* next;
 };
 
+/*writes the given value as "count" number of unsigned bits*/
+typedef void
+(*bw_write_f)(struct BitstreamWriter_s* self,
+              unsigned int count,
+              unsigned int value);
+
+/*writes the given value as "count" number of signed bits*/
+typedef void
+(*bw_write_signed_f)(struct BitstreamWriter_s* self,
+                     unsigned int count,
+                     int value);
+
+/*writes the given value as "count" number of unsigned bits*/
+typedef void
+(*bw_write_64_f)(struct BitstreamWriter_s* self,
+                 unsigned int count,
+                 uint64_t value);
+
+/*writes the given value as "count" number of signed bits*/
+typedef void
+(*bw_write_signed_64_f)(struct BitstreamWriter_s* self,
+                        unsigned int count,
+                        int64_t value);
+
+/*writes the given value as "count" number of unsigned bits*/
+typedef void
+(*bw_write_bigint_f)(struct BitstreamWriter_s* self,
+                     unsigned int count,
+                     const mpz_t value);
+
+typedef void
+(*bw_write_signed_bigint_f)(struct BitstreamWriter_s* self,
+                            unsigned int count,
+                            const mpz_t value);
+
+/*writes "value" number of non stop bits to the current stream
+  followed by a single stop bit*/
+typedef void
+(*bw_write_unary_f)(struct BitstreamWriter_s* self,
+                    int stop_bit,
+                    unsigned int value);
+
+/*writes "value" is a Huffman code to the stream
+  where the code tree is defined from the given compiled table
+  returns 0 on success, or 1 if the code is not found in the table*/
+typedef int
+(*bw_write_huffman_code_f)(struct BitstreamWriter_s* self,
+                           bw_huffman_table_t table[],
+                           int value);
+
+/*writes "byte_count" number of bytes to the output stream*/
+typedef void
+(*bw_write_bytes_f)(struct BitstreamWriter_s* self,
+                    const uint8_t* bytes,
+                    unsigned int byte_count);
+
+/*returns a new pos instance which can be rewound to
+  may call bw_abort() if the position cannot be
+  gotten or the stream in closed*/
+typedef bw_pos_t*
+(*bw_getpos_f)(struct BitstreamWriter_s* self);
+
+/*sets the streams position from a pos instance
+  may call bw_abort() if the position cannot be set
+  the stream is closed, or the position
+  is from another stream*/
+typedef void
+(*bw_setpos_f)(struct BitstreamWriter_s* self,
+               const bw_pos_t* pos);
+
 #define BITSTREAMWRITER_TYPE                                \
     bs_endianness endianness;                               \
     bw_type type;                                           \
@@ -1022,47 +724,19 @@ struct bw_pos_stack {
     struct bs_exception* exceptions;                        \
     struct bs_exception* exceptions_used;                   \
                                                             \
-    /*writes the given value as "count" number of unsigned bits*/ \
-    void                                                    \
-    (*write)(struct BitstreamWriter_s* self,                \
-             unsigned int count,                            \
-             unsigned int value);                           \
+    bw_write_f write;                                       \
                                                             \
-    /*writes the given value as "count" number of signed bits*/ \
-    void                                                    \
-    (*write_signed)(struct BitstreamWriter_s* self,         \
-                    unsigned int count,                     \
-                    int value);                             \
+    bw_write_signed_f write_signed;                         \
                                                             \
-    /*writes the given value as "count" number of unsigned bits*/ \
-    void                                                    \
-    (*write_64)(struct BitstreamWriter_s* self,             \
-                unsigned int count,                         \
-                uint64_t value);                            \
+    bw_write_64_f write_64;                                 \
                                                             \
-    /*writes the given value as "count" number of signed bits*/ \
-    void                                                    \
-    (*write_signed_64)(struct BitstreamWriter_s* self,      \
-                       unsigned int count,                  \
-                       int64_t value);                      \
+    bw_write_signed_64_f write_signed_64;                   \
                                                             \
-    /*writes the given value as "count" number of unsigned bits*/ \
-    void                                                    \
-    (*write_bigint)(struct BitstreamWriter_s* self,         \
-                    unsigned int count,                     \
-                    const mpz_t value);                     \
+    bw_write_bigint_f write_bigint;                         \
                                                             \
-    void                                                    \
-    (*write_signed_bigint)(struct BitstreamWriter_s* self,  \
-                           unsigned int count,              \
-                           const mpz_t value);              \
+    bw_write_signed_bigint_f write_signed_bigint;           \
                                                             \
-    /*writes "value" number of non stop bits to the current stream*/ \
-    /*followed by a single stop bit*/                                \
-    void                                                    \
-    (*write_unary)(struct BitstreamWriter_s* self,          \
-                   int stop_bit,                            \
-                   unsigned int value);                     \
+    bw_write_unary_f write_unary;                           \
                                                             \
     /*byte aligns the stream and sets its format*/          \
     /*to big endian or little endian*/                      \
@@ -1070,19 +744,9 @@ struct bw_pos_stack {
     (*set_endianness)(struct BitstreamWriter_s* self,       \
                       bs_endianness endianness);            \
                                                             \
-    /*writes "value" is a Huffman code to the stream*/                   \
-    /*where the code tree is defined from the given compiled table*/     \
-    /*returns 0 on success, or 1 if the code is not found in the table*/ \
-    int                                                     \
-    (*write_huffman_code)(struct BitstreamWriter_s* self,   \
-                          bw_huffman_table_t table[],       \
-                          int value);                       \
+    bw_write_huffman_code_f write_huffman_code;             \
                                                             \
-    /*writes "byte_count" number of bytes to the output stream*/ \
-    void                                                    \
-    (*write_bytes)(struct BitstreamWriter_s* self,          \
-                   const uint8_t* bytes,                    \
-                   unsigned int byte_count);                \
+    bw_write_bytes_f write_bytes;                           \
                                                             \
     /*takes a format string,*/                              \
     /*peforms the indicated write operations with prefixed numeric lengths*/ \
@@ -1162,19 +826,8 @@ struct bw_pos_stack {
     (*call_callbacks)(struct BitstreamWriter_s* self,       \
                       uint8_t byte);                        \
                                                             \
-    /*returns a new pos instance which can be rewound to*/  \
-    /*may call bw_abort() if the position cannot be*/       \
-    /*gotten or the stream in closed*/                      \
-    bw_pos_t*                                               \
-    (*getpos)(struct BitstreamWriter_s* self);              \
-                                                            \
-    /*sets the streams position from a pos instance*/       \
-    /*may call bw_abort() if the position cannot be set*/   \
-    /*the stream is closed, or the position*/               \
-    /*is from another stream*/                              \
-    void                                                    \
-    (*setpos)(struct BitstreamWriter_s* self,               \
-              const bw_pos_t* ps);
+    bw_getpos_f getpos;                                     \
+    bw_setpos_f setpos;
 
 typedef struct BitstreamWriter_s {
     BITSTREAMWRITER_TYPE
@@ -1313,303 +966,6 @@ bw_open_external(void* user_data,
 
 BitstreamRecorder*
 bw_open_recorder(bs_endianness endianness);
-
-
-/*bs->write(bs, count, value)  methods*/
-void
-bw_write_bits_f_be(BitstreamWriter* self,
-                   unsigned int count,
-                   unsigned int value);
-void
-bw_write_bits_f_le(BitstreamWriter* self,
-                   unsigned int count,
-                   unsigned int value);
-void
-bw_write_bits_e_be(BitstreamWriter* self,
-                   unsigned int count,
-                   unsigned int value);
-void
-bw_write_bits_e_le(BitstreamWriter* self,
-                   unsigned int count,
-                   unsigned int value);
-void
-bw_write_bits_r_be(BitstreamWriter* self,
-                   unsigned int count,
-                   unsigned int value);
-void
-bw_write_bits_r_le(BitstreamWriter* self,
-                   unsigned int count,
-                   unsigned int value);
-void
-bw_write_bits_c(BitstreamWriter* self,
-                unsigned int count,
-                unsigned int value);
-
-/*bs->write_signed(bs, count, value)  methods*/
-void
-bw_write_signed_bits_be(BitstreamWriter* self,
-                        unsigned int count,
-                        int value);
-void
-bw_write_signed_bits_le(BitstreamWriter* self,
-                        unsigned int count,
-                        int value);
-
-
-/*bs->write_64(bs, count, value)  methods*/
-void
-bw_write_bits64_f_be(BitstreamWriter* self,
-                     unsigned int count,
-                     uint64_t value);
-void
-bw_write_bits64_f_le(BitstreamWriter* self,
-                     unsigned int count,
-                     uint64_t value);
-void
-bw_write_bits64_e_be(BitstreamWriter* self,
-                     unsigned int count,
-                     uint64_t value);
-void
-bw_write_bits64_e_le(BitstreamWriter* self,
-                     unsigned int count,
-                     uint64_t value);
-void
-bw_write_bits64_r_be(BitstreamWriter* self,
-                     unsigned int count,
-                     uint64_t value);
-void
-bw_write_bits64_r_le(BitstreamWriter* self,
-                     unsigned int count,
-                     uint64_t value);
-void
-bw_write_bits64_c(BitstreamWriter* self,
-                  unsigned int count,
-                  uint64_t value);
-
-
-/*bs->write_signed_64(bs, count, value)  methods*/
-void
-bw_write_signed_bits64_be(BitstreamWriter* self,
-                          unsigned int count,
-                          int64_t value);
-void
-bw_write_signed_bits64_le(BitstreamWriter* self,
-                          unsigned int count,
-                          int64_t value);
-
-
-/*bs->write_bigint(bs, count, value)  methods*/
-void
-bw_write_bits_bigint_f_be(BitstreamWriter* self,
-                          unsigned int count,
-                          const mpz_t value);
-void
-bw_write_bits_bigint_f_le(BitstreamWriter* self,
-                          unsigned int count,
-                          const mpz_t value);
-void
-bw_write_bits_bigint_e_be(BitstreamWriter* self,
-                          unsigned int count,
-                          const mpz_t value);
-void
-bw_write_bits_bigint_e_le(BitstreamWriter* self,
-                          unsigned int count,
-                          const mpz_t value);
-void
-bw_write_bits_bigint_r_be(BitstreamWriter* self,
-                          unsigned int count,
-                          const mpz_t value);
-void
-bw_write_bits_bigint_r_le(BitstreamWriter* self,
-                          unsigned int count,
-                          const mpz_t value);
-void
-bw_write_bits_bigint_c(BitstreamWriter* self,
-                       unsigned int count,
-                       const mpz_t value);
-
-
-/*bs->write_signed_bigint(bs, count, value)  methods*/
-void
-bw_write_signed_bits_bigint_be(BitstreamWriter* self,
-                               unsigned int count,
-                               const mpz_t value);
-void
-bw_write_signed_bits_bigint_le(BitstreamWriter* self,
-                               unsigned int count,
-                               const mpz_t value);
-
-
-/*bs->write_unary(bs, stop_bit, value)  methods*/
-void
-bw_write_unary(BitstreamWriter* self, int stop_bit, unsigned int value);
-
-
-/*bs->set_endianness(bs, endianness)  methods*/
-void
-bw_set_endianness_f(BitstreamWriter* self, bs_endianness endianness);
-void
-bw_set_endianness_e(BitstreamWriter* self, bs_endianness endianness);
-void
-bw_set_endianness_r(BitstreamWriter* self, bs_endianness endianness);
-void
-bw_set_endianness_c(BitstreamWriter* self, bs_endianness endianness);
-
-
-/*bs->write_huffman_code(bs, table, value)  methods*/
-int
-bw_write_huffman(BitstreamWriter* self,
-                 bw_huffman_table_t table[],
-                 int value);
-
-
-/*bs->write_bytes(bs, bytes, byte_count)  methods*/
-void
-bw_write_bytes_f(BitstreamWriter* self,
-                 const uint8_t* bytes,
-                 unsigned int count);
-void
-bw_write_bytes_e(BitstreamWriter* self,
-                 const uint8_t* bytes,
-                 unsigned int count);
-void
-bw_write_bytes_r(BitstreamWriter* self,
-                 const uint8_t* bytes,
-                 unsigned int count);
-void
-bw_write_bytes_c(BitstreamWriter* self,
-                 const uint8_t* bytes,
-                 unsigned int count);
-
-
-/*bs->build(bs, format, ...)  method*/
-void
-bw_build(BitstreamWriter* self, const char* format, ...);
-
-
-/*bs->byte_aligned(bs)  method*/
-int
-bw_byte_aligned(const BitstreamWriter* self);
-
-
-/*bs->byte_align(bs)  methods*/
-void
-bw_byte_align(BitstreamWriter* self);
-
-
-/*bs->flush(bs)  methods*/
-void
-bw_flush_f(BitstreamWriter* self);
-void
-bw_flush_r_c(BitstreamWriter* self);
-void
-bw_flush_e(BitstreamWriter* self);
-
-
-/*bs->add_callback(bs, callback, data)  method*/
-void
-bw_add_callback(BitstreamWriter* self, bs_callback_f callback, void *data);
-
-
-/*bs->push_callback(bs, callback)  method*/
-void
-bw_push_callback(BitstreamWriter* self, struct bs_callback *callback);
-
-
-/*bs->pop_callback(bs, callback)  method*/
-void
-bw_pop_callback(BitstreamWriter* self, struct bs_callback *callback);
-
-
-/*bs->call_callbacks(bs, byte)  method*/
-void
-bw_call_callbacks(BitstreamWriter* self, uint8_t byte);
-
-
-/*bs->getpos(bs)  method*/
-bw_pos_t*
-bw_getpos_f(BitstreamWriter* self);
-bw_pos_t*
-bw_getpos_e(BitstreamWriter* self);
-bw_pos_t*
-bw_getpos_r(BitstreamWriter* self);
-bw_pos_t*
-bw_getpos_c(BitstreamWriter* self);
-
-
-/*bs->setpos(bs, pos)  method*/
-void
-bw_setpos_f(BitstreamWriter* self, const bw_pos_t* pos);
-void
-bw_setpos_e(BitstreamWriter* self, const bw_pos_t* pos);
-void
-bw_setpos_r(BitstreamWriter* self, const bw_pos_t* pos);
-void
-bw_setpos_c(BitstreamWriter* self, const bw_pos_t* pos);
-
-
-/*pos->del(pos)  method*/
-void
-bw_pos_del_f(bw_pos_t* pos);
-void
-bw_pos_del_e(bw_pos_t* pos);
-void
-bw_pos_del_r(bw_pos_t* pos);
-
-
-void
-bw_close_methods(BitstreamWriter* self);
-
-
-/*bs->close_internal_stream(bs)  methods*/
-void
-bw_close_internal_stream_f(BitstreamWriter* self);
-void
-bw_close_internal_stream_e(BitstreamWriter* self);
-void
-bw_close_internal_stream_cf(BitstreamWriter* self);
-void
-bw_close_internal_stream_r(BitstreamRecorder* self);
-
-
-/*bs->free(bs)  methods*/
-void
-bw_free_f(BitstreamWriter* self);
-void
-bw_free_e(BitstreamWriter* self);
-void
-bw_free_r(BitstreamRecorder* self);
-
-
-/*bs->close(bs)  method*/
-void
-bw_close_f_e(BitstreamWriter* self);
-void
-bw_close_r(BitstreamRecorder* self);
-
-
-/*bs->bits_written(bs)  methods*/
-unsigned int
-bw_bits_written_r(const BitstreamRecorder* self);
-
-
-/*bs->bytes_written(bs)  methods*/
-unsigned int
-bw_bytes_written_r(const BitstreamRecorder* self);
-
-
-/*bs->reset(bs)  methods*/
-void
-bw_reset_r(BitstreamRecorder* self);
-
-
-/*bs->copy(bs)  method*/
-void
-bw_copy_r(const BitstreamRecorder* self, BitstreamWriter* target);
-
-/*bs->data(bs)  method*/
-const uint8_t*
-bw_data_r(const BitstreamRecorder* self);
 
 
 /*unattached, BitstreamWriter functions*/
