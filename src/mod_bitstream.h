@@ -986,9 +986,3 @@ bitstream_build(BitstreamWriter* stream,
 
 void
 BitstreamWriter_callback(uint8_t byte, PyObject *callback);
-
-void
-br_close_internal_stream_python_file(BitstreamReader* bs);
-
-void
-bw_close_internal_stream_python_file(BitstreamWriter* bs);

@@ -189,6 +189,7 @@ VorbisDecoder_read(decoders_VorbisDecoder *self, PyObject *args) {
         /*convert floating point samples to integer-based ones*/
         aa_int* channels = self->channels;
         int c;
+        void (*a_int_swap)(a_int* a, a_int* b) = channels->_[0]->swap;
 
         channels->reset(channels);
         for (c = 0; c < self->channel_count; c++) {

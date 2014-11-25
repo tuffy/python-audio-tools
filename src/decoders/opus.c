@@ -179,6 +179,7 @@ OpusDecoder_read(decoders_OpusDecoder* self, PyObject *args)
         const int channel_count = op_head(self->opus_file, -1)->channel_count;
         aa_int *channels = self->channels;
         int c;
+        void (*a_int_swap)(a_int* a, a_int* b) = channels->_[0]->swap;
 
         channels->reset(channels);
 

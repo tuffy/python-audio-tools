@@ -317,6 +317,8 @@ cleanup:
 static void
 reorder_channels(unsigned channel_mask, aa_int *samples)
 {
+    void (*a_int_swap)(a_int* a, a_int* b) = samples->_[0]->swap;
+
     /*reorder channels if necessary based on assignment*/
     switch (channel_mask) {
     default:

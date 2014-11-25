@@ -1123,13 +1123,6 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
 }
 
 void
-br_close_internal_stream_python_file(BitstreamReader* bs)
-{
-    /*swap read methods with closed methods*/
-    br_close_methods(bs);
-}
-
-void
 BitstreamReader_dealloc(bitstream_BitstreamReader *self)
 {
     struct bs_callback *c_node;
@@ -1414,16 +1407,6 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
         (ext_free_f)bs_free_python_decref);
 
     return 0;
-}
-
-void
-bw_close_internal_stream_python_file(BitstreamWriter* bs)
-{
-    /*flush pending output to FILE object*/
-    fflush(bs->output.file);
-
-    /*swap write methods with closed methods*/
-    bw_close_methods(bs);
 }
 
 static PyObject*
