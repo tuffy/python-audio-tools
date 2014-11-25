@@ -358,10 +358,6 @@ if (__name__ == '__main__'):
             msg.os_error(err)
             sys.exit(1)
 
-        # setup individual progress bar per track
-        progress = audiotools.SingleProgressDisplay(
-            msg, output_filename.__unicode__())
-
         # encode output file itself
         try:
             # try to calculate ReplayGain during extraction
@@ -382,18 +378,13 @@ if (__name__ == '__main__'):
 
             track = output_class.from_pcm(
                 str(output_filename),
-                audiotools.PCMReaderProgress(track_reader,
-                                             reader.total_pcm_frames,
-                                             progress.update),
-                output_quality,
-                total_pcm_frames=reader.total_pcm_frames)
+                track_reader,
+                output_quality)
             encoded.append(track)
         except audiotools.EncodingError as err:
-            progress.clear_rows()
             msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
             sys.exit(1)
         except KeyboardInterrupt:
-            progress.clear_rows()
             try:
                 os.unlink(str(output_filename))
             except OSError:
@@ -402,7 +393,6 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
         track.set_metadata(output_metadata)
-        progress.clear_rows()
 
         msg.info(
             audiotools.output_progress(

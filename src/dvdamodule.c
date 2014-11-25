@@ -512,13 +512,6 @@ TrackReader_channel_mask(dvda_TrackReader *self, void *closure)
 }
 
 static PyObject*
-TrackReader_total_pcm_frames(dvda_TrackReader *self, void *closure)
-{
-    unsigned long long total_pcm_frames = dvda_total_pcm_frames(self->reader);
-    return Py_BuildValue("K", total_pcm_frames);
-}
-
-static PyObject*
 TrackReader_codec(dvda_TrackReader *self, void *closure)
 {
     switch (dvda_codec(self->reader)) {

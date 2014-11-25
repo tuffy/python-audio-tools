@@ -419,9 +419,6 @@ static PyObject*
 TrackReader_channel_mask(dvda_TrackReader *self, void *closure);
 
 static PyObject*
-TrackReader_total_pcm_frames(dvda_TrackReader *self, void *closure);
-
-static PyObject*
 TrackReader_codec(dvda_TrackReader *self, void *closure);
 
 static PyGetSetDef TrackReader_getseters[] = {
@@ -433,8 +430,6 @@ static PyGetSetDef TrackReader_getseters[] = {
      (getter)TrackReader_channels, NULL, "channels", NULL},
     {"channel_mask",
      (getter)TrackReader_channel_mask, NULL, "channel mask", NULL},
-    {"total_pcm_frames",
-     (getter)TrackReader_total_pcm_frames, NULL, "total PCM frames", NULL},
     {"codec",
      (getter)TrackReader_codec, NULL, "codec", NULL},
     {NULL}

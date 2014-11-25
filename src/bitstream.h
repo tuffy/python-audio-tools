@@ -256,7 +256,7 @@ typedef void
  *                          BitstreamReader                        *
  *******************************************************************/
 
-#define BITSTREAMREADER_TYPE           \
+#define BITSTREAMREADER_TYPE                                             \
     bs_endianness endianness;                                            \
     br_type type;                                                        \
                                                                          \
