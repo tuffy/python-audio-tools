@@ -191,103 +191,6 @@ struct TYPE##_s {                                                       \
     void (*print)(const struct TYPE##_s *self, FILE* output);           \
 };                                                                      \
 typedef struct TYPE##_s TYPE;                                           \
-struct TYPE##_s*                                                        \
-                                                                        \
-TYPE##_new(void);                                                       \
-                                                                        \
-void                                                                    \
-TYPE##_del(TYPE *self);                                                 \
-                                                                        \
-void                                                                    \
-TYPE##_resize(TYPE *self, unsigned minimum);                            \
-                                                                        \
-void                                                                    \
-TYPE##_resize_for(TYPE *self, unsigned additional_items);               \
-                                                                        \
-void                                                                    \
-TYPE##_reset(TYPE *self);                                               \
-                                                                        \
-void                                                                    \
-TYPE##_reset_for(TYPE *self, unsigned minimum);                         \
-                                                                        \
-void                                                                    \
-TYPE##_append(TYPE *self, CONTENT_TYPE value);                          \
-                                                                        \
-void                                                                    \
-TYPE##_vappend(TYPE *self, unsigned count, ...);                        \
-                                                                        \
-void                                                                    \
-TYPE##_mappend(TYPE *self, unsigned count,                              \
-               CONTENT_TYPE value);                                     \
-                                                                        \
-void                                                                    \
-TYPE##_vset(TYPE *self, unsigned count, ...);                           \
-                                                                        \
-void                                                                    \
-TYPE##_mset(TYPE *self, unsigned count,                                 \
-            CONTENT_TYPE value);                                        \
-                                                                        \
-void                                                                    \
-TYPE##_extend(TYPE *self,                                               \
-              const TYPE *to_add);                                      \
-                                                                        \
-int                                                                     \
-TYPE##_equals(const TYPE *self,                                         \
-              const TYPE *compare);                                     \
-                                                                        \
-CONTENT_TYPE                                                            \
-TYPE##_min(const TYPE *self);                                           \
-                                                                        \
-CONTENT_TYPE                                                            \
-TYPE##_max(const TYPE *self);                                           \
-                                                                        \
-CONTENT_TYPE                                                            \
-TYPE##_sum(const TYPE *self);                                           \
-                                                                        \
-void                                                                    \
-TYPE##_copy(const TYPE *self,                                           \
-            TYPE *copy);                                                \
-                                                                        \
-void                                                                    \
-TYPE##_link(const TYPE *self,                                           \
-            struct LINK_TYPE##_s *link);                                \
-                                                                        \
-void                                                                    \
-TYPE##_swap(TYPE *self, TYPE *swap);                                    \
-                                                                        \
-void                                                                    \
-TYPE##_head(const TYPE *self, unsigned count,                           \
-            TYPE *head);                                                \
-                                                                        \
-void                                                                    \
-TYPE##_tail(const TYPE *self, unsigned count,                           \
-            TYPE *tail);                                                \
-                                                                        \
-void                                                                    \
-TYPE##_de_head(const TYPE *self, unsigned count,                        \
-               TYPE *tail);                                             \
-                                                                        \
-void                                                                    \
-TYPE##_de_tail(const TYPE *self, unsigned count,                        \
-               TYPE *head);                                             \
-                                                                        \
-void                                                                    \
-TYPE##_split(const TYPE *self, unsigned count,                          \
-             TYPE *head, TYPE *tail);                                   \
-                                                                        \
-void                                                                    \
-TYPE##_concat(const TYPE *self,                                         \
-              const TYPE *tail,                                         \
-              TYPE *combined);                                          \
-                                                                        \
-void                                                                    \
-TYPE##_reverse(TYPE *self);                                             \
-                                                                        \
-void                                                                    \
-TYPE##_sort(TYPE *self);                                                \
-                                                                        \
-void                                                                    \
-TYPE##_print(const TYPE *self, FILE* output);                           \
                                                                         \
 struct LINK_TYPE##_s {                                                  \
     const CONTENT_TYPE *_;                                              \
@@ -356,62 +259,11 @@ struct LINK_TYPE##_s {                                                  \
 };                                                                      \
 typedef struct LINK_TYPE##_s LINK_TYPE;                                 \
                                                                         \
+struct TYPE##_s*                                                        \
+TYPE##_new(void);                                                       \
+                                                                        \
 LINK_TYPE*                                                              \
-LINK_TYPE##_new(void);                                                  \
-                                                                        \
-void                                                                    \
-LINK_TYPE##_del(LINK_TYPE *self);                                       \
-                                                                        \
-void                                                                    \
-LINK_TYPE##_reset(LINK_TYPE *self);                                     \
-                                                                        \
-int                                                                     \
-LINK_TYPE##_equals(const LINK_TYPE *self,                               \
-                   const LINK_TYPE *compare);                           \
-                                                                        \
-CONTENT_TYPE                                                            \
-LINK_TYPE##_min(const LINK_TYPE *self);                                 \
-                                                                        \
-CONTENT_TYPE                                                            \
-LINK_TYPE##_max(const LINK_TYPE *self);                                 \
-                                                                        \
-CONTENT_TYPE                                                            \
-LINK_TYPE##_sum(const LINK_TYPE *self);                                 \
-                                                                        \
-void                                                                    \
-LINK_TYPE##_copy(const LINK_TYPE *self,                                 \
-                 struct TYPE##_s *copy);                                \
-                                                                        \
-void                                                                    \
-LINK_TYPE##_link(const LINK_TYPE *self,                                 \
-                 LINK_TYPE *link);                                      \
-                                                                        \
-void                                                                    \
-LINK_TYPE##_swap(LINK_TYPE *self,                                       \
-                 LINK_TYPE *swap);                                      \
-                                                                        \
-void                                                                    \
-LINK_TYPE##_head(const LINK_TYPE *self, unsigned count,                 \
-                 LINK_TYPE *head);                                      \
-                                                                        \
-void                                                                    \
-LINK_TYPE##_tail(const LINK_TYPE *self, unsigned count,                 \
-                 LINK_TYPE *tail);                                      \
-                                                                        \
-void                                                                    \
-LINK_TYPE##_de_head(const LINK_TYPE *self, unsigned count,              \
-                    LINK_TYPE *tail);                                   \
-                                                                        \
-void                                                                    \
-LINK_TYPE##_de_tail(const LINK_TYPE *self, unsigned count,              \
-                    LINK_TYPE *head);                                   \
-                                                                        \
-void                                                                    \
-LINK_TYPE##_split(const LINK_TYPE *self, unsigned count,                \
-                  LINK_TYPE *head, LINK_TYPE *tail);                    \
-                                                                        \
-void                                                                    \
-LINK_TYPE##_print(const LINK_TYPE *self, FILE* output);
+LINK_TYPE##_new(void);
 
 ARRAY_TYPE_DEFINITION(a_int, int, l_int)
 ARRAY_TYPE_DEFINITION(a_double, double, l_double)
@@ -477,47 +329,7 @@ struct TYPE##_s {                                                       \
 typedef struct TYPE##_s TYPE;                                           \
                                                                         \
 TYPE*                                                                   \
-TYPE##_new(void);                                                       \
-                                                                        \
-void                                                                    \
-TYPE##_del(TYPE *self);                                                 \
-                                                                        \
-void                                                                    \
-TYPE##_resize(TYPE *self, unsigned minimum);                            \
-                                                                        \
-void                                                                    \
-TYPE##_reset(TYPE *self);                                               \
-                                                                        \
-ARRAY_TYPE*                                                             \
-TYPE##_append(TYPE *self);                                              \
-                                                                        \
-void                                                                    \
-TYPE##_extend(TYPE *self,                                               \
-              const TYPE *to_add);                                      \
-                                                                        \
-int                                                                     \
-TYPE##_equals(const TYPE *self,                                         \
-              const TYPE *compare);                                     \
-                                                                        \
-void                                                                    \
-TYPE##_copy(const TYPE *self, TYPE *copy);                              \
-                                                                        \
-void                                                                    \
-TYPE##_swap(TYPE *self, TYPE *swap);                                    \
-                                                                        \
-void                                                                    \
-TYPE##_split(const TYPE *self, unsigned count,                          \
-             TYPE *head, TYPE *tail);                                   \
-                                                                        \
-void                                                                    \
-TYPE##_cross_split(const TYPE *self, unsigned count,                    \
-                   TYPE *head, TYPE *tail);                             \
-                                                                        \
-void                                                                    \
-TYPE##_reverse(TYPE *self);                                             \
-                                                                        \
-void                                                                    \
-TYPE##_print(const TYPE *self, FILE* output);
+TYPE##_new(void);
 
 ARRAY_A_TYPE_DEFINITION(aa_int, a_int)
 ARRAY_A_TYPE_DEFINITION(aa_double, a_double)
@@ -578,44 +390,7 @@ struct TYPE##_s {                                                       \
 typedef struct TYPE##_s TYPE;                                           \
                                                                         \
 struct TYPE##_s*                                                        \
-TYPE##_new(void);                                                       \
-                                                                        \
-void                                                                    \
-TYPE##_del(TYPE *self);                                                 \
-                                                                        \
-void                                                                    \
-TYPE##_resize(TYPE *self, unsigned minimum);                            \
-                                                                        \
-void                                                                    \
-TYPE##_reset(TYPE *self);                                               \
-                                                                        \
-ARRAY_TYPE*                                                             \
-TYPE##_append(TYPE *self);                                              \
-                                                                        \
-void                                                                    \
-TYPE##_extend(TYPE *self,                                               \
-              const TYPE *to_add);                                      \
-                                                                        \
-int                                                                     \
-TYPE##_equals(const TYPE *self,                                         \
-              const TYPE *compare);                                     \
-                                                                        \
-void                                                                    \
-TYPE##_copy(const TYPE *self,                                           \
-            TYPE *copy);                                                \
-                                                                        \
-void                                                                    \
-TYPE##_swap(TYPE *self, TYPE *swap);                                    \
-                                                                        \
-void                                                                    \
-TYPE##_split(const TYPE *self, unsigned count,                          \
-             TYPE *head, TYPE *tail);                                   \
-                                                                        \
-void                                                                    \
-TYPE##_reverse(TYPE *self);                                             \
-                                                                        \
-void                                                                    \
-TYPE##_print(const TYPE *self, FILE* output);
+TYPE##_new(void);
 
 ARRAY_AA_TYPE_DEFINITION(aaa_int, aa_int)
 ARRAY_AA_TYPE_DEFINITION(aaa_double, aa_double)
@@ -744,75 +519,5 @@ a_obj*
 a_obj_new(void* (*copy)(void* obj),
           void (*free)(void* obj),
           void (*print)(void* obj, FILE* output));
-
-void
-a_obj_del(a_obj *self);
-
-void
-a_obj_resize(a_obj *self, unsigned minimum);
-
-void
-a_obj_resize_for(a_obj *self, unsigned additional_items);
-
-void
-a_obj_reset(a_obj *self);
-
-void
-a_obj_reset_for(a_obj *self, unsigned minimum);
-
-void
-a_obj_append(a_obj *self, void* value);
-
-void
-a_obj_vappend(a_obj *self, unsigned count, ...);
-
-void
-a_obj_mappend(a_obj *self, unsigned count, void* value);
-
-void
-a_obj_set(a_obj *self, unsigned index, void* value);
-
-void
-a_obj_vset(a_obj *self, unsigned count, ...);
-
-void
-a_obj_mset(a_obj *self, unsigned count, void* value);
-
-void
-a_obj_extend(a_obj *self, const a_obj *to_add);
-
-void
-a_obj_copy(const a_obj *self, a_obj *copy);
-
-void
-a_obj_swap(a_obj *self, a_obj *swap);
-
-void
-a_obj_head(const a_obj *self, unsigned count,
-           a_obj *head);
-
-void
-a_obj_tail(const a_obj *self, unsigned count,
-           a_obj *tail);
-
-void
-a_obj_de_head(const a_obj *self, unsigned count,
-              a_obj *tail);
-
-void
-a_obj_de_tail(const a_obj *self, unsigned count,
-              a_obj *head);
-
-void
-a_obj_split(const a_obj *self, unsigned count,
-            a_obj *head, a_obj *tail);
-
-void
-a_obj_concat(const a_obj *self,
-             const a_obj *tail,
-             a_obj *combined);
-
-void
-a_obj_print(const a_obj *self, FILE* output);
 
 #endif

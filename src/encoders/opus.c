@@ -394,6 +394,7 @@ reorder_channels(unsigned channel_mask, aa_int *samples)
         sL  = 0x200,
         sR  = 0x400
     };
+    void (*a_int_swap)(a_int* a, a_int* b) = samples->_[0]->swap;
 
     /*reorder channels if necessary based on assignment*/
     switch (channel_mask) {
