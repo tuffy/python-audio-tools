@@ -398,11 +398,21 @@ TrackReader_read(dvda_TrackReader *self, PyObject *args);
 static PyObject*
 TrackReader_close(dvda_TrackReader *self, PyObject *args);
 
+static PyObject*
+TrackReader_enter(dvda_TrackReader* self, PyObject *args);
+
+static PyObject*
+TrackReader_exit(dvda_TrackReader* self, PyObject *args);
+
 static PyMethodDef TrackReader_methods[] = {
     {"read", (PyCFunction)TrackReader_read,
      METH_VARARGS, "read(pcm_frames) -> FrameList"},
     {"close", (PyCFunction)TrackReader_close,
      METH_NOARGS, "close()"},
+    {"__enter__", (PyCFunction)TrackReader_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)TrackReader_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

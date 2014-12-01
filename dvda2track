@@ -344,7 +344,8 @@ if (__name__ == '__main__'):
                                    output_tracks):
         # get track from title
         try:
-            reader = title.track(track_number).reader()
+            track = title.track(track_number)
+            reader = track.reader()
         except IndexError:
             continue
         except IOError:
@@ -357,6 +358,15 @@ if (__name__ == '__main__'):
         except OSError as err:
             msg.os_error(err)
             sys.exit(1)
+
+        # setup individual progress bar per track
+        progress = audiotools.SingleProgressDisplay(
+            msg, output_filename.__unicode__())
+
+        # determine approximate length in PCM frames
+        # (this will *not* be completely accurate in all cases
+        #  so don't use it as a total_pcm_frames argument!)
+        track_length = track.pts_length * reader.sample_rate // 90000
 
         # encode output file itself
         try:
@@ -376,15 +386,21 @@ if (__name__ == '__main__'):
                 # sample rate mismatch, so cease calculation
                 track_reader = reader
 
+
             track = output_class.from_pcm(
                 str(output_filename),
-                track_reader,
+                audiotools.PCMReaderProgress(
+                    track_reader,
+                    track_length,
+                    progress.update),
                 output_quality)
             encoded.append(track)
         except audiotools.EncodingError as err:
+            progress.clear_rows()
             msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
             sys.exit(1)
         except KeyboardInterrupt:
+            progress.clear_rows()
             try:
                 os.unlink(str(output_filename))
             except OSError:
@@ -393,6 +409,7 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
         track.set_metadata(output_metadata)
+        progress.clear_rows()
 
         msg.info(
             audiotools.output_progress(

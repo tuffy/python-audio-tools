@@ -478,11 +478,22 @@ TrackReader_read(dvda_TrackReader *self, PyObject *args)
 static PyObject*
 TrackReader_close(dvda_TrackReader *self, PyObject *args)
 {
-    if (!self->closed) {
-        dvda_close_track_reader(self->reader);
-        self->reader = NULL;
-        self->closed = 1;
-    }
+    self->closed = 1;
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+TrackReader_enter(dvda_TrackReader* self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+TrackReader_exit(dvda_TrackReader* self, PyObject *args)
+{
+    self->closed = 1;
     Py_INCREF(Py_None);
     return Py_None;
 }

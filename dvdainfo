@@ -64,12 +64,6 @@ if (__name__ == '__main__'):
     row.add_column(u"")
     row.add_column(_.LAB_DVDAINFO_LENGTH)
     row.add_column(u"")
-    row.add_column(_.LAB_DVDAINFO_PTS_LENGTH, "right")
-    row.add_column(u"")
-    row.add_column(_.LAB_DVDAINFO_FIRST_SECTOR)
-    row.add_column(u"")
-    row.add_column(_.LAB_DVDAINFO_LAST_SECTOR)
-    row.add_column(u"")
     row.add_column(_.LAB_DVDAINFO_CODEC)
     row.add_column(u"")
     row.add_column(_.LAB_DVDAINFO_SAMPLE_RATE, "right")
@@ -77,6 +71,12 @@ if (__name__ == '__main__'):
     row.add_column(_.LAB_DVDAINFO_CHANNELS)
     row.add_column(u"")
     row.add_column(_.LAB_DVDAINFO_BITS_PER_SAMPLE)
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_PTS_LENGTH, "right")
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_FIRST_SECTOR)
+    row.add_column(u"")
+    row.add_column(_.LAB_DVDAINFO_LAST_SECTOR)
 
     table.divider_row([_.DIV] + [u" ", _.DIV] * 9)
 
@@ -91,12 +91,6 @@ if (__name__ == '__main__'):
             row.add_column(u"%d:%2.2d" %
                            (track.pts_length // 90000 // 60,
                             track.pts_length // 90000 % 60), "right")
-            row.add_column(u" ")
-            row.add_column(u"%d" % (track.pts_length), "right")
-            row.add_column(u" ")
-            row.add_column(u"%d" % (track.first_sector), "right")
-            row.add_column(u" ")
-            row.add_column(u"%d" % (track.last_sector), "right")
 
             try:
                 reader = track.reader()
@@ -116,6 +110,13 @@ if (__name__ == '__main__'):
                 # display empty columns instead of trying to guess
                 for i in range(8):
                     row.add_column(u" ")
+
+            row.add_column(u" ")
+            row.add_column(u"%d" % (track.pts_length), "right")
+            row.add_column(u" ")
+            row.add_column(u"%d" % (track.first_sector), "right")
+            row.add_column(u" ")
+            row.add_column(u"%d" % (track.last_sector), "right")
 
         table.divider_row([_.DIV] + [u" ", _.DIV] * 9)
 
