@@ -548,13 +548,6 @@ br_buf_free(struct br_buffer *buf)
     free(buf);
 }
 
-/*returns 1 if the buffer is empty*/
-static inline int
-br_buf_empty(const struct br_buffer *buf)
-{
-    return buf->pos == buf->size;
-}
-
 static inline unsigned
 br_buf_size(const struct br_buffer *buf)
 {
