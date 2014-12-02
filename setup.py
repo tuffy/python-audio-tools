@@ -53,7 +53,7 @@ VERSION = re.search(r'VERSION\s*=\s"(.+?)"',
 
 LIBRARY_URLS = {"libcdio_paranoia": "http://www.gnu.org/software/libcdio/",
                 "libcdio": "http://www.gnu.org/software/libcdio/",
-                "libdvd-audio": "http://???",  #FIXME
+                "libdvd-audio": "http://libdvd-audio.sourceforge.net",
                 "libmpg123": "http://www.mpg123.org",
                 "vorbisfile": "http://xiph.org",
                 "opusfile": "http://www.opus-codec.org",

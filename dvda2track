@@ -342,6 +342,12 @@ if (__name__ == '__main__'):
           output_metadata)) in zip(tracks_to_rip,
                                    range(1, len(tracks_to_rip) + 1),
                                    output_tracks):
+        # determine whether we're adding ReplayGain
+        add_replay_gain = (output_class.supports_replay_gain() and
+                           (options.add_replay_gain if
+                            options.add_replay_gain is not None else
+                            audiotools.ADD_REPLAYGAIN))
+
         # get track from title
         try:
             track = title.track(track_number)
@@ -370,22 +376,25 @@ if (__name__ == '__main__'):
 
         # encode output file itself
         try:
-            # try to calculate ReplayGain during extraction
-            # if all tracks have the same sample rate
-            sample_rates.add(reader.sample_rate)
+            if add_replay_gain:
+                # try to calculate ReplayGain during extraction
+                # if all tracks have the same sample rate
+                sample_rates.add(reader.sample_rate)
 
-            # all sample rates are identical so far
-            if len(sample_rates) == 1:
-                # setup new calculator if one hasn't been already
-                if replay_gain is None:
-                    replay_gain = \
-                        audiotools.ReplayGainCalculator(reader.sample_rate)
+                # all sample rates are identical so far
+                if len(sample_rates) == 1:
+                    # setup new calculator if one hasn't been already
+                    if replay_gain is None:
+                        replay_gain = \
+                            audiotools.ReplayGainCalculator(reader.sample_rate)
 
-                track_reader = replay_gain.to_pcm(reader)
+                    track_reader = replay_gain.to_pcm(reader)
+                else:
+                    # sample rate mismatch, so cease calculation
+                    track_reader = reader
             else:
-                # sample rate mismatch, so cease calculation
+                # not adding ReplayGain at all
                 track_reader = reader
-
 
             track = output_class.from_pcm(
                 str(output_filename),
