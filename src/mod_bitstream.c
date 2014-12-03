@@ -296,10 +296,17 @@ BitstreamReader_unread(bitstream_BitstreamReader *self, PyObject *args)
         return NULL;
     }
 
-    self->bitstream->unread(self->bitstream, unread_bit);
+    if (!setjmp(*br_try(self->bitstream))) {
+        self->bitstream->unread(self->bitstream, unread_bit);
+        br_etry(self->bitstream);
 
-    Py_INCREF(Py_None);
-    return Py_None;
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error unreading bit");
+        return NULL;
+    }
 }
 
 

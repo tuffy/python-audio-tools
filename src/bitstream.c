@@ -1545,8 +1545,11 @@ br_unread_bit_be(BitstreamReader* self, int unread_bit)
 #include "unread_bit_table_be.h"
     ;
     struct unread_bit result = unread_bit_table_be[self->state][unread_bit];
-    assert(!result.limit_reached);
-    self->state = result.state;
+    if (result.limit_reached) {
+        br_abort(self);
+    } else {
+        self->state = result.state;
+    }
 }
 
 static void
@@ -1556,14 +1559,17 @@ br_unread_bit_le(BitstreamReader* self, int unread_bit)
 #include "unread_bit_table_le.h"
     ;
     struct unread_bit result = unread_bit_table_le[self->state][unread_bit];
-    assert(!result.limit_reached);
-    self->state = result.state;
+    if (result.limit_reached) {
+        br_abort(self);
+    } else {
+        self->state = result.state;
+    }
 }
 
 static void
 br_unread_bit_c(BitstreamReader* self, int unread_bit)
 {
-    return;
+    br_abort(self);
 }
 
 
@@ -1845,7 +1851,7 @@ br_read_bytes_file(BitstreamReader* self,
                    unsigned int byte_count)
 {
     if (self->state == 0) {
-        /*stream is byte-aligned, so perform optimized read*/
+        /*bit buffer is empty, so perform optimized read*/
 
         /*fread bytes from file handle to output*/
         if (fread(bytes, sizeof(uint8_t), byte_count, self->input.file) ==
@@ -1881,7 +1887,7 @@ br_read_bytes_file(BitstreamReader* self,
             unsigned int byte_count)                                  \
   {                                                                   \
       if (self->state == 0) {                                         \
-          /*stream is byte-aligned, so perform optimized read*/       \
+          /*bit buffer is empty, so perform optimized read*/          \
                                                                       \
           /*buf_read bytes from buffer to output*/                    \
           if (READ_FUNC(READ_ARG, bytes, byte_count) == byte_count) { \
@@ -2024,14 +2030,16 @@ br_parse(BitstreamReader* self, const char* format, ...)
 static int
 br_byte_aligned(const BitstreamReader* self)
 {
-    return (self->state == 0);
+    return (self->state == 0) || (self->state & 0x100);
 }
 
 
 static void
 br_byte_align(BitstreamReader* self)
 {
-    self->state = 0;
+    if (!self->byte_aligned(self)) {
+        self->state = 0;
+    }
 }
 
 
@@ -4852,8 +4860,10 @@ void sigabort_cleanup(int signum) {
 
 void test_big_endian_reader(BitstreamReader* reader,
                             br_huffman_table_t table[]) {
-    int bit;
+    unsigned i;
     uint8_t sub_data[2];
+    const uint8_t actual_data[4] = {0xB1, 0xED, 0x3B, 0xC1};
+    uint8_t read_data[4];
     mpz_t value;
     br_pos_t *pos1;
     br_pos_t *pos2;
@@ -4921,20 +4931,24 @@ void test_big_endian_reader(BitstreamReader* reader,
     assert(reader->read(reader, 4) == 0x8);
     reader->setpos(reader, pos1);
 
-    reader->setpos(reader, pos1);
-    assert(reader->read(reader, 1) == 1);
-    bit = reader->read(reader, 1);
-    assert(bit == 0);
-    reader->unread(reader, bit);
-    assert(reader->read(reader, 2) == 1);
-    reader->byte_align(reader);
+    assert(reader->byte_aligned(reader));
+    for (i = 0; i < 32; i++) {
+        const unsigned bit = reader->read(reader, 1);
+        unsigned re_read;
+        reader->unread(reader, bit);
+        re_read = reader->read(reader, 1);
+        assert(bit == re_read);
+    }
+    assert(reader->byte_aligned(reader));
 
     reader->setpos(reader, pos1);
-    assert(reader->read(reader, 8) == 0xB1);
-    reader->unread(reader, 0);
-    assert(reader->read(reader, 1) == 0);
-    reader->unread(reader, 1);
-    assert(reader->read(reader, 1) == 1);
+
+    reader->unread(reader, reader->read(reader, 1));
+    assert(reader->byte_aligned(reader));
+    reader->byte_align(reader);
+    reader->read_bytes(reader, read_data, 4);
+    assert(reader->byte_aligned(reader));
+    assert(!memcmp(read_data, actual_data, 4));
 
     reader->setpos(reader, pos1);
     assert(reader->read_signed(reader, 2) == -2);
@@ -5301,8 +5315,10 @@ void test_big_endian_parse(BitstreamReader* reader) {
 
 void test_little_endian_reader(BitstreamReader* reader,
                                br_huffman_table_t table[]) {
-    int bit;
+    unsigned i;
     uint8_t sub_data[2];
+    const uint8_t actual_data[4] = {0xB1, 0xED, 0x3B, 0xC1};
+    uint8_t read_data[4];
     mpz_t value;
     br_pos_t* pos1;
     br_pos_t* pos2;
@@ -5370,20 +5386,23 @@ void test_little_endian_reader(BitstreamReader* reader,
     assert(reader->read(reader, 4) == 0x0);
     reader->setpos(reader, pos1);
 
-    reader->setpos(reader, pos1);
-    assert(reader->read(reader, 1) == 1);
-    bit = reader->read(reader, 1);
-    assert(bit == 0);
-    reader->unread(reader, bit);
-    assert(reader->read(reader, 4) == 8);
-    reader->byte_align(reader);
+    for (i = 0; i < 32; i++) {
+        const unsigned bit = reader->read(reader, 1);
+        unsigned re_read;
+        reader->unread(reader, bit);
+        re_read = reader->read(reader, 1);
+        assert(bit == re_read);
+    }
+    assert(reader->byte_aligned(reader));
 
     reader->setpos(reader, pos1);
-    assert(reader->read(reader, 8) == 0xB1);
-    reader->unread(reader, 0);
-    assert(reader->read(reader, 1) == 0);
-    reader->unread(reader, 1);
-    assert(reader->read(reader, 1) == 1);
+
+    reader->unread(reader, reader->read(reader, 1));
+    assert(reader->byte_aligned(reader));
+    reader->byte_align(reader);
+    reader->read_bytes(reader, read_data, 4);
+    assert(reader->byte_aligned(reader));
+    assert(!memcmp(read_data, actual_data, 4));
 
     reader->setpos(reader, pos1);
     assert(reader->read_signed(reader, 2) == 1);
@@ -5809,7 +5828,12 @@ test_close_errors(BitstreamReader* reader,
         br_etry(reader);
     }
 
-    reader->unread(reader, 1); /*should do nothing*/
+    if (!setjmp(*br_try(reader))) {
+        reader->unread(reader, 1);
+        assert(0);
+    } else {
+        br_etry(reader);
+    }
 
     if (!setjmp(*br_try(reader))) {
         reader->read_unary(reader, 1);

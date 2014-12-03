@@ -193,7 +193,14 @@ typedef void
 /*pushes a single 0 or 1 bit back onto the stream
   in the current endian format
 
-  only a single bit is guaranteed to be unreadable*/
+  unread bits are stored in the local bit buffer but
+  *not* pushed back into the stream itself
+  so a different unread bit will be lost
+  upon calls to seek or setpos, though getpos will preserve it
+
+  only a single bit is guaranteed to be unreadable
+  attempting to unread more than will fit in the buffer
+  will trigger a br_abort()*/
 typedef void
 (*br_unread_f)(struct BitstreamReader_s* self, int unread_bit);
 
