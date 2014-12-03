@@ -644,7 +644,8 @@ if (__name__ == '__main__'):
             row = table.row()
 
             # truncate long filenames if necessary
-            filename = audiotools.output_text(filename)
+            filename = audiotools.output_text(
+                audiotools.Filename(filename).__unicode__())
             if len(filename) <= filename_max:
                 row.add_column(filename)
             else:
