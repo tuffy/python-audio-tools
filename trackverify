@@ -576,7 +576,7 @@ if (__name__ == '__main__'):
                     for (i,
                          previous_track,
                          track,
-                         next_track) in zip(range(len(tracks)),
+                         next_track) in zip(range(1, len(tracks) + 1),
                                             [None] + tracks,
                                             tracks,
                                             tracks[1:] + [None]):
