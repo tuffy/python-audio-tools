@@ -194,7 +194,7 @@ def accuraterip_checksum(progress,
                                       progress)
         audiotools.transfer_data(pcmreader.read, checksummer.update)
     except (IOError, ValueError) as err:
-        return {"filename": track.filename,
+        return {"filename": audiotools.Filename(track.filename).__unicode__(),
                 "error": str(err),
                 "v1": {"checksum": None,
                        "offset": None,
@@ -218,7 +218,7 @@ def accuraterip_checksum(progress,
                                initial_offset=-PREVIOUS_TRACK_FRAMES)
 
     if len(ar_matches) == 0:
-        return {"filename": track.filename,
+        return {"filename": audiotools.Filename(track.filename).__unicode__(),
                 "error": None,
                 "v1": {"checksum": checksum_v1,
                        "offset": offset_v1,
@@ -227,7 +227,7 @@ def accuraterip_checksum(progress,
                        "offset": offset_v2,
                        "confidence": AR_NOT_FOUND}}
     else:
-        return {"filename": track.filename,
+        return {"filename": audiotools.Filename(track.filename).__unicode__(),
                 "error": None,
                 "v1": {"checksum": checksum_v1,
                        "offset": offset_v1,
@@ -335,7 +335,7 @@ def accuraterip_display_result(result):
     if result["error"] is None:
         confidence_v1 = result["v1"]["confidence"]
         confidence_v2 = result["v2"]["confidence"]
-        path = audiotools.Filename(result["filename"])
+        path = result["filename"]
 
         if ((confidence_v1 == AR_NOT_FOUND) and
             (confidence_v2 == AR_NOT_FOUND)):
@@ -528,7 +528,8 @@ if (__name__ == '__main__'):
 
                         filename = u"%2.2d - %s" % \
                             (track_num,
-                             audiotools.Filename(tracks[0].filename).basename())
+                             audiotools.Filename(
+                                 tracks[0].filename).basename().__unicode__())
 
                         offset = int(sheet.track_offset(track_num) *
                                      sample_rate)
@@ -644,8 +645,7 @@ if (__name__ == '__main__'):
             row = table.row()
 
             # truncate long filenames if necessary
-            filename = audiotools.output_text(
-                audiotools.Filename(filename).__unicode__())
+            filename = audiotools.output_text(filename)
             if len(filename) <= filename_max:
                 row.add_column(filename)
             else:
