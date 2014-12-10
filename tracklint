@@ -82,6 +82,10 @@ def update(track, messenger):
 
         # finally, display fixes performed
         display_messages(messenger, track, fixes)
+    else:
+        # remove temporary file
+        os.close(fd)
+        os.unlink(temp_path)
 
 
 if (__name__ == '__main__'):

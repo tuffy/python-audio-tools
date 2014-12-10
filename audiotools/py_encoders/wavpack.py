@@ -545,9 +545,10 @@ def write_block(writer,
         bits_per_sample=context.pcmreader.bits_per_sample,
         channel_count=len(channels),
         joint_stereo=(len(channels) == 2) and (false_stereo == 0),
-        cross_channel_decorrelation=len(set([-1, -2, -3]) &
-            set([p.term for p in
-                 parameters.correlation_parameters(false_stereo)])) > 0,
+        cross_channel_decorrelation=len(
+            {-1, -2, -3} &
+            {p.term for p in
+             parameters.correlation_parameters(false_stereo)}) > 0,
         wasted_bps=wasted,
         initial_block_in_sequence=first_block,
         final_block_in_sequence=last_block,

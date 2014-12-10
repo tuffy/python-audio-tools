@@ -695,7 +695,7 @@ class Flac_VORBISCOMMENT(VorbisComment):
             return cls([reader.read_bytes(reader.read(32)).decode('utf-8',
                                                                   'replace')
                         for i in range(reader.read(32))],
-                        vendor_string)
+                       vendor_string)
         finally:
             reader.set_endianness(False)
 
@@ -1777,12 +1777,12 @@ class FlacAudio(WaveContainer, AiffContainer):
             metadata.replace_blocks(
                 Flac_CUESHEET.BLOCK_ID,
                 [Flac_CUESHEET.converted(
-                     cuesheet,
-                     self.total_frames(),
-                     self.sample_rate(),
-                     (self.sample_rate() == 44100) and
-                     (self.channels() == 2) and
-                     (self.bits_per_sample() == 16))])
+                    cuesheet,
+                    self.total_frames(),
+                    self.sample_rate(),
+                    (self.sample_rate() == 44100) and
+                    (self.channels() == 2) and
+                    (self.bits_per_sample() == 16))])
 
             # wipe out any CDTOC tag
             try:
@@ -2837,9 +2837,9 @@ class FlacAudio(WaveContainer, AiffContainer):
             if metadata.has_block(Flac_SEEKTABLE.BLOCK_ID):
                 # fix an invalid SEEKTABLE, if necessary
                 if (not seektable_valid(
-                       metadata.get_block(Flac_SEEKTABLE.BLOCK_ID),
-                       stream_offset + 4 + metadata_size,
-                       input_f)):
+                        metadata.get_block(Flac_SEEKTABLE.BLOCK_ID),
+                        stream_offset + 4 + metadata_size,
+                        input_f)):
                     from audiotools.text import CLEAN_FLAC_FIX_SEEKTABLE
 
                     fixes_performed.append(CLEAN_FLAC_FIX_SEEKTABLE)

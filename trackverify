@@ -43,7 +43,7 @@ def open_file(filename):
     with open(filename, "rb") as f:
         audio_class = audiotools.file_type(f)
         if ((audio_class is not None) and
-            (audio_class.available(audiotools.BIN))):
+            audio_class.available(audiotools.BIN)):
             class_name = audio_class.NAME
             try:
                 return audio_class(filename)

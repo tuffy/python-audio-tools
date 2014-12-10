@@ -7082,7 +7082,7 @@
 *** TODO Test encoder/decoder against reference
 *** TODO Restore AudioFile-compatible Python interface
 * TODO Finish version 3.0
-** TODO Make compatible with Python 2.7 and 3.X
+** DONE Make compatible with Python 2.7 and 3.X
    Like Urwid and PLY, the same code should work on both versions.
 *** DONE Update setup script
 *** DONE Update C-based extensions
@@ -7155,26 +7155,26 @@
     - [X] tracksplit
     - [X] tracktag
     - [X] trackverify
-*** TODO Update Python-based decoders
+*** DONE Update Python-based decoders
     - [X] alac
-    - [ ] flac
-    - [ ] shn
-    - [ ] tta
-    - [ ] wavpack
-*** TODO Update Python-based encoders
-    - [ ] alac
-    - [ ] flac
-    - [ ] shn
-    - [ ] tta
-    - [ ] wavpack
+    - [X] flac
+    - [X] shn
+    - [X] tta
+    - [X] wavpack
+*** DONE Update Python-based encoders
+    - [X] alac
+    - [X] flac
+    - [X] shn
+    - [X] tta
+    - [X] wavpack
 *** DONE Update documentation
-*** TODO Update unit tests
-    - [ ] test
-    - [ ] test_core
-    - [ ] test_formats
-    - [ ] test_metadata
-    - [ ] test_streams
-    - [ ] test_utils
+*** DONE Update unit tests
+    - [X] test
+    - [X] test_core
+    - [X] test_formats
+    - [X] test_metadata
+    - [X] test_streams
+    - [X] test_utils
 **** TODO Update unit test utilities
      - [ ] error.py
      - [ ] test_cdrdao
@@ -7316,12 +7316,6 @@
       - [X] tracksplit
       - [X] tracktag
       - [X] trackverify
-** TODO Cleanup chunk-based interface (again)
-   There needs to be a single-pass approach to encoding chunked files
-   that doesn't involve pulling out the chunk data ahead of time.
-
-   Perhaps some sort of chunk iterator which indicates the appropriate
-   place where the PCM data will go.
 ** DONE Add context manager support
    Having file-like objects work with "with" context managers
    should hopefully make file handle management a bit simpler.
@@ -7871,6 +7865,12 @@
     Probe for libdvdaudio and add module and scripts if present,
     analagous to libcdio.
 * TODO Finish version 3.1
+** TODO Cleanup chunk-based interface (again)
+   There needs to be a single-pass approach to encoding chunked files
+   that doesn't involve pulling out the chunk data ahead of time.
+
+   Perhaps some sort of chunk iterator which indicates the appropriate
+   place where the PCM data will go.
 ** TODO Make AudioFile.available() classmethod finer-grained
    That is, formats can be readable but not writable, or taggable but
    not readable or writeable.  This will allow read-only support for

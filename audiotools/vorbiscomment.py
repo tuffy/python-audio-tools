@@ -326,8 +326,8 @@ class VorbisComment(MetaData):
                 # or none of them contain an integer,
                 # so look for slashed TRACKNUMBER/DISCNUMBER values
                 try:
-                    new_key = {"track_total":u"TRACKNUMBER",
-                               "album_total":u"DISCNUMBER"}[attr]
+                    new_key = {"track_total": u"TRACKNUMBER",
+                               "album_total": u"DISCNUMBER"}[attr]
                     slashed_values = self[new_key]
 
                     for i in range(len(slashed_values)):

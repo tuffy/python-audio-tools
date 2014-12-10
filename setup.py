@@ -547,6 +547,7 @@ class audiotools_dvdaudio(Extension):
         else:
             return True
 
+
 class audiotools_pcm(Extension):
     def __init__(self):
         Extension.__init__(self,
