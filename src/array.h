@@ -112,6 +112,9 @@ struct TYPE##_s {                                                       \
     void (*mappend)(struct TYPE##_s *self, unsigned count,              \
                     CONTENT_TYPE value);                                \
                                                                         \
+    void (*insert)(struct TYPE##_s *self, unsigned index,               \
+                   CONTENT_TYPE value);                                 \
+                                                                        \
     /*sets the array to new values, removing any old ones*/             \
     void (*vset)(struct TYPE##_s *self, unsigned count, ...);           \
                                                                         \

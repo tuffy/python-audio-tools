@@ -14,6 +14,7 @@ shnenc \
 wvenc \
 huffman \
 bitstream \
+bitstream-table \
 ttaenc \
 ttadec \
 opusenc
@@ -112,3 +113,6 @@ array: array.c array.h
 
 parson.o: parson.c parson.h
 	$(CC) $(FLAGS) -c parson.c
+
+bitstream-table: bitstream-table.c array.o
+	$(CC) $(FLAGS) -o $@ bitstream-table.c array.o

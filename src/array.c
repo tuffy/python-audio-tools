@@ -73,6 +73,10 @@ TYPE##_mappend(TYPE *self, unsigned count,                           \
                CONTENT_TYPE value);                                  \
                                                                      \
 static void                                                          \
+TYPE##_insert(TYPE *self, unsigned index,                            \
+              CONTENT_TYPE value);                                   \
+                                                                     \
+static void                                                          \
 TYPE##_vset(TYPE *self, unsigned count, ...);                        \
                                                                      \
 static void                                                          \
@@ -157,6 +161,7 @@ TYPE##_new(void)                                                     \
     a->append = TYPE##_append;                                       \
     a->vappend = TYPE##_vappend;                                     \
     a->mappend = TYPE##_mappend;                                     \
+    a->insert = TYPE##_insert;                                       \
     a->vset = TYPE##_vset;                                           \
     a->mset = TYPE##_mset;                                           \
     a->extend = TYPE##_extend;                                       \
@@ -216,7 +221,7 @@ TYPE##_reset_for(TYPE *self, unsigned minimum)                       \
     self->resize(self, minimum);                                     \
 }                                                                    \
                                                                      \
-static void                                                                 \
+static void                                                          \
 TYPE##_append(TYPE *self, CONTENT_TYPE value)                        \
 {                                                                    \
     if (self->len == self->total_size)                               \
@@ -246,6 +251,21 @@ TYPE##_mappend(TYPE *self, unsigned count, CONTENT_TYPE value)       \
     for (; count > 0; count--) {                                     \
         self->_[self->len++] = value;                                \
     }                                                                \
+}                                                                    \
+                                                                     \
+static void                                                          \
+TYPE##_insert(TYPE *self, unsigned index, CONTENT_TYPE value)        \
+{                                                                    \
+    index = MIN(index, self->len);                                   \
+                                                                     \
+    if (self->len == self->total_size)                               \
+        self->resize(self, self->total_size * 2);                    \
+                                                                     \
+    memmove(self->_ + index + 1,                                     \
+            self->_ + index,                                         \
+            (self->len - index) * sizeof(CONTENT_TYPE));             \
+    self->_[index] = value;                                          \
+    self->len += 1;                                                  \
 }                                                                    \
                                                                      \
 static void                                                          \
@@ -862,7 +882,7 @@ TYPE##_cross_split(const TYPE *self, unsigned count,           \
 static void                                                    \
 TYPE##_reverse(TYPE *self);                                    \
                                                                \
-static void                                                           \
+static void                                                    \
 TYPE##_print(const TYPE *self, FILE* output);                  \
                                                                \
 struct TYPE##_s* TYPE##_new(void)                              \
@@ -1940,6 +1960,14 @@ void test_##TYPE(const CONTENT_TYPE *data, unsigned data_len,       \
         assert(a->_[i + 100] == data[1]);                           \
     for (i = 0; i < 300; i++)                                       \
         assert(a->_[i + 300] == data[2]);                           \
+    a->del(a);                                                      \
+                                                                    \
+    /*test insert*/                                                 \
+    a = TYPE##_new();                                               \
+    for (i = 0; i < data_len; i++)                                  \
+        a->insert(a, 0, data[i]);                                   \
+    for (i = 0; i < data_len; i++)                                  \
+        assert(a->_[a->len - i - 1] == data[i]);                    \
     a->del(a);                                                      \
                                                                     \
     /*test vset*/                                                   \
