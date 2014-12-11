@@ -34,11 +34,12 @@ class Template:
     def process_command(self, match):
         command = match.group(1)
         argument = match.group(2)
-        if (command == "const"):
+        if command == "const":
             return (self.__replacements__[argument]
                     if argument in self.__replacements__ else "")
-        elif (command == "file"):
-            return self.process_string(open(argument, "rb").read().strip())
+        elif command == "file":
+            with open(argument, "r") as f:
+                return self.process_string(f.read().strip())
         else:
             print("*** Unknown command \"%s\"" % (command),
                   file=sys.stderr)
@@ -62,5 +63,5 @@ if (__name__ == "__main__"):
 
     template = Template(dict([arg.split("=", 1) for arg in options.const])
                         if options.const is not None else {})
-    sys.stdout.write(
-        template.process_string(open(options.filename, "rb").read()))
+    with open(options.filename, "rb") as f:
+        sys.stdout.write(template.process_string(f.read()))

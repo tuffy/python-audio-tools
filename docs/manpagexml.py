@@ -19,6 +19,10 @@
 
 import re
 import time
+from sys import version_info
+
+PY3 = version_info[0] >= 3
+
 
 WHITESPACE = re.compile(r'\s+')
 
@@ -43,7 +47,17 @@ def text(node):
 
 
 def man_escape(s):
-    return s.replace('-', '\\-').encode('ascii')
+    return s.replace('-', '\\-')
+
+
+if PY3:
+    def write_u(stream, unicode_string):
+        assert(isinstance(unicode_string, str))
+        stream.write(unicode_string)
+else:
+    def write_u(stream, unicode_string):
+        assert(isinstance(unicode_string, unicode))
+        stream.write(unicode_string.encode("utf-8"))
 
 
 class Manpage:
@@ -89,22 +103,22 @@ class Manpage:
         self.description = description
         self.author = author
 
-        if (options is not None):
+        if options is not None:
             self.options = options
         else:
             self.options = []
 
-        if (examples is not None):
+        if examples is not None:
             self.examples = examples
         else:
             self.examples = []
 
-        if (elements is not None):
+        if elements is not None:
             self.elements = elements
         else:
             self.elements = []
 
-        if (see_also is not None):
+        if see_also is not None:
             self.see_also = see_also
         else:
             self.see_also = []
@@ -167,86 +181,86 @@ class Manpage:
                    examples=examples)
 
     def to_man(self, stream):
-        stream.write((".TH \"%(utility)s\" %(section)d " +
-                      "\"%(date)s\" \"\" \"%(title)s\"\n") %
-                     {"utility": self.utility.upper().encode('ascii'),
-                      "section": self.section,
-                      "date": time.strftime("%B %Y", time.localtime()),
-                      "title": self.title.encode('ascii')})
-        stream.write(".SH NAME\n")
-        stream.write("%(utility)s \\- %(name)s\n" %
-                     {"utility": self.utility.encode('ascii'),
-                      "name": self.name.encode('ascii')})
-        if (self.synopsis is not None):
-            stream.write(".SH SYNOPSIS\n")
-            stream.write("%(utility)s %(synopsis)s\n" %
-                         {"utility": self.utility.encode('ascii'),
-                          "synopsis": self.synopsis.encode('ascii')})
-        stream.write(".SH DESCRIPTION\n")
-        stream.write(".PP\n")
-        stream.write(self.description.encode('ascii'))
-        stream.write("\n")
+        write_u(stream,
+                (u".TH \"%(utility)s\" %(section)d " +
+                 u"\"%(date)s\" \"\" \"%(title)s\"\n") %
+                {"utility": self.utility.upper(),
+                 "section": self.section,
+                 "date": time.strftime("%B %Y", time.localtime()),
+                 "title": self.title})
+        write_u(stream, u".SH NAME\n")
+        write_u(stream, u"%(utility)s \\- %(name)s\n" %
+                {"utility": self.utility,
+                 "name": self.name})
+        if self.synopsis is not None:
+            write_u(stream, u".SH SYNOPSIS\n")
+            write_u(stream, u"%(utility)s %(synopsis)s\n" %
+                    {"utility": self.utility,
+                     "synopsis": self.synopsis})
+        write_u(stream, u".SH DESCRIPTION\n")
+        write_u(stream, u".PP\n")
+        write_u(stream, self.description)
+        write_u(stream, u"\n")
         for option in self.options:
             option.to_man(stream)
         for element in self.elements:
             element.to_man(stream)
-        if (len(self.examples) > 0):
-            if (len(self.examples) > 1):
-                stream.write(".SH EXAMPLES\n")
+        if len(self.examples) > 0:
+            if len(self.examples) > 1:
+                write_u(stream, u".SH EXAMPLES\n")
             else:
-                stream.write(".SH EXAMPLE\n")
+                write_u(stream, u".SH EXAMPLE\n")
             for example in self.examples:
                 example.to_man(stream)
 
         for option in self.flatten_options():
-            if (option.long_arg == 'format'):
+            if option.long_arg == 'format':
                 self.format_fields_man(stream)
                 break
 
         self.see_also.sort(key=lambda x: x.utility)
 
-        if (len(self.see_also) > 0):
-            stream.write(".SH SEE ALSO\n")
+        if len(self.see_also) > 0:
+            write_u(stream, u".SH SEE ALSO\n")
             # handle the trailing comma correctly
             for page in self.see_also[0:-1]:
-                stream.write(".BR %(utility)s (%(section)d),\n" %
-                             {"utility": page.utility.encode('ascii'),
-                              "section": page.section})
+                write_u(stream, u".BR %(utility)s (%(section)d),\n" %
+                        {"utility": page.utility,
+                         "section": page.section})
 
-            stream.write(".BR %(utility)s (%(section)d)\n" %
-                         {"utility": self.see_also[-1].utility.encode('ascii'),
-                          "section": self.see_also[-1].section})
+            write_u(stream, u".BR %(utility)s (%(section)d)\n" %
+                    {"utility": self.see_also[-1].utility,
+                     "section": self.see_also[-1].section})
 
-        stream.write(".SH AUTHOR\n")
-        stream.write("%(author)s\n" % {"author": self.author.encode('ascii')})
+        write_u(stream, u".SH AUTHOR\n")
+        write_u(stream, u"%(author)s\n" % {"author": self.author})
 
     def format_fields_man(self, stream):
-        stream.write(".SH FORMAT STRING FIELDS\n")
-        stream.write(".TS\n")
-        stream.write("tab(:);\n")
-        stream.write("| c   s |\n")
-        stream.write("| c | c |\n")
-        stream.write("| r | l |.\n")
-        stream.write("_\n")
-        stream.write("Template Fields\n")
-        stream.write("Key:Value\n")
-        stream.write("=\n")
+        write_u(stream, u".SH FORMAT STRING FIELDS\n")
+        write_u(stream, u".TS\n")
+        write_u(stream, u"tab(:);\n")
+        write_u(stream, u"| c   s |\n")
+        write_u(stream, u"| c | c |\n")
+        write_u(stream, u"| r | l |.\n")
+        write_u(stream, u"_\n")
+        write_u(stream, u"Template Fields\n")
+        write_u(stream, u"Key:Value\n")
+        write_u(stream, u"=\n")
         for (field, description) in self.FIELDS:
-            stream.write("\\fC%(field)s\\fR:%(description)s\n" %
-                         {"field": field,
-                          "description": description})
-        stream.write("_\n")
-        stream.write(".TE\n")
+            write_u(stream, u"\\fC%(field)s\\fR:%(description)s\n" %
+                    {"field": field,
+                     "description": description})
+        write_u(stream, u"_\n")
+        write_u(stream, u".TE\n")
 
     def to_html(self, stream):
-        stream.write('<div class="utility" id="%s">\n' %
-                     (self.utility.encode('utf-8')))
+        write_u(stream, u'<div class="utility" id="%s">\n' % (self.utility))
 
         # display utility name
-        stream.write("<h2>%s</h2>\n" % (self.utility.encode('utf-8')))
+        write_u(stream, u"<h2>%s</h2>\n" % (self.utility))
 
         # display utility description
-        stream.write("<p>%s</p>\n" % (self.description.encode('utf-8')))
+        write_u(stream, u"<p>%s</p>\n" % (self.description))
 
         # display options
         for option_section in self.options:
@@ -257,19 +271,19 @@ class Manpage:
             element.to_html(stream)
 
         # display examples
-        if (len(self.examples) > 0):
-            stream.write('<dl class="examples">\n')
-            if (len(self.examples) > 1):
-                stream.write("<dt>Examples</dt>\n")
+        if len(self.examples) > 0:
+            write_u(stream, u'<dl class="examples">\n')
+            if len(self.examples) > 1:
+                write_u(stream, u"<dt>Examples</dt>\n")
             else:
-                stream.write("<dt>Example</dt>\n")
-            stream.write("<dd>\n")
+                write_u(stream, u"<dt>Example</dt>\n")
+            write_u(stream, u"<dd>\n")
             for example in self.examples:
                 example.to_html(stream)
-            stream.write("</dd>\n")
-            stream.write("</dl>\n")
+            write_u(stream, u"</dd>\n")
+            write_u(stream, u"</dl>\n")
 
-        stream.write('</div>\n')
+        write_u(stream, u'</div>\n')
 
 
 class Options:
@@ -284,7 +298,7 @@ class Options:
 
     @classmethod
     def parse(cls, xml_dom):
-        if (xml_dom.hasAttribute(u"category")):
+        if xml_dom.hasAttribute(u"category"):
             category = xml_dom.getAttribute(u"category")
         else:
             category = None
@@ -294,29 +308,28 @@ class Options:
                    category=category)
 
     def to_man(self, stream):
-        if (self.category is None):
-            stream.write(".SH OPTIONS\n")
+        if self.category is None:
+            write_u(stream, u".SH OPTIONS\n")
         else:
-            stream.write(".SH %(category)s OPTIONS\n" %
-                         {"category":
-                          self.category.upper().encode('ascii')})
+            write_u(stream, u".SH %(category)s OPTIONS\n" %
+                    {"category": self.category.upper()})
         for option in self.options:
             option.to_man(stream)
 
     def to_html(self, stream):
-        stream.write("<dl>\n")
-        if (self.category is None):
-            stream.write("<dt>Options</dt>\n")
+        write_u(stream, u"<dl>\n")
+        if self.category is None:
+            write_u(stream, u"<dt>Options</dt>\n")
         else:
-            stream.write("<dt>%s Options</dt>\n" %
-                         self.category.capitalize().encode('utf-8'))
-        stream.write("<dd>\n")
-        stream.write("<dl>\n")
+            write_u(stream, u"<dt>%s Options</dt>\n" %
+                    self.category.capitalize())
+        write_u(stream, u"<dd>\n")
+        write_u(stream, u"<dl>\n")
         for option in self.options:
             option.to_html(stream)
-        stream.write("</dl>\n")
-        stream.write("</dd>\n")
-        stream.write("</dl>\n")
+        write_u(stream, u"</dl>\n")
+        write_u(stream, u"</dd>\n")
+        write_u(stream, u"</dl>\n")
 
 
 class Option:
@@ -339,24 +352,24 @@ class Option:
 
     @classmethod
     def parse(cls, xml_dom):
-        if (xml_dom.hasAttribute("short")):
+        if xml_dom.hasAttribute("short"):
             short_arg = xml_dom.getAttribute("short")
-            if (len(short_arg) > 1):
+            if len(short_arg) > 1:
                 raise ValueError("short arguments should be 1 character")
         else:
             short_arg = None
 
-        if (xml_dom.hasAttribute("long")):
+        if xml_dom.hasAttribute("long"):
             long_arg = xml_dom.getAttribute("long")
         else:
             long_arg = None
 
-        if (xml_dom.hasAttribute("arg")):
+        if xml_dom.hasAttribute("arg"):
             arg_name = xml_dom.getAttribute("arg")
         else:
             arg_name = None
 
-        if (len(xml_dom.childNodes) > 0):
+        if len(xml_dom.childNodes) > 0:
             description = WHITESPACE.sub(
                 u" ", xml_dom.childNodes[0].wholeText.strip())
         else:
@@ -368,89 +381,98 @@ class Option:
                    description=description)
 
     def to_man(self, stream):
-        stream.write(".TP\n")
-        if ((self.short_arg is not None) and (self.long_arg is not None)):
-            if (self.arg_name is not None):
-                stream.write(("\\fB\\-%(short_arg)s\\fR, " +
-                              "\\fB\\-\\-%(long_arg)s\\fR=" +
-                              "\\fI%(arg_name)s\\fR\n") %
-                             {"short_arg": man_escape(self.short_arg),
-                              "long_arg": man_escape(self.long_arg),
-                              "arg_name": man_escape(self.arg_name.upper())})
+        write_u(stream, u".TP\n")
+        if (self.short_arg is not None) and (self.long_arg is not None):
+            if self.arg_name is not None:
+                write_u(stream,
+                        (u"\\fB\\-%(short_arg)s\\fR, " +
+                         u"\\fB\\-\\-%(long_arg)s\\fR=" +
+                         u"\\fI%(arg_name)s\\fR\n") %
+                        {"short_arg": man_escape(self.short_arg),
+                         "long_arg": man_escape(self.long_arg),
+                         "arg_name": man_escape(self.arg_name.upper())})
             else:
-                stream.write(("\\fB\\-%(short_arg)s\\fR, " +
-                              "\\fB\\-\\-%(long_arg)s\\fR\n") %
-                             {"short_arg": man_escape(self.short_arg),
-                              "long_arg": man_escape(self.long_arg)})
-        elif (self.short_arg is not None):
-            if (self.arg_name is not None):
-                stream.write(("\\fB\\-%(short_arg)s\\fR " +
-                              "\\fI%(arg_name)s\\fR\n") %
-                             {"short_arg": man_escape(self.short_arg),
-                              "arg_name": man_escape(self.arg_name.upper())})
+                write_u(stream,
+                        (u"\\fB\\-%(short_arg)s\\fR, " +
+                         u"\\fB\\-\\-%(long_arg)s\\fR\n") %
+                        {"short_arg": man_escape(self.short_arg),
+                         "long_arg": man_escape(self.long_arg)})
+        elif self.short_arg is not None:
+            if self.arg_name is not None:
+                write_u(stream,
+                        (u"\\fB\\-%(short_arg)s\\fR " +
+                         u"\\fI%(arg_name)s\\fR\n") %
+                        {"short_arg": man_escape(self.short_arg),
+                         "arg_name": man_escape(self.arg_name.upper())})
             else:
-                stream.write("\\fB\\-%(short_arg)s\\fR\n" %
-                             {"short_arg": man_escape(self.short_arg)})
-        elif (self.long_arg is not None):
-            if (self.arg_name is not None):
-                stream.write(("\\fB\\-\\-%(long_arg)s\\fR" +
-                              "=\\fI%(arg_name)s\\fR\n") %
-                             {"long_arg": man_escape(self.long_arg),
-                              "arg_name": man_escape(self.arg_name.upper())})
+                write_u(stream,
+                        u"\\fB\\-%(short_arg)s\\fR\n" %
+                        {"short_arg": man_escape(self.short_arg)})
+        elif self.long_arg is not None:
+            if self.arg_name is not None:
+                write_u(stream,
+                        (u"\\fB\\-\\-%(long_arg)s\\fR" +
+                         u"=\\fI%(arg_name)s\\fR\n") %
+                        {"long_arg": man_escape(self.long_arg),
+                         "arg_name": man_escape(self.arg_name.upper())})
             else:
-                stream.write("\\fB\\-\\-%(long_arg)s\\fR\n" %
-                             {"long_arg": man_escape(self.long_arg)})
+                write_u(stream,
+                        u"\\fB\\-\\-%(long_arg)s\\fR\n" %
+                        {"long_arg": man_escape(self.long_arg)})
         else:
             raise ValueError("short arg or long arg must be present in option")
 
-        if (self.description is not None):
-            stream.write(self.description.encode('ascii'))
-            stream.write("\n")
+        if self.description is not None:
+            write_u(stream, self.description)
+            write_u(stream, u"\n")
 
     def to_html(self, stream):
-        stream.write("<dt>\n")
-        if ((self.short_arg is not None) and (self.long_arg is not None)):
-            if (self.arg_name is not None):
-                stream.write(("<b>-%(short_arg)s</b>, " +
-                              "<b>--%(long_arg)s</b>=" +
-                              "<i>%(arg_name)s</i>\n") %
-                             {"short_arg": self.short_arg.encode('utf-8'),
-                              "long_arg": self.long_arg.encode('utf-8'),
-                              "arg_name": man_escape(self.arg_name.upper())})
+        write_u(stream, u"<dt>\n")
+        if (self.short_arg is not None) and (self.long_arg is not None):
+            if self.arg_name is not None:
+                write_u(stream,
+                        (u"<b>-%(short_arg)s</b>, " +
+                         u"<b>--%(long_arg)s</b>=" +
+                         u"<i>%(arg_name)s</i>\n") %
+                        {"short_arg": self.short_arg,
+                         "long_arg": self.long_arg,
+                         "arg_name": man_escape(self.arg_name.upper())})
             else:
-                stream.write(("<b>-%(short_arg)s</b>, " +
-                              "<b>--%(long_arg)s</b>\n") %
-                             {"short_arg": self.short_arg.encode('utf-8'),
-                              "long_arg": self.long_arg.encode('utf-8')})
-        elif (self.short_arg is not None):
-            if (self.arg_name is not None):
-                stream.write(("<b>-%(short_arg)s</b> " +
-                              "<i>%(arg_name)s</i>\n") %
-                             {"short_arg": self.short_arg.encode('utf-8'),
-                              "arg_name":
-                              self.arg_name.upper().encode('utf-8')})
+                write_u(stream,
+                        (u"<b>-%(short_arg)s</b>, " +
+                         u"<b>--%(long_arg)s</b>\n") %
+                        {"short_arg": self.short_arg,
+                         "long_arg": self.long_arg})
+        elif self.short_arg is not None:
+            if self.arg_name is not None:
+                write_u(stream,
+                        (u"<b>-%(short_arg)s</b> " +
+                         u"<i>%(arg_name)s</i>\n") %
+                        {"short_arg": self.short_arg,
+                         "arg_name": self.arg_name.upper()})
             else:
-                stream.write("<b>-%(short_arg)s\n" %
-                             {"short_arg": self.short_arg.encode('utf-8')})
-        elif (self.long_arg is not None):
-            if (self.arg_name is not None):
-                stream.write(("<b>--%(long_arg)s</b>" +
-                              "=<i>%(arg_name)s</i>\n") %
-                             {"long_arg": self.long_arg.encode('utf-8'),
-                              "arg_name":
-                              self.arg_name.upper().encode('utf-8')})
+                write_u(stream,
+                        u"<b>-%(short_arg)s\n" % {"short_arg": self.short_arg})
+        elif self.long_arg is not None:
+            if self.arg_name is not None:
+                write_u(stream,
+                        (u"<b>--%(long_arg)s</b>" +
+                         u"=<i>%(arg_name)s</i>\n") %
+                        {"long_arg": self.long_arg,
+                         "arg_name": self.arg_name.upper()})
             else:
-                stream.write("<b>--%(long_arg)s</b>\n" %
-                             {"long_arg": self.long_arg.encode('utf-8')})
+                write_u(stream,
+                        u"<b>--%(long_arg)s</b>\n" %
+                        {"long_arg": self.long_arg})
         else:
             raise ValueError("short arg or long arg must be present in option")
 
-        stream.write("</dt>\n")
+        write_u(stream, u"</dt>\n")
 
-        if (self.description is not None):
-            stream.write("<dd>%s</dd>\n" % (self.description.encode('ascii')))
+        if self.description is not None:
+            write_u(stream, u"<dd>%s</dd>\n" % (self.description))
         else:
-            stream.write("<dd></dd>\n")
+            write_u(stream, u"<dd></dd>\n")
 
 
 class Example:
@@ -471,20 +493,20 @@ class Example:
                    commands=map(Command.parse, subtags(xml_dom, u"command")))
 
     def to_man(self, stream):
-        stream.write(".LP\n")
-        stream.write(self.description.encode('ascii'))  # FIXME
-        stream.write("\n")
+        write_u(stream, u".LP\n")
+        write_u(stream, self.description)  # FIXME
+        write_u(stream, u"\n")
         for command in self.commands:
             command.to_man(stream)
 
     def to_html(self, stream):
-        stream.write('<dl>\n')
-        stream.write("<dt>%s</dt>\n" % (self.description.encode('utf-8')))
-        stream.write("<dd>\n")
+        write_u(stream, u'<dl>\n')
+        write_u(stream, u"<dt>%s</dt>\n" % (self.description))
+        write_u(stream, u"<dd>\n")
         for command in self.commands:
             command.to_html(stream)
-        stream.write("</dd>\n")
-        stream.write("</dl>\n")
+        write_u(stream, u"</dd>\n")
+        write_u(stream, u"</dl>\n")
 
 
 class Command:
@@ -498,7 +520,7 @@ class Command:
 
     @classmethod
     def parse(cls, xml_dom):
-        if (xml_dom.hasAttribute(u"note")):
+        if xml_dom.hasAttribute(u"note"):
             note = xml_dom.getAttribute(u"note")
         else:
             note = None
@@ -507,21 +529,21 @@ class Command:
                    note=note)
 
     def to_man(self, stream):
-        if (self.note is not None):
-            stream.write(".LP\n")
-            stream.write(self.note.encode('ascii') + " :\n\n")
+        if self.note is not None:
+            write_u(stream, u".LP\n")
+            write_u(stream, self.note + u" :\n\n")
 
-        stream.write(".IP\n")
-        stream.write(self.commandline.encode('ascii'))
-        stream.write("\n\n")
+        write_u(stream, u".IP\n")
+        write_u(stream, self.commandline)
+        write_u(stream, u"\n\n")
 
     def to_html(self, stream):
-        if (self.note is not None):
-            stream.write('<span class="note">%s :</span><br>\n' %
-                         self.note.encode('utf-8'))
+        if self.note is not None:
+            write_u(stream,
+                    u'<span class="note">%s :</span><br>\n' % (self.note))
 
-        stream.write(self.commandline.encode('utf-8'))
-        stream.write("<br>\n")
+        write_u(stream, self.commandline)
+        write_u(stream, u"<br>\n")
 
 
 class Element_P:
@@ -536,11 +558,11 @@ class Element_P:
         return cls(contents=text(xml_dom))
 
     def to_man(self, stream):
-        stream.write(self.contents.encode('ascii'))
-        stream.write("\n.PP\n")
+        write_u(stream, self.contents)
+        write_u(stream, u"\n.PP\n")
 
     def to_html(self, stream):
-        stream.write("<p>%s</p>" % (self.contents.encode('utf-8')))
+        write_u(stream, u"<p>%s</p>" % (self.contents))
 
 
 class Element_UL:
@@ -556,16 +578,16 @@ class Element_UL:
 
     def to_man(self, stream):
         for item in self.list_items:
-            stream.write("\\[bu] ")
-            stream.write(item.encode('ascii'))
-            stream.write("\n")
-            stream.write(".PP\n")
+            write_u(stream, u"\\[bu] ")
+            write_u(stream, item)
+            write_u(stream, u"\n")
+            write_u(stream, u".PP\n")
 
     def to_html(self, stream):
-        stream.write("<ul>\n")
+        write_u(stream, u"<ul>\n")
         for item in self.list_items:
-            stream.write("<li>%s</li>\n" % (item.encode('utf-8')))
-        stream.write("</ul>\n")
+            write_u(stream, u"<li>%s</li>\n" % (item))
+        write_u(stream, u"</ul>\n")
 
 
 class Element_TABLE:
@@ -581,7 +603,7 @@ class Element_TABLE:
                                                                 u"tr")])
 
     def to_man(self, stream):
-        if (len(self.rows) == 0):
+        if len(self.rows) == 0:
             return
 
         if (len(set([len(row.columns) for row in self.rows
@@ -590,33 +612,34 @@ class Element_TABLE:
         else:
             columns = len(self.rows[0].columns)
 
-        stream.write(".TS\n")
-        stream.write("tab(:);\n")
-        stream.write(" ".join(["l" for l in self.rows[0].columns]) + ".\n")
+        write_u(stream, u".TS\n")
+        write_u(stream, u"tab(:);\n")
+        write_u(stream,
+                u" ".join([u"l" for l in self.rows[0].columns]) + u".\n")
         for row in self.rows:
             row.to_man(stream)
-        stream.write(".TE\n")
+        write_u(stream, u".TE\n")
 
     def to_html(self, stream):
-        if (len(self.rows) == 0):
+        if len(self.rows) == 0:
             return
 
-        if (len(set([len(row.columns) for row in self.rows
-                     if row.tr_class in (TR_NORMAL, TR_HEADER)])) != 1):
+        if (len({len(row.columns) for row in self.rows
+                 if row.tr_class in (TR_NORMAL, TR_HEADER)}) != 1):
             raise ValueError("all rows must have the same number of columns")
 
-        stream.write("<table>\n")
+        write_u(stream, u"<table>\n")
         for (row, spans) in zip(self.rows, self.calculate_row_spans()):
             row.to_html(stream, spans)
-        stream.write("</table>\n")
+        write_u(stream, u"</table>\n")
 
     def calculate_row_spans(self):
         # turn rows into arrays of "span" boolean values
         row_spans = []
         for row in self.rows:
-            if (row.tr_class in (TR_NORMAL, TR_HEADER)):
+            if row.tr_class in (TR_NORMAL, TR_HEADER):
                 row_spans.append([col.empty() for col in row.columns])
-            elif (row.tr_class == TR_DIVIDER):
+            elif row.tr_class == TR_DIVIDER:
                 row_spans.append([False] * len(row_spans[-1]))
 
         # turn columns into arrays of integers containing the row span
@@ -630,16 +653,16 @@ class Element_TABLE:
     def calculate_span_column(self, row_spans):
         rows = None
         for span in row_spans:
-            if (span):
+            if span:
                 rows += 1
             else:
-                if (rows is not None):
+                if rows is not None:
                     yield rows
                     for i in xrange(rows - 1):
                         yield 0
                 rows = 1
 
-        if (rows is not None):
+        if rows is not None:
             yield rows
             for i in xrange(rows - 1):
                 yield 0
@@ -654,19 +677,19 @@ class Element_TR:
         self.tr_class = tr_class
 
     def __repr__(self):
-        if (self.tr_class in (TR_NORMAL, TR_HEADER)):
+        if self.tr_class in (TR_NORMAL, TR_HEADER):
             return "Element_TR(%s, %s)" % (repr(self.columns), self.tr_class)
         else:
             return "Element_TR_DIVIDER()"
 
     @classmethod
     def parse(cls, xml_dom):
-        if (xml_dom.hasAttribute("class")):
-            if (xml_dom.getAttribute("class") == "header"):
+        if xml_dom.hasAttribute("class"):
+            if xml_dom.getAttribute("class") == "header":
                 return cls(columns=[Element_TD.parse(tag)
                                     for tag in subtags(xml_dom, u"td")],
                            tr_class=TR_HEADER)
-            elif (xml_dom.getAttribute("class") == "divider"):
+            elif xml_dom.getAttribute("class") == "divider":
                 return cls(columns=None, tr_class=TR_DIVIDER)
             else:
                 raise ValueError("unsupported class \"%s\"" %
@@ -677,28 +700,31 @@ class Element_TR:
                        tr_class=TR_NORMAL)
 
     def to_man(self, stream):
-        if (self.tr_class == TR_NORMAL):
-            stream.write(":".join([column.string()
-                                   for column in self.columns]) + "\n")
-        elif (self.tr_class == TR_HEADER):
-            stream.write(":".join(["\\fB%s\\fR" % (column.string())
-                                   for column in self.columns]) + "\n")
-            stream.write("_\n")
-        elif (self.tr_class == TR_DIVIDER):
-            stream.write("_\n")
+        if self.tr_class == TR_NORMAL:
+            write_u(stream,
+                    u":".join(column.string() for column in self.columns) +
+                    u"\n")
+        elif self.tr_class == TR_HEADER:
+            write_u(stream,
+                    u":".join(u"\\fB%s\\fR" % (column.string())
+                              for column in self.columns) +
+                    u"\n")
+            write_u(stream, u"_\n")
+        elif self.tr_class == TR_DIVIDER:
+            write_u(stream, u"_\n")
 
     def column_widths(self):
-        if (self.tr_class in (TR_NORMAL, TR_HEADER)):
+        if self.tr_class in (TR_NORMAL, TR_HEADER):
             return [column.width() for column in self.columns]
         else:
             return None
 
     def to_html(self, stream, rowspans):
-        if (self.tr_class in (TR_NORMAL, TR_HEADER)):
-            stream.write("<tr>\n")
+        if self.tr_class in (TR_NORMAL, TR_HEADER):
+            write_u(stream, u"<tr>\n")
             for (column, span) in zip(self.columns, rowspans):
                 column.to_html(stream, self.tr_class == TR_HEADER, span)
-            stream.write("</tr>\n")
+            write_u(stream, u"</tr>\n")
 
 
 class Element_TD:
@@ -721,33 +747,33 @@ class Element_TD:
         return self.value is None
 
     def string(self):
-        if (self.value is not None):
+        if self.value is not None:
             return self.value.encode('ascii')
         else:
             return "\\^"
 
     def to_man(self, stream):
-        stream.write(self.value.encode('ascii'))
+        stream.write(self.value)
 
     def width(self):
-        if (self.value is not None):
+        if self.value is not None:
             return len(self.value)
         else:
             return 0
 
     def to_html(self, stream, header, rowspan):
-        if (self.value is not None):
-            if (rowspan > 1):
-                rowspan = " rowspan=\"%d\"" % (rowspan)
+        if self.value is not None:
+            if rowspan > 1:
+                rowspan = u" rowspan=\"%d\"" % (rowspan)
             else:
-                rowspan = ""
+                rowspan = u""
 
-            if (header):
-                stream.write("<th%s>%s</th>" %
-                             (rowspan, self.value.encode('utf-8')))
+            if header:
+                write_u(stream,
+                        u"<th%s>%s</th>" % (rowspan, self.value))
             else:
-                stream.write("<td%s>%s</td>" %
-                             (rowspan, self.value.encode('utf-8')))
+                write_u(stream,
+                        u"<td%s>%s</td>" % (rowspan, self.value))
 
 
 class Element:
@@ -764,15 +790,15 @@ class Element:
 
     @classmethod
     def parse(cls, xml_dom):
-        if (xml_dom.hasAttribute(u"name")):
+        if xml_dom.hasAttribute(u"name"):
             name = xml_dom.getAttribute(u"name")
         else:
             raise ValueError("elements must have names")
 
         elements = []
         for child in xml_dom.childNodes:
-            if (hasattr(child, "tagName")):
-                if (child.tagName in cls.SUB_ELEMENTS.keys()):
+            if hasattr(child, "tagName"):
+                if child.tagName in cls.SUB_ELEMENTS.keys():
                     elements.append(
                         cls.SUB_ELEMENTS[child.tagName].parse(child))
                 else:
@@ -783,21 +809,20 @@ class Element:
                    elements=elements)
 
     def to_man(self, stream):
-        stream.write(".SH %s\n" % (self.name.upper().encode('ascii')))
+        write_u(stream, u".SH %s\n" % (self.name.upper()))
         for element in self.elements:
             element.to_man(stream)
 
     def to_html(self, stream):
-        stream.write("<dl>\n")
-        stream.write("<dt>%s</dt>\n" %
-                     ((u" ".join([part.capitalize()
-                                  for part in
-                                  self.name.split()])).encode('utf-8')))
-        stream.write("<dd>\n")
+        write_u(stream, u"<dl>\n")
+        write_u(stream,
+                u"<dt>%s</dt>\n" %
+                (u" ".join(part.capitalize() for part in self.name.split())))
+        write_u(stream, u"<dd>\n")
         for element in self.elements:
             element.to_html(stream)
-        stream.write("</dd>\n")
-        stream.write("</dl>\n")
+        write_u(stream, u"</dd>\n")
+        write_u(stream, u"</dl>\n")
 
 
 if (__name__ == '__main__'):
@@ -824,14 +849,14 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    if (options.input is not None):
+    if options.input is not None:
         main_page = Manpage.parse_file(options.input)
         all_pages = [Manpage.parse_file(filename)
                      for filename in options.see_also]
         main_page.see_also = [page for page in all_pages
                               if (page.utility != main_page.utility)]
 
-        if (options.type == "man"):
+        if options.type == "man":
             main_page.to_man(sys.stdout)
-        elif (options.type == "html"):
+        elif options.type == "html":
             main_page.to_html(sys.stdout)

@@ -38,11 +38,11 @@ if (__name__ == '__main__'):
         times_ran += 1
         line = sub.stdout.readline()
         while (len(line) > 0):
-            if ("Rerun to get cross-references" in line):
+            if "Rerun to get cross-references" in line:
                 rerun = True
             sys.stdout.write(line)
             line = sub.stdout.readline()
-        if (sub.wait() != 0):
+        if sub.wait() != 0:
             rerun = False
 
     print("pdflatex ran %s time(s)" % (times_ran))

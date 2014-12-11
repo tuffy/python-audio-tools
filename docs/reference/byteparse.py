@@ -76,18 +76,18 @@ class RGB_Color:
 
     @classmethod
     def from_string(cls, s):
-        if (s in cls.COLOR_TABLE):
+        if s in cls.COLOR_TABLE:
             (r, g, b) = cls.COLOR_TABLE[s]
             return cls(red=r, green=g, blue=b, alpha=1.0)
         else:
             rgb = cls.RGB.match(s)
-            if (rgb is not None):
+            if rgb is not None:
                 return cls(red=int(rgb.group(1), 16) / 255.0,
                            green=int(rgb.group(2), 16) / 255.0,
                            blue=int(rgb.group(3), 16) / 255.0)
             else:
                 rgba = cls.RGBA.match(s)
-                if (rgba is not None):
+                if rgba is not None:
                     return cls(red=int(rgba.group(1), 16) / 255.0,
                                green=int(rgba.group(2), 16) / 255.0,
                                blue=int(rgba.group(3), 16) / 255.0,
@@ -108,7 +108,7 @@ class HexChunk:
         hexdigits = string.hexdigits.decode('ascii')
         for pair in digits:
             assert(len(pair) == 2)
-            if (pair != u"  "):
+            if pair != u"  ":
                 assert(pair[0] in hexdigits)
                 assert(pair[1] in hexdigits)
 
@@ -185,7 +185,7 @@ class HexChunk:
         pt_offset = self.nw[0] + (pts_per_string / 2)
 
         # draw background color, if any
-        if (self.background_color is not None):
+        if self.background_color is not None:
             pdf.setFillColorRGB(r=self.background_color.red,
                                 g=self.background_color.green,
                                 b=self.background_color.blue,
@@ -220,20 +220,20 @@ class HexChunk:
                  self.se[0], self.se[1])
 
         # draw left and right borders, if any
-        if (self.w_border == BORDER_LINE):
+        if self.w_border == BORDER_LINE:
             pdf.setDash()
             pdf.line(self.nw[0], self.nw[1],
                      self.sw[0], self.sw[1])
-        elif (self.w_border == BORDER_DOTTED):
+        elif self.w_border == BORDER_DOTTED:
             pdf.setDash(1, 6)
             pdf.line(self.nw[0], self.nw[1],
                      self.sw[0], self.sw[1])
 
-        if (self.e_border == BORDER_LINE):
+        if self.e_border == BORDER_LINE:
             pdf.setDash()
             pdf.line(self.ne[0], self.ne[1],
                      self.se[0], self.se[1])
-        elif (self.e_border == BORDER_DOTTED):
+        elif self.e_border == BORDER_DOTTED:
             pdf.setDash(1, 6)
             pdf.line(self.ne[0], self.ne[1],
                      self.se[0], self.se[1])
@@ -244,7 +244,7 @@ class HexChunkTable:
         """width is the number of hex digits per row"""
 
         self.width = width
-        if (rows is None):
+        if rows is None:
             self.rows = []  # a list of HexChunk object lists per row
         else:
             self.rows = rows
@@ -273,18 +273,18 @@ class HexChunkTable:
     def add_chunk(self, chunk):
         """chunk is a Chunk object to be added"""
 
-        if (len(self.rows) == 0):
+        if len(self.rows) == 0:
             # no current rows, so start a new one
             self.rows.append([])
             self.add_chunk(chunk)
         else:
             remaining_space = (self.width -
                                sum([c.size() for c in self.rows[-1]]))
-            if (remaining_space == 0):
+            if remaining_space == 0:
                 # last row is filled, so start a new one
                 self.rows.append([])
                 self.add_chunk(chunk)
-            elif (chunk.size() > remaining_space):
+            elif chunk.size() > remaining_space:
                 # chunk is too big to fit into row,
                 # so split chunk and add as much as possible
                 (head, tail) = chunk.split(remaining_space)
@@ -303,7 +303,7 @@ class HexChunkTable:
 
     def set_w_offset(self, w):
         for row in self.rows:
-            if (len(row) > 0):
+            if len(row) > 0:
                 offset = 0
                 for col in row:
                     col.set_w_offset(offset + w)
@@ -312,7 +312,7 @@ class HexChunkTable:
     def set_s_offset(self, s):
         offset = 0
         for row in reversed(self.rows):
-            if (len(row) > 0):
+            if len(row) > 0:
                 for col in row:
                     col.set_s_offset(offset + s)
                 offset += row[0].pt_height()
@@ -411,20 +411,20 @@ def populate_tables(xml_filename, hex_table, ascii_table):
     struct = dom.getElementsByTagName(u"bytestruct")[0]
 
     for part in struct.childNodes:
-        if (part.nodeName == u"field"):
-            if (part.hasAttribute(u"background-color")):
+        if part.nodeName == u"field":
+            if part.hasAttribute(u"background-color"):
                 background_color = RGB_Color.from_string(
                     part.getAttribute(u"background-color"))
             else:
                 background_color = None
 
-            if (part.hasAttribute(u"label")):
+            if part.hasAttribute(u"label"):
                 label = part.getAttribute(u"label")
             else:
                 label = None
 
             hexvalue = part.childNodes[0].data.strip()
-            if (len(hexvalue) % 2):
+            if len(hexvalue) % 2:
                 raise ValueError("hex value must be divisible by 2")
             else:
                 hex_digits = []
@@ -433,7 +433,7 @@ def populate_tables(xml_filename, hex_table, ascii_table):
                     value = int(hexvalue[0:2], 16)
                     hexvalue = hexvalue[2:]
                     hex_digits.append(u"%2.2X" % (value))
-                    if (value in range(0x20, 0x7F)):
+                    if value in range(0x20, 0x7F):
                         ascii_digits.append(unichr(value))
                     else:
                         ascii_digits.append(u"\u00B7")
@@ -487,7 +487,7 @@ if (__name__ == "__main__"):
 
     populate_tables(options.input, hex_table, ascii_table)
 
-    if (options.ascii):
+    if options.ascii:
         diagram_width = ((hex_table.size() * HEX_WIDTH) +
                          options.space +
                          (ascii_table.size() * ASCII_WIDTH))
@@ -499,19 +499,19 @@ if (__name__ == "__main__"):
     hex_table.set_w_offset(x_offset)
     hex_table.set_s_offset(0)
 
-    if (options.ascii):
+    if options.ascii:
         ascii_table.set_w_offset(x_offset +
                                  hex_table.pt_width() +
                                  options.space)
         ascii_table.set_s_offset(0)
 
-    if (options.type == 'pdf'):
+    if options.type == 'pdf':
         registerFont(TTFont("DejaVu", "DejaVuSans.ttf"))
         pdf = canvas.Canvas(options.output)
         pdf.setPageSize((options.width,
                          hex_table.pt_height()))
         hex_table.to_pdf(pdf)
-        if (options.ascii):
+        if options.ascii:
             ascii_table.to_pdf(pdf)
         pdf.showPage()
         pdf.save()

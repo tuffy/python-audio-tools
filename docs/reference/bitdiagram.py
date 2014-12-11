@@ -69,18 +69,18 @@ class RGB_Color:
 
     @classmethod
     def from_string(cls, s):
-        if (s in cls.COLOR_TABLE):
+        if s in cls.COLOR_TABLE:
             (r, g, b) = cls.COLOR_TABLE[s]
             return cls(red=r, green=g, blue=b, alpha=1.0)
         else:
             rgb = cls.RGB.match(s)
-            if (rgb is not None):
+            if rgb is not None:
                 return cls(red=int(rgb.group(1), 16) / 255.0,
                            green=int(rgb.group(2), 16) / 255.0,
                            blue=int(rgb.group(3), 16) / 255.0)
             else:
                 rgba = cls.RGBA.match(s)
-                if (rgba is not None):
+                if rgba is not None:
                     return cls(red=int(rgba.group(1), 16) / 255.0,
                                green=int(rgba.group(2), 16) / 255.0,
                                blue=int(rgba.group(3), 16) / 255.0,
@@ -103,12 +103,12 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
         self.id = chunk_id
         self.style = style
 
-        if (start_size is not None):
+        if start_size is not None:
             self.start_size = unicode(start_size)
         else:
             self.start_size = None
 
-        if (end_size is not None):
+        if end_size is not None:
             self.end_size = unicode(end_size)
         else:
             self.end_size = None
@@ -121,20 +121,20 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
         self.ne = self.nw = self.se = self.sw = (0, 0)
 
     def get_corner(self, corner):
-        if (corner == NE):
+        if corner == NE:
             return self.ne
-        elif (corner == NW):
+        elif corner == NW:
             return self.nw
-        elif (corner == SE):
+        elif corner == SE:
             return self.se
-        elif (corner == SW):
+        elif corner == SW:
             return self.sw
         else:
             raise ValueError("invalid corner")
 
     def previous_column(self, row):
         i = row.index(self) - 1
-        if (i >= 0):
+        if i >= 0:
             return row[i]
         else:
             return None
@@ -147,7 +147,7 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
 
     def previous_chunk(self, chunks):
         i = chunks.index(self) - 1
-        if (i >= 0):
+        if i >= 0:
             return chunks[i]
         else:
             return None
@@ -164,7 +164,7 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
              self.width, self.id, self.style)
 
     def to_pdf(self, pdf):
-        if (self.border_color is None):
+        if self.border_color is None:
             pdf.setStrokeColorRGB(0, 0, 0, 1)
         else:
             pdf.setStrokeColorRGB(r=self.border_color.red,
@@ -172,15 +172,15 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
                                   b=self.border_color.blue,
                                   alpha=self.border_color.alpha)
 
-        if (self.style is not BLANK):
-            if (self.style == SOLID):
+        if self.style is not BLANK:
+            if self.style == SOLID:
                 pdf.setDash()
-            elif (self.style == DASHED):
+            elif self.style == DASHED:
                 pdf.setDash(6, 6)
-            elif (self.style == DOTTED):
+            elif self.style == DOTTED:
                 pdf.setDash(1, 6)
 
-            if (self.background_color is None):
+            if self.background_color is None:
                 pdf.rect(x=self.sw[0],
                          y=self.sw[1],
                          width=self.pt_width(),
@@ -199,7 +199,7 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
                          stroke=1,
                          fill=1)
 
-        if (self.text_color is None):
+        if self.text_color is None:
             pdf.setFillColorRGB(0, 0, 0, 1)
         else:
             pdf.setFillColorRGB(r=self.text_color.red,
@@ -207,7 +207,7 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
                                 b=self.text_color.blue,
                                 alpha=self.text_color.alpha)
 
-        if (self.text is not None):
+        if self.text is not None:
             pdf.setFont("DejaVu", 10)
             pdf.drawCentredString((self.ne[0] + self.nw[0]) / 2,
                                   self.se[1] + 10,
@@ -220,11 +220,11 @@ style is one of the style enumerations such as SOLID, DASHED, etc."""
                                       self.se[1] + 3,
                                       self.start_size)
             else:
-                if (self.start_size is not None):
+                if self.start_size is not None:
                     pdf.drawString(self.sw[0] + 4,
                                    self.se[1] + 3,
                                    self.start_size)
-                if (self.end_size is not None):
+                if self.end_size is not None:
                     pdf.drawRightString(self.se[0] - 4,
                                         self.se[1] + 3,
                                         self.end_size)
@@ -260,7 +260,7 @@ class Row:
     def to_pdf(self, pdf, total_width, top, bottom):
         for (col_pos, chunk) in enumerate(self):
             previous_column = chunk.previous_column(self)
-            if (previous_column is None):
+            if previous_column is None:
                 left = 0
             else:
                 left = previous_column.ne[0]
@@ -300,14 +300,14 @@ class Line:
         self.color = color
 
     def render(self, pdf):
-        if (self.style is not BLANK):
-            if (self.style == SOLID):
+        if self.style is not BLANK:
+            if self.style == SOLID:
                 pdf.setDash()
-            elif (self.style == DASHED):
+            elif self.style == DASHED:
                 pdf.setDash(6, 6)
-            elif (self.style == DOTTED):
+            elif self.style == DOTTED:
                 pdf.setDash(1, 6)
-            if (self.color is None):
+            if self.color is None:
                 pdf.setStrokeColorRGB(0, 0, 0)
             else:
                 pdf.setStrokeColorRGB(r=self.color.red,
@@ -329,8 +329,8 @@ class ChunkTable:
     def add_row(self, *chunks):
         row = Row()
         for chunk in chunks:
-            if (chunk.id is not None):
-                if (chunk.id in self.chunk_map):
+            if chunk.id is not None:
+                if chunk.id in self.chunk_map:
                     raise ValueError("chunk ID %s already taken" % (chunk.id))
                 else:
                     self.chunk_map[chunk.id] = chunk
@@ -426,57 +426,57 @@ def parse_xml(xml_filename):
     table = ChunkTable()
 
     for part in diagram.childNodes:
-        if (part.nodeName == u'row'):
+        if part.nodeName == u'row':
             columns = []
             for col in part.childNodes:
-                if (col.nodeName == u'col'):
+                if col.nodeName == u'col':
                     chunk_args = {}
-                    if (len(col.childNodes) > 0):
+                    if len(col.childNodes) > 0:
                         chunk_args["text"] = col.childNodes[0].data
-                    if (col.hasAttribute(u"start")):
+                    if col.hasAttribute(u"start"):
                         chunk_args["start_size"] = col.getAttribute(u"start")
-                    if (col.hasAttribute(u"end")):
+                    if col.hasAttribute(u"end"):
                         chunk_args["end_size"] = col.getAttribute(u"end")
-                    if (col.hasAttribute(u"width")):
+                    if col.hasAttribute(u"width"):
                         chunk_args["width"] = float(col.getAttribute(u"width"))
-                    if (col.hasAttribute(u"id")):
+                    if col.hasAttribute(u"id"):
                         chunk_args["chunk_id"] = col.getAttribute(u"id")
-                    if (col.hasAttribute(u"style")):
+                    if col.hasAttribute(u"style"):
                         chunk_args["style"] = \
                             STYLE_MAP[col.getAttribute(u"style")]
-                    if (col.hasAttribute(u"text-color")):
+                    if col.hasAttribute(u"text-color"):
                         chunk_args["text_color"] = RGB_Color.from_string(
                             col.getAttribute(u"text-color"))
-                    if (col.hasAttribute(u"border-color")):
+                    if col.hasAttribute(u"border-color"):
                         chunk_args["border_color"] = RGB_Color.from_string(
                             col.getAttribute(u"border-color"))
-                    if (col.hasAttribute(u"background-color")):
+                    if col.hasAttribute(u"background-color"):
                         chunk_args["background_color"] = RGB_Color.from_string(
                             col.getAttribute(u"background-color"))
 
                     columns.append(Chunk(**chunk_args))
-                elif (col.nodeName == u'blank'):
+                elif col.nodeName == u'blank':
                     chunk_args = {}
-                    if (col.hasAttribute("width")):
+                    if col.hasAttribute("width"):
                         chunk_args["width"] = float(col.getAttribute(u"width"))
                     columns.append(BlankChunk(**chunk_args))
 
             table.add_row(*columns)
-        elif (part.nodeName == u"spacer"):
-            if (part.hasAttribute("height")):
+        elif part.nodeName == u"spacer":
+            if part.hasAttribute("height"):
                 table.add_spacer(
                     int(round(ROW_HEIGHT *
                               float(part.getAttribute(u"height")))))
             else:
                 table.add_spacer(ROW_HEIGHT)
-        elif (part.nodeName == u"line"):
+        elif part.nodeName == u"line":
             start = part.getElementsByTagName(u"start")[0]
             end = part.getElementsByTagName(u"end")[0]
-            if (part.hasAttribute(u"style")):
+            if part.hasAttribute(u"style"):
                 style = part.getAttribute(u"style")
             else:
                 style = u"solid"
-            if (part.hasAttribute(u"color")):
+            if part.hasAttribute(u"color"):
                 color = RGB_Color.from_string(part.getAttribute(u"color"))
             else:
                 color = None
@@ -509,10 +509,10 @@ if (__name__ == '__main__'):
 
     options = parser.parse_args()
 
-    if (options.input is None):
+    if options.input is None:
         print("*** An input file is required")
         sys.exit(1)
-    if (options.output is None):
+    if options.output is None:
         print("*** An output file is required")
         sys.exit(1)
 
