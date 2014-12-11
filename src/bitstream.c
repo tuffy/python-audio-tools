@@ -2714,7 +2714,6 @@ bw_open_recorder(bs_endianness endianness)
     static void                                                         \
     FUNC_NAME(BitstreamWriter* self, unsigned int count, VALUE_TYPE value) \
     {                                                                   \
-        /* assert(value < (1l << count));  */                           \
         register unsigned buffer = self->buffer;                        \
         register unsigned buffer_size = self->buffer_size;              \
                                                                         \
@@ -2764,7 +2763,6 @@ bw_open_recorder(bs_endianness endianness)
     static void                                                         \
     FUNC_NAME(BitstreamWriter* self, unsigned int count, VALUE_TYPE value) \
     {                                                                   \
-        /* assert(value < (int64_t)(1LL << count)); */                  \
         register unsigned buffer = self->buffer;                        \
         register unsigned buffer_size = self->buffer_size;              \
                                                                         \
@@ -2835,9 +2833,6 @@ bw_write_signed_bits_be(BitstreamWriter* self,
                         unsigned int count,
                         int value)
 {
-    assert(value <= ((1 << (count - 1)) - 1));
-    assert(value >= -(1 << (count - 1)));
-
     if (value >= 0) {
         self->write(self, 1, 0);
         self->write(self, count - 1, value);
@@ -2852,9 +2847,6 @@ bw_write_signed_bits_le(BitstreamWriter* self,
                         unsigned int count,
                         int value)
 {
-    assert(value <= ((1 << (count - 1)) - 1));
-    assert(value >= -(1 << (count - 1)));
-
     if (value >= 0) {
         self->write(self, count - 1, value);
         self->write(self, 1, 0);
@@ -2891,9 +2883,6 @@ bw_write_signed_bits64_be(BitstreamWriter* self,
                           unsigned int count,
                           int64_t value)
 {
-    assert(value <= ((1ll << (count - 1)) - 1));
-    assert(value >= -(1ll << (count - 1)));
-
     if (value >= 0ll) {
         self->write(self, 1, 0);
         self->write_64(self, count - 1, value);
@@ -2908,9 +2897,6 @@ bw_write_signed_bits64_le(BitstreamWriter* self,
                           unsigned int count,
                           int64_t value)
 {
-    assert(value <= ((1ll << (count - 1)) - 1));
-    assert(value >= -(1ll << (count - 1)));
-
     if (value >= 0ll) {
         self->write_64(self, count - 1, value);
         self->write(self, 1, 0);
@@ -6857,24 +6843,11 @@ void
 writer_perform_build_U(BitstreamWriter* writer,
                        bs_endianness endianness)
 {
-    uint64_t v1,v2,v3,v4,v5;
-
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        v1 = 2;
-        v2 = 6;
-        v3 = 7;
-        v4 = 5;
-        v5 = 342977;
-        break;
-    case BS_LITTLE_ENDIAN:
-        v1 = 1;
-        v2 = 4;
-        v3 = 13;
-        v4 = 3;
-        v5 = 395743;
-        break;
-    }
+    const uint64_t v1 = (endianness == BS_BIG_ENDIAN) ? 2 : 1;
+    const uint64_t v2 = (endianness == BS_BIG_ENDIAN) ? 6 : 4;
+    const uint64_t v3 = (endianness == BS_BIG_ENDIAN) ? 7 : 13;
+    const uint64_t v4 = (endianness == BS_BIG_ENDIAN) ? 5 : 3;
+    const uint64_t v5 = (endianness == BS_BIG_ENDIAN) ? 342977 : 395743;
 
     assert(writer->byte_aligned(writer) == 1);
     writer->build(writer, "2U 3U 5U 3U 19U", v1, v2, v3, v4, v5);
@@ -6935,24 +6908,11 @@ void
 writer_perform_build_S(BitstreamWriter* writer,
                        bs_endianness endianness)
 {
-    int64_t v1,v2,v3,v4,v5;
-
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        v1 = -2;
-        v2 = -2;
-        v3 = 7;
-        v4 = -3;
-        v5 = -181311;
-        break;
-    case BS_LITTLE_ENDIAN:
-        v1 = 1;
-        v2 = -4;
-        v3 = 13;
-        v4 = 3;
-        v5 = -128545;
-        break;
-    }
+    const int64_t v1 = (endianness == BS_BIG_ENDIAN) ? -2 : 1;
+    const int64_t v2 = (endianness == BS_BIG_ENDIAN) ? -2 : -4;
+    const int64_t v3 = (endianness == BS_BIG_ENDIAN) ? 7 : 13;
+    const int64_t v4 = (endianness == BS_BIG_ENDIAN) ? -3 : 3;
+    const int64_t v5 = (endianness == BS_BIG_ENDIAN) ? -181311 : -128545;
 
     assert(writer->byte_aligned(writer) == 1);
     writer->build(writer, "2S 3S 5S 3S 19S", v1, v2, v3, v4, v5);
