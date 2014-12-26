@@ -150,7 +150,8 @@ def image_compare_raw(progress, source_filename,
 def image_compare_results(result, is_tty=False):
     (mismatch, image_name, track_name) = result
     return u"%s : %s" % (_.LAB_TRACKCMP_CMP %
-                         {"file1": image_name, "file2": track_name},
+                         {"file1": audiotools.Filename(image_name),
+                          "file2": audiotools.Filename(track_name)},
                          (audiotools.output_text(
                              _.LAB_TRACKCMP_OK,
                              fg_color="green").format(is_tty) if
