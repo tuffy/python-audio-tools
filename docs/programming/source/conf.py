@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 #Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007-2014  Brian Langenberger
+#Copyright (C) 2007-2015  Brian Langenberger
 
 #This program is free software; you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Python Audio Tools'
-copyright = u'2014, Brian Langenberger'
+copyright = u'2015, Brian Langenberger'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

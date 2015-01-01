@@ -2,7 +2,7 @@
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
- Copyright (C) 2007-2014  Brian Langenberger and the mpg123 project
+ Copyright (C) 2007-2015  Brian Langenberger and the mpg123 project
  initially written by Guillaume Outters
  modified by Nicholas J Humfrey to use SFIFO code
  modified by Taihei Monma to use AudioUnit and AudioConverter APIs

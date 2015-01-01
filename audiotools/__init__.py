@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # Audio Tools, a module and set of tools for manipulating audio data
-# Copyright (C) 2007-2014  Brian Langenberger
+# Copyright (C) 2007-2015  Brian Langenberger
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -149,7 +149,7 @@ MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
 ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default",
                                            True)
 
-VERSION = "3.0"
+VERSION = "3.1alpha1"
 
 DEFAULT_FILENAME_FORMAT = '%(track_number)2.2d - %(track_name)s.%(suffix)s'
 FILENAME_FORMAT = config.get_default("Filenames", "format",

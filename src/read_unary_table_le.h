@@ -1,7 +1,7 @@
 /********************************************************
  Bitstream Library, a module for reading bits of data
 
- Copyright (C) 2007-2014  Brian Langenberger
+ Copyright (C) 2007-2015  Brian Langenberger
 
  The Bitstream Library is free software; you can redistribute it and/or modify
  it under the terms of either:
