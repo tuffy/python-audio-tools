@@ -655,15 +655,15 @@ def encode_lpc_subframe(writer, options, wasted_bps, bits_per_sample,
 def tukey_window(sample_count, alpha):
     from math import cos, pi
 
-    window1 = (alpha * (sample_count - 1)) // 2
-    window2 = (sample_count - 1) * (1 - (alpha // 2))
+    window1 = (sample_count - 1) * (alpha / 2)
+    window2 = (sample_count - 1) * (1 - (alpha / 2))
 
     for n in range(0, sample_count):
-        if n <= window1:
+        if float(n) <= window1:
             yield (0.5 *
                    (1 +
                     cos(pi * (((2 * n) / (alpha * (sample_count - 1))) - 1))))
-        elif n <= window2:
+        elif float(n) <= window2:
             yield 1.0
         else:
             yield (0.5 *
