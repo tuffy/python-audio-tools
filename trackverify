@@ -24,6 +24,7 @@ import audiotools.text as _
 from operator import or_
 
 MAX_CPUS = audiotools.MAX_JOBS
+PY3 = audiotools.PY3
 
 
 class FailedAudioFile(object):
@@ -96,7 +97,7 @@ def verify(progress, track):
     except audiotools.InvalidFile as err:
         return (audiotools.Filename(track.filename).__unicode__(),
                 track.NAME,
-                err)
+                str(err) if PY3 else unicode(err))
     except KeyboardInterrupt:
         return (audiotools.Filename(track.filename).__unicode__(),
                 track.NAME,
