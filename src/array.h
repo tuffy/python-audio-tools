@@ -118,6 +118,11 @@ struct TYPE##_s {                                                       \
     /*sets the array to new values, removing any old ones*/             \
     void (*vset)(struct TYPE##_s *self, unsigned count, ...);           \
                                                                         \
+    /*sets the array to new values, removing any old ones*/             \
+    void (*aset)(struct TYPE##_s *self,                                 \
+                 unsigned count,                                        \
+                 CONTENT_TYPE *values);                                 \
+                                                                        \
     /*sets the array to single values, removing any old ones*/          \
     void (*mset)(struct TYPE##_s *self, unsigned count,                 \
                  CONTENT_TYPE value);                                   \

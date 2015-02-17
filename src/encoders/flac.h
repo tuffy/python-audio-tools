@@ -88,10 +88,6 @@ struct flac_context {
     a_int* lpc_residual;
 
     a_int* rice_parameters;
-    a_int* best_rice_parameters;
-    al_int* residual_partitions;
-    al_int* best_residual_partitions;
-    l_int* remaining_residuals;
 };
 
 typedef enum {FLAC_SUBFRAME_CONSTANT,
@@ -222,6 +218,14 @@ flacenc_encode_lpc_subframe(BitstreamWriter* bs,
                             const a_int* qlp_coefficients,
                             const a_int* samples);
 
+
+/*populates window with block_size values based on alpha*/
+void
+flacenc_tukey_window(double alpha,
+                     unsigned block_size,
+                     a_double *window);
+
+
 /*given a set of integer samples,
   returns a windowed set of floating point samples*/
 void
@@ -268,7 +272,7 @@ flacenc_quantize_coefficients(const aa_double* lp_coefficients,
                               int* qlp_shift_needed);
 
 /*given a set of residuals, encoding parameters
-  and subframe block_size and order
+  and subframe block size and order
   writes a block of residuals to the given BitstreamWriter*/
 void
 flacenc_encode_residuals(BitstreamWriter* bs,
@@ -277,24 +281,25 @@ flacenc_encode_residuals(BitstreamWriter* bs,
                          unsigned predictor_order,
                          const a_int* residuals);
 
-/*given a list of residuals along with block size
-  predictor_order (from the FIXED/LPC subframe)
-  partition_order (from encode_residuals)
-  and maximum_rice_parameter (from encoding options)
-
-  returns a list of rice_parameters and partitions
-  (these lists will be the same size)
-  and a total estimated size of the residual block in bits*/
+/*given a set of residuals, encoding parameters
+  and subframe block size and order
+  returns the best partition order and best set of Rice parameters*/
 void
-flacenc_encode_residual_partitions(l_int* residuals,
-                                   unsigned block_size,
-                                   unsigned predictor_order,
-                                   unsigned partition_order,
-                                   unsigned maximum_rice_parameter,
+flacenc_best_rice_parameters(const a_int* residuals,
+                             unsigned block_size,
+                             unsigned predictor_order,
+                             unsigned max_residual_partition_order,
+                             unsigned max_rice_parameter,
 
-                                   a_int* rice_parameters,
-                                   al_int* partitions,
-                                   uint64_t* total_size);
+                             unsigned *partition_order,
+                             a_int* rice_parameters);
+
+/*returns the largest possible partition order
+  for the given block size and predictor order
+  which may be more than the maximum partition order
+  specified in the encoding parameters*/
+unsigned
+flacenc_max_partition_order(unsigned block_size, unsigned predictor_order);
 
 /*returns a true value if all samples are the same*/
 int

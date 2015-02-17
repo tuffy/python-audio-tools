@@ -80,6 +80,11 @@ static void                                                          \
 TYPE##_vset(TYPE *self, unsigned count, ...);                        \
                                                                      \
 static void                                                          \
+TYPE##_aset(TYPE *self,                                              \
+            unsigned count,                                          \
+            CONTENT_TYPE *values);                                   \
+                                                                     \
+static void                                                          \
 TYPE##_mset(TYPE *self, unsigned count,                              \
             CONTENT_TYPE value);                                     \
                                                                      \
@@ -163,6 +168,7 @@ TYPE##_new(void)                                                     \
     a->mappend = TYPE##_mappend;                                     \
     a->insert = TYPE##_insert;                                       \
     a->vset = TYPE##_vset;                                           \
+    a->aset = TYPE##_aset;                                           \
     a->mset = TYPE##_mset;                                           \
     a->extend = TYPE##_extend;                                       \
     a->equals = TYPE##_equals;                                       \
@@ -280,6 +286,18 @@ TYPE##_vset(TYPE *self, unsigned count, ...)                         \
         self->_[self->len++] = i;                                    \
     }                                                                \
     va_end(ap);                                                      \
+}                                                                    \
+                                                                     \
+static void                                                          \
+TYPE##_aset(TYPE *self,                                              \
+            unsigned count,                                          \
+            CONTENT_TYPE *values)                                    \
+{                                                                    \
+    unsigned i;                                                      \
+    self->reset_for(self, count);                                    \
+    for (i = 0; i < count; i++) {                                    \
+        self->_[self->len++] = values[i];                            \
+    }                                                                \
 }                                                                    \
                                                                      \
 static void                                                          \

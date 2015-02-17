@@ -131,7 +131,11 @@ encoders_encode_flac(char *filename,
                      unsigned max_residual_partition_order,
                      int mid_side,
                      int adaptive_mid_side,
-                     int exhaustive_model_search) {
+                     int exhaustive_model_search,
+                     int no_verbatim_subframes,
+                     int no_constant_subframes,
+                     int no_fixed_subframes,
+                     int no_lpc_subframes) {
     FILE* output_file;
     BitstreamWriter* output_stream;
     unsigned long long current_offset = 0;
@@ -153,10 +157,10 @@ encoders_encode_flac(char *filename,
     encoder.options.mid_side = mid_side;
     encoder.options.adaptive_mid_side = adaptive_mid_side;
 
-    encoder.options.no_verbatim_subframes = 0;
-    encoder.options.no_constant_subframes = 0;
-    encoder.options.no_fixed_subframes = 0;
-    encoder.options.no_lpc_subframes = 0;
+    encoder.options.no_verbatim_subframes = no_verbatim_subframes;
+    encoder.options.no_constant_subframes = no_constant_subframes;
+    encoder.options.no_fixed_subframes = no_fixed_subframes;
+    encoder.options.no_lpc_subframes = no_lpc_subframes;
 
     /*FIXME - check for invalid output file*/
     output_file = fopen(filename, "wb");
@@ -206,6 +210,11 @@ encoders_encode_flac(char *filename,
 
     encoder.total_flac_frames = 0;
     flacenc_init_encoder(&encoder);
+
+    /*calculate Tukey window, if necessary*/
+    if (encoder.options.max_lpc_order > 0) {
+        flacenc_tukey_window(0.5, block_size, encoder.tukey_window);
+    }
 
     /*write FLAC stream header*/
     output_stream->write_64(output_stream, 32, 0x664C6143);
@@ -337,11 +346,7 @@ flacenc_init_encoder(struct flac_context* encoder)
     encoder->qlp_coefficients = a_int_new();
     encoder->lpc_residual = a_int_new();
 
-    encoder->best_rice_parameters = a_int_new();
     encoder->rice_parameters = a_int_new();
-    encoder->remaining_residuals = l_int_new();
-    encoder->residual_partitions = al_int_new();
-    encoder->best_residual_partitions = al_int_new();
 }
 
 void
@@ -370,11 +375,7 @@ flacenc_free_encoder(struct flac_context* encoder)
     encoder->qlp_coefficients->del(encoder->qlp_coefficients);
     encoder->lpc_residual->del(encoder->lpc_residual);
 
-    encoder->best_rice_parameters->del(encoder->best_rice_parameters);
     encoder->rice_parameters->del(encoder->rice_parameters);
-    encoder->remaining_residuals->del(encoder->remaining_residuals);
-    encoder->residual_partitions->del(encoder->residual_partitions);
-    encoder->best_residual_partitions->del(encoder->best_residual_partitions);
 }
 
 void
@@ -1101,42 +1102,36 @@ flacenc_encode_lpc_subframe(BitstreamWriter* bs,
 
 
 void
+flacenc_tukey_window(double alpha,
+                     unsigned block_size,
+                     a_double *window)
+{
+    unsigned i;
+    unsigned Np = (unsigned)(alpha / 2 * block_size) - 1;
+    window->reset_for(window, block_size);
+    for (i = 0; i < block_size; i++) {
+        if (i <= Np) {
+            a_append(window, (1 - cos(M_PI * i / Np)) / 2);
+        } else if (i >= (block_size - Np - 1)) {
+            a_append(window, (1 - cos(M_PI * (i + Np + 1) / Np)) / 2);
+        } else {
+            a_append(window, 1.0);
+        }
+    }
+}
+
+void
 flacenc_window_signal(struct flac_context* encoder,
                       const a_int* samples,
                       a_double* windowed_signal)
 {
-    a_double* tukey_window = encoder->tukey_window;
-    const unsigned N = samples->len;
-    const double alpha = 0.5;
-    unsigned n;
-
-    if (tukey_window->len != samples->len) {
-        const unsigned window1 = (unsigned)(alpha * (N - 1)) / 2;
-        const unsigned window2 = (unsigned)((N - 1) * (1.0 - (alpha / 2.0)));
-
-        tukey_window->reset_for(tukey_window, samples->len);
-
-        for (n = 0; n < N; n++) {
-            if (n <= window1) {
-                a_append(tukey_window,
-                         0.5 *
-                         (1.0 +
-                          cos(M_PI * (((2 * n) / (alpha * (N - 1))) - 1.0))));
-            } else if (n <= window2) {
-                a_append(tukey_window, 1.0);
-            } else {
-                a_append(tukey_window,
-                         0.5 *
-                         (1.0 +
-                          cos(M_PI * (((2.0 * n) / (alpha * (N - 1))) -
-                                      (2.0 / alpha) + 1.0))));
-            }
-        }
-    }
+    unsigned i;
+    const a_double* tukey_window = encoder->tukey_window;
+    assert(samples->len <= tukey_window->len);
 
     windowed_signal->reset_for(windowed_signal, samples->len);
-    for (n = 0; n < N; n++) {
-        a_append(windowed_signal, samples->_[n] * tukey_window->_[n]);
+    for (i = 0; i < samples->len; i++) {
+        a_append(windowed_signal, samples->_[i] * tukey_window->_[i]);
     }
 }
 
@@ -1304,23 +1299,12 @@ flacenc_encode_residuals(BitstreamWriter* bs,
                          unsigned predictor_order,
                          const a_int* residuals)
 {
+    unsigned i = 0;
     unsigned coding_method;
     unsigned partition_order;
-    unsigned best_partition_order = 0;
+    unsigned partition_count;
     unsigned p;
-
-    /*local links to the cached arrays*/
-
-    uint64_t total_size;
     a_int* rice_parameters = encoder->rice_parameters;
-    al_int* residual_partitions = encoder->residual_partitions;
-
-    uint64_t best_total_size = ULLONG_MAX;
-    a_int* best_rice_parameters = encoder->best_rice_parameters;
-    al_int* best_residual_partitions = encoder->best_residual_partitions;
-
-
-    l_int* remaining_residuals = encoder->remaining_residuals;
 
     void (*write)(struct BitstreamWriter_s* bs,
                   unsigned int count,
@@ -1330,149 +1314,168 @@ flacenc_encode_residuals(BitstreamWriter* bs,
                         int stop_bit,
                         unsigned int value) = bs->write_unary;
 
-    rice_parameters->reset(rice_parameters);
-    best_rice_parameters->reset(best_rice_parameters);
+    flacenc_best_rice_parameters(
+        residuals,
+        block_size,
+        predictor_order,
+        encoder->options.max_residual_partition_order,
+        encoder->options.max_rice_parameter,
+        &partition_order,
+        rice_parameters);
 
-    for (partition_order = 0;
-         partition_order <= encoder->options.max_residual_partition_order;
-         partition_order++) {
-        if ((block_size % (1 << partition_order)) == 0) {
-            residuals->link(residuals, remaining_residuals);
-            flacenc_encode_residual_partitions(
-                remaining_residuals,
-                block_size,
-                predictor_order,
-                partition_order,
-                encoder->options.max_rice_parameter,
+    partition_count = 1 << partition_order;
 
-                rice_parameters,
-                residual_partitions,
-                &total_size);
+    assert(rice_parameters->len == partition_count);
 
-            if (total_size < best_total_size) {
-                best_partition_order = partition_order;
-
-                rice_parameters->swap(rice_parameters,
-                                      best_rice_parameters);
-
-                residual_partitions->swap(residual_partitions,
-                                          best_residual_partitions);
-
-                best_total_size = total_size;
-            }
-        } else {
-            /*stop once block_size is no longer equally divisible by
-              2 ^ partition_order*/
-            break;
-        }
-    }
-
-    assert(remaining_residuals->len == 0);
-    assert(best_rice_parameters->len == best_residual_partitions->len);
-
-    if (best_rice_parameters->max(best_rice_parameters) > 14)
+    if (rice_parameters->max(rice_parameters) > 14)
         coding_method = 1;
     else
         coding_method = 0;
 
     /* output best Rice parameters and residual partitions to disk */
-
     bs->write(bs, 2, coding_method);
-    bs->write(bs, 4, best_partition_order);
+    bs->write(bs, 4, partition_order);
 
-    for (p = 0; p < best_residual_partitions->len; p++) {
-        const unsigned rice_parameter = (unsigned)(best_rice_parameters->_[p]);
-        register const unsigned LSB_mask = ((1 << rice_parameter) - 1);
-        const int* partition_ = best_residual_partitions->_[p]->_;
-        const unsigned partition_len = best_residual_partitions->_[p]->len;
-        unsigned i;
+    for (p = 0; p < partition_count; p++) {
+        const int rice_parameter = (unsigned)(rice_parameters->_[p]);
+        const unsigned partition_size =
+            block_size / partition_count - (p == 0 ? predictor_order : 0);
+        register const int LSB_div = 1 << rice_parameter;
+        unsigned j;
 
-        if (coding_method == 0)
-            write(bs, 4, rice_parameter);
-        else
-            write(bs, 5, rice_parameter);
+        write(bs, coding_method == 0 ? 4 : 5, rice_parameter);
 
-        for (i = 0; i < partition_len; i++) {
-            register const int signed_value = partition_[i];
-            register const unsigned unsigned_value =
+        for (j = 0; j < partition_size; j++) {
+            register const int signed_value = residuals->_[i++];
+            register const int unsigned_value =
                 (signed_value >= 0) ?
                 (signed_value << 1) :
                 ((-signed_value - 1) << 1) | 1;
-            write_unary(bs, 1, unsigned_value >> rice_parameter);
-            write(bs, rice_parameter, unsigned_value & LSB_mask);
+            register div_t split_value = div(unsigned_value, LSB_div);
+
+            write_unary(bs, 1, split_value.quot);
+            write(bs, rice_parameter, split_value.rem);
         }
     }
 }
 
 void
-flacenc_encode_residual_partitions(l_int* residuals,
-                                   unsigned block_size,
-                                   unsigned predictor_order,
-                                   unsigned partition_order,
-                                   unsigned maximum_rice_parameter,
+flacenc_best_rice_parameters(const a_int* residuals,
+                             unsigned block_size,
+                             unsigned predictor_order,
+                             unsigned max_residual_partition_order,
+                             unsigned max_rice_parameter,
 
-                                   a_int* rice_parameters,
-                                   al_int* partitions,
-                                   uint64_t* total_size)
+                             unsigned *partition_order,
+                             a_int* rice_parameters)
 {
-    unsigned p;
+    unsigned i;
+    unsigned best_order_size = UINT_MAX;
+    int abs_residuals[residuals->len];
+    unsigned max_partition_order;
 
-    *total_size = 0;
-    rice_parameters->reset(rice_parameters);
-    partitions->reset(partitions);
+    assert(residuals->len == (block_size - predictor_order));
 
-    for (p = 0; p < (1 << partition_order); p++) {
-        l_int* partition = partitions->append(partitions);
-        unsigned plength;
-        uint64_t abs_partition_sum = 0;
-        unsigned i;
-        unsigned Rice;
+    if (block_size == predictor_order) {
+        /*no residuals to check*/
+        *partition_order = 0;
+        rice_parameters->mset(rice_parameters, 1, 0);
+        return;
+    }
 
-        if (p == 0) {
-            plength = (block_size >> partition_order) - predictor_order;
-        } else {
-            plength = block_size >> partition_order;
-        }
+    max_partition_order =
+        flacenc_max_partition_order(block_size, predictor_order);
+    max_partition_order = MIN(max_partition_order,
+                              max_residual_partition_order);
 
-        residuals->split(residuals, plength, partition, residuals);
+    for (i = 0; i < residuals->len; i++) {
+        abs_residuals[i] = abs(residuals->_[i]);
+    }
 
-        for (i = 0; i < partition->len; i++) {
-            if (partition->_[i] >= 0)
-                abs_partition_sum += partition->_[i];
-            else
-                abs_partition_sum -= partition->_[i];
-        }
+    for (i = 0; i < (max_partition_order + 1); i++) {
+        const unsigned partition_count = 1 << i;
+        int partition_parameters[partition_count];
+        unsigned partition_sums[partition_count];
+        unsigned partition_order_size = 0;
+        unsigned p;
 
-        /*compute best Rice parameter for partition*/
-        Rice = 0;
-        while ((uint64_t)(plength << Rice) < abs_partition_sum) {
-            if (Rice < maximum_rice_parameter) {
-                Rice++;
-            } else {
-                break;
+        for (p = 0; p < partition_count; p++) {
+            const unsigned partition_samples =
+                (p == 0) ?
+                block_size / partition_count - predictor_order :
+                block_size / partition_count;
+            const unsigned start =
+                (p == 0) ? 0 :
+                p * block_size / partition_count - predictor_order;
+            const unsigned end = start + partition_samples;
+            int rice;
+            unsigned partition_size;
+            unsigned j;
+
+            assert((block_size / partition_count) >= predictor_order);
+
+            partition_sums[p] = 0;
+            for (j = start; j < end; j++) {
+                partition_sums[p] += abs_residuals[j];
             }
+
+            rice = (int)ceil(log((double)partition_sums[p] /
+                                 (double)partition_samples) / log(2));
+
+            partition_parameters[p] =
+                rice =
+                MAX(MIN(rice, max_rice_parameter), 0);
+
+            if (rice > 0) {
+                partition_size =
+                    4 +
+                    ((1 + rice) * partition_samples) +
+                    (partition_sums[p] >> (rice - 1)) -
+                    (partition_samples / 2);
+            } else {
+                partition_size =
+                    4 +
+                    partition_samples +
+                    (partition_sums[p] << 1) -
+                    (partition_samples / 2);
+            }
+
+            partition_order_size += partition_size;
         }
 
-        /*add estimated size of partition to total size*/
-        if (Rice > 0) {
-            *total_size += (4 + /*4 bit partition header*/
-                            /*residual MSBs minus sign bit*/
-                            (abs_partition_sum >> (Rice - 1)) +
-                            /*residual LSBs plus stop bit*/
-                            ((1 + Rice) * plength) -
-                            (plength / 2));
-        } else {
-            *total_size += (4 + /*4 bit partition header*/
-                            /*residual MSBs minus sign bit*/
-                            (abs_partition_sum << 1) +
-                            /*residual LSBs plus stop bit*/
-                            plength -
-                            (plength / 2));
+        if (partition_order_size < best_order_size) {
+            best_order_size = partition_order_size;
+            *partition_order = i;
+            rice_parameters->aset(rice_parameters,
+                                  partition_count,
+                                  partition_parameters);
         }
+    }
 
-        rice_parameters->append(rice_parameters, (int)Rice);
+    if (best_order_size == UINT_MAX) {
+        fputs("*** Error: no partition orders checked\n", stderr);
+        abort();
     }
 }
+
+unsigned
+flacenc_max_partition_order(unsigned block_size, unsigned predictor_order)
+{
+    unsigned i = 0;
+
+    /*ensure residuals divide evenly into 2 ^ i partitions,
+      that the initial partition contains at least 1 sample
+      and that the partition order doesn't exceed 15*/
+    while (((block_size % (1 << i)) == 0) &&
+           ((block_size / (1 << i)) > predictor_order) &&
+           (i <= 15)) {
+        i += 1;
+    }
+
+    /*if one of the conditions no longer holds, back up one*/
+    return (i > 0) ? i - 1 : 0;
+}
+
 
 void
 flacenc_average_difference(const aa_int* samples,
@@ -1617,6 +1620,10 @@ int main(int argc, char *argv[]) {
     int mid_side = 0;
     int adaptive_mid_side = 0;
     int exhaustive_model_search = 0;
+    static int no_verbatim_subframes = 0;
+    static int no_constant_subframes = 0;
+    static int no_fixed_subframes = 0;
+    static int no_lpc_subframes = 0;
 
     char c;
     const static struct option long_opts[] = {
@@ -1631,6 +1638,10 @@ int main(int argc, char *argv[]) {
         {"mid-side",                no_argument,       NULL, 'm'},
         {"adaptive-mid-side",       no_argument,       NULL, 'M'},
         {"exhaustive-model-search", no_argument,       NULL, 'e'},
+        {"disable-verbatim-subframes", no_argument, &no_verbatim_subframes, 1},
+        {"disable-constant-subframes", no_argument, &no_constant_subframes, 1},
+        {"disable-fixed-subframes", no_argument,       &no_fixed_subframes, 1},
+        {"disable-lpc-subframes",   no_argument,       &no_lpc_subframes, 1},
         {NULL,                      no_argument,       NULL,  0}
     };
     const static char* short_opts = "-hc:r:b:B:l:P:R:mMe";
@@ -1749,6 +1760,10 @@ int main(int argc, char *argv[]) {
     printf("mid side                %d\n", mid_side);
     printf("adaptive mid side       %d\n", adaptive_mid_side);
     printf("exhaustive model search %d\n", exhaustive_model_search);
+    printf("no VERBATIM subframes   %d\n", no_verbatim_subframes);
+    printf("no CONSTANT subframes   %d\n", no_constant_subframes);
+    printf("no FIXED subframes      %d\n", no_fixed_subframes);
+    printf("no LPC subframes        %d\n", no_lpc_subframes);
 
     if (encoders_encode_flac(output_file,
                              open_pcmreader(stdin,
@@ -1764,7 +1779,11 @@ int main(int argc, char *argv[]) {
                              max_partition_order,
                              mid_side,
                              adaptive_mid_side,
-                             exhaustive_model_search)) {
+                             exhaustive_model_search,
+                             no_verbatim_subframes,
+                             no_constant_subframes,
+                             no_fixed_subframes,
+                             no_lpc_subframes)) {
         return 0;
     } else {
         fprintf(stderr, "*** Error encoding FLAC file \"%s\"\n", output_file);
