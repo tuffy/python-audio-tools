@@ -974,6 +974,11 @@ bw_open_external(void* user_data,
 BitstreamRecorder*
 bw_open_recorder(bs_endianness endianness);
 
+/*records up to the given number of bytes
+  or calls bw_abort() if the maximum number of bytes is exceeeded*/
+BitstreamRecorder*
+bw_open_limited_recorder(bs_endianness endianness, unsigned maximum_size);
+
 
 /*unattached, BitstreamWriter functions*/
 

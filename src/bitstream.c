@@ -703,19 +703,29 @@ br_queue_end(struct br_queue *buf)
  *******************************************************************/
 
 struct bw_buffer {
-    unsigned pos;         /*the current position in the buffer*/
-    unsigned max_pos;     /*the farthest written data*/
-    unsigned buffer_size; /*the total buffer size*/
-    uint8_t* buffer;      /*the buffer data itself*/
+    unsigned pos;          /*the current position in the buffer*/
+    unsigned max_pos;      /*the farthest written data*/
+    unsigned buffer_size;  /*the total buffer size*/
+    int resizable;         /*whether the buffer is resizable*/
+    uint8_t* buffer;       /*the buffer data itself*/
 };
 
 static inline struct bw_buffer*
-bw_buf_new(void)
+bw_buf_new(unsigned maximum_size)
 {
     struct bw_buffer* buf = malloc(sizeof(struct bw_buffer));
-    buf->pos = buf->max_pos = buf->buffer_size = 0;
-    buf->buffer = NULL;
-    return buf;
+    if (maximum_size) {
+        buf->pos = buf->max_pos = 0;
+        buf->buffer_size = maximum_size;
+        buf->resizable = 0;
+        buf->buffer = malloc(maximum_size);
+        return buf;
+    } else {
+        buf->pos = buf->max_pos = buf->buffer_size = 0;
+        buf->resizable = 1;
+        buf->buffer = NULL;
+        return buf;
+    }
 }
 
 static inline void
@@ -729,25 +739,34 @@ static inline int
 bw_buf_putc(int c, struct bw_buffer* buf)
 {
     if (buf->pos == buf->buffer_size) {
-        buf->buffer_size += 4096;
-        buf->buffer = realloc(buf->buffer, buf->buffer_size);
+        if (buf->resizable) {
+            buf->buffer_size += 4096;
+            buf->buffer = realloc(buf->buffer, buf->buffer_size);
+        } else {
+            return EOF;
+        }
     }
     buf->buffer[buf->pos++] = (uint8_t)c;
     buf->max_pos = MAX(buf->max_pos, buf->pos);
     return c;
 }
 
-static void
+static int
 bw_buf_write(struct bw_buffer* buf, const uint8_t *data, unsigned data_size)
 {
     const unsigned available_bytes = buf->buffer_size - buf->pos;
     if (available_bytes < data_size) {
-        buf->buffer_size += (data_size - available_bytes);
-        buf->buffer = realloc(buf->buffer, buf->buffer_size);
+        if (buf->resizable) {
+            buf->buffer_size += (data_size - available_bytes);
+            buf->buffer = realloc(buf->buffer, buf->buffer_size);
+        } else {
+            return 1;
+        }
     }
     memcpy(buf->buffer + buf->pos, data, data_size);
     buf->pos += data_size;
     buf->max_pos = MAX(buf->max_pos, buf->pos);
+    return 0;
 }
 
 static inline void
@@ -2647,15 +2666,21 @@ bw_open_external(void* user_data,
     return bs;
 }
 
-
 BitstreamRecorder*
 bw_open_recorder(bs_endianness endianness)
+{
+    return bw_open_limited_recorder(endianness, 0);
+}
+
+
+BitstreamRecorder*
+bw_open_limited_recorder(bs_endianness endianness, unsigned maximum_size)
 {
     BitstreamRecorder *bs = malloc(sizeof(BitstreamRecorder));
     bs->endianness = endianness;
     bs->type = BW_RECORDER;
 
-    bs->output.recorder = bw_buf_new();
+    bs->output.recorder = bw_buf_new(maximum_size);
     bs->buffer_size = 0;
     bs->buffer = 0;
 
@@ -3351,7 +3376,9 @@ bw_write_bytes_r(BitstreamWriter* self,
         struct bs_callback* callback;
 
         /*stream is byte aligned, so perform optimized write*/
-        bw_buf_write(self->output.recorder, bytes, count);
+        if (bw_buf_write(self->output.recorder, bytes, count)) {
+            bw_abort(self);
+        }
 
         /*perform callbacks on the written bytes*/
         for (callback = self->callbacks;

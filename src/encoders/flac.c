@@ -1008,7 +1008,7 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
         /*otherwise, build all possible subframes
           and return the one which is actually the smallest*/
         unsigned best_subframe_size = UINT_MAX;
-        BitstreamRecorder *best_subframe = bw_open_recorder(BS_BIG_ENDIAN);
+        BitstreamRecorder *best_subframe = NULL;
         BitstreamRecorder *subframe = bw_open_recorder(BS_BIG_ENDIAN);
         unsigned order;
 
@@ -1022,18 +1022,31 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
                 qlp_coefficients,
                 &qlp_shift_needed);
 
-            flacenc_encode_lpc_subframe((BitstreamWriter*)subframe,
-                                        encoder,
-                                        bits_per_sample,
-                                        wasted_bits_per_sample,
-                                        encoder->options.qlp_coeff_precision,
-                                        qlp_shift_needed,
-                                        qlp_coefficients,
-                                        samples);
+            if (!setjmp(*bw_try((BitstreamWriter*)subframe))) {
+                flacenc_encode_lpc_subframe((BitstreamWriter*)subframe,
+                                            encoder,
+                                            bits_per_sample,
+                                            wasted_bits_per_sample,
+                                            encoder->options.qlp_coeff_precision,
+                                            qlp_shift_needed,
+                                            qlp_coefficients,
+                                            samples);
+                bw_etry((BitstreamWriter*)subframe);
 
-            if (subframe->bits_written(subframe) < best_subframe_size) {
-                best_subframe_size = subframe->bits_written(subframe);
-                recorder_swap(&best_subframe, &subframe);
+                if (subframe->bits_written(subframe) < best_subframe_size) {
+                    best_subframe_size = subframe->bits_written(subframe);
+                    if (best_subframe) {
+                        best_subframe->close(best_subframe);
+                    }
+                    best_subframe = subframe;
+                    subframe = bw_open_limited_recorder(
+                        BS_BIG_ENDIAN,
+                        (best_subframe_size / 8) +
+                        ((best_subframe_size % 8) ? 1 : 0));
+                }
+            } else {
+                bw_etry((BitstreamWriter*)subframe);
+                /*subframe too large, so try the next one*/
             }
         }
 
