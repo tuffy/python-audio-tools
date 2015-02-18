@@ -93,6 +93,9 @@ flac_crc.o: common/flac_crc.c common/flac_crc.h
 huffman.o: huffman.c huffman.h
 	$(CC) $(FLAGS) -c huffman.c -DSTANDALONE
 
+array.o: array.c array.h
+	$(CC) $(FLAGS) -c array.c
+
 buffer.o: buffer.c buffer.h
 	$(CC) $(FLAGS) -c buffer.c
 

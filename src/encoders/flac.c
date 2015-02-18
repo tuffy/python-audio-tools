@@ -1008,8 +1008,8 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
         /*otherwise, build all possible subframes
           and return the one which is actually the smallest*/
         unsigned best_subframe_size = UINT_MAX;
-        BitstreamRecorder *best_subframe = NULL;
-        BitstreamRecorder *subframe = bw_open_recorder(BS_BIG_ENDIAN);
+        unsigned best_order = 1;
+        BitstreamAccumulator *subframe = bw_open_accumulator(BS_BIG_ENDIAN);
         unsigned order;
 
         for (order = 1; order <= encoder->options.max_lpc_order; order++) {
@@ -1022,37 +1022,38 @@ flacenc_write_lpc_subframe(BitstreamWriter* bs,
                 qlp_coefficients,
                 &qlp_shift_needed);
 
-            if (!setjmp(*bw_try((BitstreamWriter*)subframe))) {
-                flacenc_encode_lpc_subframe((BitstreamWriter*)subframe,
-                                            encoder,
-                                            bits_per_sample,
-                                            wasted_bits_per_sample,
-                                            encoder->options.qlp_coeff_precision,
-                                            qlp_shift_needed,
-                                            qlp_coefficients,
-                                            samples);
-                bw_etry((BitstreamWriter*)subframe);
+            flacenc_encode_lpc_subframe((BitstreamWriter*)subframe,
+                                        encoder,
+                                        bits_per_sample,
+                                        wasted_bits_per_sample,
+                                        encoder->options.qlp_coeff_precision,
+                                        qlp_shift_needed,
+                                        qlp_coefficients,
+                                        samples);
 
-                if (subframe->bits_written(subframe) < best_subframe_size) {
-                    best_subframe_size = subframe->bits_written(subframe);
-                    if (best_subframe) {
-                        best_subframe->close(best_subframe);
-                    }
-                    best_subframe = subframe;
-                    subframe = bw_open_limited_recorder(
-                        BS_BIG_ENDIAN,
-                        (best_subframe_size / 8) +
-                        ((best_subframe_size % 8) ? 1 : 0));
-                }
-            } else {
-                bw_etry((BitstreamWriter*)subframe);
-                /*subframe too large, so try the next one*/
+            if (subframe->bits_written(subframe) < best_subframe_size) {
+                best_subframe_size = subframe->bits_written(subframe);
+                best_order = order;
             }
         }
 
-        best_subframe->copy(best_subframe, bs);
-        best_subframe->close(best_subframe);
         subframe->close(subframe);
+
+        flacenc_quantize_coefficients(
+            lp_coefficients,
+            best_order,
+            encoder->options.qlp_coeff_precision,
+            qlp_coefficients,
+            &qlp_shift_needed);
+
+        flacenc_encode_lpc_subframe(bs,
+                                    encoder,
+                                    bits_per_sample,
+                                    wasted_bits_per_sample,
+                                    encoder->options.qlp_coeff_precision,
+                                    qlp_shift_needed,
+                                    qlp_coefficients,
+                                    samples);
     }
 }
 
@@ -1384,7 +1385,6 @@ flacenc_best_rice_parameters(const a_int* residuals,
 {
     unsigned i;
     unsigned best_order_size = UINT_MAX;
-    int abs_residuals[residuals->len];
     unsigned max_partition_order;
 
     assert(residuals->len == (block_size - predictor_order));
@@ -1400,10 +1400,6 @@ flacenc_best_rice_parameters(const a_int* residuals,
         flacenc_max_partition_order(block_size, predictor_order);
     max_partition_order = MIN(max_partition_order,
                               max_residual_partition_order);
-
-    for (i = 0; i < residuals->len; i++) {
-        abs_residuals[i] = abs(residuals->_[i]);
-    }
 
     for (i = 0; i < (max_partition_order + 1); i++) {
         const unsigned partition_count = 1 << i;
@@ -1429,7 +1425,7 @@ flacenc_best_rice_parameters(const a_int* residuals,
 
             partition_sums[p] = 0;
             for (j = start; j < end; j++) {
-                partition_sums[p] += abs_residuals[j];
+                partition_sums[p] += abs(residuals->_[j]);
             }
 
             rice = (int)ceil(log((double)partition_sums[p] /

@@ -56,7 +56,7 @@ typedef uint16_t state_t;
 
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_BUFFER, BR_QUEUE, BR_EXTERNAL} br_type;
-typedef enum {BW_FILE, BW_EXTERNAL, BW_RECORDER} bw_type;
+typedef enum {BW_FILE, BW_EXTERNAL, BW_RECORDER, BW_ACCUMULATOR} bw_type;
 typedef enum {BS_INST_UNSIGNED,
               BS_INST_SIGNED,
               BS_INST_UNSIGNED64,
@@ -722,6 +722,7 @@ typedef void
         FILE* file;                                         \
         struct bw_buffer* recorder;                         \
         struct bw_external_output* external;                \
+        unsigned accumulator;                               \
     } output;                                               \
                                                             \
     unsigned int buffer_size;                               \
@@ -910,29 +911,37 @@ typedef struct BitstreamRecorder_s {
 } BitstreamRecorder;
 
 
-/*************************************************************
- Bitstream Writer Function Matrix
- The write functions come in three output variants
- and two endianness variants for file and recorder output:
+typedef struct BitstreamAccumulator_s {
+    BITSTREAMWRITER_TYPE
 
- bw_function_x or bw_function_x_yy
+    /*returns the total bits written to the stream thus far*/
+    unsigned int
+    (*bits_written)(const struct BitstreamAccumulator_s *self);
 
- where "x" is "f" for raw file, "e" for external function,
- "r" for recorder or "a" for accumulator
- and "yy" is "be" for big endian or "le" for little endian.
+    /*returns the total bytes written to the stream thus far*/
+    unsigned int
+    (*bytes_written)(const struct BitstreamAccumulator_s *self);
 
- For example:
+    /*resets accumulated number of bits to 0*/
+    void
+    (*reset)(struct BitstreamAccumulator_s *self);
 
- | Function           | Output      | Endianness    |
- |--------------------+-------------+---------------|
- | bw_write_bits_f_be | raw file    | big endian    |
- | bw_write_bits_f_le | raw file    | little endian |
- | bw_write_bits_e_be | function    | big endian    |
- | bw_write_bits_e_le | function    | little endian |
- | bw_write_bits_r_be | recorder    | big endian    |
- | bw_write_bits_r_le | recorder    | little endian |
+    /*for accumulators, does nothing*/
+    /*once the internal stream is closed,*/
+    /*the writer's I/O methods are updated*/
+    /*to generate errors if called again*/
+    void
+    (*close_internal_stream)(struct BitstreamAccumulator_s *self);
 
- *************************************************************/
+    /*for accumulators, frees BitstreamAccumulat struct*/
+    void
+    (*free)(struct BitstreamAccumulator_s *self);
+
+    /*calls close_internal_stream(), followed by free()*/
+    void
+    (*close)(struct BitstreamAccumulator_s *self);
+} BitstreamAccumulator;
+
 
 /*BistreamWriter open functions*/
 BitstreamWriter*
@@ -978,6 +987,10 @@ bw_open_recorder(bs_endianness endianness);
   or calls bw_abort() if the maximum number of bytes is exceeeded*/
 BitstreamRecorder*
 bw_open_limited_recorder(bs_endianness endianness, unsigned maximum_size);
+
+
+BitstreamAccumulator*
+bw_open_accumulator(bs_endianness endianness);
 
 
 /*unattached, BitstreamWriter functions*/
