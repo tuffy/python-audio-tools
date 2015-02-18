@@ -1126,7 +1126,7 @@ flacenc_tukey_window(double alpha,
         if (i <= Np) {
             a_append(window, (1 - cos(M_PI * i / Np)) / 2);
         } else if (i >= (block_size - Np - 1)) {
-            a_append(window, (1 - cos(M_PI * (i + Np + 1) / Np)) / 2);
+            a_append(window, (1 - cos(M_PI * (block_size - i - 1) / Np)) / 2);
         } else {
             a_append(window, 1.0);
         }
