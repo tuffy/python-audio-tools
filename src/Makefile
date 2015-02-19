@@ -45,6 +45,9 @@ ttadec: $(OBJS) decoders/tta.c decoders/tta.h
 flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) md5.o flac_crc.o -DSTANDALONE -lm
 
+flacenc2: encoders/flac2.c encoders/flac2.h bitstream.a pcmreader.o pcm.o md5.o flac_crc.o
+	$(CC) $(FLAGS) -o $@ encoders/flac2.c bitstream.a pcmreader.o pcm.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE
+
 alacenc: $(OBJS) encoders/alac.c encoders/alac.h
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c $(OBJS) -DSTANDALONE -lm
 
@@ -71,6 +74,12 @@ pcm.o: pcm.c pcm.h
 
 pcmconv.o: pcmconv.c pcmconv.h
 	$(CC) $(FLAGS) -c pcmconv.c -DSTANDALONE
+
+pcmreader: pcmreader.h pcmreader.c pcm.o
+	$(CC) -Wall -g -o $@ pcmreader.c pcm.o -DSTANDALONE -DEXECUTABLE
+
+pcmreader.o: pcmreader.c pcmreader.h
+	$(CC) $(FLAGS) -c pcmreader.c -DSTANDALONE
 
 bitstream.o: bitstream.c bitstream.h
 	$(CC) $(FLAGS) -c bitstream.c
