@@ -4,6 +4,7 @@
 #include "../pcm.h"
 #include <string.h>
 #include <inttypes.h>
+#include <math.h>
 
 typedef enum {CONSTANT, VERBATIM, FIXED, LPC} subframe_type_t;
 
@@ -74,7 +75,7 @@ static void
 encode_subframe(BitstreamWriter *output,
                 const struct flac_encoding_options *options,
                 unsigned sample_count,
-                int *samples,
+                int samples[],
                 unsigned bits_per_sample);
 
 static void
@@ -93,7 +94,7 @@ encode_constant_subframe(BitstreamWriter *output,
 static void
 encode_verbatim_subframe(BitstreamWriter *output,
                          unsigned sample_count,
-                         const int *samples,
+                         const int samples[],
                          unsigned bits_per_sample,
                          unsigned wasted_bps);
 
@@ -101,24 +102,43 @@ static void
 encode_fixed_subframe(BitstreamWriter *output,
                       const struct flac_encoding_options *options,
                       unsigned sample_count,
-                      const int *samples,
+                      const int samples[],
                       unsigned bits_per_sample,
                       unsigned wasted_bps);
 
 static void
 next_fixed_order(unsigned sample_count,
-                 const int *previous_order,
-                 int *next_order);
+                 const int previous_order[],
+                 int next_order[]);
 
 static uint64_t
-abs_sum(unsigned count, const int *values);
+abs_sum(unsigned count, const int values[]);
 
 static void
 write_residual_block(BitstreamWriter *output,
                      const struct flac_encoding_options *options,
                      unsigned sample_count,
                      unsigned predictor_order,
-                     const int *residuals);
+                     const int residuals[]);
+
+/*given a set of options and residuals,
+  determines the best partition order
+  and sets 2 ^ partition_order residuals
+  to a maximum of 2 ^ max_residual_partition_order*/
+static void
+best_rice_parameters(const struct flac_encoding_options *options,
+                     unsigned sample_count,
+                     unsigned predictor_order,
+                     const int residuals[],
+                     unsigned *partition_order,
+                     unsigned rice_parameters[]);
+
+/*returns the highest available partition order
+  to a maximum of max_partition_order*/
+static unsigned
+maximum_partition_order(unsigned sample_count,
+                        unsigned predictor_order,
+                        unsigned max_partition_order);
 
 static struct flac_frame_size*
 push_frame_size(struct flac_frame_size *head,
@@ -215,7 +235,11 @@ flacenc_encode_flac(struct PCMReader *pcmreader,
     /*FIXME*/
 
     /*set maximum Rice parameter based on bits-per-sample*/
-    /*FIXME*/
+    if (pcmreader->bits_per_sample <= 16) {
+        options->max_rice_parameter = 15;
+    } else {
+        options->max_rice_parameter = 31;
+    }
 
     /*write signature*/
     output->write_bytes(output, signature, 4);
@@ -570,7 +594,7 @@ static void
 encode_subframe(BitstreamWriter *output,
                 const struct flac_encoding_options *options,
                 unsigned sample_count,
-                int *samples,
+                int samples[],
                 unsigned bits_per_sample)
 {
     if (options->use_constant && samples_identical(sample_count, samples)) {
@@ -632,6 +656,8 @@ encode_subframe(BitstreamWriter *output,
             }
         }
 
+        /*FIXME - encode LPC subframe*/
+
         if (fixed_subframe) {
             fixed_subframe->copy(fixed_subframe, output);
             fixed_subframe->close(fixed_subframe);
@@ -691,7 +717,7 @@ encode_constant_subframe(BitstreamWriter *output,
 static void
 encode_verbatim_subframe(BitstreamWriter *output,
                          unsigned sample_count,
-                         const int *samples,
+                         const int samples[],
                          unsigned bits_per_sample,
                          unsigned wasted_bps)
 {
@@ -707,7 +733,7 @@ static void
 encode_fixed_subframe(BitstreamWriter *output,
                       const struct flac_encoding_options *options,
                       unsigned sample_count,
-                      const int *samples,
+                      const int samples[],
                       unsigned bits_per_sample,
                       unsigned wasted_bps)
 {
@@ -746,9 +772,6 @@ encode_fixed_subframe(BitstreamWriter *output,
         }
     }
 
-    fprintf(stderr, "best order : %u  %" PRIu64 "\n",
-            best_order, best_order_sum);
-
     /*write subframe header*/
     write_subframe_header(output,
                           FIXED,
@@ -770,8 +793,8 @@ encode_fixed_subframe(BitstreamWriter *output,
 
 static void
 next_fixed_order(unsigned sample_count,
-                 const int *previous_order,
-                 int *next_order)
+                 const int previous_order[],
+                 int next_order[])
 {
     unsigned i;
     for (i = 1; i < sample_count; i++) {
@@ -780,7 +803,7 @@ next_fixed_order(unsigned sample_count,
 }
 
 static uint64_t
-abs_sum(unsigned count, const int *values)
+abs_sum(unsigned count, const int values[])
 {
     uint64_t accumulator = 0;
     for (; count; count--) {
@@ -795,35 +818,156 @@ write_residual_block(BitstreamWriter *output,
                      const struct flac_encoding_options *options,
                      unsigned sample_count,
                      unsigned predictor_order,
-                     const int *residuals)
+                     const int residuals[])
 {
-    const unsigned partition_order = 0; /*FIXME - calculate this*/
-    const unsigned partition_count = 1 << partition_order;
-    const unsigned coding = 0; /*FIXME - calculate this*/
+    unsigned partition_order;
+    unsigned partition_count;
+    unsigned rice_parameters[1 << options->max_residual_partition_order];
+    unsigned coding = 0;
     unsigned p;
-    const unsigned residual_size = 8; /*FIXME - remove this later*/
     unsigned i = 0;
+
+    best_rice_parameters(options,
+                         sample_count,
+                         predictor_order,
+                         residuals,
+                         &partition_order,
+                         rice_parameters);
+
+    partition_count = 1 << partition_order;
+
+    /*adjust coding method for large Rice parameters*/
+    for (p = 0; p < partition_count; p++) {
+        if (rice_parameters[p] > 14) {
+            coding = 1;
+        }
+    }
 
     output->write(output, 2, coding);
     output->write(output, 4, partition_order);
 
-    fputs("writing residuals : ", stderr);
+    /*write residual partition(s)*/
     for (p = 0; p < partition_count; p++) {
-        unsigned partition_size;
+        unsigned partition_size =
+            (sample_count / partition_count) - (p == 0 ? predictor_order : 0);
+        const int shift = 1 << rice_parameters[p];
 
-        output->write(output, 4, 15); /*FIXME - remove this later*/
-        output->write(output, 5, residual_size);
+        output->write(output, coding ? 5 : 4, rice_parameters[p]);
 
-        for (partition_size =
-             (sample_count / partition_count) -
-             (p == 0 ? predictor_order : 0);
-             partition_size;
-             partition_size--) {
-            fprintf(stderr, "%d ", residuals[i]);
-            output->write_signed(output, residual_size, residuals[i++]);
+        for (; partition_size; partition_size--) {
+            const int unsigned_ =
+                residuals[i] >= 0 ?
+                residuals[i] << 1 :
+                ((-residuals[i] - 1) << 1) + 1;
+
+            const div_t split = div(unsigned_, shift);
+
+            output->write_unary(output, 1, split.quot);
+
+            output->write(output, rice_parameters[p], split.rem);
+
+            i += 1;
         }
     }
-    fputs("\n", stderr);
+}
+
+static void
+best_rice_parameters(const struct flac_encoding_options *options,
+                     unsigned sample_count,
+                     unsigned predictor_order,
+                     const int residuals[],
+                     unsigned *partition_order,
+                     unsigned rice_parameters[])
+{
+    if ((sample_count - predictor_order) == 0) {
+        /*no residuals*/
+        *partition_order = 0;
+        rice_parameters[0] = 0;
+    } else {
+        const unsigned max_p_order =
+            maximum_partition_order(sample_count,
+                                    predictor_order,
+                                    options->max_residual_partition_order);
+        unsigned i;
+        unsigned best_total_size = UINT_MAX;
+
+        for (i = 0; i <= max_p_order; i++) {
+            const unsigned partition_count = 1 << i;
+            unsigned p_rice[partition_count];
+            unsigned total_partitions_size = 0;
+            unsigned p;
+
+            for (p = 0; p < partition_count; p++) {
+                const unsigned partition_samples =
+                    (sample_count / partition_count) -
+                    ((p == 0) ? predictor_order : 0);
+                const unsigned start =
+                    (p == 0) ? 0 :
+                    p * sample_count / partition_count - predictor_order;
+                const unsigned end = start + partition_samples;
+                unsigned j;
+                unsigned partition_sum = 0;
+                unsigned partition_size;
+                int rice;
+
+                for (j = start; j < end; j++) {
+                    partition_sum += abs(residuals[j]);
+                }
+
+                if (partition_sum == 0) {
+                    p_rice[p] = 0;
+                } else {
+                    rice = ceil(log((double)partition_sum /
+                                    (double)partition_samples) / log(2.0));
+                    if (rice < 0) {
+                        p_rice[p] = 0;
+                    } else if (rice > options->max_rice_parameter) {
+                        p_rice[p] = options->max_rice_parameter;
+                    } else {
+                        p_rice[p] = rice;
+                    }
+                }
+
+                partition_size =
+                    4 +
+                    ((1 + p_rice[p]) * partition_samples) +
+                    ((p_rice[p] > 0) ?
+                    (partition_sum >> (p_rice[p] - 1)) :
+                    (partition_sum << 1)) -
+                    (partition_samples / 2);
+
+                total_partitions_size += partition_size;
+            }
+
+            if (total_partitions_size < best_total_size) {
+                best_total_size = total_partitions_size;
+                *partition_order = i;
+                memcpy(rice_parameters,
+                       p_rice,
+                       sizeof(unsigned) * partition_count);
+            }
+        }
+    }
+}
+
+static unsigned
+maximum_partition_order(unsigned sample_count,
+                        unsigned predictor_order,
+                        unsigned max_partition_order)
+{
+    unsigned i = 0;
+
+    /*ensure residuals divide evenly into 2 ^ i partitions,
+      that the initial partition contains at least 1 sample
+      and that the partition order doesn't exceed 15*/
+    while (((sample_count % (1 << i)) == 0) &&
+           ((sample_count / (1 << i)) > predictor_order) &&
+           (i <= max_partition_order)) {
+        i += 1;
+    }
+
+    /*if one of the conditions no longer holds, back up one*/
+    return (i > 0) ? i - 1 : 0;
 }
 
 static struct flac_frame_size*

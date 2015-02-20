@@ -46,7 +46,7 @@ flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) md5.o flac_crc.o -DSTANDALONE -lm
 
 flacenc2: encoders/flac2.c encoders/flac2.h bitstream.a pcmreader.o pcm.o md5.o flac_crc.o
-	$(CC) $(FLAGS) -o $@ encoders/flac2.c bitstream.a pcmreader.o pcm.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE
+	$(CC) $(FLAGS) -o $@ encoders/flac2.c bitstream.a pcmreader.o pcm.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
 
 alacenc: $(OBJS) encoders/alac.c encoders/alac.h
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c $(OBJS) -DSTANDALONE -lm
