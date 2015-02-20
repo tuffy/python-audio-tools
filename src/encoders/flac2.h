@@ -29,10 +29,10 @@ struct flac_encoding_options {
     int mid_side;                           /*a boolean*/
     int adaptive_mid_side;                  /*a boolean*/
 
-    int no_verbatim_subframes;              /*a boolean for debugging*/
-    int no_constant_subframes;              /*a boolean for debugging*/
-    int no_fixed_subframes;                 /*a boolean for debugging*/
-    int no_lpc_subframes;                   /*a boolean for debugging*/
+    int use_verbatim;                       /*a boolean for debugging*/
+    int use_constant;                       /*a boolean for debugging*/
+    int use_fixed;                          /*a boolean for debugging*/
+    int use_lpc;                            /*a boolean for debugging*/
 
     unsigned qlp_coeff_precision;           /*derived from block size*/
     unsigned max_rice_parameter;            /*derived from bits-per-sample*/

@@ -73,7 +73,7 @@ static void
 encode_subframe(BitstreamWriter *output,
                 const struct flac_encoding_options *options,
                 unsigned sample_count,
-                const int *samples,
+                int *samples,
                 unsigned bits_per_sample);
 
 static void
@@ -81,6 +81,13 @@ write_subframe_header(BitstreamWriter *output,
                       subframe_type_t subframe_type,
                       unsigned predictor_order,
                       unsigned wasted_bps);
+
+static void
+encode_constant_subframe(BitstreamWriter *output,
+                         unsigned sample_count,
+                         int sample,
+                         unsigned bits_per_sample,
+                         unsigned wasted_bps);
 
 static void
 encode_verbatim_subframe(BitstreamWriter *output,
@@ -97,6 +104,9 @@ push_frame_size(struct flac_frame_size *head,
 static void
 reverse_frame_sizes(struct flac_frame_size **head);
 
+static int
+samples_identical(unsigned sample_count, const int *samples);
+
 /***********************************
  * public function implementations *
  ***********************************/
@@ -112,10 +122,10 @@ flacenc_init_options(struct flac_encoding_options *options)
     options->mid_side = 0;
     options->adaptive_mid_side = 0;
 
-    options->no_verbatim_subframes = 0;
-    options->no_constant_subframes = 0;
-    options->no_fixed_subframes = 0;
-    options->no_lpc_subframes = 0;
+    options->use_verbatim = 1;
+    options->use_constant = 1;
+    options->use_fixed = 1;
+    options->use_lpc = 1;
 
     /*these are just placeholders*/
     options->qlp_coeff_precision = 12;
@@ -141,14 +151,14 @@ flacenc_display_options(const struct flac_encoding_options *options,
            options->mid_side);
     printf("adaptive mid side       %d\n",
            options->adaptive_mid_side);
-    printf("no VERBATIM subframes   %d\n",
-           options->no_verbatim_subframes);
-    printf("no CONSTANT subframes   %d\n",
-           options->no_constant_subframes);
-    printf("no FIXED subframes      %d\n",
-           options->no_fixed_subframes);
-    printf("no LPC subframes        %d\n",
-           options->no_lpc_subframes);
+    printf("use VERBATIM subframes  %d\n",
+           options->use_verbatim);
+    printf("use CONSTANT subframes  %d\n",
+           options->use_constant);
+    printf("use FIXED subframes     %d\n",
+           options->use_fixed);
+    printf("use LPC subframes       %d\n",
+           options->use_lpc);
 }
 
 struct flac_frame_size*
@@ -530,9 +540,18 @@ static void
 encode_subframe(BitstreamWriter *output,
                 const struct flac_encoding_options *options,
                 unsigned sample_count,
-                const int *samples,
+                int *samples,
                 unsigned bits_per_sample)
 {
+    if (options->use_constant && samples_identical(sample_count, samples)) {
+        encode_constant_subframe(output,
+                                 sample_count,
+                                 samples[0],
+                                 bits_per_sample,
+                                 0);
+        return;
+    }
+
     /*FIXME - try other subframe types here*/
 
     encode_verbatim_subframe(output,
@@ -572,6 +591,17 @@ write_subframe_header(BitstreamWriter *output,
     } else {
         output->write(output, 1, 0);
     }
+}
+
+static void
+encode_constant_subframe(BitstreamWriter *output,
+                         unsigned sample_count,
+                         int sample,
+                         unsigned bits_per_sample,
+                         unsigned wasted_bps)
+{
+    write_subframe_header(output, CONSTANT, 0, wasted_bps);
+    output->write_signed(output, bits_per_sample, sample);
 }
 
 static void
@@ -615,6 +645,20 @@ reverse_frame_sizes(struct flac_frame_size **head)
     *head = reversed;
 }
 
+static int
+samples_identical(unsigned sample_count, const int *samples)
+{
+    unsigned i;
+    assert(sample_count > 0);
+
+    for (i = 1; i < sample_count; i++) {
+        if (samples[0] != samples[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 /*****************
  * main function *
  *****************/
@@ -653,13 +697,13 @@ int main(int argc, char *argv[])
         {"exhaustive-model-search", no_argument,
          &options.exhaustive_model_search, 1},
         {"disable-verbatim-subframes", no_argument,
-         &options.no_verbatim_subframes, 1},
+         &options.use_verbatim, 0},
         {"disable-constant-subframes", no_argument,
-         &options.no_constant_subframes, 1},
+         &options.use_constant, 0},
         {"disable-fixed-subframes", no_argument,
-         &options.no_fixed_subframes, 1},
+         &options.use_fixed, 0},
         {"disable-lpc-subframes",   no_argument,
-         &options.no_lpc_subframes, 1},
+         &options.use_lpc, 0},
         {NULL,                      no_argument,       NULL,  0}
     };
     const static char* short_opts = "-hc:r:b:B:l:P:R:mMe";
