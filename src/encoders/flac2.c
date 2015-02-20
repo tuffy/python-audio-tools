@@ -3,6 +3,7 @@
 #include "../common/flac_crc.h"
 #include "../pcm.h"
 #include <string.h>
+#include <inttypes.h>
 
 typedef enum {CONSTANT, VERBATIM, FIXED, LPC} subframe_type_t;
 
@@ -96,6 +97,29 @@ encode_verbatim_subframe(BitstreamWriter *output,
                          unsigned bits_per_sample,
                          unsigned wasted_bps);
 
+static void
+encode_fixed_subframe(BitstreamWriter *output,
+                      const struct flac_encoding_options *options,
+                      unsigned sample_count,
+                      const int *samples,
+                      unsigned bits_per_sample,
+                      unsigned wasted_bps);
+
+static void
+next_fixed_order(unsigned sample_count,
+                 const int *previous_order,
+                 int *next_order);
+
+static uint64_t
+abs_sum(unsigned count, const int *values);
+
+static void
+write_residual_block(BitstreamWriter *output,
+                     const struct flac_encoding_options *options,
+                     unsigned sample_count,
+                     unsigned predictor_order,
+                     const int *residuals);
+
 static struct flac_frame_size*
 push_frame_size(struct flac_frame_size *head,
                 unsigned byte_size,
@@ -106,6 +130,15 @@ reverse_frame_sizes(struct flac_frame_size **head);
 
 static int
 samples_identical(unsigned sample_count, const int *samples);
+
+static unsigned
+calculate_wasted_bps(unsigned sample_count, const int *samples);
+
+static inline unsigned
+ceil_div(unsigned n, unsigned d)
+{
+    return (n / d) + (n % d ? 1 : 0);
+}
 
 /***********************************
  * public function implementations *
@@ -125,7 +158,6 @@ flacenc_init_options(struct flac_encoding_options *options)
     options->use_verbatim = 1;
     options->use_constant = 1;
     options->use_fixed = 1;
-    options->use_lpc = 1;
 
     /*these are just placeholders*/
     options->qlp_coeff_precision = 12;
@@ -157,8 +189,6 @@ flacenc_display_options(const struct flac_encoding_options *options,
            options->use_constant);
     printf("use FIXED subframes     %d\n",
            options->use_fixed);
-    printf("use LPC subframes       %d\n",
-           options->use_lpc);
 }
 
 struct flac_frame_size*
@@ -549,16 +579,70 @@ encode_subframe(BitstreamWriter *output,
                                  samples[0],
                                  bits_per_sample,
                                  0);
-        return;
+    } else {
+        const unsigned wasted_bps =
+            calculate_wasted_bps(sample_count, samples);
+        unsigned smallest_subframe_size = 0;
+        BitstreamRecorder *fixed_subframe;
+
+        /*remove wasted bits from least-signficant bits, if any*/
+        if (wasted_bps) {
+            unsigned i;
+            for (i = 0; i < sample_count; i++) {
+                samples[i] >>= wasted_bps;
+            }
+            bits_per_sample -= wasted_bps;
+        }
+
+        if (options->use_verbatim) {
+            smallest_subframe_size =
+                8 + wasted_bps +
+                ((bits_per_sample - wasted_bps) * sample_count);
+        }
+
+        if (options->use_fixed) {
+            fixed_subframe =
+                bw_open_limited_recorder(BS_BIG_ENDIAN,
+                                         ceil_div(smallest_subframe_size, 8));
+
+            if (!setjmp(*bw_try((BitstreamWriter*)fixed_subframe))) {
+                encode_fixed_subframe((BitstreamWriter*)fixed_subframe,
+                                      options,
+                                      sample_count,
+                                      samples,
+                                      bits_per_sample,
+                                      wasted_bps);
+                bw_etry((BitstreamWriter*)fixed_subframe);
+
+                if (smallest_subframe_size &&
+                    (fixed_subframe->bits_written(fixed_subframe) >
+                     smallest_subframe_size)) {
+                    /*FIXED subframe too large*/
+
+                    /*this is a rare case when the FIXED subframe
+                      isn't larger by some whole number of bytes*/
+                    fixed_subframe->close(fixed_subframe);
+                    fixed_subframe = NULL;
+                }
+            } else {
+                /*FIXED subframe too large*/
+                bw_etry((BitstreamWriter*)fixed_subframe);
+                fixed_subframe->close(fixed_subframe);
+                fixed_subframe = NULL;
+            }
+        }
+
+        if (fixed_subframe) {
+            fixed_subframe->copy(fixed_subframe, output);
+            fixed_subframe->close(fixed_subframe);
+        } else {
+            encode_verbatim_subframe(output,
+                                     sample_count,
+                                     samples,
+                                     bits_per_sample,
+                                     wasted_bps);
+        }
     }
-
-    /*FIXME - try other subframe types here*/
-
-    encode_verbatim_subframe(output,
-                             sample_count,
-                             samples,
-                             bits_per_sample,
-                             0);
 }
 
 static void
@@ -619,6 +703,125 @@ encode_verbatim_subframe(BitstreamWriter *output,
     }
 }
 
+static void
+encode_fixed_subframe(BitstreamWriter *output,
+                      const struct flac_encoding_options *options,
+                      unsigned sample_count,
+                      const int *samples,
+                      unsigned bits_per_sample,
+                      unsigned wasted_bps)
+{
+    if (sample_count >= 5) {
+        unsigned i;
+        int order1[sample_count - 1];
+        int order2[sample_count - 2];
+        int order3[sample_count - 3];
+        int order4[sample_count - 4];
+        const int *orders[] = {samples, order1, order2, order3, order4};
+        uint64_t best_order_sum;
+        unsigned best_order;
+
+        /*determine best FIXED subframe order*/
+        next_fixed_order(sample_count, samples, order1);
+        next_fixed_order(sample_count - 1, order1, order2);
+        next_fixed_order(sample_count - 2, order2, order3);
+        next_fixed_order(sample_count - 3, order3, order4);
+
+        best_order_sum = abs_sum(sample_count, orders[0]);
+        best_order = 0;
+
+        for (i = 1; i < 5; i++) {
+            const uint64_t order_sum = abs_sum(sample_count - i, orders[i]);
+            if (order_sum < best_order_sum) {
+                best_order_sum = order_sum;
+                best_order = i;
+            }
+        }
+
+        fprintf(stderr, "best order : %u  %" PRIu64 "\n",
+                best_order, best_order_sum);
+
+        /*write subframe header*/
+        write_subframe_header(output,
+                              FIXED,
+                              best_order,
+                              wasted_bps);
+
+        /*write warm-up samples*/
+        for (i = 0; i < best_order; i++) {
+            output->write_signed(output, bits_per_sample, samples[i]);
+        }
+
+        /*write residual block*/
+        write_residual_block(output,
+                             options,
+                             sample_count,
+                             best_order,
+                             orders[i]);
+    } else {
+        /*FIXME - handle small amount of samples*/
+        assert(0);
+    }
+}
+
+static void
+next_fixed_order(unsigned sample_count,
+                 const int *previous_order,
+                 int *next_order)
+{
+    unsigned i;
+    for (i = 1; i < sample_count; i++) {
+        next_order[i - 1] = previous_order[i] - previous_order[i - 1];
+    }
+}
+
+static uint64_t
+abs_sum(unsigned count, const int *values)
+{
+    uint64_t accumulator = 0;
+    for (; count; count--) {
+        accumulator += abs(*values);
+        values += 1;
+    }
+    return accumulator;
+}
+
+static void
+write_residual_block(BitstreamWriter *output,
+                     const struct flac_encoding_options *options,
+                     unsigned sample_count,
+                     unsigned predictor_order,
+                     const int *residuals)
+{
+    const unsigned partition_order = 0; /*FIXME - calculate this*/
+    const unsigned partition_count = 1 << partition_order;
+    const unsigned coding = 0; /*FIXME - calculate this*/
+    unsigned p;
+    const unsigned residual_size = 8; /*FIXME - remove this later*/
+    unsigned i = 0;
+
+    output->write(output, 2, coding);
+    output->write(output, 4, partition_order);
+
+    fputs("writing residuals : ", stderr);
+    for (p = 0; p < partition_count; p++) {
+        unsigned partition_size;
+
+        output->write(output, 4, 15); /*FIXME - remove this later*/
+        output->write(output, 5, residual_size);
+
+        for (partition_size =
+             (sample_count / partition_count) -
+             (p == 0 ? predictor_order : 0);
+             partition_size;
+             partition_size--) {
+            fprintf(stderr, "%d ", residuals[i]);
+            output->write_signed(output, residual_size, residuals[i++]);
+        }
+    }
+    fputs("\n", stderr);
+}
+
 static struct flac_frame_size*
 push_frame_size(struct flac_frame_size *head,
                 unsigned byte_size,
@@ -657,6 +860,36 @@ samples_identical(unsigned sample_count, const int *samples)
         }
     }
     return 1;
+}
+
+static inline unsigned
+sample_wasted_bps(int sample) {
+    if (sample == 0) {
+        return UINT_MAX;
+    } else {
+        unsigned j = 1;
+        while ((sample % (1 << j)) == 0) {
+            j += 1;
+        }
+        return j - 1;
+    }
+}
+
+static unsigned
+calculate_wasted_bps(unsigned sample_count, const int *samples)
+{
+    unsigned wasted_bps = UINT_MAX;
+    unsigned i;
+    for (i = 0; i < sample_count; i++) {
+        const unsigned wasted = sample_wasted_bps(samples[i]);
+        if (wasted == 0) {
+            /*stop looking once a wasted BPS of 0 is found*/
+            return 0;
+        } else if (wasted < wasted_bps) {
+            wasted_bps = wasted;
+        }
+    }
+    return wasted_bps;
 }
 
 /*****************
@@ -702,8 +935,6 @@ int main(int argc, char *argv[])
          &options.use_constant, 0},
         {"disable-fixed-subframes", no_argument,
          &options.use_fixed, 0},
-        {"disable-lpc-subframes",   no_argument,
-         &options.use_lpc, 0},
         {NULL,                      no_argument,       NULL,  0}
     };
     const static char* short_opts = "-hc:r:b:B:l:P:R:mMe";
