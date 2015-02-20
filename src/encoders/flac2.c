@@ -711,57 +711,61 @@ encode_fixed_subframe(BitstreamWriter *output,
                       unsigned bits_per_sample,
                       unsigned wasted_bps)
 {
-    if (sample_count >= 5) {
-        unsigned i;
-        int order1[sample_count - 1];
-        int order2[sample_count - 2];
-        int order3[sample_count - 3];
-        int order4[sample_count - 4];
-        const int *orders[] = {samples, order1, order2, order3, order4};
-        uint64_t best_order_sum;
-        unsigned best_order;
+    const unsigned max_order = sample_count > 4 ? 4 : sample_count - 1;
+    int order1[max_order >= 1 ? sample_count - 1 : 0];
+    int order2[max_order >= 2 ? sample_count - 2 : 0];
+    int order3[max_order >= 3 ? sample_count - 3 : 0];
+    int order4[max_order >= 4 ? sample_count - 4 : 0];
+    const int *orders[] = {samples, order1, order2, order3, order4};
+    uint64_t best_order_sum;
+    unsigned best_order;
+    unsigned i;
 
-        /*determine best FIXED subframe order*/
+    /*determine best FIXED subframe order*/
+    if (max_order >= 1) {
         next_fixed_order(sample_count, samples, order1);
-        next_fixed_order(sample_count - 1, order1, order2);
-        next_fixed_order(sample_count - 2, order2, order3);
-        next_fixed_order(sample_count - 3, order3, order4);
-
-        best_order_sum = abs_sum(sample_count, orders[0]);
-        best_order = 0;
-
-        for (i = 1; i < 5; i++) {
-            const uint64_t order_sum = abs_sum(sample_count - i, orders[i]);
-            if (order_sum < best_order_sum) {
-                best_order_sum = order_sum;
-                best_order = i;
-            }
-        }
-
-        fprintf(stderr, "best order : %u  %" PRIu64 "\n",
-                best_order, best_order_sum);
-
-        /*write subframe header*/
-        write_subframe_header(output,
-                              FIXED,
-                              best_order,
-                              wasted_bps);
-
-        /*write warm-up samples*/
-        for (i = 0; i < best_order; i++) {
-            output->write_signed(output, bits_per_sample, samples[i]);
-        }
-
-        /*write residual block*/
-        write_residual_block(output,
-                             options,
-                             sample_count,
-                             best_order,
-                             orders[i]);
-    } else {
-        /*FIXME - handle small amount of samples*/
-        assert(0);
     }
+    if (max_order >= 2) {
+        next_fixed_order(sample_count - 1, order1, order2);
+    }
+    if (max_order >= 3) {
+        next_fixed_order(sample_count - 2, order2, order3);
+    }
+    if (max_order >= 4) {
+        next_fixed_order(sample_count - 3, order3, order4);
+    }
+
+    best_order_sum = abs_sum(sample_count, orders[0]);
+    best_order = 0;
+
+    for (i = 1; i <= max_order; i++) {
+        const uint64_t order_sum = abs_sum(sample_count - i, orders[i]);
+        if (order_sum < best_order_sum) {
+            best_order_sum = order_sum;
+            best_order = i;
+        }
+    }
+
+    fprintf(stderr, "best order : %u  %" PRIu64 "\n",
+            best_order, best_order_sum);
+
+    /*write subframe header*/
+    write_subframe_header(output,
+                          FIXED,
+                          best_order,
+                          wasted_bps);
+
+    /*write warm-up samples*/
+    for (i = 0; i < best_order; i++) {
+        output->write_signed(output, bits_per_sample, samples[i]);
+    }
+
+    /*write residual block*/
+    write_residual_block(output,
+                         options,
+                         sample_count,
+                         best_order,
+                         orders[i]);
 }
 
 static void
@@ -889,7 +893,7 @@ calculate_wasted_bps(unsigned sample_count, const int *samples)
             wasted_bps = wasted;
         }
     }
-    return wasted_bps;
+    return (wasted_bps < UINT_MAX) ? wasted_bps : 0;
 }
 
 /*****************
