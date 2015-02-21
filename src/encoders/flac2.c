@@ -232,7 +232,21 @@ flacenc_encode_flac(struct PCMReader *pcmreader,
     audiotools__MD5Init(&md5_context);
 
     /*set QLP coeff precision based on block size*/
-    /*FIXME*/
+    if (options->block_size <= 192) {
+        options->qlp_coeff_precision = 7;
+    } else if (options->block_size <= 384) {
+        options->qlp_coeff_precision = 8;
+    } else if (options->block_size <= 576) {
+        options->qlp_coeff_precision = 9;
+    } else if (options->block_size <= 1152) {
+        options->qlp_coeff_precision = 10;
+    } else if (options->block_size <= 2304) {
+        options->qlp_coeff_precision = 11;
+    } else if (options->block_size <= 4608) {
+        options->qlp_coeff_precision = 12;
+    } else {
+        options->qlp_coeff_precision = 13;
+    }
 
     /*set maximum Rice parameter based on bits-per-sample*/
     if (pcmreader->bits_per_sample <= 16) {
@@ -647,6 +661,9 @@ encode_subframe(BitstreamWriter *output,
                       isn't larger by some whole number of bytes*/
                     fixed_subframe->close(fixed_subframe);
                     fixed_subframe = NULL;
+                } else {
+                    smallest_subframe_size =
+                        fixed_subframe->bits_written(fixed_subframe);
                 }
             } else {
                 /*FIXED subframe too large*/
@@ -908,24 +925,20 @@ best_rice_parameters(const struct flac_encoding_options *options,
                 unsigned j;
                 unsigned partition_sum = 0;
                 unsigned partition_size;
-                int rice;
 
                 for (j = start; j < end; j++) {
                     partition_sum += abs(residuals[j]);
                 }
 
-                if (partition_sum == 0) {
-                    p_rice[p] = 0;
-                } else {
-                    rice = ceil(log((double)partition_sum /
-                                    (double)partition_samples) / log(2.0));
-                    if (rice < 0) {
-                        p_rice[p] = 0;
-                    } else if (rice > options->max_rice_parameter) {
+                if (partition_sum > partition_samples) {
+                    p_rice[p] =
+                        ceil(log((double)partition_sum /
+                                 (double)partition_samples) / log(2.0));
+                    if (p_rice[p] > options->max_rice_parameter) {
                         p_rice[p] = options->max_rice_parameter;
-                    } else {
-                        p_rice[p] = rice;
                     }
+                } else {
+                    p_rice[p] = 0;
                 }
 
                 partition_size =
