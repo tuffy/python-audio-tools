@@ -12,6 +12,14 @@ typedef enum {CONSTANT, VERBATIM, FIXED, LPC} subframe_type_t;
 /*maximum 5 bit value + 1*/
 #define MAX_QLP_COEFFS 32
 
+#ifndef MIN
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
+#ifndef MAX
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#endif
+
+
 /*******************************
  * private function signatures *
  *******************************/
@@ -1003,7 +1011,6 @@ write_lpc_subframe(BitstreamWriter *output,
     int residuals[sample_count - 1];
     unsigned i;
 
-
     for (i = 0; i < predictor_order; i++) {
         output->write_signed(output, bits_per_sample, samples[i]);
     }
@@ -1016,7 +1023,7 @@ write_lpc_subframe(BitstreamWriter *output,
         int64_t sum = 0;
         unsigned j;
         for (j = 0; j < predictor_order; j++) {
-            sum += (coefficients[j] * samples[i - j - 1]);
+            sum += ((int64_t)coefficients[j] * (int64_t)samples[i - j - 1]);
         }
         sum >>= shift;
         residuals[i - predictor_order] = samples[i] - sum;
@@ -1232,6 +1239,8 @@ quantize_lp_coefficients(unsigned lpc_order,
                          int qlp_coeff[],
                          int *shift)
 {
+    const int max_coeff = (1 << (precision - 1)) - 1;
+    const int min_coeff = -(1 << (precision - 1));
     const int min_shift = 0;
     const int max_shift = (1 << 4) - 1;
     double max_lp_coeff = 0.0;
@@ -1256,7 +1265,10 @@ quantize_lp_coefficients(unsigned lpc_order,
 
     for (i = 0; i < lpc_order; i++) {
         const double sum = error + lp_coeff[lpc_order - 1][i] * (1 << *shift);
-        qlp_coeff[i] = (int)(round(sum));
+        const int round_sum = lround(sum);
+        qlp_coeff[i] = MIN(MAX(round_sum, min_coeff), max_coeff);
+        assert(qlp_coeff[i] <= (1 << (precision - 1)) - 1);
+        assert(qlp_coeff[i] >= -(1 << (precision - 1)));
         error = sum - qlp_coeff[i];
     }
 }
