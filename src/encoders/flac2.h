@@ -35,6 +35,7 @@ struct flac_encoding_options {
 
     unsigned qlp_coeff_precision;           /*derived from block size*/
     unsigned max_rice_parameter;            /*derived from bits-per-sample*/
+    double *window;                         /*for windowing input samples*/
 };
 
 /*sets the encoding options to sensible defaults*/

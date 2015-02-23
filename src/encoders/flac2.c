@@ -5,8 +5,12 @@
 #include <string.h>
 #include <inttypes.h>
 #include <math.h>
+#include <float.h>
 
 typedef enum {CONSTANT, VERBATIM, FIXED, LPC} subframe_type_t;
+
+/*maximum 5 bit value + 1*/
+#define MAX_QLP_COEFFS 32
 
 /*******************************
  * private function signatures *
@@ -114,6 +118,73 @@ next_fixed_order(unsigned sample_count,
 static uint64_t
 abs_sum(unsigned count, const int values[]);
 
+/*calculates best LPC subframe and writes LPC subframe to disk*/
+static void
+encode_lpc_subframe(BitstreamWriter *output,
+                    const struct flac_encoding_options *options,
+                    unsigned sample_count,
+                    const int samples[],
+                    unsigned bits_per_sample,
+                    unsigned wasted_bps);
+
+/*writes actual LPC subframe to disk,
+  not including the subframe header*/
+static void
+write_lpc_subframe(BitstreamWriter *output,
+                   const struct flac_encoding_options *options,
+                   unsigned sample_count,
+                   const int samples[],
+                   unsigned bits_per_sample,
+                   unsigned predictor_order,
+                   unsigned precision,
+                   int shift,
+                   const int coefficients[]);
+
+static void
+calculate_best_lpc_params(const struct flac_encoding_options *options,
+                          unsigned sample_count,
+                          const int samples[],
+                          unsigned bits_per_sample,
+                          unsigned *predictor_order,
+                          unsigned *precision,
+                          int *shift,
+                          int coefficients[]);
+
+static void
+window_signal(unsigned sample_count,
+              const int samples[],
+              const double window[],
+              double windowed_signal[]);
+
+static void
+compute_autocorrelation_values(unsigned sample_count,
+                               const double windowed_signal[],
+                               unsigned max_lpc_order,
+                               double autocorrelated[]);
+
+static void
+compute_lp_coefficients(unsigned max_lpc_order,
+                        const double autocorrelated[],
+                        double lp_coeff[MAX_QLP_COEFFS][MAX_QLP_COEFFS],
+                        double error[]);
+
+static unsigned
+estimate_best_lpc_order(unsigned bits_per_sample,
+                        unsigned precision,
+                        unsigned sample_count,
+                        unsigned max_lpc_order,
+                        const double error[]);
+
+/*quantizes lp_coeff[lpc_order - 1][0..lpc_order - 1] LP coefficients
+  to qlp_coeff[] which must have lpc_order values
+  and returns the needed shift*/
+static void
+quantize_lp_coefficients(unsigned lpc_order,
+                         double lp_coeff[MAX_QLP_COEFFS][MAX_QLP_COEFFS],
+                         unsigned precision,
+                         int qlp_coeff[],
+                         int *shift);
+
 static void
 write_residual_block(BitstreamWriter *output,
                      const struct flac_encoding_options *options,
@@ -159,6 +230,9 @@ ceil_div(unsigned n, unsigned d)
 {
     return (n / d) + (n % d ? 1 : 0);
 }
+
+static void
+tukey_window(double alpha, unsigned block_size, double *window);
 
 /***********************************
  * public function implementations *
@@ -255,6 +329,12 @@ flacenc_encode_flac(struct PCMReader *pcmreader,
         options->max_rice_parameter = 31;
     }
 
+    /*generate Tukey window, if necessary*/
+    if (options->max_lpc_order) {
+        options->window = malloc(sizeof(double) * options->block_size);
+        tukey_window(0.5, options->block_size, options->window);
+    }
+
     /*write signature*/
     output->write_bytes(output, signature, 4);
 
@@ -329,6 +409,9 @@ flacenc_encode_flac(struct PCMReader *pcmreader,
                      total_samples,
                      md5sum);
     streaminfo_start->del(streaminfo_start);
+
+    /*delete window, if necessary*/
+    free(options->window);
 
     /*return frame lengths for SEEKTABLE generation in proper order*/
     reverse_frame_sizes(&frame_sizes);
@@ -621,7 +704,8 @@ encode_subframe(BitstreamWriter *output,
         const unsigned wasted_bps =
             calculate_wasted_bps(sample_count, samples);
         unsigned smallest_subframe_size = 0;
-        BitstreamRecorder *fixed_subframe;
+        BitstreamRecorder *fixed_subframe = NULL;
+        BitstreamRecorder *lpc_subframe = NULL;
 
         /*remove wasted bits from least-signficant bits, if any*/
         if (wasted_bps) {
@@ -652,18 +736,18 @@ encode_subframe(BitstreamWriter *output,
                                       wasted_bps);
                 bw_etry((BitstreamWriter*)fixed_subframe);
 
-                if (smallest_subframe_size &&
-                    (fixed_subframe->bits_written(fixed_subframe) >
+                if (!smallest_subframe_size ||
+                    (fixed_subframe->bits_written(fixed_subframe) <=
                      smallest_subframe_size)) {
+                    smallest_subframe_size =
+                        fixed_subframe->bits_written(fixed_subframe);
+                } else {
                     /*FIXED subframe too large*/
 
                     /*this is a rare case when the FIXED subframe
                       isn't larger by some whole number of bytes*/
                     fixed_subframe->close(fixed_subframe);
                     fixed_subframe = NULL;
-                } else {
-                    smallest_subframe_size =
-                        fixed_subframe->bits_written(fixed_subframe);
                 }
             } else {
                 /*FIXED subframe too large*/
@@ -673,9 +757,49 @@ encode_subframe(BitstreamWriter *output,
             }
         }
 
-        /*FIXME - encode LPC subframe*/
+        if (options->max_lpc_order) {
+            lpc_subframe =
+                bw_open_limited_recorder(BS_BIG_ENDIAN,
+                                         ceil_div(smallest_subframe_size, 8));
 
-        if (fixed_subframe) {
+            if (!setjmp(*bw_try((BitstreamWriter*)lpc_subframe))) {
+                encode_lpc_subframe((BitstreamWriter*)lpc_subframe,
+                                    options,
+                                    sample_count,
+                                    samples,
+                                    bits_per_sample,
+                                    wasted_bps);
+                bw_etry((BitstreamWriter*)lpc_subframe);
+
+                if (!smallest_subframe_size ||
+                    (lpc_subframe->bits_written(lpc_subframe) <=
+                     smallest_subframe_size)) {
+                    smallest_subframe_size =
+                        lpc_subframe->bits_written(lpc_subframe);
+                    if (fixed_subframe) {
+                        fixed_subframe->close(fixed_subframe);
+                        fixed_subframe = NULL;
+                    }
+                } else {
+                    /*LPC subframe too large*/
+
+                    /*this is a rare case when the LPC subframe
+                      isn't larger by some whole number of bytes*/
+                    lpc_subframe->close(lpc_subframe);
+                    lpc_subframe = NULL;
+                }
+            } else {
+                /*LPC subframe too large*/
+                bw_etry((BitstreamWriter*)lpc_subframe);
+                lpc_subframe->close(lpc_subframe);
+                lpc_subframe = NULL;
+            }
+        }
+
+        if (lpc_subframe) {
+            lpc_subframe->copy(lpc_subframe, output);
+            lpc_subframe->close(lpc_subframe);
+        } else if (fixed_subframe) {
             fixed_subframe->copy(fixed_subframe, output);
             fixed_subframe->close(fixed_subframe);
         } else {
@@ -831,6 +955,313 @@ abs_sum(unsigned count, const int values[])
 }
 
 static void
+encode_lpc_subframe(BitstreamWriter *output,
+                    const struct flac_encoding_options *options,
+                    unsigned sample_count,
+                    const int samples[],
+                    unsigned bits_per_sample,
+                    unsigned wasted_bps)
+{
+    unsigned predictor_order;
+    unsigned precision;
+    int shift;
+    int coefficients[MAX_QLP_COEFFS];
+
+    calculate_best_lpc_params(options,
+                              sample_count,
+                              samples,
+                              bits_per_sample,
+                              &predictor_order,
+                              &precision,
+                              &shift,
+                              coefficients);
+
+    write_subframe_header(output, LPC, predictor_order, wasted_bps);
+
+    write_lpc_subframe(output,
+                       options,
+                       sample_count,
+                       samples,
+                       bits_per_sample,
+                       predictor_order,
+                       precision,
+                       shift,
+                       coefficients);
+}
+
+static void
+write_lpc_subframe(BitstreamWriter *output,
+                   const struct flac_encoding_options *options,
+                   unsigned sample_count,
+                   const int samples[],
+                   unsigned bits_per_sample,
+                   unsigned predictor_order,
+                   unsigned precision,
+                   int shift,
+                   const int coefficients[])
+{
+    int residuals[sample_count - 1];
+    unsigned i;
+
+
+    for (i = 0; i < predictor_order; i++) {
+        output->write_signed(output, bits_per_sample, samples[i]);
+    }
+    output->write(output, 4, precision - 1);
+    output->write_signed(output, 5, shift);
+    for (i = 0; i < predictor_order; i++) {
+        output->write_signed(output, precision, coefficients[i]);
+    }
+    for (i = predictor_order; i < sample_count; i++) {
+        int64_t sum = 0;
+        unsigned j;
+        for (j = 0; j < predictor_order; j++) {
+            sum += (coefficients[j] * samples[i - j - 1]);
+        }
+        sum >>= shift;
+        residuals[i - predictor_order] = samples[i] - sum;
+    }
+    write_residual_block(output,
+                         options,
+                         sample_count,
+                         predictor_order,
+                         residuals);
+}
+
+static void
+calculate_best_lpc_params(const struct flac_encoding_options *options,
+                          unsigned sample_count,
+                          const int samples[],
+                          unsigned bits_per_sample,
+                          unsigned *predictor_order,
+                          unsigned *precision,
+                          int *shift,
+                          int coefficients[])
+{
+    assert(sample_count > 0);
+
+    if (sample_count == 1) {
+        /*set some dummy coefficients since the only sample
+          will be a warm-up sample*/
+        *predictor_order = 1;
+        *precision = 2;
+        *shift = 0;
+        coefficients[0] = 0;
+    } else {
+        const unsigned max_lpc_order =
+            sample_count <= options->max_lpc_order ?
+            sample_count - 1 : options->max_lpc_order;
+        double windowed_signal[sample_count];
+        double autocorrelated[options->max_lpc_order + 1];
+
+        window_signal(sample_count, samples, options->window, windowed_signal);
+
+        compute_autocorrelation_values(sample_count,
+                                       windowed_signal,
+                                       max_lpc_order,
+                                       autocorrelated);
+
+        if (autocorrelated[0] == 0.0) {
+            /*all samples are 0, so use dummy coefficients*/
+            *predictor_order = 1;
+            *precision = 2;
+            *shift = 0;
+            coefficients[0] = 0;
+        } else {
+            *precision = options->qlp_coeff_precision;
+            double lp_coeff[MAX_QLP_COEFFS][MAX_QLP_COEFFS];
+            double error[max_lpc_order];
+
+            compute_lp_coefficients(max_lpc_order,
+                                    autocorrelated,
+                                    lp_coeff,
+                                    error);
+
+            if (!options->exhaustive_model_search) {
+                /*if not exhaustive search, estimate best order*/
+                *predictor_order =
+                    estimate_best_lpc_order(bits_per_sample,
+                                            *precision,
+                                            sample_count,
+                                            max_lpc_order,
+                                            error);
+
+                /*then quantize coefficients of estimated best order*/
+                quantize_lp_coefficients(*predictor_order,
+                                         lp_coeff,
+                                         *precision,
+                                         coefficients,
+                                         shift);
+            } else {
+                /*if exhaustive search, quantize all coefficients*/
+
+                unsigned order;
+                unsigned best_subframe_size = UINT_MAX;
+
+                for (order = 1; order <= max_lpc_order; order++) {
+                    BitstreamAccumulator *subframe =
+                        bw_open_accumulator(BS_BIG_ENDIAN);
+                    int candidate_coeff[order];
+                    int candidate_shift;
+
+                    quantize_lp_coefficients(order,
+                                             lp_coeff,
+                                             *precision,
+                                             candidate_coeff,
+                                             &candidate_shift);
+
+                    write_lpc_subframe((BitstreamWriter*)subframe,
+                                       options,
+                                       sample_count,
+                                       samples,
+                                       bits_per_sample,
+                                       order,
+                                       *precision,
+                                       candidate_shift,
+                                       candidate_coeff);
+
+                    if (subframe->bits_written(subframe) < best_subframe_size) {
+                        /*and use values which generate
+                          the smallest LPC subframe when written*/
+                        *predictor_order = order;
+                        *shift = candidate_shift;
+                        memcpy(coefficients,
+                               candidate_coeff,
+                               order * sizeof(int));
+                        best_subframe_size = subframe->bits_written(subframe);
+                    }
+
+                    subframe->close(subframe);
+                }
+            }
+        }
+    }
+}
+
+static void
+window_signal(unsigned sample_count,
+              const int samples[],
+              const double window[],
+              double windowed_signal[])
+{
+    unsigned i;
+    for (i = 0; i < sample_count; i++) {
+        windowed_signal[i] = samples[i] * window[i];
+    }
+}
+
+static void
+compute_autocorrelation_values(unsigned sample_count,
+                               const double windowed_signal[],
+                               unsigned max_lpc_order,
+                               double autocorrelated[])
+{
+    unsigned i;
+    unsigned j;
+
+    for (i = 0; i <= max_lpc_order; i++) {
+        autocorrelated[i] = 0.0;
+        for (j = 0; j < sample_count - i; j++) {
+            autocorrelated[i] += windowed_signal[j] * windowed_signal[j + i];
+        }
+    }
+}
+
+static void
+compute_lp_coefficients(unsigned max_lpc_order,
+                        const double autocorrelated[],
+                        double lp_coeff[MAX_QLP_COEFFS][MAX_QLP_COEFFS],
+                        double error[])
+{
+    double k;
+    double q;
+    unsigned i;
+
+    k = autocorrelated[1] / autocorrelated[0];
+    lp_coeff[0][0] = k;
+    error[0] = autocorrelated[0] * (1.0 - pow(k, 2));
+    for (i = 1; i < max_lpc_order; i++) {
+        double sum = 0.0;
+        unsigned j;
+        for (j = 0; j < i; j++) {
+            sum += lp_coeff[i - 1][j] * autocorrelated[i - j];
+        }
+        q = autocorrelated[i + 1] - sum;
+        k = q / error[i - 1];
+        for (j = 0; j < i; j++) {
+            lp_coeff[i][j] =
+                lp_coeff[i - 1][j] - (k * lp_coeff[i - 1][i - j - 1]);
+        }
+        lp_coeff[i][i] = k;
+        error[i] = error[i - 1] * (1.0 - pow(k, 2));
+    }
+}
+
+static unsigned
+estimate_best_lpc_order(unsigned bits_per_sample,
+                        unsigned precision,
+                        unsigned sample_count,
+                        unsigned max_lpc_order,
+                        const double error[])
+{
+    const double error_scale = pow(log(2), 2) / (sample_count * 2);
+    double best_bits = DBL_MAX;
+    unsigned best_order = 0;
+    unsigned i;
+    for (i = 1; i <= max_lpc_order; i++) {
+        const double header_bits =
+            i * (bits_per_sample + precision);
+        const double bits_per_residual =
+            log2(error[i - 1] * error_scale) / 2;
+        const double subframe_bits =
+            header_bits + (bits_per_residual * (sample_count - i));
+
+        if (subframe_bits < best_bits) {
+            best_order = i;
+            best_bits = subframe_bits;
+        }
+    }
+    assert(best_order > 0);
+    return best_order;
+}
+
+static void
+quantize_lp_coefficients(unsigned lpc_order,
+                         double lp_coeff[MAX_QLP_COEFFS][MAX_QLP_COEFFS],
+                         unsigned precision,
+                         int qlp_coeff[],
+                         int *shift)
+{
+    const int min_shift = 0;
+    const int max_shift = (1 << 4) - 1;
+    double max_lp_coeff = 0.0;
+    unsigned error = 0.0;
+    unsigned i;
+
+    for (i = 0; i < lpc_order; i++) {
+        if (fabs(lp_coeff[lpc_order - 1][i]) > max_lp_coeff) {
+            max_lp_coeff = fabs(lp_coeff[lpc_order - 1][i]);
+        }
+    }
+    assert(max_lp_coeff > 0.0);
+    *shift = (precision - 1) - (int)(floor(log2(max_lp_coeff))) - 1;
+
+    /*ensure shift fits into a signed 5 bit value*/
+    if (*shift < min_shift) {
+        /*don't use negative shifts*/
+        *shift = min_shift;
+    } else if (*shift > max_shift) {
+        *shift = max_shift;
+    }
+
+    for (i = 0; i < lpc_order; i++) {
+        const double sum = error + lp_coeff[lpc_order - 1][i] * (1 << *shift);
+        qlp_coeff[i] = (int)(round(sum));
+        error = sum - qlp_coeff[i];
+    }
+}
+
+static void
 write_residual_block(BitstreamWriter *output,
                      const struct flac_encoding_options *options,
                      unsigned sample_count,
@@ -932,8 +1363,8 @@ best_rice_parameters(const struct flac_encoding_options *options,
 
                 if (partition_sum > partition_samples) {
                     p_rice[p] =
-                        ceil(log((double)partition_sum /
-                                 (double)partition_samples) / log(2.0));
+                        ceil(log2((double)partition_sum /
+                                  (double)partition_samples));
                     if (p_rice[p] > options->max_rice_parameter) {
                         p_rice[p] = options->max_rice_parameter;
                     }
@@ -1051,6 +1482,22 @@ calculate_wasted_bps(unsigned sample_count, const int *samples)
         }
     }
     return (wasted_bps < UINT_MAX) ? wasted_bps : 0;
+}
+
+static void
+tukey_window(double alpha, unsigned block_size, double *window)
+{
+    unsigned Np = alpha / 2 * block_size - 1;
+    unsigned i;
+    for (i = 0; i < block_size; i++) {
+        if (i <= Np) {
+            window[i] = (1 - cos(M_PI * i / Np)) / 2;
+        } else if (i >= (block_size - Np - 1)) {
+            window[i] = (1 - cos(M_PI * (block_size - i - 1) / Np)) / 2;
+        } else {
+            window[i] = 1.0;
+        }
+    }
 }
 
 /*****************
