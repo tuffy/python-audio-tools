@@ -56,7 +56,11 @@ typedef uint16_t state_t;
 
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 typedef enum {BR_FILE, BR_BUFFER, BR_QUEUE, BR_EXTERNAL} br_type;
-typedef enum {BW_FILE, BW_EXTERNAL, BW_RECORDER, BW_ACCUMULATOR} bw_type;
+typedef enum {BW_FILE,
+              BW_EXTERNAL,
+              BW_RECORDER,
+              BW_ACCUMULATOR,
+              BW_LIMITED_ACCUMULATOR} bw_type;
 typedef enum {BS_INST_UNSIGNED,
               BS_INST_SIGNED,
               BS_INST_UNSIGNED64,
@@ -723,6 +727,10 @@ typedef void
         struct bw_buffer* recorder;                         \
         struct bw_external_output* external;                \
         unsigned accumulator;                               \
+        struct {                                            \
+            unsigned written;                               \
+            unsigned total;                                 \
+        } limited_accumulator;                              \
     } output;                                               \
                                                             \
     unsigned int buffer_size;                               \
@@ -984,13 +992,23 @@ BitstreamRecorder*
 bw_open_recorder(bs_endianness endianness);
 
 /*records up to the given number of bytes
-  or calls bw_abort() if the maximum number of bytes is exceeeded*/
+  or calls bw_abort() if the maximum number of bytes is exceeeded
+
+  a maximum size of 0 indicates no limit*/
 BitstreamRecorder*
 bw_open_limited_recorder(bs_endianness endianness, unsigned maximum_size);
 
 
 BitstreamAccumulator*
 bw_open_accumulator(bs_endianness endianness);
+
+
+/*accumulates up to the maximum number of bytes
+  or calls bw_abort() if the maximum number of bytes is exceeded
+
+  a maximum size of 0 indicates no limit*/
+BitstreamAccumulator*
+bw_open_limited_accumulator(bs_endianness endianness, unsigned maximum_size);
 
 
 /*unattached, BitstreamWriter functions*/

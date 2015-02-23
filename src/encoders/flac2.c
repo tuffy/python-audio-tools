@@ -1251,7 +1251,10 @@ calculate_best_lpc_params(const struct flac_encoding_options *options,
 
                 for (order = 1; order <= max_lpc_order; order++) {
                     BitstreamAccumulator *subframe =
-                        bw_open_accumulator(BS_BIG_ENDIAN);
+                        bw_open_limited_accumulator(
+                            BS_BIG_ENDIAN,
+                            best_subframe_size == UINT_MAX ?
+                            0 : best_subframe_size);
                     int candidate_coeff[order];
                     int candidate_shift;
 
@@ -1261,25 +1264,33 @@ calculate_best_lpc_params(const struct flac_encoding_options *options,
                                              candidate_coeff,
                                              &candidate_shift);
 
-                    write_lpc_subframe((BitstreamWriter*)subframe,
-                                       options,
-                                       sample_count,
-                                       samples,
-                                       bits_per_sample,
-                                       order,
-                                       *precision,
-                                       candidate_shift,
-                                       candidate_coeff);
+                    if (!setjmp(*bw_try((BitstreamWriter*)subframe))) {
+                        write_lpc_subframe((BitstreamWriter*)subframe,
+                                           options,
+                                           sample_count,
+                                           samples,
+                                           bits_per_sample,
+                                           order,
+                                           *precision,
+                                           candidate_shift,
+                                           candidate_coeff);
 
-                    if (subframe->bits_written(subframe) < best_subframe_size) {
-                        /*and use values which generate
-                          the smallest LPC subframe when written*/
-                        *predictor_order = order;
-                        *shift = candidate_shift;
-                        memcpy(coefficients,
-                               candidate_coeff,
-                               order * sizeof(int));
-                        best_subframe_size = subframe->bits_written(subframe);
+                        bw_etry((BitstreamWriter*)subframe);
+
+                        if (subframe->bits_written(subframe) <
+                            best_subframe_size) {
+                            /*and use values which generate
+                              the smallest LPC subframe when written*/
+                            *predictor_order = order;
+                            *shift = candidate_shift;
+                            memcpy(coefficients,
+                                   candidate_coeff,
+                                   order * sizeof(int));
+                            best_subframe_size =
+                                subframe->bits_written(subframe);
+                        }
+                    } else {
+                        bw_etry((BitstreamWriter*)subframe);
                     }
 
                     subframe->close(subframe);
