@@ -19,7 +19,6 @@ typedef enum {CONSTANT, VERBATIM, FIXED, LPC} subframe_type_t;
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
-
 /*******************************
  * private function signatures *
  *******************************/
@@ -61,6 +60,13 @@ encode_frame(const struct PCMReader *pcmreader,
              const int *pcm_data,
              unsigned pcm_frames,
              unsigned frame_number);
+
+static void
+correlate_channels(unsigned pcm_frames,
+                   const int left_channel[],
+                   const int right_channel[],
+                   int average_channel[],
+                   int difference_channel[]);
 
 static void
 write_frame_header(BitstreamWriter *output,
@@ -508,30 +514,153 @@ encode_frame(const struct PCMReader *pcmreader,
     unsigned c;
     uint16_t crc16 = 0;
 
-    /*FIXME - attempt different assignments if 2 channels*/
-    unsigned channel_assignment = pcmreader->channels - 1;
-
     output->add_callback(output, (bs_callback_f)flac_crc16, &crc16);
-    write_frame_header(output,
-                       pcm_frames,
-                       pcmreader->sample_rate,
-                       pcmreader->channels,
-                       pcmreader->bits_per_sample,
-                       frame_number,
-                       channel_assignment);
 
-    /*write 1 subframe per channel*/
-    for (c = 0; c < pcmreader->channels; c++) {
-        int channel_data[pcm_frames];
+    if ((pcmreader->channels == 2) &&
+        (options->mid_side || options->adaptive_mid_side)) {
+        /*attempt different assignments if stereo and mid-side requested*/
+        int left_channel[pcm_frames];
+        int right_channel[pcm_frames];
+        int average_channel[pcm_frames];
+        int difference_channel[pcm_frames];
 
-        get_channel_data(pcm_data, c, pcmreader->channels,
-                         pcm_frames, channel_data);
+        BitstreamRecorder *left_subframe =
+            bw_open_recorder(BS_BIG_ENDIAN);
+        BitstreamRecorder *right_subframe =
+            bw_open_recorder(BS_BIG_ENDIAN);
+        BitstreamRecorder *average_subframe =
+            bw_open_recorder(BS_BIG_ENDIAN);
+        BitstreamRecorder *difference_subframe =
+            bw_open_recorder(BS_BIG_ENDIAN);
 
-        encode_subframe(output,
+        unsigned independent;
+        unsigned left_side;
+        unsigned side_right;
+        unsigned mid_side;
+
+        get_channel_data(pcm_data, 0, 2, pcm_frames, left_channel);
+        get_channel_data(pcm_data, 1, 2, pcm_frames, right_channel);
+
+        correlate_channels(pcm_frames,
+                           left_channel,
+                           right_channel,
+                           average_channel,
+                           difference_channel);
+
+        encode_subframe((BitstreamWriter*)left_subframe,
                         options,
                         pcm_frames,
-                        channel_data,
+                        left_channel,
                         pcmreader->bits_per_sample);
+
+        encode_subframe((BitstreamWriter*)right_subframe,
+                        options,
+                        pcm_frames,
+                        right_channel,
+                        pcmreader->bits_per_sample);
+
+        encode_subframe((BitstreamWriter*)average_subframe,
+                        options,
+                        pcm_frames,
+                        average_channel,
+                        pcmreader->bits_per_sample);
+
+        encode_subframe((BitstreamWriter*)difference_subframe,
+                        options,
+                        pcm_frames,
+                        difference_channel,
+                        pcmreader->bits_per_sample + 1);
+
+        independent = left_subframe->bits_written(left_subframe) +
+                      right_subframe->bits_written(right_subframe);
+
+        left_side = left_subframe->bits_written(left_subframe) +
+                    difference_subframe->bits_written(difference_subframe);
+
+        side_right = difference_subframe->bits_written(difference_subframe) +
+                     right_subframe->bits_written(right_subframe);
+
+        mid_side = average_subframe->bits_written(average_subframe) +
+                   difference_subframe->bits_written(difference_subframe);
+
+        if ((independent < left_side) &&
+            (independent < side_right) &&
+            (independent < mid_side)) {
+            /*write subframes independently*/
+            write_frame_header(output,
+                               pcm_frames,
+                               pcmreader->sample_rate,
+                               pcmreader->channels,
+                               pcmreader->bits_per_sample,
+                               frame_number,
+                               1);
+            left_subframe->copy(left_subframe, output);
+            right_subframe->copy(right_subframe, output);
+        } else if ((left_side < side_right) && (left_side < mid_side)) {
+            /*write subframes using left-side order*/
+            write_frame_header(output,
+                               pcm_frames,
+                               pcmreader->sample_rate,
+                               pcmreader->channels,
+                               pcmreader->bits_per_sample,
+                               frame_number,
+                               8);
+            left_subframe->copy(left_subframe, output);
+            difference_subframe->copy(difference_subframe, output);
+        } else if (side_right < mid_side) {
+            /*write subframes using side-right order*/
+            write_frame_header(output,
+                               pcm_frames,
+                               pcmreader->sample_rate,
+                               pcmreader->channels,
+                               pcmreader->bits_per_sample,
+                               frame_number,
+                               9);
+            difference_subframe->copy(difference_subframe, output);
+            right_subframe->copy(right_subframe, output);
+        } else {
+            /*write subframes using mid-side order*/
+            write_frame_header(output,
+                               pcm_frames,
+                               pcmreader->sample_rate,
+                               pcmreader->channels,
+                               pcmreader->bits_per_sample,
+                               frame_number,
+                               10);
+            average_subframe->copy(average_subframe, output);
+            difference_subframe->copy(difference_subframe, output);
+        }
+
+        left_subframe->close(left_subframe);
+        right_subframe->close(right_subframe);
+        average_subframe->close(average_subframe);
+        difference_subframe->close(difference_subframe);
+    } else {
+        /*store channels independently*/
+
+        unsigned channel_assignment = pcmreader->channels - 1;
+
+        write_frame_header(output,
+                           pcm_frames,
+                           pcmreader->sample_rate,
+                           pcmreader->channels,
+                           pcmreader->bits_per_sample,
+                           frame_number,
+                           channel_assignment);
+
+        /*write 1 subframe per channel*/
+        for (c = 0; c < pcmreader->channels; c++) {
+            int channel_data[pcm_frames];
+
+            get_channel_data(pcm_data, c, pcmreader->channels,
+                             pcm_frames, channel_data);
+
+            encode_subframe(output,
+                            options,
+                            pcm_frames,
+                            channel_data,
+                            pcmreader->bits_per_sample);
+        }
     }
 
     output->byte_align(output);
@@ -539,6 +668,21 @@ encode_frame(const struct PCMReader *pcmreader,
     /*write calculated CRC-16*/
     output->pop_callback(output, NULL);
     output->write(output, 16, crc16);
+}
+
+static void
+correlate_channels(unsigned pcm_frames,
+                   const int left_channel[],
+                   const int right_channel[],
+                   int average_channel[],
+                   int difference_channel[])
+{
+    unsigned i;
+    for (i = 0; i < pcm_frames; i++) {
+        /*floor division, implemented as right shift*/
+        average_channel[i] = (left_channel[i] + right_channel[i]) >> 1;
+        difference_channel[i] = left_channel[i] - right_channel[i];
+    }
 }
 
 static void
