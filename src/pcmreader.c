@@ -34,26 +34,28 @@ pcmreader_del(struct PCMReader *self);
 
 
 struct PCMReader*
-pcmreader_open(FILE *file,
-               unsigned sample_rate,
-               unsigned channels,
-               unsigned channel_mask,
-               unsigned bits_per_sample,
-               int is_little_endian,
-               int is_signed)
+pcmreader_open_raw(FILE *file,
+                   unsigned sample_rate,
+                   unsigned channels,
+                   unsigned channel_mask,
+                   unsigned bits_per_sample,
+                   int is_little_endian,
+                   int is_signed)
 {
     struct PCMReader *reader = malloc(sizeof(struct PCMReader));
-    reader->raw_data = file;
+
+    reader->input.raw.file = file;
+    reader->input.raw.converter =
+        FrameList_get_char_to_int_converter(bits_per_sample,
+                                            !is_little_endian,
+                                            is_signed);
+
     reader->sample_rate = sample_rate;
     reader->channels = channels;
     reader->channel_mask = channel_mask;
     reader->bits_per_sample = bits_per_sample;
 
-    reader->bytes_per_sample = bits_per_sample / 8;
-    reader->converter =
-        FrameList_get_char_to_int_converter(bits_per_sample,
-                                            !is_little_endian,
-                                            is_signed);
+    reader->status = PCM_OK;
 
     reader->read = pcmreader_read;
     reader->close = pcmreader_close;
@@ -91,9 +93,9 @@ pcmreader_read(struct PCMReader *self,
                unsigned pcm_frames,
                int *pcm_data)
 {
-    const register unsigned bytes_per_sample = self->bytes_per_sample;
+    const register unsigned bytes_per_sample = self->bits_per_sample / 8;
 
-    int (*converter)(unsigned char *) = self->converter;
+    int (*converter)(unsigned char *) = self->input.raw.converter;
 
     const unsigned bytes_to_read =
         pcm_frames * bytes_per_sample * self->channels;
@@ -101,7 +103,10 @@ pcmreader_read(struct PCMReader *self,
     unsigned char buffer[bytes_to_read];
 
     const size_t bytes_read =
-        fread(buffer, sizeof(unsigned char), bytes_to_read, self->raw_data);
+        fread(buffer,
+              sizeof(unsigned char),
+              bytes_to_read,
+              self->input.raw.file);
 
     const unsigned pcm_frames_read =
         bytes_read / bytes_per_sample / self->channels;
@@ -121,7 +126,7 @@ pcmreader_read(struct PCMReader *self,
 static void
 pcmreader_close(struct PCMReader *self)
 {
-    fclose(self->raw_data);
+    fclose(self->input.raw.file);
 }
 
 static void

@@ -50,16 +50,23 @@ flacenc_display_options(const struct flac_encoding_options *options,
 struct flac_frame_size {
     unsigned byte_size;
     unsigned pcm_frames_size;
-    struct flac_frame_size *next;
+    struct flac_frame_size *next;  /*NULL at end of list*/
 };
 
 /*encodes a FLAC file using data from the given PCMReader
   to the given output stream
   using the given options
   and returns a linked list of frame sizes
-  which must be deallocated when no longer needed*/
+  which must be deallocated when no longer needed
+  using free_frame_sizes()
+
+  returns NULL if some error occurs reading from PCMReader*/
 struct flac_frame_size*
 flacenc_encode_flac(struct PCMReader *pcmreader,
                     BitstreamWriter *output,
                     struct flac_encoding_options *options,
                     unsigned padding_size);
+
+/*deallocates linked list of frame sizes*/
+void
+free_frame_sizes(struct flac_frame_size *sizes);

@@ -407,29 +407,50 @@ flacenc_encode_flac(struct PCMReader *pcmreader,
         total_samples += pcm_frames_read;
     }
 
-    /*finalize MD5 sum*/
-    audiotools__MD5Final(md5sum, &md5_context);
+    if (pcmreader->status == PCM_OK) {
+        /*finalize MD5 sum*/
+        audiotools__MD5Final(md5sum, &md5_context);
 
-    /*rewrite initial STREAMINFO block*/
-    output->setpos(output, streaminfo_start);
-    write_STREAMINFO(output,
-                     options->block_size,
-                     options->block_size,
-                     minimum_frame_size,
-                     maximum_frame_size,
-                     pcmreader->sample_rate,
-                     pcmreader->channels,
-                     pcmreader->bits_per_sample,
-                     total_samples,
-                     md5sum);
-    streaminfo_start->del(streaminfo_start);
+        /*rewrite initial STREAMINFO block*/
+        output->setpos(output, streaminfo_start);
+        write_STREAMINFO(output,
+                         options->block_size,
+                         options->block_size,
+                         minimum_frame_size,
+                         maximum_frame_size,
+                         pcmreader->sample_rate,
+                         pcmreader->channels,
+                         pcmreader->bits_per_sample,
+                         total_samples,
+                         md5sum);
+        streaminfo_start->del(streaminfo_start);
 
-    /*delete window, if necessary*/
-    free(options->window);
+        /*delete window, if necessary*/
+        free(options->window);
 
-    /*return frame lengths for SEEKTABLE generation in proper order*/
-    reverse_frame_sizes(&frame_sizes);
-    return frame_sizes;
+        /*return frame lengths for SEEKTABLE generation in proper order*/
+        reverse_frame_sizes(&frame_sizes);
+        return frame_sizes;
+    } else {
+        /*delete window, if necessary*/
+        free(options->window);
+
+        /*delete any frame lengths*/
+        free_frame_sizes(frame_sizes);
+
+        /*indicate read error has occurred*/
+        return NULL;
+    }
+}
+
+void
+free_frame_sizes(struct flac_frame_size *sizes)
+{
+    while (sizes) {
+        struct flac_frame_size *next = sizes->next;
+        free(sizes);
+        sizes = next;
+    }
 }
 
 /************************************
@@ -1825,12 +1846,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    pcmreader = pcmreader_open(stdin,
-                               sample_rate,
-                               channels,
-                               0,
-                               bits_per_sample,
-                               1,1);
+    pcmreader = pcmreader_open_raw(stdin,
+                                   sample_rate,
+                                   channels,
+                                   0,
+                                   bits_per_sample,
+                                   1,1);
     output = bw_open(output_file, BS_BIG_ENDIAN);
 
     pcmreader_display(pcmreader, stderr);

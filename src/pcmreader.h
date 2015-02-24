@@ -19,16 +19,29 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+typedef enum {
+    PCM_OK,                /*no error has occurred*/
+    PCM_READ_ERROR,        /*got exception from wrapped PCMReader*/
+    PCM_NON_FRAMELIST,     /*got a non-framelist from wrapped PCMReader*/
+    PCM_INVALID_FRAMELIST  /*framelist's parameters don't match stream*/
+} pcm_status_t;
+
 struct PCMReader {
-    FILE *raw_data;
+    struct {
+        struct {
+            FILE *file;
+            int (*converter)(unsigned char *raw_pcm_data);
+        } raw;
+    } input;
 
     unsigned sample_rate;
     unsigned channels;
     unsigned channel_mask;
     unsigned bits_per_sample;
 
-    unsigned bytes_per_sample;
-    int (*converter)(unsigned char *raw_pcm_data);
+    /*current reading status, either PCM_OK
+      or one of the error codes*/
+    pcm_status_t status;
 
     /*reads up to the given number of PCM frames
       from this reader to the data array,
@@ -39,7 +52,10 @@ struct PCMReader {
       long in order to hold the returned data
 
       returns the amount of frames actually read
-      which may be less than the number requested*/
+      which may be less than the number requested
+
+      if an error occurs during reading, 0 is returned
+      and the status attribute is set to an error code*/
     unsigned (*read)(struct PCMReader *self,
                      unsigned pcm_frames,
                      int *pcm_data);
@@ -53,13 +69,13 @@ struct PCMReader {
 
 /*opens a PCMReader to a raw stream of PCM data*/
 struct PCMReader*
-pcmreader_open(FILE *file,
-               unsigned sample_rate,
-               unsigned channels,
-               unsigned channel_mask,
-               unsigned bits_per_sample,
-               int is_little_endian,
-               int is_signed);
+pcmreader_open_raw(FILE *file,
+                   unsigned sample_rate,
+                   unsigned channels,
+                   unsigned channel_mask,
+                   unsigned bits_per_sample,
+                   int is_little_endian,
+                   int is_signed);
 
 /*given an array of channel data at least:
 
