@@ -468,6 +468,7 @@ class audiotools_cdio(Extension):
             sources.extend(["src/cdiomodule.c",
                             "src/array.c",
                             "src/pcmconv.c",
+                            "src/pcm_conv.c",
                             "src/pcm.c"])
 
             self.__library_manifest__.append(("libcdio",

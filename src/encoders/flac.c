@@ -593,7 +593,6 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
                                       padding_size);
 
     output->close(output);
-    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
 
     if (frame_sizes) {
