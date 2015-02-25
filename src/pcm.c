@@ -171,7 +171,7 @@ PyTypeObject pcm_FrameListType = {
 void
 FrameList_dealloc(pcm_FrameList* self)
 {
-    PyMem_Free(self->samples);
+    free(self->samples);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -196,7 +196,7 @@ FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds)
 #endif
     int is_big_endian;
     int is_signed;
-    FrameList_char_to_int_converter converter;
+    pcm_to_int_f converter;
 
     if (!PyArg_ParseTuple(args, "s#IIii",
                           &data, &data_size,
@@ -224,10 +224,10 @@ FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds)
     } else {
         self->samples_length = data_size / (self->bits_per_sample / 8);
         self->frames = self->samples_length / self->channels;
-        self->samples = PyMem_Malloc(sizeof(int) * self->samples_length);
-        converter = FrameList_get_char_to_int_converter(self->bits_per_sample,
-                                                        is_big_endian,
-                                                        is_signed);
+        self->samples = malloc(sizeof(int) * self->samples_length);
+        converter = pcm_to_int_converter(self->bits_per_sample,
+                                         is_big_endian,
+                                         is_signed);
         if (converter) {
             FrameList_char_to_samples(self->samples,
                                       data,
@@ -381,7 +381,7 @@ FrameList_frame(pcm_FrameList *self, PyObject *args)
     frame->frames = 1;
     frame->channels = self->channels;
     frame->bits_per_sample = self->bits_per_sample;
-    frame->samples = PyMem_Malloc(sizeof(int) * self->channels);
+    frame->samples = malloc(sizeof(int) * self->channels);
     frame->samples_length = self->channels;
     memcpy(frame->samples,
            self->samples + (frame_number * self->channels),
@@ -407,7 +407,7 @@ FrameList_channel(pcm_FrameList *self, PyObject *args)
     channel->frames = self->frames;
     channel->channels = 1;
     channel->bits_per_sample = self->bits_per_sample;
-    channel->samples = PyMem_Malloc(sizeof(int) * self->frames);
+    channel->samples = malloc(sizeof(int) * self->frames);
     channel->samples_length = self->frames;
 
     for (i = 0; i < self->frames; i++) {
@@ -436,9 +436,9 @@ FrameList_to_bytes(pcm_FrameList *self, PyObject *args)
         FrameList_samples_to_char(
              (uint8_t*)PyBytes_AsString(bytes_obj),
              self->samples,
-             FrameList_get_int_to_char_converter(self->bits_per_sample,
-                                                 is_big_endian,
-                                                 is_signed),
+             int_to_pcm_converter(self->bits_per_sample,
+                                  is_big_endian,
+                                  is_signed),
              self->samples_length,
              self->bits_per_sample);
     }
@@ -483,7 +483,7 @@ FrameList_split(pcm_FrameList *self, PyObject *args)
         head = FrameList_create();
         head->frames = split_point;
         head->samples_length = (head->frames * self->channels);
-        head->samples = PyMem_Malloc(head->samples_length * sizeof(int));
+        head->samples = malloc(head->samples_length * sizeof(int));
         memcpy(head->samples,
                self->samples,
                head->samples_length * sizeof(int));
@@ -491,7 +491,7 @@ FrameList_split(pcm_FrameList *self, PyObject *args)
         tail = FrameList_create();
         tail->frames = (self->frames - split_point);
         tail->samples_length = (tail->frames * self->channels);
-        tail->samples = PyMem_Malloc(tail->samples_length * sizeof(int));
+        tail->samples = malloc(tail->samples_length * sizeof(int));
         memcpy(tail->samples,
                self->samples + head->samples_length,
                tail->samples_length * sizeof(int));
@@ -665,12 +665,12 @@ FrameList_frame_count(pcm_FrameList *self, PyObject *args)
 
 void
 FrameList_char_to_samples(int *samples,
-                          unsigned char *data,
-                          FrameList_char_to_int_converter converter,
+                          const unsigned char *data,
+                          pcm_to_int_f converter,
                           unsigned samples_length,
-                          int bits_per_sample)
+                          unsigned bits_per_sample)
 {
-    int bytes_per_sample = bits_per_sample / 8;
+    const unsigned bytes_per_sample = bits_per_sample / 8;
     int i;
 
     for (i = 0; i < samples_length; i++, data += bytes_per_sample) {
@@ -1080,7 +1080,7 @@ PyTypeObject pcm_FloatFrameListType = {
 void
 FloatFrameList_dealloc(pcm_FloatFrameList* self)
 {
-    PyMem_Free(self->samples);
+    free(self->samples);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -1744,355 +1744,17 @@ MOD_INIT(pcm)
 
 #endif
 
-FrameList_char_to_int_converter
-FrameList_get_char_to_int_converter(int bits_per_sample,
-                                    int is_big_endian,
-                                    int is_signed)
-{
-    switch (bits_per_sample) {
-    case 8:
-        switch (is_big_endian) {
-        case 0:
-            switch (is_signed) {
-            case 0:  /*8 bits-per-sample, little-endian, unsigned*/
-                return FrameList_U8_char_to_int;
-            default: /*8 bits-per-sample, little-endian, signed*/
-                return FrameList_S8_char_to_int;
-            }
-        default:
-            switch (is_signed) {
-            case 0:  /*8 bits-per-sample, big-endian, unsigned*/
-                return FrameList_U8_char_to_int;
-            default: /*8 bits-per-sample, big-endian, signed*/
-                return FrameList_S8_char_to_int;
-            }
-        }
-    case 16:
-        switch (is_big_endian) {
-        case 0:
-            switch (is_signed) {
-            case 0:  /*16 bits-per-sample, little-endian, unsigned*/
-                return FrameList_UL16_char_to_int;
-            default: /*16 bits-per-sample, little-endian, signed*/
-                return FrameList_SL16_char_to_int;
-            }
-        default:
-            switch (is_signed) {
-            case 0:  /*16 bits-per-sample, big-endian, unsigned*/
-                return FrameList_UB16_char_to_int;
-            default: /*16 bits-per-sample, big-endian, signed*/
-                return FrameList_SB16_char_to_int;
-            }
-        }
-    case 24:
-        switch (is_big_endian) {
-        case 0:
-            switch (is_signed) {
-            case 0:  /*24 bits-per-sample, little-endian, unsigned*/
-                return FrameList_UL24_char_to_int;
-            default: /*24 bits-per-sample, little-endian, signed*/
-                return FrameList_SL24_char_to_int;
-            }
-        default:
-            switch (is_signed) {
-            case 0:  /*24 bits-per-sample, big-endian, unsigned*/
-                return FrameList_UB24_char_to_int;
-            default: /*24 bits-per-sample, big-endian, signed*/
-                return FrameList_SB24_char_to_int;
-            }
-        }
-    default:
-        return NULL;
-    }
-}
-
-int
-FrameList_U8_char_to_int(unsigned char *s)
-{
-    return ((int)s[0]) - (1 << 7);
-}
-
-int
-FrameList_S8_char_to_int(unsigned char *s)
-{
-    if (s[0] & 0x80) {
-        /*negative*/
-        return -(int)(0x100 - s[0]);
-    } else {
-        /*positive*/
-        return (int)s[0];
-    }
-}
-
-int
-FrameList_UB16_char_to_int(unsigned char *s)
-{
-    return ((int)(s[0] << 8) | s[1]) - (1 << 15);
-}
-
-int
-FrameList_UL16_char_to_int(unsigned char *s)
-{
-    return ((int)(s[1] << 8) | s[0]) - (1 << 15);
-}
-
-int
-FrameList_SL16_char_to_int(unsigned char *s)
-{
-    if (s[1] & 0x80) {
-        /*negative*/
-        return -(int)(0x10000 - ((s[1] << 8) | s[0]));
-    } else {
-        /*positive*/
-        return (int)(s[1] << 8) | s[0];
-    }
-}
-
-int
-FrameList_SB16_char_to_int(unsigned char *s)
-{
-    if (s[0] & 0x80) {
-        /*negative*/
-        return -(int)(0x10000 - ((s[0] << 8) | s[1]));
-    } else {
-        /*positive*/
-        return (int)(s[0] << 8) | s[1];
-    }
-}
-
-int
-FrameList_UL24_char_to_int(unsigned char *s)
-{
-    return ((int)((s[2] << 16) | (s[1] << 8) | s[0])) - (1 << 23);
-}
-
-int
-FrameList_UB24_char_to_int(unsigned char *s)
-{
-    return ((int)((s[0] << 16) | (s[1] << 8) | s[2])) - (1 << 23);
-}
-
-int
-FrameList_SL24_char_to_int(unsigned char *s)
-{
-    if (s[2] & 0x80) {
-        /*negative*/
-        return -(int)(0x1000000 - ((s[2] << 16) | (s[1] << 8) | s[0]));
-    } else {
-        /*positive*/
-        return (int)((s[2] << 16) | (s[1] << 8) | s[0]);
-    }
-}
-
-int
-FrameList_SB24_char_to_int(unsigned char *s)
-{
-    if (s[0] & 0x80) {
-        /*negative*/
-        return -(int)(0x1000000 - ((s[0] << 16) | (s[1] << 8) | s[2]));
-    } else {
-        /*positive*/
-        return (int)((s[0] << 16) | (s[1] << 8) | s[2]);
-    }
-}
-
 void
 FrameList_samples_to_char(unsigned char *data,
-                          int *samples,
-                          FrameList_int_to_char_converter converter,
+                          const int *samples,
+                          int_to_pcm_f converter,
                           unsigned samples_length,
-                          int bits_per_sample)
+                          unsigned bits_per_sample)
 {
-    int bytes_per_sample = bits_per_sample / 8;
+    const unsigned bytes_per_sample = bits_per_sample / 8;
     int i;
 
     for (i = 0; i < samples_length; i++, data += bytes_per_sample) {
         converter(samples[i], data);
     }
-}
-
-FrameList_int_to_char_converter
-FrameList_get_int_to_char_converter(int bits_per_sample,
-                                    int is_big_endian,
-                                    int is_signed)
-{
-    switch (bits_per_sample) {
-    case 8:
-        switch (is_big_endian) {
-        case 0:
-            switch (is_signed) {
-            case 0:  /*8 bits-per-sample, little-endian, unsigned*/
-                return FrameList_int_to_U8_char;
-            default: /*8 bits-per-sample, little-endian, signed*/
-                return FrameList_int_to_S8_char;
-            }
-        default:
-            switch (is_signed) {
-            case 0:  /*8 bits-per-sample, big-endian, unsigned*/
-                return FrameList_int_to_U8_char;
-            default: /*8 bits-per-sample, big-endian, signed*/
-                return FrameList_int_to_S8_char;
-            }
-        }
-    case 16:
-        switch (is_big_endian) {
-        case 0:
-            switch (is_signed) {
-            case 0:  /*16 bits-per-sample, little-endian, unsigned*/
-                return FrameList_int_to_UL16_char;
-            default: /*16 bits-per-sample, little-endian, signed*/
-                return FrameList_int_to_SL16_char;
-            }
-        default:
-            switch (is_signed) {
-            case 0:  /*16 bits-per-sample, big-endian, unsigned*/
-                return FrameList_int_to_UB16_char;
-            default: /*16 bits-per-sample, big-endian, signed*/
-                return FrameList_int_to_SB16_char;
-            }
-        }
-    case 24:
-        switch (is_big_endian) {
-        case 0:
-            switch (is_signed) {
-            case 0:  /*24 bits-per-sample, little-endian, unsigned*/
-                return FrameList_int_to_UL24_char;
-            default: /*24 bits-per-sample, little-endian, signed*/
-                return FrameList_int_to_SL24_char;
-            }
-        default:
-            switch (is_signed) {
-            case 0:  /*24 bits-per-sample, big-endian, unsigned*/
-                return FrameList_int_to_UB24_char;
-            default: /*24 bits-per-sample, big-endian, signed*/
-                return FrameList_int_to_SB24_char;
-            }
-        }
-    default:
-        return NULL;
-    }
-}
-
-void
-FrameList_int_to_S8_char(int i, unsigned char *s)
-{
-    if (i > 0x7F)
-        i = 0x7F;  /*avoid overflow*/
-    else if (i < -0x80)
-        i = -0x80; /*avoid underflow*/
-
-    if (i >= 0) {
-        /*positive*/
-        s[0] = i;
-    } else {
-        /*negative*/
-        s[0] = (1 << 8) - (-i);
-    }
-}
-
-void
-FrameList_int_to_U8_char(int i, unsigned char *s)
-{
-    i += (1 << 7);
-    s[0] = i & 0xFF;
-}
-
-void
-FrameList_int_to_UB16_char(int i, unsigned char *s)
-{
-    i += (1 << 15);
-    s[0] = (i >> 8) & 0xFF;
-    s[1] = i & 0xFF;
-}
-
-void
-FrameList_int_to_SB16_char(int i, unsigned char *s)
-{
-    if (i > 0x7FFF)
-        i = 0x7FFF;
-    else if (i < -0x8000)
-        i = -0x8000;
-
-    if (i < 0) {
-        i = (1 << 16) - (-i);
-    }
-
-    s[0] = i >> 8;
-    s[1] = i & 0xFF;
-}
-
-void
-FrameList_int_to_UL16_char(int i, unsigned char *s)
-{
-    i += (1 << 15);
-    s[1] = (i >> 8) & 0xFF;
-    s[0] = i & 0xFF;
-}
-
-void
-FrameList_int_to_SL16_char(int i, unsigned char *s)
-{
-    if (i > 0x7FFF)
-        i = 0x7FFF;
-    else if (i < -0x8000)
-        i = -0x8000;
-
-    if (i < 0) {
-        i = (1 << 16) - (-i);
-    }
-
-    s[1] = i >> 8;
-    s[0] = i & 0xFF;
-}
-
-void
-FrameList_int_to_UB24_char(int i, unsigned char *s)
-{
-    i += (1 << 23);
-    s[0] = (i >> 16) & 0xFF;
-    s[1] = (i >> 8) & 0xFF;
-    s[2] = i & 0xFF;
-}
-
-void
-FrameList_int_to_SB24_char(int i, unsigned char *s)
-{
-    if (i > 0x7FFFFF)
-        i = 0x7FFFFF;
-    else if (i < -0x800000)
-        i = -0x800000;
-
-    if (i < 0) {
-        i = (1 << 24) - (-i);
-    }
-
-    s[0] = i >> 16;
-    s[1] = (i >> 8) & 0xFF;
-    s[2] = i & 0xFF;
-}
-
-void
-FrameList_int_to_UL24_char(int i, unsigned char *s)
-{
-    i += (1 << 23);
-    s[2] = (i >> 16) & 0xFF;
-    s[1] = (i >> 8) & 0xFF;
-    s[0] = i & 0xFF;
-}
-
-void
-FrameList_int_to_SL24_char(int i, unsigned char *s)
-{
-    if (i > 0x7FFFFF)
-        i = 0x7FFFFF;
-    else if (i < -0x800000)
-        i = -0x800000;
-
-    if (i < 0) {
-        i = (1 << 24) - (-i);
-    }
-
-    s[2] = i >> 16;
-    s[1] = (i >> 8) & 0xFF;
-    s[0] = i & 0xFF;
 }

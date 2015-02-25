@@ -104,8 +104,7 @@ def encode_flac(filename,
                 disable_lpc_subframes=False,
                 padding_size=4096):
 
-    current_offset = 0
-    frame_offsets = []
+    frame_sizes = []
 
     options = Encoding_Options(block_size,
                                max_lpc_order,
@@ -144,12 +143,11 @@ def encode_flac(filename,
     flac_frame = BitstreamRecorder(0)
 
     while len(frame) > 0:
-        frame_offsets.append((current_offset, frame.frames))
         streaminfo.input_update(frame)
 
         flac_frame.reset()
         encode_flac_frame(flac_frame, pcmreader, options, frame_number, frame)
-        current_offset += flac_frame.bytes()
+        frame_sizes.append((flac_frame.bytes(), frame.frames))
         streaminfo.output_update(flac_frame)
 
         flac_frame.copy(writer)
@@ -163,7 +161,7 @@ def encode_flac(filename,
     writer.flush()
     writer.close()
 
-    return frame_offsets
+    return frame_sizes
 
 
 def encode_flac_frame(writer, pcmreader, options, frame_number, frame):

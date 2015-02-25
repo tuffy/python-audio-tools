@@ -3858,9 +3858,7 @@ class FlacFileTest(TestForeignAiffChunks,
                 "reference FLAC binary flac(1) required for this test")
 
         temp_file = tempfile.NamedTemporaryFile(suffix=".flac")
-        self.encode(temp_file.name,
-                    audiotools.BufferedPCMReader(pcmreader),
-                    **encode_options)
+        self.encode(temp_file.name, pcmreader, **encode_options)
 
         self.assertEqual(
             subprocess.call([audiotools.BIN["flac"], "-ts", temp_file.name]),
@@ -4091,36 +4089,31 @@ class FlacFileTest(TestForeignAiffChunks,
                                                            back_right=True)),
                     (8, audiotools.ChannelMask(0))]:
                     for bps in [8, 16, 24]:
-                        for extra in [[],
-                                      # FIXME - no analogue for -p option
-                                      ["exhaustive_model_search"]]:
-                            for blocksize in [None, 32, 32768, 65535]:
-                                for d in disable:
-                                    encode_opts[d] = True
-                                for e in extra:
-                                    encode_opts[e] = True
-                                if blocksize is not None:
-                                    encode_opts["block_size"] = blocksize
+                        for blocksize in [None, 32, 32768, 65535]:
+                            for d in disable:
+                                encode_opts[d] = True
+                            if blocksize is not None:
+                                encode_opts["block_size"] = blocksize
 
-                                self.__test_reader__(
-                                    MD5_Reader(
-                                        EXACT_RANDOM_PCM_Reader(
-                                            pcm_frames=65536,
-                                            sample_rate=44100,
-                                            channels=channels,
-                                            channel_mask=mask,
-                                            bits_per_sample=bps)),
-                                    **encode_opts)
+                            self.__test_reader__(
+                                MD5_Reader(
+                                    EXACT_RANDOM_PCM_Reader(
+                                        pcm_frames=65536,
+                                        sample_rate=44100,
+                                        channels=channels,
+                                        channel_mask=mask,
+                                        bits_per_sample=bps)),
+                                **encode_opts)
 
-                                self.__test_reader__(
-                                    MD5_Reader(
-                                        EXACT_SILENCE_PCM_Reader(
-                                            pcm_frames=65536,
-                                            sample_rate=44100,
-                                            channels=channels,
-                                            channel_mask=mask,
-                                            bits_per_sample=bps)),
-                                    **encode_opts)
+                            self.__test_reader__(
+                                MD5_Reader(
+                                    EXACT_SILENCE_PCM_Reader(
+                                        pcm_frames=65536,
+                                        sample_rate=44100,
+                                        channels=channels,
+                                        channel_mask=mask,
+                                        bits_per_sample=bps)),
+                                **encode_opts)
 
     @FORMAT_FLAC
     def test_fractional(self):

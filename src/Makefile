@@ -1,6 +1,5 @@
 #This makefile is for generating debug standalone executables
 
-VERSION = "3.1alpha1"
 OBJS = array.o pcm.o pcmconv.o bitstream.a
 FLAGS = -Wall -g
 BINARIES = alacdec \
@@ -42,11 +41,8 @@ shndec: $(OBJS) decoders/shn.c decoders/shn.h buffer.o
 ttadec: $(OBJS) decoders/tta.c decoders/tta.h
 	$(CC) $(FLAGS) -o ttadec decoders/tta.c $(OBJS) -DSTANDALONE
 
-flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_crc.o md5.o
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) md5.o flac_crc.o -DSTANDALONE -lm
-
-flacenc2: encoders/flac2.c encoders/flac2.h bitstream.a pcmreader.o pcm.o md5.o flac_crc.o
-	$(CC) $(FLAGS) -o $@ encoders/flac2.c bitstream.a pcmreader.o pcm.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
+flacenc: encoders/flac.c encoders/flac.h bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o
+	$(CC) $(FLAGS) -o $@ encoders/flac.c bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
 
 alacenc: $(OBJS) encoders/alac.c encoders/alac.h
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c $(OBJS) -DSTANDALONE -lm
@@ -74,6 +70,9 @@ pcm.o: pcm.c pcm.h
 
 pcmconv.o: pcmconv.c pcmconv.h
 	$(CC) $(FLAGS) -c pcmconv.c -DSTANDALONE
+
+pcm_conv.o: pcm_conv.h pcm_conv.c
+	$(CC) $(FLAGS) -c pcm_conv.c
 
 pcmreader: pcmreader.h pcmreader.c pcm.o
 	$(CC) -Wall -g -o $@ pcmreader.c pcm.o -DSTANDALONE -DEXECUTABLE

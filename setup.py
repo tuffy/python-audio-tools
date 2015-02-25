@@ -552,7 +552,8 @@ class audiotools_pcm(Extension):
     def __init__(self):
         Extension.__init__(self,
                            "audiotools.pcm",
-                           sources=["src/pcm.c"])
+                           sources=["src/pcm.c",
+                                    "src/pcm_conv.c"])
 
 
 class audiotools_pcmconverter(Extension):
@@ -689,6 +690,8 @@ class audiotools_encoders(Extension):
         defines = [("VERSION", VERSION), ("HAS_PYTHON", None)]
         sources = ["src/array.c",
                    "src/pcmconv.c",
+                   "src/pcmreader.c",
+                   "src/pcm_conv.c",
                    "src/bitstream.c",
                    "src/buffer.c",
                    "src/func_io.c",

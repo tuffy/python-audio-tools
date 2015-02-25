@@ -1,3 +1,7 @@
+#ifndef STANDALONE
+#include <Python.h>
+#include "pcm.h"
+#endif
 #include <stdio.h>
 
 /********************************************************
@@ -30,8 +34,17 @@ struct PCMReader {
     struct {
         struct {
             FILE *file;
-            int (*converter)(unsigned char *raw_pcm_data);
+            int (*converter)(const unsigned char *raw_pcm_data);
         } raw;
+        #ifndef STANDALONE
+        struct {
+            PyObject *obj;             /*PCMReader object*/
+            PyObject *framelist_type;  /*cached FrameList type*/
+            int stream_finished;       /*flag indicating stream is empty*/
+            pcm_FrameList *framelist;  /*framelist object*/
+            unsigned frames_remaining; /*frames remaining in framelist*/
+        } python;
+        #endif
     } input;
 
     unsigned sample_rate;
@@ -76,6 +89,18 @@ pcmreader_open_raw(FILE *file,
                    unsigned bits_per_sample,
                    int is_little_endian,
                    int is_signed);
+
+#ifndef STANDALONE
+
+/*wraps a PCMReader struct around a PCMReader Python object*/
+struct PCMReader*
+pcmreader_open_python(PyObject *obj);
+
+/*a converter function for use in PyArg_ParseTuple functions*/
+int
+py_obj_to_pcmreader(PyObject *obj, void **pcmreader);
+
+#endif
 
 /*given an array of channel data at least:
 

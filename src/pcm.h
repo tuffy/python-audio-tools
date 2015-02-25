@@ -1,6 +1,8 @@
 #ifndef PCM_H
 #define PCM_H
 
+#include "pcm_conv.h"
+
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
  Copyright (C) 2007-2015  Brian Langenberger
@@ -220,93 +222,17 @@ FloatFrameList_converter(PyObject* obj, void** floatframelist);
 
 #endif
 
-typedef int (*FrameList_char_to_int_converter)(unsigned char *s);
-
 void
 FrameList_char_to_samples(int *samples,
-                          unsigned char *data,
-                          FrameList_char_to_int_converter converter,
+                          const unsigned char *data,
+                          pcm_to_int_f converter,
                           unsigned samples_length,
-                          int bits_per_sample);
-
-FrameList_char_to_int_converter
-FrameList_get_char_to_int_converter(int bits_per_sample,
-                                    int is_big_endian,
-                                    int is_signed);
-
-int
-FrameList_S8_char_to_int(unsigned char *s);
-
-int
-FrameList_U8_char_to_int(unsigned char *s);
-
-int
-FrameList_SL16_char_to_int(unsigned char *s);
-
-int
-FrameList_SB16_char_to_int(unsigned char *s);
-
-int
-FrameList_UL16_char_to_int(unsigned char *s);
-
-int
-FrameList_UB16_char_to_int(unsigned char *s);
-
-int
-FrameList_SL24_char_to_int(unsigned char *s);
-
-int
-FrameList_SB24_char_to_int(unsigned char *s);
-
-int
-FrameList_UL24_char_to_int(unsigned char *s);
-
-int
-FrameList_UB24_char_to_int(unsigned char *s);
-
-
-typedef void (*FrameList_int_to_char_converter)(int i, unsigned char *s);
+                          unsigned bits_per_sample);
 
 void
 FrameList_samples_to_char(unsigned char *data,
-                          int *samples,
-                          FrameList_int_to_char_converter converter,
+                          const int *samples,
+                          int_to_pcm_f converter,
                           unsigned samples_length,
-                          int bits_per_sample);
-
-FrameList_int_to_char_converter
-FrameList_get_int_to_char_converter(int bits_per_sample,
-                                    int is_big_endian,
-                                    int is_signed);
-
-void
-FrameList_int_to_S8_char(int i, unsigned char *s);
-
-void
-FrameList_int_to_U8_char(int i, unsigned char *s);
-
-void
-FrameList_int_to_UB16_char(int i, unsigned char *s);
-
-void
-FrameList_int_to_SB16_char(int i, unsigned char *s);
-
-void
-FrameList_int_to_UL16_char(int i, unsigned char *s);
-
-void
-FrameList_int_to_SL16_char(int i, unsigned char *s);
-
-void
-FrameList_int_to_UB24_char(int i, unsigned char *s);
-
-void
-FrameList_int_to_SB24_char(int i, unsigned char *s);
-
-void
-FrameList_int_to_UL24_char(int i, unsigned char *s);
-
-void
-FrameList_int_to_SL24_char(int i, unsigned char *s);
-
+                          unsigned bits_per_sample);
 #endif

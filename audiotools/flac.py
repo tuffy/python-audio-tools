@@ -1883,6 +1883,19 @@ class FlacAudio(WaveContainer, AiffContainer):
         from audiotools import BufferedPCMReader
         from audiotools import CounterPCMReader
         from audiotools import __default_quality__
+        from audiotools import VERSION
+
+        def sizes_to_offsets(sizes):
+            """takes list of (frame_size, frame_frames) tuples
+            and converts it to a list of (cumulative_size, frame_frames)
+            tuples"""
+
+            current_position = 0
+            offsets = []
+            for frame_size, frame_frames in sizes:
+                offsets.append((current_position, frame_frames))
+                current_position += frame_size
+            return offsets
 
         if ((compression is None) or (compression not in
                                       cls.COMPRESSION_MODES)):
@@ -1979,7 +1992,7 @@ class FlacAudio(WaveContainer, AiffContainer):
             offsets = (encode_flac if encoding_function is None
                        else encoding_function)(
                 filename,
-                pcmreader=BufferedPCMReader(pcmreader),
+                pcmreader=pcmreader,
                 padding_size=padding_size,
                 **encoding_options)
 
@@ -1992,23 +2005,24 @@ class FlacAudio(WaveContainer, AiffContainer):
             metadata = flac.get_metadata()
             assert(metadata is not None)
 
-            # generate SEEKTABLE from encoder offsets and add it to metadata
-            seekpoint_interval = pcmreader.sample_rate * 10
-
-            metadata.add_block(
-                flac.seektable(
-                    [(byte_offset,
-                      pcm_frames) for byte_offset, pcm_frames in offsets],
-                    seekpoint_interval))
-
+            # add VORBIS_COMMENT block with encoder set
             # if channels or bps is too high,
             # automatically generate and add channel mask
-            if ((((pcmreader.channels > 2) or
-                  (pcmreader.bits_per_sample > 16)) and
-                 (channel_mask != 0))):
-                vorbis = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
-                vorbis[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
-                    u"0x%.4X" % (channel_mask)]
+            vorbis_comment = Flac_VORBISCOMMENT(
+                [u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK=0x%0.4X" %
+                 (channel_mask)]
+                if (((pcmreader.channels > 2) or
+                     (pcmreader.bits_per_sample > 16)) and
+                    (channel_mask != 0)) else
+                [],
+                u"Python Audio Tools %s" % (VERSION))
+            metadata.add_block(vorbis_comment)
+
+            # generate SEEKTABLE from encoder offsets and add it to metadata
+            metadata.add_block(
+                flac.seektable(
+                    offsets=sizes_to_offsets(offsets),
+                    seekpoint_interval=pcmreader.sample_rate * 10))
 
             flac.update_metadata(metadata)
 

@@ -4,7 +4,7 @@
 #include <cdio/audio.h>
 #include <cdio/track.h>
 #include <cdio/types.h>
-#include "pcm.h"
+#include "pcm_conv.h"
 #include "pcmconv.h"
 #include "mod_defs.h"
 
@@ -494,6 +494,8 @@ CDDAReader_read_image(cdio_CDDAReader *self,
                       unsigned sectors_to_read,
                       a_int *samples)
 {
+    pcm_to_int_f converter = pcm_to_int_converter(16, 0, 1);
+
     while (sectors_to_read &&
            (self->_.image.current_sector <= self->_.image.final_sector)) {
         uint8_t sector[CDIO_CD_FRAMESIZE_RAW];
@@ -507,7 +509,7 @@ CDDAReader_read_image(cdio_CDDAReader *self,
             unsigned i;
             samples->resize_for(samples, (44100 / 75) * 2);
             for (i = 0; i < ((44100 / 75) * 2); i++) {
-                a_append(samples, FrameList_SL16_char_to_int(data));
+                a_append(samples, converter(data));
                 data += 2;
             }
             self->_.image.current_sector++;
