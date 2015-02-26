@@ -1,6 +1,7 @@
 #include "tta.h"
 #include "../common/tta_crc.h"
 #include "../pcm_conv.h"
+#include "../pcmconv.h"
 #include <string.h>
 
 /********************************************************
