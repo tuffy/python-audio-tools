@@ -36,11 +36,12 @@ typedef enum {
 
 struct PCMReader {
     struct {
+        #ifdef STANDALONE
         struct {
             FILE *file;
             int (*converter)(const unsigned char *raw_pcm_data);
         } raw;
-        #ifndef STANDALONE
+        #else
         struct {
             PyObject *obj;             /*PCMReader object*/
             PyObject *framelist_type;  /*cached FrameList type*/
@@ -84,6 +85,7 @@ struct PCMReader {
     void (*del)(struct PCMReader *self);
 };
 
+#ifdef STANDALONE
 /*opens a PCMReader to a raw stream of PCM data*/
 struct PCMReader*
 pcmreader_open_raw(FILE *file,
@@ -94,7 +96,7 @@ pcmreader_open_raw(FILE *file,
                    int is_little_endian,
                    int is_signed);
 
-#ifndef STANDALONE
+#else
 
 /*wraps a PCMReader struct around a PCMReader Python object*/
 struct PCMReader*

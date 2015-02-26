@@ -1,10 +1,8 @@
 #include <Python.h>
 #include "mod_defs.h"
-#include "pcm.h"
-#include "pcmconv.h"
 #include "framelist.h"
+#include "pcmreader.h"
 #include "bitstream.h"
-#include "array.h"
 #include "dither.c"
 #include "replaygain.h"
 
@@ -247,10 +245,6 @@ PyObject*
 ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
 {
     pcm_FrameList* framelist;
-    aa_int* channels;
-    aa_double* channels_f;
-    unsigned channel;
-    int32_t peak_shift;
 
     if (!PyArg_ParseTuple(args, "O!", self->framelist_type, &framelist))
         return NULL;
@@ -259,93 +253,77 @@ ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
     if (framelist->samples_length == 0) {
         Py_INCREF(Py_None);
         return Py_None;
-    }
+    } else {
+        const int32_t peak_shift = 1 << (framelist->bits_per_sample - 1);
+        unsigned i;
+        int left_i[framelist->frames];
+        int right_i[framelist->frames];
+        double left_f[framelist->frames];
+        double right_f[framelist->frames];
 
-    channels = aa_int_new();
+        /*split FrameList's packed ints into a set of channels
+          to a maximum of 2 channels*/
+        get_channel_data(framelist->samples,
+                         0,
+                         framelist->channels,
+                         framelist->frames,
+                         left_i);
 
-    /*split FrameList's packed ints into a set of channels
-      to a maximum of 2 channels*/
-    for (channel = 0; channel < MIN(framelist->channels, 2); channel++) {
-        a_int* channel_a = channels->append(channels);
-        unsigned frame;
-        channel_a->resize(channel_a, framelist->frames);
-        for (frame = 0; frame < framelist->frames; frame++) {
-            a_append(channel_a,
-                     framelist->samples[(frame * framelist->channels) +
-                                        channel]);
-        }
-    }
+        /*if 1 channel, duplicate to right channel*/
+        get_channel_data(framelist->samples,
+                         framelist->channels > 1 ? 1 : 0,
+                         framelist->channels,
+                         framelist->frames,
+                         right_i);
 
-    /*if 1 channel, duplicate to other channel*/
-    if (framelist->channels == 1) {
-        channels->_[0]->copy(channels->_[0], channels->append(channels));
-    }
 
-    /*calculate peak values*/
-    peak_shift = 1 << (framelist->bits_per_sample - 1);
-    for (channel = 0; channel < 2; channel++) {
-        a_int* channel_i = channels->_[channel];
-        int i;
-
-        for (i = 0; i < channel_i->len; i++) {
-            const double peak = ((double)(abs(channel_i->_[i])) / peak_shift);
+        /*calculate peak values*/
+        for (i = 0; i < framelist->frames; i++) {
+            const double peak_l = ((double)(abs(left_i[i]))) / peak_shift;
+            const double peak_r = ((double)(abs(right_i[i]))) / peak_shift;
+            const double peak = MAX(peak_l, peak_r);
             self->title_peak = MAX(self->title_peak, peak);
             self->album_peak = MAX(self->album_peak, peak);
         }
-    }
 
-    /*convert left and right channels to 16-bit doubles*/
-    channels_f = aa_double_new();
-    for (channel = 0; channel < 2; channel++) {
-        a_int* channel_i = channels->_[channel];
-        a_double* channel_f = channels_f->append(channels_f);
-        int i;
-
-        channel_f->resize(channel_f, channel_i->len);
-
+        /*convert channels to 16-bit doubles*/
         switch (framelist->bits_per_sample) {
         case 8:
-            for (i = 0; i < channel_i->len; i++) {
-                a_append(channel_f, (double)(channel_i->_[i] << 8));
+            for (i = 0; i < framelist->frames; i++) {
+                left_f[i] = (double)(left_i[i] << 8);
+                right_f[i] = (double)(right_i[i] << 8);
             }
             break;
         case 16:
-            for (i = 0; i < channel_i->len; i++) {
-                a_append(channel_f, (double)(channel_i->_[i]));
+            for (i = 0; i < framelist->frames; i++) {
+                left_f[i] = (double)(left_i[i]);
+                right_f[i] = (double)(right_i[i]);
             }
             break;
         case 24:
-            for (i = 0; i < channel_i->len; i++) {
-                a_append(channel_f, (double)(channel_i->_[i] >> 8));
+            for (i = 0; i < framelist->frames; i++) {
+                left_f[i] = (double)(left_i[i] >> 8);
+                right_f[i] = (double)(right_i[i] >> 8);
             }
             break;
         default:
-            PyErr_SetString(PyExc_ValueError,
-                            "unsupported bits per sample");
-            channels->del(channels);
-            channels_f->del(channels_f);
+            PyErr_SetString(PyExc_ValueError, "unsupported bits per sample");
             return NULL;
         }
+
+        /*perform gain analysis on channels*/
+        if (ReplayGain_analyze_samples(self,
+                                       left_f,
+                                       right_f,
+                                       framelist->frames,
+                                       2) == GAIN_ANALYSIS_ERROR) {
+            PyErr_SetString(PyExc_ValueError, "ReplayGain calculation error");
+            return NULL;
+        }
+
+        Py_INCREF(Py_None);
+        return Py_None;
     }
-
-    /*perform gain analysis on channels*/
-    if (ReplayGain_analyze_samples(self,
-                                   channels_f->_[0]->_,
-                                   channels_f->_[1]->_,
-                                   channels_f->_[0]->len,
-                                   2) == GAIN_ANALYSIS_ERROR) {
-        PyErr_SetString(PyExc_ValueError, "ReplayGain calculation error");
-        channels->del(channels);
-        channels_f->del(channels_f);
-        return NULL;
-    }
-
-    /*remove temporary arrays and return None*/
-    channels->del(channels);
-    channels_f->del(channels_f);
-
-    Py_INCREF(Py_None);
-    return Py_None;
 }
 
 PyObject*
@@ -851,16 +829,17 @@ ReplayGainReader_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 int
 ReplayGainReader_init(replaygain_ReplayGainReader *self,
                       PyObject *args, PyObject *kwds) {
-    self->pcmreader = NULL;
-    self->channels = aa_int_new();
-    self->white_noise = NULL;
-    self->audiotools_pcm = NULL;
-
     double replaygain;
     double peak;
 
+    self->stream_closed = 0;
+    self->pcmreader = NULL;
+    self->white_noise = NULL;
+    self->audiotools_pcm = NULL;
+
+
     if (!PyArg_ParseTuple(args, "O&dd",
-                          pcmreader_converter, &(self->pcmreader),
+                          py_obj_to_pcmreader, &(self->pcmreader),
                           &(replaygain),
                           &(peak)))
         return -1;
@@ -882,7 +861,6 @@ void
 ReplayGainReader_dealloc(replaygain_ReplayGainReader* self) {
     if (self->pcmreader != NULL)
         self->pcmreader->del(self->pcmreader);
-    self->channels = aa_int_new();
     if (self->white_noise != NULL)
         self->white_noise->close(self->white_noise);
     Py_XDECREF(self->audiotools_pcm);
@@ -916,13 +894,12 @@ ReplayGainReader_channel_mask(replaygain_ReplayGainReader *self,
 
 static PyObject*
 ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
-    int pcm_frames = 0;
-    aa_int* channels = self->channels;
-    unsigned c;
+    int pcm_frames;
 
-    const int max_value = (1 << (self->pcmreader->bits_per_sample - 1)) - 1;
-    const int min_value = -(1 << (self->pcmreader->bits_per_sample - 1));
-    const double multiplier = self->multiplier;
+    if (self->stream_closed) {
+        PyErr_SetString(PyExc_ValueError, "unable to read from closed stream");
+        return NULL;
+    }
 
     if (!PyArg_ParseTuple(args, "i", &pcm_frames))
         return NULL;
@@ -930,35 +907,52 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
     if (pcm_frames <= 0) {
         PyErr_SetString(PyExc_ValueError, "pcm_frames must be positive");
         return NULL;
-    }
+    } else {
+        const int max_value = (1 << (self->pcmreader->bits_per_sample - 1)) - 1;
+        const int min_value = -(1 << (self->pcmreader->bits_per_sample - 1));
+        const double multiplier = self->multiplier;
 
-    /*read FrameList object from internal PCMReader*/
-    if (self->pcmreader->read(self->pcmreader,
-                              (unsigned)pcm_frames,
-                              channels))
-        return NULL;
+        pcm_FrameList *framelist = new_FrameList(
+            self->audiotools_pcm,
+            self->pcmreader->channels,
+            self->pcmreader->bits_per_sample,
+            pcm_frames);
 
-    /*apply our multiplier to framelist's integer samples
-      and apply dithering*/
-    for (c = 0; c < channels->len; c++) {
-        a_int* channel = channels->_[c];
+        const unsigned frames_read =
+            self->pcmreader->read(self->pcmreader,
+                                  pcm_frames,
+                                  framelist->samples);
+        const unsigned total_samples =
+            frames_read * self->pcmreader->channels;
         unsigned i;
-        for (i = 0; i < channel->len; i++) {
-            channel->_[i] = (int)lround(channel->_[i] * multiplier);
-            channel->_[i] = (MIN(MAX(channel->_[i], min_value), max_value) ^
-                             self->white_noise->read(self->white_noise, 1));
-        }
-    }
 
-    /*return integer samples as a new FrameList object*/
-    return aa_int_to_FrameList(self->audiotools_pcm,
-                               channels,
-                               self->pcmreader->bits_per_sample);
+        if (!frames_read && (self->pcmreader->status != PCM_OK)) {
+            Py_DECREF((PyObject*)framelist);
+            return NULL;
+        } else {
+            framelist->frames = frames_read;
+            framelist->samples_length = total_samples;
+        }
+
+        /*apply our multiplier to framelist's integer samples
+          and apply dithering*/
+        for (i = 0; i < total_samples; i++) {
+            framelist->samples[i] =
+                (int)lround(framelist->samples[i] * multiplier);
+            framelist->samples[i] =
+                (MIN(MAX(framelist->samples[i], min_value), max_value) ^
+                 self->white_noise->read(self->white_noise, 1));
+        }
+
+        /*return integer samples as a new FrameList object*/
+        return (PyObject*)framelist;
+    }
 }
 
 static PyObject*
 ReplayGainReader_close(replaygain_ReplayGainReader* self, PyObject *args) {
     self->pcmreader->close(self->pcmreader);
+    self->stream_closed = 1;
     Py_INCREF(Py_None);
     return Py_None;
 }

@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include "pcmreader.h"
+#ifndef STANDALONE
 #include "pcm_conv.h"
+#endif
 
 #ifndef MIN
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -37,12 +39,14 @@ pcmreader_##name##_close(struct PCMReader *self); \
 static void                                       \
 pcmreader_##name##_del(struct PCMReader *self);
 
+#ifdef STANDALONE
 READER_DEFS(raw)
-#ifndef STANDALONE
+#else
 READER_DEFS(python)
 #endif
 
 
+#ifdef STANDALONE
 struct PCMReader*
 pcmreader_open_raw(FILE *file,
                    unsigned sample_rate,
@@ -71,7 +75,7 @@ pcmreader_open_raw(FILE *file,
     return reader;
 }
 
-#ifndef STANDALONE
+#else
 
 #if PY_MAJOR_VERSION >= 3
 #ifndef PyInt_AsLong
@@ -184,7 +188,7 @@ pcmreader_display(const struct PCMReader *pcmreader, FILE *output)
     fprintf(output, "bits-per-sample  %u\n", pcmreader->bits_per_sample);
 }
 
-
+#ifdef STANDALONE
 static unsigned
 pcmreader_raw_read(struct PCMReader *self,
                    unsigned pcm_frames,
@@ -232,7 +236,7 @@ pcmreader_raw_del(struct PCMReader *self)
     free(self);
 }
 
-#ifndef STANDALONE
+#else
 
 static unsigned
 pcmreader_python_read(struct PCMReader *self,
