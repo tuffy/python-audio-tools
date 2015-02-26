@@ -1540,6 +1540,7 @@ alac_seektable_print(struct alac_seektable *entry, FILE *output)
 
 
 #ifdef STANDALONE
+
 int main(int argc, char* argv[]) {
     decoders_ALACDecoder decoder;
     unsigned channel_count;
@@ -1548,7 +1549,7 @@ int main(int argc, char* argv[]) {
     unsigned frame;
     unsigned channel;
     unsigned bytes_per_sample;
-    FrameList_int_to_char_converter converter;
+    int_to_pcm_f converter;
     unsigned char* output_data;
     unsigned output_data_size;
     unsigned pcm_size;
@@ -1568,8 +1569,7 @@ int main(int argc, char* argv[]) {
         output_data = malloc(1);
         output_data_size = 1;
         bytes_per_sample = decoder.bits_per_sample / 8;
-        converter = FrameList_get_int_to_char_converter(
-            decoder.bits_per_sample, 0, 1);
+        converter = int_to_pcm_converter(decoder.bits_per_sample, 0, 1);
     }
 
     while (decoder.remaining_frames) {

@@ -1,6 +1,6 @@
 #include "shn.h"
-#include "../pcmconv.h"
 #include "../buffer.h"
+#include "../pcm_conv.h"
 #include <string.h>
 #include <math.h>
 
@@ -1063,7 +1063,7 @@ int main(int argc, char* argv[]) {
     unsigned output_data_size;
     unsigned char* output_data;
     unsigned bytes_per_sample;
-    FrameList_int_to_char_converter converter;
+    int_to_pcm_f converter;
 
     if (argc < 2) {
         fprintf(stderr, "*** Usage: %s <file.shn>\n", argv[0]);
@@ -1106,8 +1106,7 @@ int main(int argc, char* argv[]) {
         goto error;
     default:
         bytes_per_sample = decoder.bits_per_sample / 8;
-        converter = FrameList_get_int_to_char_converter(
-            decoder.bits_per_sample, 0, 1);
+        converter = int_to_pcm_converter(decoder.bits_per_sample, 0, 1);
         break;
     }
 

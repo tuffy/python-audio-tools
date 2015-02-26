@@ -468,8 +468,7 @@ class audiotools_cdio(Extension):
             sources.extend(["src/cdiomodule.c",
                             "src/array.c",
                             "src/pcmconv.c",
-                            "src/pcm_conv.c",
-                            "src/pcm.c"])
+                            "src/pcm_conv.c"])
 
             self.__library_manifest__.append(("libcdio",
                                               "CDDA data extraction",
@@ -519,7 +518,7 @@ class audiotools_dvdaudio(Extension):
             sources.extend(["src/dvdamodule.c",
                             "src/array.c",
                             "src/pcmconv.c",
-                            "src/pcm.c"])
+                            "src/pcm_conv.c"])
 
             self.__library_manifest__.append(("libdvd-audio",
                                               "DVD-Audio data extraction",
@@ -554,7 +553,8 @@ class audiotools_pcm(Extension):
         Extension.__init__(self,
                            "audiotools.pcm",
                            sources=["src/pcm.c",
-                                    "src/pcm_conv.c"])
+                                    "src/pcm_conv.c"],
+                           define_macros=[("PCM_MODULE", None)])
 
 
 class audiotools_pcmconverter(Extension):

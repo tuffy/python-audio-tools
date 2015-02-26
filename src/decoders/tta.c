@@ -1,6 +1,6 @@
 #include "tta.h"
 #include "../common/tta_crc.h"
-#include "../pcmconv.h"
+#include "../pcm_conv.h"
 #include <string.h>
 
 /********************************************************
@@ -733,7 +733,7 @@ int main(int argc, char* argv[]) {
     unsigned current_tta_frame = 0;
     unsigned block_size;
     unsigned* seektable = NULL;
-    FrameList_int_to_char_converter converter;
+    int_to_pcm_f converter;
     unsigned output_data_size;
     unsigned char* output_data;
     unsigned bytes_per_sample;
@@ -799,7 +799,7 @@ int main(int argc, char* argv[]) {
     }
 
     /*setup a framelist converter function*/
-    converter = FrameList_get_int_to_char_converter(bits_per_sample, 0, 1);
+    converter = int_to_pcm_converter(bits_per_sample, 0, 1);
 
     /*read TTA frames*/
     while (remaining_pcm_frames) {

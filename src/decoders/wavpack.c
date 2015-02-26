@@ -1,5 +1,5 @@
 #include "wavpack.h"
-#include "../pcmconv.h"
+#include "../pcm_conv.h"
 #include <string.h>
 
 /********************************************************
@@ -1941,7 +1941,7 @@ int main(int argc, char* argv[]) {
     unsigned bytes_per_sample;
     unsigned char *output_data;
     unsigned output_data_size;
-    FrameList_int_to_char_converter converter;
+    int_to_pcm_f converter;
 
     struct block_header block_header;
 
@@ -1958,8 +1958,7 @@ int main(int argc, char* argv[]) {
         bytes_per_sample = decoder.bits_per_sample / 8;
         output_data = malloc(1);
         output_data_size = 1;
-        converter = FrameList_get_int_to_char_converter(
-            decoder.bits_per_sample, 0, 1);
+        converter = int_to_pcm_converter(decoder.bits_per_sample, 0, 1);
     }
 
     while (decoder.remaining_pcm_samples) {

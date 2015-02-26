@@ -23,6 +23,10 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+/*This module is for abstracting away PCM reading
+  for use by audio encoding routines so that they don't have
+  to make calls to a PCMReader object directly*/
+
 typedef enum {
     PCM_OK,                /*no error has occurred*/
     PCM_READ_ERROR,        /*got exception from wrapped PCMReader*/

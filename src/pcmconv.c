@@ -357,9 +357,9 @@ struct pcmreader_s* open_pcmreader(FILE* file,
     pcmreader->callback_buffer_size = 1;
     pcmreader->callback_buffer = malloc(pcmreader->callback_buffer_size);
     pcmreader->buffer_converter =
-        FrameList_get_char_to_int_converter(pcmreader->bits_per_sample,
-                                            pcmreader->big_endian,
-                                            pcmreader->is_signed);;
+        pcm_to_int_converter(pcmreader->bits_per_sample,
+                             pcmreader->big_endian,
+                             pcmreader->is_signed);;
 
     pcmreader->callbacks = NULL;
 
@@ -388,7 +388,7 @@ int pcmreader_read(struct pcmreader_s* reader,
     unsigned int frame;
 
     struct pcmreader_callback *callback;
-    FrameList_int_to_char_converter callback_converter;
+    int_to_pcm_f callback_converter;
 
     if (reader->buffer_size < bytes_to_read) {
         reader->buffer_size = bytes_to_read;
@@ -431,9 +431,9 @@ int pcmreader_read(struct pcmreader_s* reader,
         }
 
         callback_converter =
-            FrameList_get_int_to_char_converter(reader->bits_per_sample,
-                                                !callback->little_endian,
-                                                callback->is_signed);
+            int_to_pcm_converter(reader->bits_per_sample,
+                                 !callback->little_endian,
+                                 callback->is_signed);
 
         for (byte = 0; byte < bytes_read; byte += reader->bytes_per_sample) {
             callback_converter(reader->buffer_converter(reader->buffer + byte),

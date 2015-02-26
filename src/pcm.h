@@ -28,6 +28,7 @@
 *******************/
 
 #ifndef STANDALONE
+
 typedef struct {
     PyObject_HEAD;
 
@@ -44,6 +45,7 @@ typedef struct {
                                between channels and bits-per-sample*/
 } pcm_FrameList;
 
+#ifdef PCM_MODULE
 void
 FrameList_dealloc(pcm_FrameList* self);
 
@@ -126,7 +128,7 @@ FrameList_from_channels(PyObject *dummy, PyObject *args);
 /*for use with the PyArg_ParseTuple function*/
 int
 FrameList_converter(PyObject* obj, void** framelist);
-
+#endif
 
 /***********************
   FloatFrameList Object
@@ -147,6 +149,7 @@ typedef struct {
                                 between channels*/
 } pcm_FloatFrameList;
 
+#ifdef PCM_MODULE
 void
 FloatFrameList_dealloc(pcm_FloatFrameList* self);
 
@@ -219,6 +222,7 @@ FloatFrameList_from_channels(PyObject *dummy, PyObject *args);
 /*for use with the PyArg_ParseTuple function*/
 int
 FloatFrameList_converter(PyObject* obj, void** floatframelist);
+#endif
 
 #endif
 
