@@ -1,5 +1,6 @@
 #include "sine.h"
 #include "../pcmconv.h"
+#include "../framelist.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

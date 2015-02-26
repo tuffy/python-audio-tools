@@ -1,5 +1,6 @@
 #include "dvdamodule.h"
 #include "mod_defs.h"
+#include "framelist.h"
 #include "pcmconv.h"
 
 /********************************************************
@@ -451,16 +452,12 @@ TrackReader_read(dvda_TrackReader *self, PyObject *args)
     requested_pcm_frames = MIN(MAX(pcm_frames, 1), 1 << 20);
 
     /*grab empty FrameList and make a buffer for it*/
-    if ((framelist = (pcm_FrameList*)empty_FrameList(
-            self->audiotools_pcm,
-            channel_count,
-            bits_per_sample)) == NULL) {
+    if ((framelist = new_FrameList(self->audiotools_pcm,
+                                   channel_count,
+                                   bits_per_sample,
+                                   requested_pcm_frames)) == NULL) {
         return NULL;
     }
-    framelist->samples = PyMem_Realloc(
-        framelist->samples,
-        requested_pcm_frames * channel_count * (bits_per_sample / 8) *
-        sizeof(int));
 
     /*perform read to FrameList's buffer*/
     received_pcm_frames = dvda_read(self->reader,

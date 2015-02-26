@@ -1,5 +1,6 @@
-#include "pcmconv.h"
 #include <stdlib.h>
+#include "pcmconv.h"
+#include "framelist.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -27,12 +28,6 @@
 #define PyInt_AsLong PyLong_AsLong
 #endif
 #endif
-
-PyObject*
-open_audiotools_pcm(void)
-{
-    return PyImport_ImportModule("audiotools.pcm");
-}
 
 PyObject*
 a_int_to_FrameList(PyObject* audiotools_pcm,
@@ -114,16 +109,6 @@ aa_int_to_FrameList(PyObject* audiotools_pcm,
     } else {
         return NULL;
     }
-}
-
-PyObject*
-empty_FrameList(PyObject* audiotools_pcm,
-                unsigned int channels,
-                unsigned int bits_per_sample)
-{
-    return PyObject_CallMethod(
-        audiotools_pcm,
-        "empty_framelist", "ii", channels, bits_per_sample);
 }
 
 struct pcmreader_s*

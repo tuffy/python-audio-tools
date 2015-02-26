@@ -106,12 +106,11 @@ py_obj_to_pcmreader(PyObject *obj, void **pcmreader);
 
 #endif
 
-/*given an array of channel data at least:
+/*pcm_data must contain at least:  channel_count * pcm_frames  entries
 
-  pcm_frames * channel_count
+  channel_data must contain at least:  pcm_frames  entries
 
-  large, copies the requested channel to "channel_data" which must be
-  "pcm_frames" large*/
+  copies a channel's worth of data from pcm_data to channel_data*/
 void
 get_channel_data(const int *pcm_data,
                  unsigned channel_number,

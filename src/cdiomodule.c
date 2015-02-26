@@ -6,6 +6,7 @@
 #include <cdio/types.h>
 #include "pcm_conv.h"
 #include "pcmconv.h"
+#include "framelist.h"
 #include "mod_defs.h"
 
 /********************************************************
@@ -444,10 +445,9 @@ CDDAReader_read(cdio_CDDAReader* self, PyObject *args)
 {
     int pcm_frames;
     unsigned sectors_to_read;
-    a_int *samples = a_int_new();
-    int successful;
+    pcm_FrameList *framelist;
+    int sectors_read;
     PyThreadState *thread_state = NULL;
-    PyObject *to_return;
 
     if (!PyArg_ParseTuple(args, "i", &pcm_frames)) {
         return NULL;
@@ -463,6 +463,11 @@ CDDAReader_read(cdio_CDDAReader* self, PyObject *args)
         sectors_to_read = 1;
     }
 
+    framelist = new_FrameList(self->audiotools_pcm,
+                              2,
+                              16,
+                              sectors_to_read * (44100 / 75));
+
     /*if logging is in progress, only let a single thread
       into this function at once so that the global callback
       can be set and used atomically
@@ -472,18 +477,18 @@ CDDAReader_read(cdio_CDDAReader* self, PyObject *args)
     if (!self->is_logging) {
         thread_state = PyEval_SaveThread();
     }
-    successful = !self->read(self, sectors_to_read, samples);
+    sectors_read = self->read(self, sectors_to_read, framelist->samples);
     if (!self->is_logging) {
         PyEval_RestoreThread(thread_state);
     }
 
-    if (successful) {
-        to_return = a_int_to_FrameList(self->audiotools_pcm,
-                                       samples, 2, 16);
-        samples->del(samples);
-        return to_return;
+    if (sectors_read >= 0) {
+        /*reduce length of framelist if fewer samples are read*/
+        framelist->frames = sectors_read * (44100 / 75);
+        framelist->samples_length = sectors_read * (44100 / 75) * 2;
+        return (PyObject*)framelist;
     } else {
-        samples->del(samples);
+        Py_DECREF((PyObject*)framelist);
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
@@ -492,8 +497,9 @@ CDDAReader_read(cdio_CDDAReader* self, PyObject *args)
 static int
 CDDAReader_read_image(cdio_CDDAReader *self,
                       unsigned sectors_to_read,
-                      a_int *samples)
+                      int *samples)
 {
+    const unsigned initial_sectors_to_read = sectors_to_read;
     pcm_to_int_f converter = pcm_to_int_converter(16, 0, 1);
 
     while (sectors_to_read &&
@@ -507,26 +513,28 @@ CDDAReader_read_image(cdio_CDDAReader *self,
 
         if (result == DRIVER_OP_SUCCESS) {
             unsigned i;
-            samples->resize_for(samples, (44100 / 75) * 2);
             for (i = 0; i < ((44100 / 75) * 2); i++) {
-                a_append(samples, converter(data));
+                *samples = converter(data);
                 data += 2;
+                samples += 1;
             }
             self->_.image.current_sector++;
             sectors_to_read--;
         } else {
-            return 1;
+            return -1;
         }
     }
 
-    return 0;
+    return initial_sectors_to_read - sectors_to_read;
 }
 
 static int
 CDDAReader_read_device(cdio_CDDAReader *self,
                        unsigned sectors_to_read,
-                       a_int *samples)
+                       int *samples)
 {
+    const unsigned initial_sectors_to_read = sectors_to_read;
+
     if (self->is_logging) {
         log_state = &(self->log);
     }
@@ -540,9 +548,9 @@ CDDAReader_read_device(cdio_CDDAReader *self,
                 10);
         unsigned i;
 
-        samples->resize_for(samples, (44100 / 75) * 2);
         for (i = 0; i < ((44100 / 75) * 2); i++) {
-            a_append(samples, raw_sector[i]);
+            *samples = raw_sector[i];
+            samples += 1;
         }
 
         self->_.drive.current_sector++;
@@ -553,7 +561,7 @@ CDDAReader_read_device(cdio_CDDAReader *self,
         log_state = NULL;
     }
 
-    return 0;
+    return initial_sectors_to_read - sectors_to_read;
 }
 
 static PyObject*

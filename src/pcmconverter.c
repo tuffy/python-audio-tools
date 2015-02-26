@@ -1,6 +1,7 @@
 #include <Python.h>
 #include "mod_defs.h"
 #include "pcmconv.h"
+#include "framelist.h"
 #include "array.h"
 #include "bitstream.h"
 #include "samplerate/samplerate.h"

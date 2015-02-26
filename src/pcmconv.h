@@ -29,13 +29,6 @@
                array_* to FrameList utilities
 *******************************************************/
 
-
-/*returns an audiotools.pcm module object for generating blank FrameLists
-  or NULL on error
-  this must be PyXDECREF()ed once no longer needed*/
-PyObject*
-open_audiotools_pcm(void);
-
 /*given a list of flattened PCM data,
   returns a new FrameList object containing that data
   with the given number of channels and bits per sample
@@ -55,13 +48,6 @@ PyObject*
 aa_int_to_FrameList(PyObject* audiotools_pcm,
                     aa_int* channels,
                     unsigned int bits_per_sample);
-
-/*returns an empty FrameList object with the given number of channels
-  typically returned at the end of a stream*/
-PyObject*
-empty_FrameList(PyObject* audiotools_pcm,
-                unsigned int channels,
-                unsigned int bits_per_sample);
 
 
 /******************************************************

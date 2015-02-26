@@ -466,8 +466,7 @@ class audiotools_cdio(Extension):
                     system_libraries.extra_link_args("libcdio_paranoia"))
 
             sources.extend(["src/cdiomodule.c",
-                            "src/array.c",
-                            "src/pcmconv.c",
+                            "src/framelist.c",
                             "src/pcm_conv.c"])
 
             self.__library_manifest__.append(("libcdio",
@@ -516,8 +515,7 @@ class audiotools_dvdaudio(Extension):
                     system_libraries.extra_link_args("libdvd-audio"))
 
             sources.extend(["src/dvdamodule.c",
-                            "src/array.c",
-                            "src/pcmconv.c",
+                            "src/framelist.c",
                             "src/pcm_conv.c"])
 
             self.__library_manifest__.append(("libdvd-audio",
@@ -563,6 +561,7 @@ class audiotools_pcmconverter(Extension):
                            "audiotools.pcmconverter",
                            sources=["src/pcmconverter.c",
                                     "src/pcmconv.c",
+                                    "src/framelist.c",
                                     "src/array.c",
                                     "src/bitstream.c",
                                     "src/buffer.c",
@@ -580,6 +579,7 @@ class audiotools_replaygain(Extension):
         Extension.__init__(self,
                            "audiotools.replaygain",
                            sources=["src/replaygain.c",
+                                    "src/framelist.c",
                                     "src/pcmconv.c",
                                     "src/array.c",
                                     "src/bitstream.c",
@@ -596,6 +596,7 @@ class audiotools_decoders(Extension):
         defines = [("VERSION", VERSION), ("HAS_PYTHON", None)]
         sources = ["src/array.c",
                    "src/pcmconv.c",
+                   "src/framelist.c",
                    "src/common/md5.c",
                    "src/bitstream.c",
                    "src/buffer.c",
@@ -692,6 +693,7 @@ class audiotools_encoders(Extension):
         sources = ["src/array.c",
                    "src/pcmconv.c",
                    "src/pcmreader.c",
+                   "src/framelist.c",
                    "src/pcm_conv.c",
                    "src/bitstream.c",
                    "src/buffer.c",

@@ -2,6 +2,7 @@
 #include "mod_defs.h"
 #include "pcm.h"
 #include "pcmconv.h"
+#include "framelist.h"
 #include "bitstream.h"
 #include "array.h"
 #include "dither.c"

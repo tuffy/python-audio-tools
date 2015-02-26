@@ -5,6 +5,7 @@
 #include "oggflac.h"
 #include "../common/flac_crc.h"
 #include "../pcmconv.h"
+#include "../framelist.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

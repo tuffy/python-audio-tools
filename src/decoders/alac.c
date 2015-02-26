@@ -1,5 +1,6 @@
 #include "alac.h"
 #include "../pcmconv.h"
+#include "../framelist.h"
 #include <string.h>
 
 /********************************************************

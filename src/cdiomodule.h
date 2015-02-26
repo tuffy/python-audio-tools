@@ -1,7 +1,6 @@
 #include <Python.h>
 #include <cdio/cdda.h>
 #include <cdio/paranoia.h>
-#include "array.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -76,7 +75,7 @@ typedef struct cdio_CDDAReader_s {
     int (*last_sector)(struct cdio_CDDAReader_s *self);
     int (*read)(struct cdio_CDDAReader_s *self,
                 unsigned to_read,
-                a_int *samples);
+                int *samples);
     unsigned (*seek)(struct cdio_CDDAReader_s *self, unsigned sector);
     void (*set_speed)(struct cdio_CDDAReader_s *self, int new_speed);
     void (*dealloc)(struct cdio_CDDAReader_s *self);
@@ -197,12 +196,12 @@ CDDAReader_read(cdio_CDDAReader* self, PyObject *args);
 static int
 CDDAReader_read_image(cdio_CDDAReader *self,
                       unsigned sectors_to_read,
-                      a_int *samples);
+                      int *samples);
 
 static int
 CDDAReader_read_device(cdio_CDDAReader *self,
                        unsigned sectors_to_read,
-                       a_int *samples);
+                       int *samples);
 
 static PyObject*
 CDDAReader_seek(cdio_CDDAReader* self, PyObject *args);

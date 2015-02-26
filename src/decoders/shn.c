@@ -2,6 +2,7 @@
 #include "../buffer.h"
 #include "../pcm_conv.h"
 #include "../pcmconv.h"
+#include "../framelist.h"
 #include <string.h>
 #include <math.h>
 

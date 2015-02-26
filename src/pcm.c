@@ -265,6 +265,7 @@ FrameList_empty(PyObject *dummy, PyObject *args)
         PyErr_SetString(PyExc_ValueError, "channels must be > 0");
         return NULL;
     }
+
     if ((bits_per_sample != 8) &&
         (bits_per_sample != 16) &&
         (bits_per_sample != 24)) {
