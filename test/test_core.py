@@ -1928,14 +1928,6 @@ class TestFloatFrameList(unittest.TestCase):
         f1 = audiotools.pcm.FloatFrameList(list(map(float, range(10))), 2)
         self.assertRaises(TypeError, operator.concat, f1, [1, 2, 3])
 
-        # check round-trip from float->int->float
-        l = [float(i - 128) / (1 << 7) for i in range(0, 1 << 8)]
-        for bps in [8, 16, 24]:
-            for signed in [True, False]:
-                self.assertEqual(
-                    l,
-                    list(audiotools.pcm.FloatFrameList(l, 1).to_int(bps).to_float()))
-
         # check round-trip from int->float->int
         for bps in [8, 16, 24]:
             l = list(range(0, 1 << bps, 4))

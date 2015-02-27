@@ -180,6 +180,15 @@ get_channel_data(const int *pcm_data,
 }
 
 void
+blank_channel_data(unsigned pcm_frames, int *channel_data)
+{
+    for (; pcm_frames; pcm_frames--) {
+        *channel_data = 0;
+        channel_data += 1;
+    }
+}
+
+void
 pcmreader_display(const struct PCMReader *pcmreader, FILE *output)
 {
     fprintf(output, "sample_rate      %u\n", pcmreader->sample_rate);

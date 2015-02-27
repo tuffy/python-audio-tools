@@ -36,4 +36,18 @@ int_to_pcm_converter(unsigned bits_per_sample,
                      int is_big_endian,
                      int is_signed);
 
+/*for turning integer values with the given bits-per-sample
+  into double values between -1.0 and 1.0*/
+typedef double (*int_to_double_f)(int i);
+
+int_to_double_f
+int_to_double_converter(unsigned bits_per_sample);
+
+/*for turning double values between [-1.0 .. 1.0] (inclusive)
+  into integer values with the given bits-per-sample*/
+typedef int (*double_to_int_f)(double d);
+
+double_to_int_f
+double_to_int_converter(unsigned bits_per_sample);
+
 #endif

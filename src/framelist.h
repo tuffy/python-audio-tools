@@ -63,3 +63,13 @@ put_channel_data(int *pcm_data,
                  unsigned channel_count,
                  unsigned pcm_frames,
                  const int *channel_data);
+
+static inline void
+put_sample(int *pcm_data,
+           unsigned channel_number,
+           unsigned channel_count,
+           unsigned pcm_frame,
+           int sample)
+{
+    pcm_data[(pcm_frame * channel_count) + channel_number] = sample;
+}

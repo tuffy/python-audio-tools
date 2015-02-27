@@ -120,6 +120,19 @@ get_channel_data(const int *pcm_data,
                  unsigned pcm_frames,
                  int *channel_data);
 
+/*constructs a channel of empty data*/
+void
+blank_channel_data(unsigned pcm_frames, int *channel_data);
+
+static inline int
+get_sample(const int *pcm_data,
+           unsigned channel_number,
+           unsigned channel_count,
+           unsigned pcm_frame)
+{
+    return pcm_data[(pcm_frame * channel_count) + channel_number];
+}
+
 /*displays the PCMReader's parameters for debugging purposes*/
 void
 pcmreader_display(const struct PCMReader *pcmreader, FILE *output);

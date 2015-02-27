@@ -1,5 +1,6 @@
 #include "pcm_conv.h"
 #include <stdlib.h>
+#include <math.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -19,6 +20,13 @@
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
+
+#ifndef MIN
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
+#ifndef MAX
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#endif
 
 /*******************************
  * private function signatures *
@@ -41,6 +49,17 @@ PCM_CONV(SB24)
 PCM_CONV(SL24)
 PCM_CONV(UB24)
 PCM_CONV(UL24)
+
+#define PCM_INT_CONV_DEFS(bits)       \
+    static double                     \
+    int_##bits##_to_double(int i);    \
+                                      \
+    static int                        \
+    double_to_##bits##_int(double d);
+
+PCM_INT_CONV_DEFS(8)
+PCM_INT_CONV_DEFS(16)
+PCM_INT_CONV_DEFS(24)
 
 /***********************************
  * public function implementations *
@@ -98,6 +117,36 @@ int_to_pcm_converter(unsigned bits_per_sample,
         } else {
             return is_big_endian ? int_to_UB24_pcm : int_to_UL24_pcm;
         }
+    default:
+        return NULL;
+    }
+}
+
+int_to_double_f
+int_to_double_converter(unsigned bits_per_sample)
+{
+    switch (bits_per_sample) {
+    case 8:
+        return int_8_to_double;
+    case 16:
+        return int_16_to_double;
+    case 24:
+        return int_24_to_double;
+    default:
+        return NULL;
+    }
+}
+
+double_to_int_f
+double_to_int_converter(unsigned bits_per_sample)
+{
+    switch (bits_per_sample) {
+    case 8:
+        return double_to_8_int;
+    case 16:
+        return double_to_16_int;
+    case 24:
+        return double_to_24_int;
     default:
         return NULL;
     }
@@ -321,3 +370,25 @@ int_to_UL24_pcm(int i, unsigned char *pcm)
     pcm[1] = (i >> 8) & 0xFF;
     pcm[0] = i & 0xFF;
 }
+
+#define PCM_INT_CONV(BITS, NEGATIVE_MIN, POSITIVE_MAX)                     \
+  static double                                                            \
+  int_##BITS##_to_double(int i)                                            \
+  {                                                                        \
+      if (i >= 0) {                                                        \
+          return (double)i / POSITIVE_MAX;                                 \
+      } else {                                                             \
+          return (double)i / -(NEGATIVE_MIN);                              \
+      }                                                                    \
+  }                                                                        \
+                                                                           \
+  static int                                                               \
+  double_to_##BITS##_int(double d)                                         \
+  {                                                                        \
+      const int value = d * (signbit(d) ? -(NEGATIVE_MIN) : POSITIVE_MAX); \
+      return MIN(MAX(value, NEGATIVE_MIN), POSITIVE_MAX);                  \
+  }
+
+PCM_INT_CONV(8, -128, 127)
+PCM_INT_CONV(16, -32768, 32767)
+PCM_INT_CONV(24, -8388608, 8388607)
