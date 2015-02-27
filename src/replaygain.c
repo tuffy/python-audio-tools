@@ -241,44 +241,51 @@ ReplayGain_next_title(replaygain_ReplayGain *self)
     return Py_None;
 }
 
+#define CHUNK_SIZE 4096
+
 PyObject*
 ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
 {
     pcm_FrameList* framelist;
+    unsigned total_frames;
+    const int *samples;
+    int32_t peak_shift;
+    static int left_i[CHUNK_SIZE];
+    static int right_i[CHUNK_SIZE];
+    static double left_f[CHUNK_SIZE];
+    static double right_f[CHUNK_SIZE];
 
     if (!PyArg_ParseTuple(args, "O!", self->framelist_type, &framelist))
         return NULL;
 
-    /*if FrameList contains no samples, do nothing*/
-    if (framelist->samples_length == 0) {
-        Py_INCREF(Py_None);
-        return Py_None;
-    } else {
-        const int32_t peak_shift = 1 << (framelist->bits_per_sample - 1);
+    peak_shift = 1 << (framelist->bits_per_sample - 1);
+    total_frames = framelist->frames;
+    samples = framelist->samples;
+
+    /*FrameList could be very large, so process it in chunks
+      rather than all at once*/
+    while (total_frames) {
+        const unsigned to_process = MIN(total_frames, CHUNK_SIZE);
         unsigned i;
-        int left_i[framelist->frames];
-        int right_i[framelist->frames];
-        double left_f[framelist->frames];
-        double right_f[framelist->frames];
 
         /*split FrameList's packed ints into a set of channels
           to a maximum of 2 channels*/
-        get_channel_data(framelist->samples,
+        get_channel_data(samples,
                          0,
                          framelist->channels,
-                         framelist->frames,
+                         to_process,
                          left_i);
 
         /*if 1 channel, duplicate to right channel*/
-        get_channel_data(framelist->samples,
+        get_channel_data(samples,
                          framelist->channels > 1 ? 1 : 0,
                          framelist->channels,
-                         framelist->frames,
+                         to_process,
                          right_i);
 
 
         /*calculate peak values*/
-        for (i = 0; i < framelist->frames; i++) {
+        for (i = 0; i < to_process; i++) {
             const double peak_l = ((double)(abs(left_i[i]))) / peak_shift;
             const double peak_r = ((double)(abs(right_i[i]))) / peak_shift;
             const double peak = MAX(peak_l, peak_r);
@@ -289,19 +296,19 @@ ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
         /*convert channels to 16-bit doubles*/
         switch (framelist->bits_per_sample) {
         case 8:
-            for (i = 0; i < framelist->frames; i++) {
+            for (i = 0; i < to_process; i++) {
                 left_f[i] = (double)(left_i[i] << 8);
                 right_f[i] = (double)(right_i[i] << 8);
             }
             break;
         case 16:
-            for (i = 0; i < framelist->frames; i++) {
+            for (i = 0; i < to_process; i++) {
                 left_f[i] = (double)(left_i[i]);
                 right_f[i] = (double)(right_i[i]);
             }
             break;
         case 24:
-            for (i = 0; i < framelist->frames; i++) {
+            for (i = 0; i < to_process; i++) {
                 left_f[i] = (double)(left_i[i] >> 8);
                 right_f[i] = (double)(right_i[i] >> 8);
             }
@@ -315,15 +322,18 @@ ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
         if (ReplayGain_analyze_samples(self,
                                        left_f,
                                        right_f,
-                                       framelist->frames,
+                                       to_process,
                                        2) == GAIN_ANALYSIS_ERROR) {
             PyErr_SetString(PyExc_ValueError, "ReplayGain calculation error");
             return NULL;
         }
 
-        Py_INCREF(Py_None);
-        return Py_None;
+        total_frames -= to_process;
+        samples += (to_process * framelist->channels);
     }
+
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
 PyObject*
