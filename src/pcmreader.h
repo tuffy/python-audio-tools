@@ -45,7 +45,6 @@ struct PCMReader {
         struct {
             PyObject *obj;             /*PCMReader object*/
             PyObject *framelist_type;  /*cached FrameList type*/
-            int stream_finished;       /*flag indicating stream is empty*/
             pcm_FrameList *framelist;  /*framelist object*/
             unsigned frames_remaining; /*frames remaining in framelist*/
         } python;

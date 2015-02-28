@@ -135,7 +135,6 @@ pcmreader_open_python(PyObject *obj)
     Py_DECREF(audiotools_pcm);
     Py_INCREF(obj);
 
-    reader->input.python.stream_finished = 0;
     reader->input.python.framelist = NULL;
     reader->input.python.frames_remaining = 0;
 
@@ -253,8 +252,9 @@ pcmreader_python_read(struct PCMReader *self,
                       int *pcm_data)
 {
     const unsigned initial_frames = pcm_frames;
+    int stream_finished = 0;
 
-    while (pcm_frames && !self->input.python.stream_finished) {
+    while (pcm_frames && !stream_finished) {
         unsigned to_transfer;
         pcm_FrameList *framelist;
 
@@ -269,7 +269,7 @@ pcmreader_python_read(struct PCMReader *self,
                                      "read", "i", pcm_frames)) == NULL) {
                 /*ensure result isn't an exception*/
                 self->status = PCM_READ_ERROR;
-                self->input.python.stream_finished = 1;
+                stream_finished = 1;
                 return 0;
             }
 
@@ -279,7 +279,7 @@ pcmreader_python_read(struct PCMReader *self,
                 framelist = (pcm_FrameList*)framelist_obj;
             } else {
                 self->status = PCM_NON_FRAMELIST;
-                self->input.python.stream_finished = 1;
+                stream_finished = 1;
                 return 0;
             }
 
@@ -287,11 +287,11 @@ pcmreader_python_read(struct PCMReader *self,
             if ((framelist->channels != self->channels) ||
                 (framelist->bits_per_sample != self->bits_per_sample)) {
                 self->status = PCM_INVALID_FRAMELIST;
-                self->input.python.stream_finished = 1;
+                stream_finished = 1;
                 return 0;
             }
 
-            self->input.python.stream_finished = (framelist->frames == 0);
+            stream_finished = (framelist->frames == 0);
             self->input.python.framelist = framelist;
             self->input.python.frames_remaining = framelist->frames;
         }
