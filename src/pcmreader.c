@@ -269,7 +269,6 @@ pcmreader_python_read(struct PCMReader *self,
                                      "read", "i", pcm_frames)) == NULL) {
                 /*ensure result isn't an exception*/
                 self->status = PCM_READ_ERROR;
-                stream_finished = 1;
                 return 0;
             }
 
@@ -279,7 +278,7 @@ pcmreader_python_read(struct PCMReader *self,
                 framelist = (pcm_FrameList*)framelist_obj;
             } else {
                 self->status = PCM_NON_FRAMELIST;
-                stream_finished = 1;
+                Py_DECREF(framelist_obj);
                 return 0;
             }
 
@@ -287,7 +286,7 @@ pcmreader_python_read(struct PCMReader *self,
             if ((framelist->channels != self->channels) ||
                 (framelist->bits_per_sample != self->bits_per_sample)) {
                 self->status = PCM_INVALID_FRAMELIST;
-                stream_finished = 1;
+                Py_DECREF(framelist_obj);
                 return 0;
             }
 
