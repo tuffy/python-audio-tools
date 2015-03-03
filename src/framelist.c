@@ -19,6 +19,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef STANDALONE
 PyObject*
 open_audiotools_pcm(void)
 {
@@ -54,4 +55,20 @@ empty_FrameList(PyObject* audiotools_pcm,
     return PyObject_CallMethod(
         audiotools_pcm,
         "empty_framelist", "ii", channels, bits_per_sample);
+}
+#endif
+
+void
+put_channel_data(int *pcm_data,
+                 unsigned channel_number,
+                 unsigned channel_count,
+                 unsigned pcm_frames,
+                 const int *channel_data)
+{
+    pcm_data += channel_number;
+    for (; pcm_frames; pcm_frames--) {
+        *pcm_data = *channel_data;
+        pcm_data += channel_count;
+        channel_data += 1;
+    }
 }

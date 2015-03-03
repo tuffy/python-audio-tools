@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include "pcm.h"
 
 /********************************************************
@@ -20,6 +22,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef STANDALONE
 /*This module is for abstracting away pcm.FrameList generation
   for use by audio decoding routines so that they don't have
   to make calls to audiotools.pcm.empty_framelist() directly.
@@ -51,6 +54,8 @@ PyObject*
 empty_FrameList(PyObject* audiotools_pcm,
                 unsigned channels,
                 unsigned bits_per_sample);
+
+#endif
 
 /*pcm_data must contain at least:  channel_count * pcm_frames  entries
 

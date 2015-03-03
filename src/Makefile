@@ -1,7 +1,7 @@
 #This makefile is for generating debug standalone executables
 
 OBJS = array.o pcm.o pcmconv.o bitstream.a
-FLAGS = -Wall -g -O3
+FLAGS = -Wall -g
 BINARIES = alacdec \
 shndec \
 wvdec \
@@ -23,6 +23,9 @@ clean:
 
 flacdec: $(OBJS) decoders/flac.c decoders/flac.h flac_crc.o buffer.o md5.o
 	$(CC) $(FLAGS) -o flacdec decoders/flac.c $(OBJS) flac_crc.o buffer.o md5.o -DSTANDALONE -DEXECUTABLE
+
+flacdec2: decoders/flac2.c bitstream.a flac_crc.o framelist.o pcm_conv.o
+	$(CC) $(FLAGS) -o $@ decoders/flac2.c bitstream.a flac_crc.o framelist.o pcm_conv.o -DSTANDALONE -DEXECUTABLE
 
 oggflacdec: $(OBJS) decoders/oggflac.c decoders/oggflac.h flac.o flac_crc.o md5.o ogg.o ogg_crc.o buffer.o
 	$(CC) $(FLAGS) -o oggflacdec decoders/oggflac.c $(OBJS) flac.o flac_crc.o md5.o ogg.o ogg_crc.o buffer.o -DSTANDALONE
@@ -68,6 +71,9 @@ pcm.o: pcm.c pcm.h
 
 pcmconv.o: pcmconv.c pcmconv.h
 	$(CC) $(FLAGS) -c pcmconv.c -DSTANDALONE
+
+framelist.o: framelist.c framelist.c
+	$(CC) $(FLAGS) -c framelist.c -DSTANDALONE
 
 pcm_conv.o: pcm_conv.h pcm_conv.c
 	$(CC) $(FLAGS) -c pcm_conv.c

@@ -1,6 +1,4 @@
 #include "flac.h"
-#include "../pcmconv.h"
-#include "../framelist.h"
 #include "../buffer.h"
 #include <string.h>
 #include <ctype.h>
