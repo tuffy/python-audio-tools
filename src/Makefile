@@ -25,7 +25,7 @@ flacdec: $(OBJS) decoders/flac.c decoders/flac.h flac_crc.o buffer.o md5.o
 	$(CC) $(FLAGS) -o flacdec decoders/flac.c $(OBJS) flac_crc.o buffer.o md5.o -DSTANDALONE -DEXECUTABLE
 
 flacdec2: decoders/flac2.c bitstream.a flac_crc.o framelist.o pcm_conv.o
-	$(CC) $(FLAGS) -o $@ decoders/flac2.c bitstream.a flac_crc.o framelist.o pcm_conv.o -DSTANDALONE -DEXECUTABLE
+	$(CC) $(FLAGS) -pg -o $@ decoders/flac2.c bitstream.a flac_crc.o framelist.o pcm_conv.o -DSTANDALONE -DEXECUTABLE
 
 oggflacdec: $(OBJS) decoders/oggflac.c decoders/oggflac.h flac.o flac_crc.o md5.o ogg.o ogg_crc.o buffer.o
 	$(CC) $(FLAGS) -o oggflacdec decoders/oggflac.c $(OBJS) flac.o flac_crc.o md5.o ogg.o ogg_crc.o buffer.o -DSTANDALONE

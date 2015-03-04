@@ -595,6 +595,7 @@ class audiotools_decoders(Extension):
         defines = [("VERSION", VERSION), ("HAS_PYTHON", None)]
         sources = ["src/array.c",
                    "src/pcmconv.c",
+                   "src/pcm_conv.c",
                    "src/framelist.c",
                    "src/common/md5.c",
                    "src/bitstream.c",
@@ -603,7 +604,7 @@ class audiotools_decoders(Extension):
                    "src/mini-gmp.c",
                    "src/huffman.c",
                    "src/decoders/flac.c",
-                   "src/decoders/oggflac.c",
+                   #"src/decoders/oggflac.c",
                    "src/common/flac_crc.c",
                    "src/ogg.c",
                    "src/ogg_crc.c",

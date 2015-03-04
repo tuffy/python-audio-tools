@@ -40,7 +40,7 @@ write_STREAMINFO(BitstreamWriter *output,
                  unsigned channel_count,
                  unsigned bits_per_sample,
                  uint64_t total_samples,
-                 uint8_t *md5sum);
+                 uint8_t md5sum[]);
 
 static void
 write_PADDING(BitstreamWriter *output,
@@ -48,7 +48,7 @@ write_PADDING(BitstreamWriter *output,
 
 static void
 update_md5sum(audiotools__MD5Context *md5sum,
-              const int *pcm_data,
+              const int pcm_data[],
               unsigned channels,
               unsigned bits_per_sample,
               unsigned pcm_frames);
@@ -57,7 +57,7 @@ static void
 encode_frame(const struct PCMReader *pcmreader,
              BitstreamWriter *output,
              const struct flac_encoding_options *options,
-             const int *pcm_data,
+             const int pcm_data[],
              unsigned pcm_frames,
              unsigned frame_number);
 
@@ -648,7 +648,7 @@ write_STREAMINFO(BitstreamWriter *output,
                  unsigned channel_count,
                  unsigned bits_per_sample,
                  uint64_t total_samples,
-                 uint8_t *md5sum)
+                 uint8_t md5sum[])
 {
     output->build(output,
                   "16u 16u 24u 24u 20u 3u 5u 36U 16b",
@@ -674,7 +674,7 @@ write_PADDING(BitstreamWriter *output,
 
 static void
 update_md5sum(audiotools__MD5Context *md5sum,
-              const int *pcm_data,
+              const int pcm_data[],
               unsigned channels,
               unsigned bits_per_sample,
               unsigned pcm_frames)
@@ -700,7 +700,7 @@ static void
 encode_frame(const struct PCMReader *pcmreader,
              BitstreamWriter *output,
              const struct flac_encoding_options *options,
-             const int *pcm_data,
+             const int pcm_data[],
              unsigned pcm_frames,
              unsigned frame_number)
 {

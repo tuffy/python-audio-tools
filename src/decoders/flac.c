@@ -1,8 +1,6 @@
 #include "flac.h"
-#include "../buffer.h"
-#include <string.h>
-#include <ctype.h>
-#include <errno.h>
+#include "../framelist.h"
+#include "../common/flac_crc.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -23,25 +21,239 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-#ifndef STANDALONE
+typedef enum {OK,
+              INVALID_SYNC_CODE,
+              INVALID_SAMPLE_RATE,
+              INVALID_BPS,
+              INVALID_CHANNEL_ASSIGNMENT,
+              INVALID_UTF8,
+              INVALID_CRC8,
+              IOERROR_HEADER,
+              IOERROR_SUBFRAME,
+              INVALID_SUBFRAME_HEADER,
+              INVALID_FIXED_ORDER,
+              INVALID_LPC_ORDER,
+              INVALID_CODING_METHOD} status_t;
+
+typedef enum {INDEPENDENT,
+              LEFT_DIFFERENCE,
+              DIFFERENCE_RIGHT,
+              AVERAGE_DIFFERENCE} channel_assignment_t;
+
+typedef enum {CONSTANT,
+              VERBATIM,
+              FIXED,
+              LPC} subframe_type_t;
+
+struct frame_header {
+    unsigned blocking_strategy;
+    unsigned block_size;
+    unsigned sample_rate;
+    channel_assignment_t channel_assignment;
+    unsigned channel_count;
+    unsigned bits_per_sample;
+    unsigned frame_number;
+};
+
+/*******************************
+ * private function signatures *
+ *******************************/
+
+static int
+valid_stream_id(BitstreamReader *r);
+
+static void
+read_block_header(BitstreamReader *r,
+                  unsigned *last,
+                  unsigned *type,
+                  unsigned *size);
+
+static void
+read_STREAMINFO(BitstreamReader *r, struct STREAMINFO *streaminfo);
+
+static void
+read_SEEKTABLE(BitstreamReader *r,
+               unsigned block_size,
+               struct SEEKTABLE *seektable);
+
+static void
+read_VORBIS_COMMENT(BitstreamReader *r, unsigned *channel_mask);
+
+static status_t
+read_frame_header(BitstreamReader *r,
+                  const struct STREAMINFO *streaminfo,
+                  struct frame_header *frame_header);
+
+static status_t
+read_utf8(BitstreamReader *r, unsigned *utf8);
+
+static status_t
+decode_independent(BitstreamReader *r,
+                   const struct frame_header *frame_header,
+                   int samples[]);
+
+static status_t
+decode_left_difference(BitstreamReader *r,
+                       const struct frame_header *frame_header,
+                       int samples[]);
+static status_t
+decode_difference_right(BitstreamReader *r,
+                        const struct frame_header *frame_header,
+                        int samples[]);
+
+static status_t
+decode_average_difference(BitstreamReader *r,
+                          const struct frame_header *frame_header,
+                          int samples[]);
+
+static status_t
+read_subframe(BitstreamReader *r,
+              unsigned block_size,
+              unsigned bits_per_sample,
+              int channel_data[]);
+
+static status_t
+read_subframe_header(BitstreamReader *r,
+                     subframe_type_t *type,
+                     unsigned *order,
+                     unsigned *wasted_bps);
+
+static void
+read_CONSTANT_subframe(BitstreamReader *r,
+                       unsigned block_size,
+                       unsigned bits_per_sample,
+                       int samples[]);
+
+static void
+read_VERBATIM_subframe(BitstreamReader *r,
+                       unsigned block_size,
+                       unsigned bits_per_sample,
+                       int samples[]);
+
+static status_t
+read_FIXED_subframe(BitstreamReader *r,
+                    unsigned block_size,
+                    unsigned bits_per_sample,
+                    unsigned predictor_order,
+                    int samples[]);
+
+static status_t
+read_LPC_subframe(BitstreamReader *r,
+                  unsigned block_size,
+                  unsigned bits_per_sample,
+                  unsigned predictor_order,
+                  int samples[]);
+
+static status_t
+read_residual_block(BitstreamReader *r,
+                    unsigned block_size,
+                    unsigned predictor_order,
+                    int residuals[]);
+
+static void
+decorrelate_left_difference(unsigned block_size,
+                            const int left[],
+                            const int difference[],
+                            int right[]);
+static void
+decorrelate_difference_right(unsigned block_size,
+                             const int difference[],
+                             const int right[],
+                             int left[]);
+
+static void
+decorrelate_average_difference(unsigned block_size,
+                               const int average[],
+                               const int difference[],
+                               int left[],
+                               int right[]);
+
+static status_t
+skip_subframe(BitstreamReader *r,
+              unsigned block_size,
+              unsigned bits_per_sample);
+
+static void
+skip_CONSTANT_subframe(BitstreamReader *r,
+                       unsigned bits_per_sample);
+
+static void
+skip_VERBATIM_subframe(BitstreamReader *r,
+                       unsigned block_size,
+                       unsigned bits_per_sample);
+
+static status_t
+skip_FIXED_subframe(BitstreamReader *r,
+                    unsigned block_size,
+                    unsigned bits_per_sample,
+                    unsigned predictor_order);
+
+static status_t
+skip_LPC_subframe(BitstreamReader *r,
+                  unsigned block_size,
+                  unsigned bits_per_sample,
+                  unsigned predictor_order);
+
+static status_t
+skip_residual_block(BitstreamReader *r,
+                    unsigned block_size,
+                    unsigned predictor_order);
+
+static void
+update_md5sum(audiotools__MD5Context *md5sum,
+              const int pcm_data[],
+              unsigned channels,
+              unsigned bits_per_sample,
+              unsigned pcm_frames);
+
+static int
+verify_md5sum(audiotools__MD5Context *stream_md5,
+              const uint8_t streaminfo_md5[]);
+
+PyObject*
+flac_exception(status_t status);
+
+const char*
+flac_strerror(status_t status);
+
+/***********************************
+ * public function implementations *
+ ***********************************/
+
+PyObject*
+FlacDecoder_new(PyTypeObject *type,
+                PyObject *args, PyObject *kwds)
+{
+    decoders_FlacDecoder *self;
+
+    self = (decoders_FlacDecoder *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+
 int
 FlacDecoder_init(decoders_FlacDecoder *self,
                  PyObject *args, PyObject *kwds)
 {
     PyObject *file;
+    int streaminfo_read = 0;
+    int vorbis_comment_read = 0;
+    unsigned last;
+    unsigned type;
+    unsigned size;
+
     self->bitstream = NULL;
-
-    self->seektable = a_obj_new((ARRAY_COPY_FUNC)seekpoint_copy,
-                                free,
-                                NULL);
-
-    self->subframe_data = aa_int_new();
-    self->residuals = a_int_new();
-    self->qlp_coeffs = a_int_new();
-    self->framelist_data = a_int_new();
+    self->seektable.total_points = 0;
+    self->seektable.seek_points = NULL;
+    self->channel_mask = 0;
+    self->remaining_samples = 0;
+    self->closed = 0;
+    audiotools__MD5Init(&(self->md5));
+    self->perform_validation = 0;
+    self->stream_finalized = 0;
     self->audiotools_pcm = NULL;
     self->beginning_of_frames = NULL;
-    self->remaining_samples = 0;
 
     if (!PyArg_ParseTuple(args, "O", &file)) {
         return -1;
@@ -49,7 +261,6 @@ FlacDecoder_init(decoders_FlacDecoder *self,
         Py_INCREF(file);
     }
 
-    /*treat file as Python-implemented file-like object*/
     self->bitstream = br_open_external(
         file,
         BS_BIG_ENDIAN,
@@ -62,43 +273,145 @@ FlacDecoder_init(decoders_FlacDecoder *self,
         (ext_close_f)bs_close_python,
         (ext_free_f)bs_free_python_decref);
 
-    /*read the STREAMINFO block, SEEKTABLE block
-      and setup the total number of samples to read*/
-    if (flacdec_read_metadata(self->bitstream,
-                              &(self->streaminfo),
-                              self->seektable,
-                              &(self->channel_mask))) {
-        self->streaminfo.channels = 0;
-        return -1;
-    }
-
-    /*place mark at beginning of stream but after metadata
-      in case seeking is needed*/
     if (!setjmp(*br_try(self->bitstream))) {
+        /*validate stream ID*/
+        if (!valid_stream_id(self->bitstream)) {
+            PyErr_SetString(PyExc_ValueError, "invalid stream ID");
+            br_etry(self->bitstream);
+            return -1;
+        }
+
+        /*parse metadata blocks*/
+        do {
+            read_block_header(self->bitstream, &last, &type, &size);
+
+            switch (type) {
+            case 0: /*STREAMINFO*/
+                if (!streaminfo_read) {
+                    enum {fL  = 0x1,
+                          fR  = 0x2,
+                          fC  = 0x4,
+                          LFE = 0x8,
+                          bL  = 0x10,
+                          bR  = 0x20,
+                          bC  = 0x100,
+                          sL  = 0x200,
+                          sR  = 0x400};
+
+                    read_STREAMINFO(self->bitstream, &(self->streaminfo));
+                    /*use a dummy channel mask for now*/
+                    switch (self->streaminfo.channel_count) {
+                    case 1:
+                        self->channel_mask = fC;
+                        break;
+                    case 2:
+                        self->channel_mask = fL | fR;
+                        break;
+                    case 3:
+                        self->channel_mask = fL | fR | fC;
+                        break;
+                    case 4:
+                        self->channel_mask = fL | fR | bL | bR;
+                        break;
+                    case 5:
+                        self->channel_mask = fL | fR | fC | bL | bR;
+                        break;
+                    case 6:
+                        self->channel_mask = fL | fR | fC | bL | bR | LFE;
+                        break;
+                    case 7:
+                        self->channel_mask =
+                        fL | fR | fC | LFE | bC | bL | bR;
+                        break;
+                    case 8:
+                        self->channel_mask =
+                        fL | fR | fC | LFE | bL | bR | sL | sR;
+                        break;
+                    }
+                    streaminfo_read = 1;
+                } else {
+                    PyErr_SetString(PyExc_ValueError,
+                                    "multiple STREAMINFO blocks in stream");
+                    br_etry(self->bitstream);
+                    return -1;
+                }
+                break;
+            case 1: /*PADDING*/
+            case 2: /*APPLICATION*/
+            case 5: /*CUESHEET*/
+            case 6: /*PICTURE*/
+                self->bitstream->skip_bytes(self->bitstream, size);
+                break;
+            case 3: /*SEEKTABLE*/
+                if (!(self->seektable.seek_points)) {
+                    read_SEEKTABLE(self->bitstream, size, &(self->seektable));
+                } else {
+                    PyErr_SetString(PyExc_ValueError,
+                                    "multiple SEEKTABLE blocks in stream");
+                    br_etry(self->bitstream);
+                    return -1;
+                }
+                break;
+            case 4: /*VORBIS_COMMENT*/
+                if (!vorbis_comment_read) {
+                    BitstreamReader *comment =
+                        self->bitstream->substream(self->bitstream, size);
+                    read_VORBIS_COMMENT(comment, &(self->channel_mask));
+                    comment->close(comment);
+                    vorbis_comment_read = 1;
+                } else {
+                    PyErr_SetString(PyExc_ValueError,
+                                    "multiple VORBIS_COMMENT blocks in stream");
+                    br_etry(self->bitstream);
+                    return -1;
+                }
+                break;
+            default:
+                PyErr_SetString(PyExc_ValueError, "unknown block ID in stream");
+                br_etry(self->bitstream);
+                return -1;
+            }
+        } while (last == 0);
+
+        if (streaminfo_read) {
+            self->remaining_samples = self->streaminfo.total_samples;
+        } else {
+            PyErr_SetString(PyExc_ValueError, "no STREAMINFO block in stream");
+            br_etry(self->bitstream);
+            return -1;
+        }
+
+        /*mark beginning of frames for start of decoding*/
         self->beginning_of_frames = self->bitstream->getpos(self->bitstream);
+
         br_etry(self->bitstream);
     } else {
         br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "unable to mark beginning of stream");
+        PyErr_SetString(PyExc_IOError, "I/O error reading FLAC metadata");
         return -1;
     }
 
-    self->remaining_samples = self->streaminfo.total_samples;
-
-    /*initialize the output MD5 sum*/
-    audiotools__MD5Init(&(self->md5));
-    self->perform_validation = 1;
-    self->stream_finalized = 0;
-
-    /*setup a framelist generator function*/
-    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
+    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL) {
         return -1;
-
-    /*mark stream as not closed and ready for reading*/
-    self->closed = 0;
+    }
 
     return 0;
 }
+
+void
+FlacDecoder_dealloc(decoders_FlacDecoder *self)
+{
+    if (self->bitstream) {
+        self->bitstream->free(self->bitstream);
+    }
+    free(self->seektable.seek_points);
+    Py_XDECREF(self->audiotools_pcm);
+    if (self->beginning_of_frames) {
+        self->beginning_of_frames->del(self->beginning_of_frames);
+    }
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
 
 PyObject*
 FlacDecoder_close(decoders_FlacDecoder* self,
@@ -131,177 +444,262 @@ FlacDecoder_exit(decoders_FlacDecoder* self, PyObject *args)
     return Py_None;
 }
 
-void
-FlacDecoder_dealloc(decoders_FlacDecoder *self)
-{
-
-    self->subframe_data->del(self->subframe_data);
-    self->residuals->del(self->residuals);
-    self->qlp_coeffs->del(self->qlp_coeffs);
-    self->framelist_data->del(self->framelist_data);
-    Py_XDECREF(self->audiotools_pcm);
-
-    /*clean out seek mark, if necessary*/
-    if (self->beginning_of_frames != NULL) {
-        self->beginning_of_frames->del(self->beginning_of_frames);
-    }
-
-    if (self->bitstream != NULL) {
-        self->bitstream->free(self->bitstream);
-    }
-
-    self->seektable->del(self->seektable);
-
-    Py_TYPE(self)->tp_free((PyObject*)self);
-}
-
-PyObject*
-FlacDecoder_new(PyTypeObject *type,
-                PyObject *args, PyObject *kwds)
-{
-    decoders_FlacDecoder *self;
-
-    self = (decoders_FlacDecoder *)type->tp_alloc(type, 0);
-
-    return (PyObject *)self;
-}
-
 static PyObject*
 FlacDecoder_sample_rate(decoders_FlacDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->streaminfo.sample_rate);
+    return Py_BuildValue("I", self->streaminfo.sample_rate);
 }
 
 static PyObject*
 FlacDecoder_bits_per_sample(decoders_FlacDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->streaminfo.bits_per_sample);
+    return Py_BuildValue("I", self->streaminfo.bits_per_sample);
 }
 
 static PyObject*
 FlacDecoder_channels(decoders_FlacDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->streaminfo.channels);
+    return Py_BuildValue("I", self->streaminfo.channel_count);
 }
 
 static PyObject*
 FlacDecoder_channel_mask(decoders_FlacDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->channel_mask);
+    return Py_BuildValue("I", self->channel_mask);
 }
 
 PyObject*
 FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 {
+    status_t status;
+    struct frame_header frame_header;
     uint16_t crc16 = 0;
-    int channel;
-    struct flac_frame_header frame_header;
-    PyObject* framelist;
-    flac_status error;
 
     if (self->closed) {
+        /*ensure file isn't closed*/
         PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
         return NULL;
-    }
-
-    self->subframe_data->reset(self->subframe_data);
-
-    /*if all samples have been read, return an empty FrameList*/
-    if (self->stream_finalized) {
-        return empty_FrameList(self->audiotools_pcm,
-                               self->streaminfo.channels,
-                               self->streaminfo.bits_per_sample);
-    }
-
-    if (self->remaining_samples < 1) {
-        self->stream_finalized = 1;
-
-        if (FlacDecoder_verify_okay(self)) {
-            return empty_FrameList(self->audiotools_pcm,
-                                   self->streaminfo.channels,
-                                   self->streaminfo.bits_per_sample);
-        } else {
-            PyErr_SetString(PyExc_ValueError,
-                            "MD5 mismatch at end of stream");
-            return NULL;
-        }
-    }
-
-    if (!setjmp(*br_try(self->bitstream))) {
-        /*add callback for CRC16 calculation*/
-        self->bitstream->add_callback(self->bitstream, (bs_callback_f)flac_crc16, &crc16);
-
-        /*read frame header*/
-        if ((error = flacdec_read_frame_header(self->bitstream,
-                                               &(self->streaminfo),
-                                               &frame_header)) != OK) {
-            self->bitstream->pop_callback(self->bitstream, NULL);
-            PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
-            br_etry(self->bitstream);
-            return NULL;
-        }
-
-        /*read 1 subframe per channel*/
-        for (channel = 0; channel < frame_header.channel_count; channel++)
-            if ((error =
-                 flacdec_read_subframe(
-                     self->bitstream,
-                     self->qlp_coeffs,
-                     self->residuals,
-                     (unsigned int)MIN(frame_header.block_size,
-                                       self->remaining_samples),
-                     flacdec_subframe_bits_per_sample(&frame_header,
-                                                      channel),
-                     self->subframe_data->append(self->subframe_data))) != OK) {
-                self->bitstream->pop_callback(self->bitstream, NULL);
-                PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
-                br_etry(self->bitstream);
+    } else if (self->remaining_samples == 0) {
+        /*validate MD5 sum if still validating
+          (if we haven't seeked to the middle of the file, for instance)*/
+        if (self->perform_validation) {
+            if (verify_md5sum(&(self->md5), self->streaminfo.MD5)) {
+                self->perform_validation = 0;
+                /*return empty FrameList if nothing left to send*/
+                return empty_FrameList(self->audiotools_pcm,
+                                       self->streaminfo.channel_count,
+                                       self->streaminfo.bits_per_sample);
+            } else {
+                PyErr_SetString(PyExc_ValueError,
+                                "MD5 mismatch at end of stream");
                 return NULL;
             }
+        } else {
+            return empty_FrameList(self->audiotools_pcm,
+                                   self->streaminfo.channel_count,
+                                   self->streaminfo.bits_per_sample);
+        }
+    }
 
-        /*handle difference channels, if any*/
-        flacdec_decorrelate_channels(frame_header.channel_assignment,
-                                     self->subframe_data,
-                                     self->framelist_data);
+    self->bitstream->add_callback(self->bitstream,
+                                  (bs_callback_f)flac_crc16,
+                                  &crc16);
 
-        /*check CRC-16*/
-        self->bitstream->byte_align(self->bitstream);
-        self->bitstream->read(self->bitstream, 16);
+    /*ensure frame header is read successfully*/
+    if ((status = read_frame_header(self->bitstream,
+                                    &(self->streaminfo),
+                                    &frame_header)) != OK) {
         self->bitstream->pop_callback(self->bitstream, NULL);
-        if (crc16 != 0) {
-            PyErr_SetString(PyExc_ValueError, "invalid checksum in frame");
+        PyErr_SetString(flac_exception(status), flac_strerror(status));
+        return NULL;
+    } else {
+        /*setup framelist to be output once populated*/
+        pcm_FrameList *framelist = new_FrameList(self->audiotools_pcm,
+                                                 frame_header.channel_count,
+                                                 frame_header.bits_per_sample,
+                                                 frame_header.block_size);
+
+        /*decode subframes based on channel assignment*/
+        status_t (*decoder)(BitstreamReader *r,
+                            const struct frame_header *frame_header,
+                            int samples[]) = NULL;
+
+        switch (frame_header.channel_assignment) {
+        case INDEPENDENT:
+            decoder = decode_independent;
+            break;
+        case LEFT_DIFFERENCE:
+            decoder = decode_left_difference;
+            break;
+        case DIFFERENCE_RIGHT:
+            decoder = decode_difference_right;
+            break;
+        case AVERAGE_DIFFERENCE:
+            decoder = decode_average_difference;
+            break;
+        }
+        assert(decoder);
+
+        if ((status = decoder(self->bitstream,
+                              &frame_header,
+                              framelist->samples)) != OK) {
+            Py_DECREF((PyObject*)framelist);
+            self->bitstream->pop_callback(self->bitstream, NULL);
+            PyErr_SetString(flac_exception(status), flac_strerror(status));
+            return NULL;
+        }
+
+        /*validate CRC-16 in frame footer*/
+        if (!setjmp(*br_try(self->bitstream))) {
+            self->bitstream->byte_align(self->bitstream);
+            self->bitstream->skip(self->bitstream, 16); /*CRC-16 itself*/
             br_etry(self->bitstream);
+        } else {
+            br_etry(self->bitstream);
+            self->bitstream->pop_callback(self->bitstream, NULL);
+            PyErr_SetString(PyExc_IOError, "I/O error reading CRC-16");
+            Py_DECREF((PyObject*)framelist);
             return NULL;
         }
-
-        /*decrement remaining samples*/
-        self->remaining_samples -= frame_header.block_size;
-    } else {
-        /*handle I/O error during read*/
         self->bitstream->pop_callback(self->bitstream, NULL);
-        PyErr_SetString(PyExc_IOError, "EOF reading frame");
-        br_etry(self->bitstream);
-        return NULL;
-    }
-
-    br_etry(self->bitstream);
-
-    framelist = a_int_to_FrameList(self->audiotools_pcm,
-                                   self->framelist_data,
-                                   frame_header.channel_count,
-                                   frame_header.bits_per_sample);
-    if (framelist != NULL) {
-        /*update MD5 sum*/
-        if (FlacDecoder_update_md5sum(self, framelist) == OK)
-            /*return pcm.FrameList Python object*/
-            return framelist;
-        else {
-            Py_DECREF(framelist);
+        if (crc16) {
+            PyErr_SetString(PyExc_ValueError, "frame CRC-16 mismatch");
+            Py_DECREF((PyObject*)framelist);
             return NULL;
         }
-    } else {
+
+        /*if validating, update running MD5 sum*/
+        if (self->perform_validation) {
+            update_md5sum(&(self->md5),
+                          framelist->samples,
+                          frame_header.channel_count,
+                          frame_header.bits_per_sample,
+                          frame_header.block_size);
+        }
+
+        self->remaining_samples -= MIN(self->remaining_samples,
+                                       frame_header.block_size);
+
+        return (PyObject*)framelist;
+    }
+}
+
+static PyObject*
+FlacDecoder_frame_size(decoders_FlacDecoder* self, PyObject *args)
+{
+    status_t status;
+    struct frame_header frame_header;
+    unsigned c;
+    uint16_t crc16 = 0;
+    unsigned frame_size = 0;
+
+    if (self->closed) {
+        /*ensure file isn't closed*/
+        PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
+        return NULL;
+    } else if (self->remaining_samples == 0) {
+        /*return None if samples are exhausted*/
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
+
+    self->perform_validation = 0;
+
+    self->bitstream->add_callback(self->bitstream,
+                                  (bs_callback_f)flac_crc16,
+                                  &crc16);
+
+    self->bitstream->add_callback(self->bitstream,
+                                  (bs_callback_f)byte_counter,
+                                  &frame_size);
+
+    /*ensure frame header is read successfully*/
+    if ((status = read_frame_header(self->bitstream,
+                                    &(self->streaminfo),
+                                    &frame_header)) != OK) {
+        self->bitstream->pop_callback(self->bitstream, NULL);
+        self->bitstream->pop_callback(self->bitstream, NULL);
+        PyErr_SetString(flac_exception(status), flac_strerror(status));
         return NULL;
     }
+
+    /*skip subframes*/
+    switch (frame_header.channel_assignment) {
+    case INDEPENDENT:
+        for (c = 0; c < frame_header.channel_count; c++) {
+            if ((status = skip_subframe(self->bitstream,
+                                        frame_header.block_size,
+                                        frame_header.bits_per_sample)) != OK) {
+                self->bitstream->pop_callback(self->bitstream, NULL);
+                self->bitstream->pop_callback(self->bitstream, NULL);
+                PyErr_SetString(flac_exception(status), flac_strerror(status));
+                return NULL;
+            }
+        }
+        break;
+    case LEFT_DIFFERENCE:
+    case AVERAGE_DIFFERENCE:
+        if ((status = skip_subframe(self->bitstream,
+                                    frame_header.block_size,
+                                    frame_header.bits_per_sample)) != OK) {
+            self->bitstream->pop_callback(self->bitstream, NULL);
+            self->bitstream->pop_callback(self->bitstream, NULL);
+            PyErr_SetString(flac_exception(status), flac_strerror(status));
+            return NULL;
+        }
+        if ((status = skip_subframe(self->bitstream,
+                                    frame_header.block_size,
+                                    frame_header.bits_per_sample + 1)) != OK) {
+            self->bitstream->pop_callback(self->bitstream, NULL);
+            self->bitstream->pop_callback(self->bitstream, NULL);
+            PyErr_SetString(flac_exception(status), flac_strerror(status));
+            return NULL;
+        }
+        break;
+    case DIFFERENCE_RIGHT:
+        if ((status = skip_subframe(self->bitstream,
+                                    frame_header.block_size,
+                                    frame_header.bits_per_sample + 1)) != OK) {
+            self->bitstream->pop_callback(self->bitstream, NULL);
+            self->bitstream->pop_callback(self->bitstream, NULL);
+            PyErr_SetString(flac_exception(status), flac_strerror(status));
+            return NULL;
+        }
+        if ((status = skip_subframe(self->bitstream,
+                                    frame_header.block_size,
+                                    frame_header.bits_per_sample)) != OK) {
+            self->bitstream->pop_callback(self->bitstream, NULL);
+            self->bitstream->pop_callback(self->bitstream, NULL);
+            PyErr_SetString(flac_exception(status), flac_strerror(status));
+            return NULL;
+        }
+        break;
+    }
+
+    /*validate CRC-16 in frame footer*/
+    if (!setjmp(*br_try(self->bitstream))) {
+        self->bitstream->byte_align(self->bitstream);
+        self->bitstream->skip(self->bitstream, 16); /*CRC-16 itself*/
+        br_etry(self->bitstream);
+    } else {
+        br_etry(self->bitstream);
+        self->bitstream->pop_callback(self->bitstream, NULL);
+        self->bitstream->pop_callback(self->bitstream, NULL);
+        PyErr_SetString(PyExc_IOError, "I/O error reading CRC-16");
+        return NULL;
+    }
+    self->bitstream->pop_callback(self->bitstream, NULL);
+    self->bitstream->pop_callback(self->bitstream, NULL);
+    if (crc16) {
+        PyErr_SetString(PyExc_ValueError, "frame CRC-16 mismatch");
+        return NULL;
+    }
+
+    self->remaining_samples -= MIN(self->remaining_samples,
+                                   frame_header.block_size);
+
+    /*return tuple of frame size (in bytes) and block size (in samples)*/
+    return Py_BuildValue("(I, I)", frame_size, frame_header.block_size);
 }
 
 static PyObject*
@@ -309,7 +707,7 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
 {
     long long seeked_offset;
 
-    const a_obj* seektable = self->seektable;
+    const struct SEEKTABLE *seektable = &(self->seektable);
     uint64_t pcm_frames_offset = 0;
     uint64_t byte_offset = 0;
     unsigned i;
@@ -331,11 +729,10 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
 
     /*find latest seekpoint whose first sample is <= seeked_offset
       or 0 if there are no seekpoints in the seektable*/
-    for (i = 0; i < seektable->len; i++) {
-        struct flac_SEEKPOINT* seekpoint = seektable->_[i];
-        if (seekpoint->sample_number <= seeked_offset) {
-            pcm_frames_offset = seekpoint->sample_number;
-            byte_offset = seekpoint->byte_offset;
+    for (i = 0; i < seektable->total_points; i++) {
+        if (seektable->seek_points[i].sample_number <= seeked_offset) {
+            pcm_frames_offset = seektable->seek_points[i].sample_number;
+            byte_offset = seektable->seek_points[i].frame_offset;
         } else {
             break;
         }
@@ -377,1167 +774,991 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
     return Py_BuildValue("K", pcm_frames_offset);
 }
 
-static void
-increment_offset(uint8_t value, unsigned long long *offset)
+/************************************
+ * private function implementations *
+ ************************************/
+
+static int
+valid_stream_id(BitstreamReader *r)
 {
-    *offset += 1;
-}
-
-static PyObject*
-FlacDecoder_offsets(decoders_FlacDecoder* self, PyObject *args)
-{
-    int channel;
-    struct flac_frame_header frame_header;
-    flac_status error;
-    PyObject* offsets = PyList_New(0);
-    PyObject* offset_pair;
-    unsigned long long total_offset = 0;
-    unsigned samples;
-    unsigned long long offset;
-
-    self->bitstream->add_callback(self->bitstream,
-                                  (bs_callback_f)increment_offset,
-                                  &total_offset);
-
-    while (self->remaining_samples > 0) {
-        self->subframe_data->reset(self->subframe_data);
-        offset = total_offset;
-
-        if (!setjmp(*br_try(self->bitstream))) {
-            /*read frame header*/
-            if ((error = flacdec_read_frame_header(self->bitstream,
-                                                   &(self->streaminfo),
-                                                   &frame_header)) != OK) {
-                PyErr_SetString(PyExc_ValueError, FlacDecoder_strerror(error));
-                goto error;
-            }
-
-            samples = frame_header.block_size;
-
-            /*read 1 subframe per channel*/
-            for (channel = 0; channel < frame_header.channel_count; channel++)
-                if ((error =
-                     flacdec_read_subframe(
-                         self->bitstream,
-                         self->qlp_coeffs,
-                         self->residuals,
-                         (unsigned int)MIN(frame_header.block_size,
-                                           self->remaining_samples),
-                         flacdec_subframe_bits_per_sample(&frame_header,
-                                                          channel),
-                         self->subframe_data->append(self->subframe_data))) !=
-                    OK) {
-                    PyErr_SetString(PyExc_ValueError,
-                                    FlacDecoder_strerror(error));
-                    goto error;
-                }
-
-            /*read CRC-16*/
-            self->bitstream->byte_align(self->bitstream);
-            self->bitstream->read(self->bitstream, 16);
-
-            /*decrement remaining samples*/
-            self->remaining_samples -= frame_header.block_size;
-
-            /*add offset pair to our list*/
-            offset_pair = Py_BuildValue("(K, I)", offset, samples);
-            PyList_Append(offsets, offset_pair);
-            Py_DECREF(offset_pair);
-        } else {
-            /*handle I/O error during read*/
-            PyErr_SetString(PyExc_IOError, "EOF reading frame");
-            goto error;
-        }
-
-        br_etry(self->bitstream);
-    }
-
-    self->stream_finalized = 1;
-    self->bitstream->pop_callback(self->bitstream, NULL);
-
-    return offsets;
-error:
-    Py_XDECREF(offsets);
-    br_etry(self->bitstream);
-    self->bitstream->pop_callback(self->bitstream, NULL);
-
-    return NULL;
-}
-
-flac_status
-FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
-                          PyObject *framelist)
-{
-    if (self->perform_validation) {
-        PyObject *string = PyObject_CallMethod(framelist,
-                                               "to_bytes","ii",
-                                               0,
-                                               1);
-        char *string_buffer;
-        Py_ssize_t length;
-
-        if (string != NULL) {
-            if (PyBytes_AsStringAndSize(string,
-                                        &string_buffer,
-                                        &length) == 0) {
-                audiotools__MD5Update(&(self->md5),
-                                      (unsigned char *)string_buffer,
-                                      length);
-                Py_DECREF(string);
-                return OK;
-            } else {
-                Py_DECREF(string);
-                return ERROR;
-            }
-        } else {
-            return ERROR;
-        }
-    } else {
-        return OK;
-    }
-}
-
-int
-FlacDecoder_verify_okay(decoders_FlacDecoder *self)
-{
-    if (self->perform_validation) {
-        unsigned char stream_md5sum[16];
-        const static unsigned char blank_md5sum[16] = {0, 0, 0, 0, 0, 0, 0, 0,
-                                                       0, 0, 0, 0, 0, 0, 0, 0};
-
-        audiotools__MD5Final(stream_md5sum, &(self->md5));
-
-        return ((memcmp(self->streaminfo.md5sum, blank_md5sum, 16) == 0) ||
-                (memcmp(stream_md5sum, self->streaminfo.md5sum, 16) == 0));
-    } else {
-        return 1;
-    }
-}
-
-#endif
-
-static unsigned
-channel_bits(unsigned channel_mask)
-{
-    unsigned bits = 0;
-    while (channel_mask > 0) {
-        bits += (channel_mask & 0x1);
-        channel_mask >>= 1;
-    }
-    return bits;
+    unsigned char stream_id[4];
+    const unsigned char valid_stream_id[4] = "fLaC";
+    r->read_bytes(r, stream_id, 4);
+    return (memcmp(stream_id, valid_stream_id, 4) == 0);
 }
 
 static void
-flacdec_read_vorbis_comment(BitstreamReader *comment,
-                            unsigned channel_count,
-                            int *channel_mask)
+read_block_header(BitstreamReader *r,
+                  unsigned *last,
+                  unsigned *type,
+                  unsigned *size)
 {
-    struct bs_buffer *line = buf_new();
-    unsigned line_len;
-    unsigned total_lines;
-    const char mask_prefix[] =
-        "WAVEFORMATEXTENSIBLE_CHANNEL_MASK=";
-
-    comment->set_endianness(comment, BS_LITTLE_ENDIAN);
-
-    if (!setjmp(*br_try(comment))) {
-        /*skip over vendor string*/
-        line_len = comment->read(comment, 32);
-        comment->skip_bytes(comment, line_len);
-
-        /*walk through all entries in the comment*/
-        for (total_lines = comment->read(comment, 32);
-             total_lines > 0;
-             total_lines--) {
-            const char *s;
-
-            /*populate entry one character at a time
-              (this avoids allocating a big chunk of space
-               if the length field is something way too large)*/
-            buf_reset(line);
-
-            for (line_len = comment->read(comment, 32);
-                 line_len > 0;
-                 line_len--) {
-                buf_putc(
-                    toupper((int)comment->read(comment, 8)),
-                    line);
-            }
-            buf_putc(0, line);  /*NULL terminator*/
-
-            s = (const char *)buf_window_start(line);
-
-            /*if line starts with mask prefix*/
-            if (strstr(s, mask_prefix) == s) {
-                /*convert rest of line to base-16 integer*/
-                unsigned mask = (unsigned)strtoul(
-                    s + strlen(mask_prefix), NULL, 16);
-                /*and populate mask field if its number of channel bits
-                  matches the stream's channel count*/
-                if (channel_bits(mask) == channel_count) {
-                    *channel_mask = mask;
-                }
-            }
-        }
-        br_etry(comment);
-    } else {
-        /*read error in VORBIS_COMMENT
-          (probably invalid length field somewhere)*/
-        br_etry(comment);
-    }
-
-    buf_close(line);
+    r->parse(r, "1u 7u 24u", last, type, size);
 }
 
-int
-flacdec_read_metadata(BitstreamReader *bitstream,
-                      struct flac_STREAMINFO *streaminfo,
-                      a_obj *seektable,
-                      int *channel_mask)
+static void
+read_STREAMINFO(BitstreamReader *r, struct STREAMINFO *streaminfo)
 {
-    enum {
-        fL =  0x1,
-        fR =  0x2,
-        fC =  0x4,
-        LFE = 0x8,
-        bL =  0x10,
-        bR =  0x20,
-        bC =  0x100,
-        sL =  0x200,
-        sR =  0x400
-    };
+    streaminfo->minimum_block_size = r->read(r, 16);
+    streaminfo->maximum_block_size = r->read(r, 16);
+    streaminfo->minimum_frame_size = r->read(r, 24);
+    streaminfo->maximum_frame_size = r->read(r, 24);
+    streaminfo->sample_rate = r->read(r, 20);
+    streaminfo->channel_count = r->read(r, 3) + 1;
+    streaminfo->bits_per_sample = r->read(r, 5) + 1;
+    streaminfo->total_samples = r->read_64(r, 36);
+    r->read_bytes(r, streaminfo->MD5, 16);
+}
 
-    if (!setjmp(*br_try(bitstream))) {
-        unsigned last_block;
+static void
+read_SEEKTABLE(BitstreamReader *r,
+               unsigned block_size,
+               struct SEEKTABLE *seektable)
+{
+    const unsigned seekpoint_size = (64 + 64 + 16) / 8;
+    unsigned i;
 
-        if (bitstream->read(bitstream, 32) != 0x664C6143u) {
-#ifndef STANDALONE
-            PyErr_SetString(PyExc_ValueError, "not a FLAC file");
-#endif
-            br_etry(bitstream);
-            return 1;
-        }
-
-        do {
-            last_block = bitstream->read(bitstream, 1);
-            const unsigned block_type = bitstream->read(bitstream, 7);
-            const unsigned block_length = bitstream->read(bitstream, 24);
-
-            switch (block_type) {
-            case 0:   /*STREAMINFO*/
-                streaminfo->minimum_block_size =
-                    bitstream->read(bitstream, 16);
-                streaminfo->maximum_block_size =
-                    bitstream->read(bitstream, 16);
-                streaminfo->minimum_frame_size =
-                    bitstream->read(bitstream, 24);
-                streaminfo->maximum_frame_size =
-                    bitstream->read(bitstream, 24);
-                streaminfo->sample_rate =
-                    bitstream->read(bitstream, 20);
-                streaminfo->channels =
-                    bitstream->read(bitstream, 3) + 1;
-                streaminfo->bits_per_sample =
-                    bitstream->read(bitstream, 5) + 1;
-                streaminfo->total_samples =
-                    bitstream->read_64(bitstream, 36);
-
-                bitstream->read_bytes(bitstream, streaminfo->md5sum, 16);
-
-                /*default channel mask based on channel count*/
-                switch (streaminfo->channels) {
-                case 1:
-                    *channel_mask = fC;
-                    break;
-                case 2:
-                    *channel_mask = fL | fR;
-                    break;
-                case 3:
-                    *channel_mask = fL | fR | fC;
-                    break;
-                case 4:
-                    *channel_mask = fL | fR | bL | bR;
-                    break;
-                case 5:
-                    *channel_mask = fL | fR | fC | bL | bR;
-                    break;
-                case 6:
-                    *channel_mask = fL | fR | fC | LFE | bL | bR;
-                    break;
-                case 7:
-                    *channel_mask = fL | fR | fC | LFE | bC | sL | sR;
-                    break;
-                case 8:
-                    *channel_mask = fL | fR | fC | LFE | bL | bR | sL | sR;
-                    break;
-                default:
-                    /*shouldn't be able to happen*/
-                    *channel_mask = 0;
-                    break;
-                }
-                break;
-            case 3: /*SEEKTABLE*/
-                {
-                    unsigned seekpoints = block_length / 18;
-                    seektable->reset_for(seektable, seekpoints);
-
-                    for (; seekpoints > 0; seekpoints--) {
-                        struct flac_SEEKPOINT seekpoint;
-                        seekpoint.sample_number =
-                            bitstream->read_64(bitstream, 64);
-                        seekpoint.byte_offset =
-                            bitstream->read_64(bitstream, 64);
-                        seekpoint.samples =
-                            bitstream->read(bitstream, 16);
-                        seektable->append(seektable, &seekpoint);
-                    }
-                }
-                break;
-            case 4: /*VORBIS_COMMENT*/
-                {
-                    /*Vorbis comment's channel mask - if any -
-                      overrides default one from channel count */
-                    BitstreamReader *comment =
-                        bitstream->substream(bitstream, block_length);
-
-                    flacdec_read_vorbis_comment(comment,
-                                                streaminfo->channels,
-                                                channel_mask);
-
-                    comment->close(comment);
-                }
-                break;
-            default:  /*all other blocks*/
-                bitstream->skip(bitstream, block_length * 8);
-                break;
-            }
-        } while (!last_block);
-
-        br_etry(bitstream);
-        return 0;
-    } else {
-#ifndef STANDALONE
-        PyErr_SetString(PyExc_IOError, "EOF while reading metadata");
-#endif
-        br_etry(bitstream);
-        return 1;
+    seektable->total_points = block_size / seekpoint_size;
+    seektable->seek_points =
+        malloc(sizeof(struct SEEKPOINT) * seektable->total_points);
+    for (i = 0; i < seektable->total_points; i++) {
+        r->parse(r, "64U 64U 16u",
+                 &(seektable->seek_points[i].sample_number),
+                 &(seektable->seek_points[i].frame_offset),
+                 &(seektable->seek_points[i].frame_samples));
     }
 }
 
-flac_status
-flacdec_read_frame_header(BitstreamReader *bitstream,
-                          struct flac_STREAMINFO *streaminfo,
-                          struct flac_frame_header *header)
+static void
+read_VORBIS_COMMENT(BitstreamReader *r, unsigned *channel_mask)
 {
-    unsigned block_size_bits;
-    unsigned sample_rate_bits;
+    unsigned total_entries;
+    const char channel_mask_key[] = "WAVEFORMATEXTENSIBLE_CHANNEL_MASK=";
+    const size_t mask_key_len = strlen(channel_mask_key);
+    char channel_mask_entry[] = "WAVEFORMATEXTENSIBLE_CHANNEL_MASK=0x0000";
+    const size_t mask_entry_len = strlen(channel_mask_entry);
+
+    r->set_endianness(r, BS_LITTLE_ENDIAN);
+
+    /*ignore vendor string*/
+    r->skip_bytes(r, r->read(r, 32));
+
+    for (total_entries = r->read(r, 32);
+         total_entries;
+         total_entries--) {
+        const unsigned entry_len = r->read(r, 32);
+        if ((entry_len > mask_key_len) && (entry_len <= mask_entry_len)) {
+            r->read_bytes(r, (uint8_t*)channel_mask_entry, entry_len);
+            if (strncmp(channel_mask_key,
+                        channel_mask_entry,
+                        mask_key_len) == 0) {
+                errno = 0;
+                const unsigned long mask =
+                    strtoul(channel_mask_entry + mask_key_len, NULL, 16);
+                if ((mask != 0) || (errno == 0)) {
+                    *channel_mask = (unsigned)mask;
+                }
+            }
+        } else {
+            r->skip_bytes(r, entry_len);
+        }
+    }
+
+    r->set_endianness(r, BS_BIG_ENDIAN);
+}
+
+static status_t
+read_frame_header(BitstreamReader *r,
+                  const struct STREAMINFO *streaminfo,
+                  struct frame_header *frame_header)
+{
     uint8_t crc8 = 0;
+    unsigned encoded_block_size;
+    unsigned encoded_sample_rate;
+    unsigned encoded_channels;
+    unsigned encoded_bps;
 
-    if (!setjmp(*br_try(bitstream))) {
-        bitstream->add_callback(bitstream, (bs_callback_f)flac_crc8, &crc8);
+    if (!setjmp(*br_try(r))) {
+        status_t status;
 
-        /*read and verify sync code*/
-        if (bitstream->read(bitstream, 14) != 0x3FFE) {
-            bitstream->pop_callback(bitstream, NULL);
-            br_etry(bitstream);
-            return ERR_INVALID_SYNC_CODE;
+        r->add_callback(r, (bs_callback_f)flac_crc8, &crc8);
+        if (r->read(r, 14) != 0x3FFE) {
+            br_etry(r);
+            return INVALID_SYNC_CODE;
+        }
+        r->skip(r, 1);
+        frame_header->blocking_strategy = r->read(r, 1);
+        encoded_block_size = r->read(r, 4);
+        encoded_sample_rate = r->read(r, 4);
+        encoded_channels = r->read(r, 4);
+        encoded_bps = r->read(r, 3);
+        r->skip(r, 1);
+        if ((status = read_utf8(r, &(frame_header->frame_number))) != OK) {
+            br_etry(r);
+            return status;
         }
 
-        /*read and verify reserved bit*/
-        if (bitstream->read(bitstream, 1) != 0) {
-            bitstream->pop_callback(bitstream, NULL);
-            br_etry(bitstream);
-            return ERR_INVALID_RESERVED_BIT;
-        }
-
-        header->blocking_strategy = bitstream->read(bitstream, 1);
-
-        block_size_bits = bitstream->read(bitstream, 4);
-        sample_rate_bits = bitstream->read(bitstream, 4);
-        header->channel_assignment = bitstream->read(bitstream, 4);
-        switch (header->channel_assignment) {
-        case 0x8:
-        case 0x9:
-        case 0xA:
-            header->channel_count = 2;
-            break;
-        default:
-            header->channel_count = header->channel_assignment + 1;
-            break;
-        }
-
-        switch (bitstream->read(bitstream, 3)) {
+        switch (encoded_block_size) {
         case 0:
-            header->bits_per_sample = streaminfo->bits_per_sample;
-            break;
-        case 1:
-            header->bits_per_sample = 8; break;
-        case 2:
-            header->bits_per_sample = 12; break;
-        case 4:
-            header->bits_per_sample = 16; break;
-        case 5:
-            header->bits_per_sample = 20; break;
-        case 6:
-            header->bits_per_sample = 24; break;
         default:
-            return ERR_INVALID_BITS_PER_SAMPLE;
-        }
-        bitstream->read(bitstream, 1); /*padding*/
-
-        header->frame_number = read_utf8(bitstream);
-
-        switch (block_size_bits) {
-        case 0x0: header->block_size = streaminfo->maximum_block_size;
+            frame_header->block_size = streaminfo->maximum_block_size;
             break;
-        case 0x1: header->block_size = 192; break;
-        case 0x2: header->block_size = 576; break;
-        case 0x3: header->block_size = 1152; break;
-        case 0x4: header->block_size = 2304; break;
-        case 0x5: header->block_size = 4608; break;
-        case 0x6: header->block_size = bitstream->read(bitstream, 8) + 1;
-            break;
-        case 0x7: header->block_size = bitstream->read(bitstream, 16) + 1;
-            break;
-        case 0x8: header->block_size = 256; break;
-        case 0x9: header->block_size = 512; break;
-        case 0xA: header->block_size = 1024; break;
-        case 0xB: header->block_size = 2048; break;
-        case 0xC: header->block_size = 4096; break;
-        case 0xD: header->block_size = 8192; break;
-        case 0xE: header->block_size = 16384; break;
-        case 0xF: header->block_size = 32768; break;
+        case 1: frame_header->block_size = 192; break;
+        case 2: frame_header->block_size = 576; break;
+        case 3: frame_header->block_size = 1152; break;
+        case 4: frame_header->block_size = 2304; break;
+        case 5: frame_header->block_size = 4608; break;
+        case 6: frame_header->block_size = r->read(r, 8) + 1; break;
+        case 7: frame_header->block_size = r->read(r, 16) + 1; break;
+        case 8: frame_header->block_size = 256; break;
+        case 9: frame_header->block_size = 512; break;
+        case 10: frame_header->block_size = 1024; break;
+        case 11: frame_header->block_size = 2048; break;
+        case 12: frame_header->block_size = 4096; break;
+        case 13: frame_header->block_size = 8192; break;
+        case 14: frame_header->block_size = 16384; break;
+        case 15: frame_header->block_size = 32768; break;
         }
 
-        switch (sample_rate_bits) {
-        case 0x0: header->sample_rate = streaminfo->sample_rate; break;
-        case 0x1: header->sample_rate = 88200; break;
-        case 0x2: header->sample_rate = 176400; break;
-        case 0x3: header->sample_rate = 192000; break;
-        case 0x4: header->sample_rate = 8000; break;
-        case 0x5: header->sample_rate = 16000; break;
-        case 0x6: header->sample_rate = 22050; break;
-        case 0x7: header->sample_rate = 24000; break;
-        case 0x8: header->sample_rate = 32000; break;
-        case 0x9: header->sample_rate = 44100; break;
-        case 0xA: header->sample_rate = 48000; break;
-        case 0xB: header->sample_rate = 96000; break;
-        case 0xC: header->sample_rate = bitstream->read(bitstream, 8) * 1000;
+        switch (encoded_sample_rate) {
+        case 0:
+        default:
+            frame_header->sample_rate = streaminfo->sample_rate;
             break;
-        case 0xD: header->sample_rate = bitstream->read(bitstream, 16);
+        case 1: frame_header->sample_rate = 88200; break;
+        case 2: frame_header->sample_rate = 176400; break;
+        case 3: frame_header->sample_rate = 192000; break;
+        case 4: frame_header->sample_rate = 8000; break;
+        case 5: frame_header->sample_rate = 16000; break;
+        case 6: frame_header->sample_rate = 22050; break;
+        case 7: frame_header->sample_rate = 24000; break;
+        case 8: frame_header->sample_rate = 32000; break;
+        case 9: frame_header->sample_rate = 44100; break;
+        case 10: frame_header->sample_rate = 48000; break;
+        case 11: frame_header->sample_rate = 96000; break;
+        case 12: frame_header->sample_rate = r->read(r, 8) * 1000; break;
+        case 13: frame_header->sample_rate = r->read(r, 16); break;
+        case 14: frame_header->sample_rate = r->read(r, 16) * 10; break;
+        case 15:
+            br_etry(r);
+            return INVALID_SAMPLE_RATE;
+        }
+
+        switch (encoded_bps) {
+        case 0:
+        default:
+            frame_header->bits_per_sample = streaminfo->bits_per_sample;
             break;
-        case 0xE: header->sample_rate = bitstream->read(bitstream, 16) * 10;
+        case 1: frame_header->bits_per_sample = 8; break;
+        case 2: frame_header->bits_per_sample = 12; break;
+        case 4: frame_header->bits_per_sample = 16; break;
+        case 5: frame_header->bits_per_sample = 20; break;
+        case 6: frame_header->bits_per_sample = 24; break;
+        case 3:
+        case 7:
+            br_etry(r);
+            return INVALID_BPS;
+        }
+
+        switch (encoded_channels) {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+            frame_header->channel_assignment = INDEPENDENT;
+            frame_header->channel_count = encoded_channels + 1;
             break;
-        case 0xF:
-            return ERR_INVALID_SAMPLE_RATE;
+        case 8:
+            frame_header->channel_assignment = LEFT_DIFFERENCE;
+            frame_header->channel_count = 2;
+            break;
+        case 9:
+            frame_header->channel_assignment = DIFFERENCE_RIGHT;
+            frame_header->channel_count = 2;
+            break;
+        case 10:
+            frame_header->channel_assignment = AVERAGE_DIFFERENCE;
+            frame_header->channel_count = 2;
+            break;
+        default:
+            br_etry(r);
+            return INVALID_CHANNEL_ASSIGNMENT;
         }
 
-        /*check for valid CRC-8 value*/
-        bitstream->read(bitstream, 8);
-
-        /*no more I/O after this point*/
-        bitstream->pop_callback(bitstream, NULL);
-        br_etry(bitstream);
-
-        if (crc8 != 0)
-            return ERR_INVALID_FRAME_CRC;
-
-        /*Once we've read everything,
-          ensure the values are compatible with STREAMINFO.*/
-
-        if (streaminfo->sample_rate != header->sample_rate) {
-            return ERR_SAMPLE_RATE_MISMATCH;
+        r->skip(r, 8); /*CRC-8*/
+        br_etry(r);
+        r->pop_callback(r, NULL);
+        if (crc8) {
+            return INVALID_CRC8;
+        } else {
+            return OK;
         }
-        if (streaminfo->channels != header->channel_count) {
-            return ERR_CHANNEL_COUNT_MISMATCH;
+    } else {
+        br_etry(r);
+        return IOERROR_HEADER;
+    }
+}
+
+static status_t
+read_utf8(BitstreamReader *r, unsigned *utf8)
+{
+    const unsigned count = r->read_unary(r, 0);
+    unsigned i;
+    *utf8 = r->read(r, 7 - count);
+    if (count > 0) {
+        for (i = 0; i < (count - 1); i++) {
+            if (r->read(r, 2) == 2) {
+                *utf8 = (*utf8 << 8) | (r->read(r, 6));
+            } else {
+                return INVALID_UTF8;
+            }
         }
-        if (streaminfo->bits_per_sample != header->bits_per_sample) {
-            return ERR_BITS_PER_SAMPLE_MISMATCH;
+    }
+    return OK;
+}
+
+static status_t
+decode_independent(BitstreamReader *r,
+                   const struct frame_header *frame_header,
+                   int samples[])
+{
+    unsigned c;
+    status_t status;
+    for (c = 0; c < frame_header->channel_count; c++) {
+        int channel_data[frame_header->block_size];
+        if ((status = read_subframe(r,
+                                    frame_header->block_size,
+                                    frame_header->bits_per_sample,
+                                    channel_data)) != OK) {
+            return status;
+        } else {
+            put_channel_data(samples,
+                             c,
+                             frame_header->channel_count,
+                             frame_header->block_size,
+                             channel_data);
         }
-        if (header->block_size > streaminfo->maximum_block_size) {
-            return ERR_MAXIMUM_BLOCK_SIZE_EXCEEDED;
+    }
+
+    return OK;
+}
+
+static status_t
+decode_left_difference(BitstreamReader *r,
+                       const struct frame_header *frame_header,
+                       int samples[])
+{
+    status_t status;
+    int left_data[frame_header->block_size];
+    int difference_data[frame_header->block_size];
+    int right_data[frame_header->block_size];
+
+    if ((status = read_subframe(r,
+                                frame_header->block_size,
+                                frame_header->bits_per_sample,
+                                left_data)) != OK) {
+        return status;
+    }
+
+    if ((status = read_subframe(r,
+                                frame_header->block_size,
+                                frame_header->bits_per_sample + 1,
+                                difference_data)) != OK) {
+        return status;
+    }
+
+    decorrelate_left_difference(frame_header->block_size,
+                                left_data,
+                                difference_data,
+                                right_data);
+
+    put_channel_data(samples,
+                     0,
+                     2,
+                     frame_header->block_size,
+                     left_data);
+
+    put_channel_data(samples,
+                     1,
+                     2,
+                     frame_header->block_size,
+                     right_data);
+
+    return OK;
+}
+
+static status_t
+decode_difference_right(BitstreamReader *r,
+                        const struct frame_header *frame_header,
+                        int samples[])
+{
+    status_t status;
+    int difference_data[frame_header->block_size];
+    int right_data[frame_header->block_size];
+    int left_data[frame_header->block_size];
+
+    if ((status = read_subframe(r,
+                                frame_header->block_size,
+                                frame_header->bits_per_sample + 1,
+                                difference_data)) != OK) {
+        return status;
+    }
+
+    if ((status = read_subframe(r,
+                                frame_header->block_size,
+                                frame_header->bits_per_sample,
+                                right_data)) != OK) {
+        return status;
+    }
+
+    decorrelate_difference_right(frame_header->block_size,
+                                 difference_data,
+                                 right_data,
+                                 left_data);
+
+    put_channel_data(samples,
+                     0,
+                     2,
+                     frame_header->block_size,
+                     left_data);
+
+    put_channel_data(samples,
+                     1,
+                     2,
+                     frame_header->block_size,
+                     right_data);
+
+    return OK;
+}
+
+static status_t
+decode_average_difference(BitstreamReader *r,
+                          const struct frame_header *frame_header,
+                          int samples[])
+{
+    status_t status;
+    int average_data[frame_header->block_size];
+    int difference_data[frame_header->block_size];
+    int right_data[frame_header->block_size];
+    int left_data[frame_header->block_size];
+
+    if ((status = read_subframe(r,
+                                frame_header->block_size,
+                                frame_header->bits_per_sample,
+                                average_data)) != OK) {
+        return status;
+    }
+
+    if ((status = read_subframe(r,
+                                frame_header->block_size,
+                                frame_header->bits_per_sample + 1,
+                                difference_data)) != OK) {
+        return status;
+    }
+
+    decorrelate_average_difference(frame_header->block_size,
+                                   average_data,
+                                   difference_data,
+                                   left_data,
+                                   right_data);
+
+    put_channel_data(samples,
+                     0,
+                     2,
+                     frame_header->block_size,
+                     left_data);
+
+    put_channel_data(samples,
+                     1,
+                     2,
+                     frame_header->block_size,
+                     right_data);
+
+    return OK;
+}
+
+static status_t
+read_subframe(BitstreamReader *r,
+              unsigned block_size,
+              unsigned bits_per_sample,
+              int channel_data[])
+{
+    if (!setjmp(*br_try(r))) {
+        subframe_type_t type;
+        unsigned order;
+        unsigned wasted_bps;
+        status_t status;
+
+        if ((status =
+             read_subframe_header(r, &type, &order, &wasted_bps)) != OK) {
+            br_etry(r);
+            return status;
+        } else {
+            const unsigned effective_bps = bits_per_sample - wasted_bps;
+            switch (type) {
+            case CONSTANT:
+                read_CONSTANT_subframe(r,
+                                       block_size,
+                                       effective_bps,
+                                       channel_data);
+                break;
+            case VERBATIM:
+                read_VERBATIM_subframe(r,
+                                       block_size,
+                                       effective_bps,
+                                       channel_data);
+                break;
+            case FIXED:
+                if ((status =
+                     read_FIXED_subframe(r,
+                                         block_size,
+                                         effective_bps,
+                                         order,
+                                         channel_data)) != OK) {
+                    return status;
+                }
+                break;
+            case LPC:
+                if ((status =
+                     read_LPC_subframe(r,
+                                       block_size,
+                                       effective_bps,
+                                       order,
+                                       channel_data)) != OK) {
+                    return status;
+                }
+                break;
+            }
+            br_etry(r);
+            if (wasted_bps) {
+                unsigned i;
+                for (i = 0; i < block_size; i++) {
+                    channel_data[i] <<= wasted_bps;
+                }
+            }
+            return OK;
+        }
+    } else {
+        br_etry(r);
+        return IOERROR_SUBFRAME;
+    }
+}
+
+static status_t
+read_subframe_header(BitstreamReader *r,
+                     subframe_type_t *type,
+                     unsigned *order,
+                     unsigned *wasted_bps)
+{
+    unsigned type_and_order;
+    unsigned has_wasted_bps;
+
+    r->skip(r, 1);
+    type_and_order = r->read(r, 6);
+    has_wasted_bps = r->read(r, 1);
+    if (has_wasted_bps) {
+        *wasted_bps = r->read_unary(r, 1) + 1;
+    } else {
+        *wasted_bps = 0;
+    }
+    if (type_and_order == 0) {
+        *type = CONSTANT;
+        return OK;
+    } else if (type_and_order == 1) {
+        *type = VERBATIM;
+        return OK;
+    } else if ((8 <= type_and_order) && (type_and_order <= 12)) {
+        *type = FIXED;
+        *order = type_and_order - 8;
+        return OK;
+    } else if ((32 <= type_and_order) && (type_and_order <= 63)) {
+        *type = LPC;
+        *order = type_and_order - 31;
+        return OK;
+    } else {
+        return INVALID_SUBFRAME_HEADER;
+    }
+}
+
+static void
+read_CONSTANT_subframe(BitstreamReader *r,
+                       unsigned block_size,
+                       unsigned bits_per_sample,
+                       int samples[])
+{
+    const int constant = r->read_signed(r, bits_per_sample);
+    for (; block_size; block_size--) {
+        samples[0] = constant;
+        samples += 1;
+    }
+}
+
+static void
+read_VERBATIM_subframe(BitstreamReader *r,
+                       unsigned block_size,
+                       unsigned bits_per_sample,
+                       int samples[])
+{
+    for (; block_size; block_size--) {
+        samples[0] = r->read_signed(r, bits_per_sample);
+        samples += 1;
+    }
+}
+
+static status_t
+read_FIXED_subframe(BitstreamReader *r,
+                    unsigned block_size,
+                    unsigned bits_per_sample,
+                    unsigned predictor_order,
+                    int samples[])
+{
+    if ((predictor_order > 4) || (predictor_order > block_size)) {
+        return INVALID_FIXED_ORDER;
+    } else {
+        unsigned i;
+        int residuals[block_size - predictor_order];
+        status_t status;
+
+        /*warm-up samples*/
+        for (i = 0; i < predictor_order; i++) {
+            samples[i] = r->read_signed(r, bits_per_sample);
+        }
+
+        /*residuals*/
+        if ((status = read_residual_block(r,
+                                          block_size,
+                                          predictor_order,
+                                          residuals)) != OK) {
+            return status;
+        }
+
+        switch (predictor_order) {
+        case 0:
+            for (i = 0; i < block_size; i++) {
+                samples[i] = residuals[i];
+            }
+            return OK;
+        case 1:
+            for (i = 1; i < block_size; i++) {
+                samples[i] = samples[i - 1] + residuals[i - 1];
+            }
+            return OK;
+        case 2:
+            for (i = 2; i < block_size; i++) {
+                samples[i] = (2 * samples[i - 1]) -
+                             samples[i - 2] +
+                             residuals[i - 2];
+            }
+            return OK;
+        case 3:
+            for (i = 3; i < block_size; i++) {
+                samples[i] = (3 * samples[i - 1]) -
+                             (3 * samples[i - 2]) +
+                             samples[i - 3] +
+                             residuals[i - 3];
+            }
+            return OK;
+        case 4:
+            for (i = 4; i < block_size; i++) {
+                samples[i] = (4 * samples[i - 1]) -
+                             (6 * samples[i - 2]) +
+                             (4 * samples[i - 3]) -
+                             samples[i - 4] +
+                             residuals[i - 4];
+            }
+            return OK;
+        default:
+            return INVALID_FIXED_ORDER;
+        }
+    }
+}
+
+static status_t
+read_LPC_subframe(BitstreamReader *r,
+                  unsigned block_size,
+                  unsigned bits_per_sample,
+                  unsigned predictor_order,
+                  int samples[])
+{
+    if (predictor_order >= block_size) {
+        return INVALID_LPC_ORDER;
+    } else {
+        unsigned i;
+        unsigned precision;
+        int shift;
+        int coefficient[predictor_order];
+        int residuals[block_size - predictor_order];
+        status_t status;
+
+        /*warm-up samples*/
+        for (i = 0; i < predictor_order; i++) {
+            samples[i] = r->read_signed(r, bits_per_sample);
+        }
+
+        precision = r->read(r, 4) + 1;
+        shift = r->read_signed(r, 5);
+        if (shift < 0) {
+            shift = 0;
+        }
+
+        /*coefficients*/
+        for (i = 0; i < predictor_order; i++) {
+            coefficient[i] = r->read_signed(r, precision);
+        }
+
+        if ((status = read_residual_block(r,
+                                          block_size,
+                                          predictor_order,
+                                          residuals)) != OK) {
+            return status;
+        }
+
+        for (i = predictor_order; i < block_size; i++) {
+            int64_t sum = 0;
+            unsigned j;
+            for (j = 0; j < predictor_order; j++) {
+                sum += (int64_t)coefficient[j] * (int64_t)samples[i - j - 1];
+            }
+            sum >>= shift;
+            samples[i] = (int)sum + residuals[i - predictor_order];
         }
 
         return OK;
+    }
+}
+
+static status_t
+read_residual_block(BitstreamReader *r,
+                    unsigned block_size,
+                    unsigned predictor_order,
+                    int residuals[])
+{
+    br_read_f read = r->read;
+    br_read_unary_f read_unary = r->read_unary;
+    const unsigned coding_method = r->read(r, 2);
+    const unsigned partition_order = r->read(r, 4);
+    const unsigned partition_count = 1 << partition_order;
+    unsigned rice_bits;
+    unsigned i = 0;
+    unsigned p;
+
+    if (coding_method == 0) {
+        rice_bits = 4;
+    } else if (coding_method == 1) {
+        rice_bits = 5;
     } else {
-        /*push read error to calling function*/
-        bitstream->pop_callback(bitstream, NULL);
-        br_etry(bitstream);
-        br_abort(bitstream);
-        return OK;  /*won't get here*/
-    }
-}
-
-flac_status
-flacdec_read_subframe(BitstreamReader* bitstream,
-                      a_int* qlp_coeffs,
-                      a_int* residuals,
-                      unsigned block_size,
-                      unsigned bits_per_sample,
-                      a_int* samples)
-{
-    struct flac_subframe_header subframe_header;
-    unsigned i;
-    flac_status error = OK;
-
-    if (flacdec_read_subframe_header(
-            bitstream,
-            &subframe_header) == ERR_INVALID_SUBFRAME_TYPE)
-        return ERR_INVALID_SUBFRAME_TYPE;
-
-    /*account for wasted bits-per-sample*/
-    if (subframe_header.wasted_bits_per_sample > 0)
-        bits_per_sample -= subframe_header.wasted_bits_per_sample;
-
-    switch (subframe_header.type) {
-    case FLAC_SUBFRAME_CONSTANT:
-        error = flacdec_read_constant_subframe(bitstream,
-                                               block_size,
-                                               bits_per_sample,
-                                               samples);
-        break;
-    case FLAC_SUBFRAME_VERBATIM:
-        error = flacdec_read_verbatim_subframe(bitstream,
-                                               block_size,
-                                               bits_per_sample,
-                                               samples);
-        break;
-    case FLAC_SUBFRAME_FIXED:
-        error = flacdec_read_fixed_subframe(bitstream,
-                                            residuals,
-                                            subframe_header.order,
-                                            block_size,
-                                            bits_per_sample,
-                                            samples);
-        break;
-    case FLAC_SUBFRAME_LPC:
-        error = flacdec_read_lpc_subframe(bitstream,
-                                          qlp_coeffs,
-                                          residuals,
-                                          subframe_header.order,
-                                          block_size,
-                                          bits_per_sample,
-                                          samples);
-        break;
+        return INVALID_CODING_METHOD;
     }
 
-    if (error != OK)
-        return error;
-
-    /*reinsert wasted bits-per-sample, if necessary*/
-    if (subframe_header.wasted_bits_per_sample > 0)
-        for (i = 0; i < block_size; i++)
-            samples->_[i] <<= subframe_header.wasted_bits_per_sample;
-
-    return OK;
-}
-
-flac_status
-flacdec_read_subframe_header(BitstreamReader *bitstream,
-                             struct flac_subframe_header *subframe_header)
-{
-    unsigned subframe_type;
-
-    bitstream->read(bitstream, 1);  /*padding*/
-    subframe_type = bitstream->read(bitstream, 6);
-    if (subframe_type == 0) {
-        subframe_header->type = FLAC_SUBFRAME_CONSTANT;
-        subframe_header->order = 0;
-    } else if (subframe_type == 1) {
-        subframe_header->type = FLAC_SUBFRAME_VERBATIM;
-        subframe_header->order = 0;
-    } else if ((subframe_type & 0x38) == 0x08) {
-        subframe_header->type = FLAC_SUBFRAME_FIXED;
-        subframe_header->order = subframe_type & 0x07;
-    } else if ((subframe_type & 0x20) == 0x20) {
-        subframe_header->type = FLAC_SUBFRAME_LPC;
-        subframe_header->order = (subframe_type & 0x1F) + 1;
-    } else {
-        return ERR_INVALID_SUBFRAME_TYPE;
-    }
-
-    if (bitstream->read(bitstream, 1) == 0) {
-        subframe_header->wasted_bits_per_sample = 0;
-    } else {
-        subframe_header->wasted_bits_per_sample = bitstream->read_unary(
-                                                      bitstream, 1) + 1;
-    }
-
-    return OK;
-}
-
-unsigned int
-flacdec_subframe_bits_per_sample(struct flac_frame_header *frame_header,
-                                 unsigned int channel_number) {
-    if (((frame_header->channel_assignment == 0x8) &&
-         (channel_number == 1)) ||
-        ((frame_header->channel_assignment == 0x9) &&
-         (channel_number == 0)) ||
-        ((frame_header->channel_assignment == 0xA) &&
-         (channel_number == 1))) {
-        return frame_header->bits_per_sample + 1;
-    } else {
-        return frame_header->bits_per_sample;
-    }
-}
-
-flac_status
-flacdec_read_constant_subframe(BitstreamReader* bitstream,
-                               unsigned block_size,
-                               unsigned bits_per_sample,
-                               a_int* samples)
-{
-    const int value = bitstream->read_signed(bitstream, bits_per_sample);
-
-    samples->mset(samples, block_size, value);
-
-    return OK;
-}
-
-flac_status
-flacdec_read_verbatim_subframe(BitstreamReader* bitstream,
-                               unsigned block_size,
-                               unsigned bits_per_sample,
-                               a_int* samples)
-{
-    unsigned i;
-
-    samples->reset_for(samples, block_size);
-
-    for (i = 0; i < block_size; i++)
-        a_append(samples,
-                 bitstream->read_signed(bitstream, bits_per_sample));
-
-    return OK;
-}
-
-flac_status
-flacdec_read_fixed_subframe(BitstreamReader* bitstream,
-                            a_int* residuals,
-                            unsigned order,
-                            unsigned block_size,
-                            unsigned bits_per_sample,
-                            a_int* samples)
-{
-    unsigned i;
-    flac_status error;
-    int* s_data;
-    int* r_data;
-
-    /*ensure that samples->data won't be realloc'ated*/
-    samples->reset_for(samples, block_size);
-    s_data = samples->_;
-
-    /*read "order" number of warm-up samples*/
-    for (i = 0; i < order; i++) {
-        a_append(samples,
-                 bitstream->read_signed(bitstream, bits_per_sample));
-    }
-
-    /*read the residual block*/
-    if ((error = flacdec_read_residual(bitstream,
-                                       order,
-                                       block_size,
-                                       residuals)) != OK)
-        return error;
-    else
-        r_data = residuals->_;
-
-    /*calculate subframe samples from warm-up samples and residual*/
-    switch (order) {
-    case 0:
-        samples->extend(samples, residuals);
-        break;
-    case 1:
-        for (i = 1; i < block_size; i++)
-            a_append(samples, s_data[i - 1] + r_data[i - 1]);
-        break;
-    case 2:
-        for (i = 2; i < block_size; i++)
-            a_append(samples,
-                     (2 * s_data[i - 1]) -
-                     s_data[i - 2] +
-                     r_data[i - 2]);
-        break;
-    case 3:
-        for (i = 3; i < block_size; i++)
-            a_append(samples,
-                     (3 * s_data[i - 1]) -
-                     (3 * s_data[i - 2]) +
-                     s_data[i - 3] +
-                     r_data[i - 3]);
-        break;
-    case 4:
-        for (i = 4; i < block_size; i++)
-            a_append(samples,
-                     (4 * s_data[i - 1]) -
-                     (6 * s_data[i - 2]) +
-                     (4 * s_data[i - 3]) -
-                     s_data[i - 4] +
-                     r_data[i - 4]);
-
-        break;
-    default:
-        return ERR_INVALID_FIXED_ORDER;
-    }
-
-    return OK;
-}
-
-flac_status
-flacdec_read_lpc_subframe(BitstreamReader* bitstream,
-                          a_int* qlp_coeffs,
-                          a_int* residuals,
-                          unsigned order,
-                          unsigned block_size,
-                          unsigned bits_per_sample,
-                          a_int* samples)
-{
-    unsigned i;
-    unsigned qlp_precision;
-    unsigned qlp_shift_needed;
-
-    int* s_data;
-    int* r_data;
-    int* qlp_data;
-    flac_status error;
-
-    qlp_coeffs->reset(qlp_coeffs);
-    samples->reset_for(samples, block_size);
-    s_data = samples->_;
-
-    /*read order number of warm-up samples*/
-    for (i = 0; i < order; i++) {
-        a_append(samples,
-                 bitstream->read_signed(bitstream, bits_per_sample));
-    }
-
-    /*read QLP precision*/
-    qlp_precision = bitstream->read(bitstream, 4) + 1;
-
-    /*read QLP shift needed*/
-    qlp_shift_needed = bitstream->read_signed(bitstream, 5);
-    qlp_shift_needed = MAX(qlp_shift_needed, 0);
-
-    /*read order number of QLP coefficients of size qlp_precision*/
-    for (i = 0; i < order; i++) {
-        qlp_coeffs->append(qlp_coeffs,
-                           bitstream->read_signed(bitstream, qlp_precision));
-    }
-
-    qlp_data = qlp_coeffs->_;
-
-    /*read the residual*/
-    if ((error = flacdec_read_residual(bitstream, order,
-                                       block_size, residuals)) != OK)
-        return error;
-    else
-        r_data = residuals->_;
-
-    /*calculate subframe samples from warm-up samples and residual*/
-    for (i = order; i < block_size; i++) {
-        int64_t accumulator = 0;
-        unsigned j;
-        for (j = 0; j < order; j++) {
-            accumulator += (int64_t)qlp_data[j] * (int64_t)s_data[i - j - 1];
-        }
-
-        a_append(samples,
-                 (int)(accumulator >> qlp_shift_needed) + r_data[i - order]);
-    }
-
-    return OK;
-}
-
-flac_status
-flacdec_read_residual(BitstreamReader* bitstream,
-                      unsigned order,
-                      unsigned block_size,
-                      a_int* residuals)
-{
-    const unsigned coding_method = bitstream->read(bitstream, 2);
-    const unsigned partition_order = bitstream->read(bitstream, 4);
-    const unsigned total_partitions = 1 << partition_order;
-    unsigned partition;
-
-    unsigned int (*read)(struct BitstreamReader_s* bs, unsigned int count);
-    unsigned int (*read_unary)(struct BitstreamReader_s* bs, int stop_bit);
-
-    read = bitstream->read;
-    read_unary = bitstream->read_unary;
-
-    residuals->reset(residuals);
-
-    /*read 2^partition_order number of partitions*/
-    for (partition = 0; partition < total_partitions; partition++) {
-        int partition_samples;
-        unsigned rice_parameter;
-        unsigned escape_code;
-
-        /*each partition after the first contains
-          block_size / (2 ^ partition_order) number of residual values*/
-        if (partition == 0) {
-            partition_samples = (int)(block_size /
-                                      (1 << partition_order)) - order;
-            partition_samples = MAX(partition_samples, 0);
+    for (p = 0; p < partition_count; p++) {
+        const unsigned rice = r->read(r, rice_bits);
+        const unsigned partition_size = block_size / partition_count -
+                                        (p == 0 ? predictor_order : 0);
+        register unsigned j;
+        if (((coding_method == 0) && (rice == 15)) ||
+            ((coding_method == 1) && (rice == 31))) {
+            const unsigned escape_code = read(r, 5);
+            br_read_signed_f read_signed = r->read_signed;
+            for (j = 0; j < partition_size; j++) {
+                residuals[i++] = read_signed(r, escape_code);
+            }
         } else {
-            partition_samples = block_size / (1 << partition_order);
+            for (j = 0; j < partition_size; j++) {
+                const unsigned MSB = read_unary(r, 1);
+                const unsigned LSB = read(r, rice);
+                const unsigned unsigned_ = (MSB << rice) | LSB;
+                residuals[i++] = (unsigned_ % 2) ?
+                                 (-(unsigned_ >> 1) - 1) :
+                                 (unsigned_ >> 1);
+            }
         }
+    }
 
-        switch (coding_method) {
-        case 0:
-            rice_parameter = bitstream->read(bitstream, 4);
-            if (rice_parameter == 0xF)
-                escape_code = bitstream->read(bitstream, 5);
-            else
-                escape_code = 0;
-            break;
-        case 1:
-            rice_parameter = bitstream->read(bitstream, 5);
-            if (rice_parameter == 0x1F)
-                escape_code = bitstream->read(bitstream, 5);
-            else
-                escape_code = 0;
-            break;
-        default:
-            return ERR_INVALID_CODING_METHOD;
-        }
+    return OK;
+}
 
-        residuals->resize_for(residuals, partition_samples);
-        if (!escape_code) {
-            for (;partition_samples; partition_samples--) {
-                const unsigned msb = read_unary(bitstream, 1);
-                const unsigned lsb = read(bitstream, rice_parameter);
-                const unsigned value = (msb << rice_parameter) | lsb;
-                if (value & 1) {
-                    a_append(residuals, -((int)value >> 1) - 1);
-                } else {
-                    a_append(residuals, (int)value >> 1);
+static void
+decorrelate_left_difference(unsigned block_size,
+                            const int left[],
+                            const int difference[],
+                            int right[])
+{
+    for (; block_size; block_size--) {
+        right[0] = left[0] - difference[0];
+        left += 1;
+        right += 1;
+        difference += 1;
+    }
+}
+
+static void
+decorrelate_difference_right(unsigned block_size,
+                             const int difference[],
+                             const int right[],
+                             int left[])
+{
+    for (; block_size; block_size--) {
+        left[0] = difference[0] + right[0];
+        difference += 1;
+        right += 1;
+        left += 1;
+    }
+}
+
+static void
+decorrelate_average_difference(unsigned block_size,
+                               const int average[],
+                               const int difference[],
+                               int left[],
+                               int right[])
+{
+    for (; block_size; block_size--) {
+        const int sum = (average[0] * 2) + (abs(difference[0]) % 2);
+        left[0] = (sum + difference[0]) >> 1;
+        right[0] = (sum - difference[0]) >> 1;
+        average += 1;
+        difference += 1;
+        left += 1;
+        right += 1;
+    }
+}
+
+static status_t
+skip_subframe(BitstreamReader *r,
+              unsigned block_size,
+              unsigned bits_per_sample)
+{
+    if (!setjmp(*br_try(r))) {
+        subframe_type_t type;
+        unsigned order;
+        unsigned wasted_bps;
+        status_t status;
+
+        if ((status =
+             read_subframe_header(r, &type, &order, &wasted_bps)) != OK) {
+            br_etry(r);
+            return status;
+        } else {
+            const unsigned effective_bps = bits_per_sample - wasted_bps;
+            switch (type) {
+            case CONSTANT:
+                skip_CONSTANT_subframe(r, effective_bps);
+                break;
+            case VERBATIM:
+                skip_VERBATIM_subframe(r, block_size, effective_bps);
+                break;
+            case FIXED:
+                if ((status =
+                     skip_FIXED_subframe(r,
+                                         block_size,
+                                         effective_bps,
+                                         order)) != OK) {
+                    return status;
                 }
+                break;
+            case LPC:
+                if ((status =
+                     skip_LPC_subframe(r,
+                                       block_size,
+                                       effective_bps,
+                                       order)) != OK) {
+                    return status;
+                }
+                break;
             }
+            br_etry(r);
+            return OK;
+        }
+    } else {
+        br_etry(r);
+        return IOERROR_SUBFRAME;
+    }
+}
+
+static void
+skip_CONSTANT_subframe(BitstreamReader *r,
+                       unsigned bits_per_sample)
+{
+    r->skip(r, bits_per_sample);
+}
+
+static void
+skip_VERBATIM_subframe(BitstreamReader *r,
+                       unsigned block_size,
+                       unsigned bits_per_sample)
+{
+    r->skip(r, block_size * bits_per_sample);
+}
+
+static status_t
+skip_FIXED_subframe(BitstreamReader *r,
+                    unsigned block_size,
+                    unsigned bits_per_sample,
+                    unsigned predictor_order)
+{
+    if ((predictor_order > 4) || (predictor_order > block_size)) {
+        return INVALID_FIXED_ORDER;
+    } else {
+        /*warm-up samples*/
+        r->skip(r, predictor_order * bits_per_sample);
+        return skip_residual_block(r, block_size, predictor_order);
+    }
+}
+
+static status_t
+skip_LPC_subframe(BitstreamReader *r,
+                  unsigned block_size,
+                  unsigned bits_per_sample,
+                  unsigned predictor_order)
+{
+    if (predictor_order >= block_size) {
+        return INVALID_LPC_ORDER;
+    } else {
+        unsigned precision;
+
+        /*warm-up samples*/
+        r->skip(r, predictor_order * bits_per_sample);
+        precision = r->read(r, 4) + 1;
+        r->skip(r, 5);
+        /*coefficients*/
+        r->skip(r, predictor_order * precision);
+        return skip_residual_block(r, block_size, predictor_order);
+    }
+}
+
+static status_t
+skip_residual_block(BitstreamReader *r,
+                    unsigned block_size,
+                    unsigned predictor_order)
+{
+    br_skip_f skip = r->skip;
+    br_skip_unary_f skip_unary = r->skip_unary;
+    const unsigned coding_method = r->read(r, 2);
+    const unsigned partition_order = r->read(r, 4);
+    const unsigned partition_count = 1 << partition_order;
+    unsigned rice_bits;
+    unsigned p;
+
+    if (coding_method == 0) {
+        rice_bits = 4;
+    } else if (coding_method == 1) {
+        rice_bits = 5;
+    } else {
+        return INVALID_CODING_METHOD;
+    }
+
+    for (p = 0; p < partition_count; p++) {
+        const unsigned rice = r->read(r, rice_bits);
+        const unsigned partition_size = block_size / partition_count -
+                                        (p == 0 ? predictor_order : 0);
+        register unsigned j;
+        if (((coding_method == 0) && (rice == 15)) ||
+            ((coding_method == 1) && (rice == 31))) {
+            const unsigned escape_code = r->read(r, 5);
+            r->skip(r, partition_size * escape_code);
         } else {
-            for (;partition_samples; partition_samples--) {
-                a_append(residuals,
-                         bitstream->read_signed(bitstream, escape_code));
+            for (j = 0; j < partition_size; j++) {
+                skip_unary(r, 1);
+                skip(r, rice);
             }
         }
     }
 
     return OK;
+
 }
 
+static void
+update_md5sum(audiotools__MD5Context *md5sum,
+              const int pcm_data[],
+              unsigned channels,
+              unsigned bits_per_sample,
+              unsigned pcm_frames)
+{
+    const unsigned bytes_per_sample = bits_per_sample / 8;
+    unsigned total_samples = pcm_frames * channels;
+    const unsigned buffer_size = total_samples * bytes_per_sample;
+    unsigned char buffer[buffer_size];
+    unsigned char *output_buffer = buffer;
+    void (*converter)(int, unsigned char *) =
+        int_to_pcm_converter(bits_per_sample, 0, 1);
 
-void
-flacdec_decorrelate_channels(unsigned channel_assignment,
-                             const aa_int* subframes,
-                             a_int* framelist) {
-    unsigned i,j;
-    const unsigned channel_count = subframes->len;
-    const unsigned block_size = subframes->_[0]->len;
+    for (; total_samples; total_samples--) {
+        converter(*pcm_data, output_buffer);
+        pcm_data += 1;
+        output_buffer += bytes_per_sample;
+    }
 
-    framelist->reset_for(framelist, channel_count * block_size);
+    audiotools__MD5Update(md5sum, buffer, buffer_size);
+}
 
-    switch (channel_assignment) {
-    case 0x8:
-        /*left-difference*/
-        assert(subframes->len == 2);
-        assert(subframes->_[0]->len == subframes->_[1]->len);
-        for (i = 0; i < block_size; i++) {
-            a_append(framelist, subframes->_[0]->_[i]);
-            a_append(framelist, (subframes->_[0]->_[i] -
-                                 subframes->_[1]->_[i]));
-        }
-        break;
-    case 0x9:
-        /*difference-right*/
-        assert(subframes->len == 2);
-        assert(subframes->_[0]->len == subframes->_[1]->len);
-        for (i = 0; i < block_size; i++) {
-            a_append(framelist, (subframes->_[0]->_[i] +
-                                 subframes->_[1]->_[i]));
-            a_append(framelist, subframes->_[1]->_[i]);
-        }
-        break;
-    case 0xA:
-        /*mid-side*/
-        assert(subframes->len == 2);
-        assert(subframes->_[0]->len == subframes->_[1]->len);
-        for (i = 0; i < block_size; i++) {
-            int64_t mid = subframes->_[0]->_[i];
-            int32_t side = subframes->_[1]->_[i];
-            mid = (mid << 1) | (side & 1);
-            a_append(framelist, (int)((mid + side) >> 1));
-            a_append(framelist, (int)((mid - side) >> 1));
-        }
-        break;
+static int
+verify_md5sum(audiotools__MD5Context *stream_md5,
+              const uint8_t streaminfo_md5[])
+{
+    unsigned char digest[16];
+    audiotools__MD5Final(digest, stream_md5);
+    return (memcmp(digest, streaminfo_md5, 16) == 0);
+}
+
+PyObject*
+flac_exception(status_t status)
+{
+    switch (status) {
+    case OK:
     default:
-        /*independent*/
-#ifndef NDEBUG
-        for (j = 0; j < channel_count; j++) {
-            assert(subframes->_[0]->len == subframes->_[j]->len);
-        }
-#endif
-        for (i = 0; i < block_size; i++) {
-            for (j = 0; j < channel_count; j++) {
-                a_append(framelist, subframes->_[j]->_[i]);
-            }
-        }
-        break;
+    case INVALID_SYNC_CODE:
+    case INVALID_SAMPLE_RATE:
+    case INVALID_BPS:
+    case INVALID_CHANNEL_ASSIGNMENT:
+    case INVALID_UTF8:
+    case INVALID_CRC8:
+    case INVALID_SUBFRAME_HEADER:
+    case INVALID_FIXED_ORDER:
+    case INVALID_LPC_ORDER:
+    case INVALID_CODING_METHOD:
+        return PyExc_ValueError;
+    case IOERROR_HEADER:
+    case IOERROR_SUBFRAME:
+        return PyExc_IOError;
     }
 }
-
 
 const char*
-FlacDecoder_strerror(flac_status error)
+flac_strerror(status_t status)
 {
-    switch (error) {
-    case OK:
-        return "No Error";
-    case ERROR:
-        return "Error";
-    case ERR_INVALID_SYNC_CODE:
-        return "invalid sync code";
-    case ERR_INVALID_RESERVED_BIT:
-        return "invalid reserved bit";
-    case ERR_INVALID_BITS_PER_SAMPLE:
-        return "invalid bits per sample";
-    case ERR_INVALID_SAMPLE_RATE:
-        return "invalid sample rate";
-    case ERR_INVALID_FRAME_CRC:
-        return "invalid checksum in frame header";
-    case ERR_SAMPLE_RATE_MISMATCH:
-        return "frame sample rate does not match STREAMINFO sample rate";
-    case ERR_CHANNEL_COUNT_MISMATCH:
-        return "frame channel count does not match STREAMINFO channel count";
-    case ERR_BITS_PER_SAMPLE_MISMATCH:
-        return "frame bits-per-sample does not match "
-            "STREAMINFO bits per sample";
-    case ERR_MAXIMUM_BLOCK_SIZE_EXCEEDED:
-        return "frame block size exceeds STREAMINFO's maximum block size";
-    case ERR_INVALID_CODING_METHOD:
-        return "invalid residual partition coding method";
-    case ERR_INVALID_FIXED_ORDER:
-        return "invalid FIXED subframe order";
-    case ERR_INVALID_SUBFRAME_TYPE:
-        return "invalid subframe type";
+    switch (status) {
     default:
-        return "Unknown Error";
+        return "undefined error";
+    case OK:
+        return "OK";
+    case INVALID_SYNC_CODE:
+        return "invalid sync code in frame header";
+    case INVALID_SAMPLE_RATE:
+        return "invalid sample rate in frame header";
+    case INVALID_BPS:
+        return "invalid bits-per-sample in frame header";
+    case INVALID_CHANNEL_ASSIGNMENT:
+        return "invalid channel assignment in frame header";
+    case INVALID_UTF8:
+        return "invalid UTF-8 value in frame header";
+    case INVALID_CRC8:
+        return "invalid CRC-8 in frame header";
+    case IOERROR_HEADER:
+        return "I/O error reading frame header";
+    case IOERROR_SUBFRAME:
+        return "I/O error reading subframe data";
+    case INVALID_SUBFRAME_HEADER:
+        return "invalid subframe header";
+    case INVALID_FIXED_ORDER:
+        return "invalid FIXED subframe order";
+    case INVALID_LPC_ORDER:
+        return "invalid LPC subframe order";
+    case INVALID_CODING_METHOD:
+        return "invalid coding method";
     }
 }
-
-unsigned
-read_utf8(BitstreamReader *stream)
-{
-    unsigned total_bytes = stream->read_unary(stream, 0);
-    unsigned value = stream->read(stream, 7 - total_bytes);
-    for (;total_bytes > 1; total_bytes--) {
-        value = (value << 6) | (stream->read(stream, 8) & 0x3F);
-    }
-
-    return value;
-}
-
-struct flac_SEEKPOINT*
-seekpoint_copy(struct flac_SEEKPOINT* seekpoint)
-{
-    struct flac_SEEKPOINT* new_seekpoint =
-        malloc(sizeof(struct flac_SEEKPOINT));
-
-    new_seekpoint->sample_number = seekpoint->sample_number;
-    new_seekpoint->byte_offset = seekpoint->byte_offset;
-    new_seekpoint->samples = seekpoint->samples;
-
-    return new_seekpoint;
-}
-
-
-#ifdef EXECUTABLE
-#include <string.h>
-#include <errno.h>
-
-int main(int argc, char* argv[]) {
-    FILE* file;
-    BitstreamReader* reader;
-    struct flac_STREAMINFO streaminfo;
-    a_obj* seektable;
-    int channel_mask;
-    uint64_t remaining_frames;
-
-    a_int* qlp_coeffs;
-    a_int* residuals;
-    aa_int* subframe_data;
-    a_int* framelist_data;
-
-    FrameList_int_to_char_converter converter;
-    unsigned char *output_data;
-    unsigned output_data_size;
-
-    audiotools__MD5Context md5;
-    unsigned char stream_md5sum[16];
-    const static unsigned char blank_md5sum[16] = {0, 0, 0, 0, 0, 0, 0, 0,
-                                                   0, 0, 0, 0, 0, 0, 0, 0};
-
-    if (argc < 2) {
-        fprintf(stderr, "*** Usage: %s <file.flac>\n", argv[0]);
-        return 1;
-    }
-
-    /*open input file for reading*/
-    if ((file = fopen(argv[1], "rb")) == NULL) {
-        fprintf(stderr, "*** %s: %s\n", argv[1], strerror(errno));
-        return 1;
-    } else {
-        /*open bitstream and setup temporary arrays/buffers*/
-        reader = br_open(file, BS_BIG_ENDIAN);
-        seektable = a_obj_new((ARRAY_COPY_FUNC)seekpoint_copy,
-                              free,
-                              NULL);
-        qlp_coeffs = a_int_new();
-        residuals = a_int_new();
-        subframe_data = aa_int_new();
-        framelist_data = a_int_new();
-
-        output_data = malloc(1);
-        output_data_size = 1;
-    }
-
-    /*read initial metadata blocks*/
-    if (flacdec_read_metadata(reader, &streaminfo, seektable, &channel_mask)) {
-        fprintf(stderr, "*** Error reading streaminfo\n");
-        goto error;
-    } else {
-        remaining_frames = streaminfo.total_samples;
-    }
-
-    /*initialize the output MD5 sum*/
-    audiotools__MD5Init(&md5);
-
-    /*setup a framelist converter function*/
-    converter = FrameList_get_int_to_char_converter(streaminfo.bits_per_sample,
-                                                    0,
-                                                    1);
-
-    while (remaining_frames) {
-        unsigned pcm_size;
-
-        qlp_coeffs->reset(qlp_coeffs);
-        residuals->reset(residuals);
-        subframe_data->reset(subframe_data);
-        framelist_data->reset(framelist_data);
-
-        if (!setjmp(*br_try(reader))) {
-            flac_status error;
-            struct flac_frame_header frame_header;
-            unsigned channel;
-            uint16_t crc16 = 0;
-
-            /*add callback for CRC16 calculation*/
-            reader->add_callback(reader, (bs_callback_f)flac_crc16, &crc16);
-
-            /*read frame header*/
-            if ((error = flacdec_read_frame_header(reader,
-                                                   &streaminfo,
-                                                   &frame_header)) != OK) {
-                reader->pop_callback(reader, NULL);
-                br_etry(reader);
-                fprintf(stderr, "*** Error: %s\n", FlacDecoder_strerror(error));
-                goto error;
-            }
-
-            /*read 1 subframe per channels*/
-            for (channel = 0; channel < frame_header.channel_count; channel++)
-                if ((error =
-                     flacdec_read_subframe(
-                         reader,
-                         qlp_coeffs,
-                         residuals,
-                         (unsigned)MIN(frame_header.block_size,
-                                       remaining_frames),
-                         flacdec_subframe_bits_per_sample(&frame_header,
-                                                          channel),
-                         subframe_data->append(subframe_data))) != OK) {
-                    reader->pop_callback(reader, NULL);
-                    br_etry(reader);
-                    fprintf(stderr, "*** Error: %s\n",
-                            FlacDecoder_strerror(error));
-                    goto error;
-                }
-
-            /*handle difference channels, if any*/
-            flacdec_decorrelate_channels(frame_header.channel_assignment,
-                                         subframe_data,
-                                         framelist_data);
-
-            /*check CRC-16*/
-            reader->byte_align(reader);
-            reader->read(reader, 16);
-            reader->pop_callback(reader, NULL);
-            if (crc16 != 0) {
-                br_etry(reader);
-                fprintf(stderr, "*** Error: invalid checksum in frame\n");
-                goto error;
-            }
-
-            /*decrement remaining frames*/
-            remaining_frames -= frame_header.block_size;
-
-            br_etry(reader);
-        } else {
-            /*handle I/O error during read*/
-            reader->pop_callback(reader, NULL);
-            br_etry(reader);
-            fprintf(stderr, "*** I/O Error reading frame\n");
-            goto error;
-        }
-
-        /*convert framelist to string*/
-        pcm_size = (streaminfo.bits_per_sample / 8) * framelist_data->len;
-        if (pcm_size > output_data_size) {
-            output_data_size = pcm_size;
-            output_data = realloc(output_data, output_data_size);
-        }
-        FrameList_samples_to_char(output_data,
-                                  framelist_data->_,
-                                  converter,
-                                  framelist_data->len,
-                                  streaminfo.bits_per_sample);
-
-        /*update MD5 sum*/
-        audiotools__MD5Update(&md5, output_data, pcm_size);
-
-        /*output framelist as string to stdout*/
-        fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
-    }
-
-    /*verify MD5 sum*/
-    audiotools__MD5Final(stream_md5sum, &md5);
-
-    if (!((memcmp(streaminfo.md5sum, blank_md5sum, 16) == 0) ||
-          (memcmp(stream_md5sum, streaminfo.md5sum, 16) == 0))) {
-        fprintf(stderr, "*** MD5 mismatch at end of stream\n");
-        goto error;
-    }
-
-    reader->close(reader);
-    seektable->del(seektable);
-    qlp_coeffs->del(qlp_coeffs);
-    residuals->del(residuals);
-    subframe_data->del(subframe_data);
-    framelist_data->del(framelist_data);
-
-    free(output_data);
-
-    return 0;
-error:
-    reader->close(reader);
-    seektable->del(seektable);
-    qlp_coeffs->del(qlp_coeffs);
-    residuals->del(residuals);
-    subframe_data->del(subframe_data);
-    framelist_data->del(framelist_data);
-
-    free(output_data);
-
-    return 1;
-}
-#endif

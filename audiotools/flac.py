@@ -3218,21 +3218,26 @@ class OggFlacAudio(FlacAudio):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        from audiotools import decoders
-        from audiotools import PCMReaderError
-
-        try:
-            return decoders.OggFlacDecoder(self.filename,
-                                           self.channel_mask())
-        except (IOError, ValueError) as msg:
-            # The only time this is likely to occur is
-            # if the Ogg FLAC is modified between when OggFlacAudio
-            # is initialized and when to_pcm() is called.
-            return PCMReaderError(error_message=str(msg),
-                                  sample_rate=self.sample_rate(),
-                                  channels=self.channels(),
-                                  channel_mask=int(self.channel_mask()),
-                                  bits_per_sample=self.bits_per_sample())
+        from audiotools import BIN,PCMFileReader
+        import subprocess
+        import os
+        sub = subprocess.Popen(
+            [BIN["flac"], "-d", "-o", "-",
+             "--force-raw-format",
+             "--endian=little",
+             "--sign=signed",
+             self.filename],
+             stdout=subprocess.PIPE,
+             stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
+             open(os.devnull, "wb"))
+        return PCMFileReader(sub.stdout,
+                             sample_rate=self.sample_rate(),
+                             channels=self.channels(),
+                             channel_mask=int(self.channel_mask()),
+                             bits_per_sample=self.bits_per_sample(),
+                             process=sub,
+                             signed=True,
+                             big_endian=False)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
