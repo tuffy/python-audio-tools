@@ -1363,7 +1363,7 @@ write_lpc_subframe(BitstreamWriter *output,
             sum += ((int64_t)coefficients[j] * (int64_t)samples[i - j - 1]);
         }
         sum >>= shift;
-        residuals[i - predictor_order] = samples[i] - sum;
+        residuals[i - predictor_order] = samples[i] - (int)sum;
     }
     write_residual_block(output,
                          options,
@@ -1613,8 +1613,8 @@ quantize_lp_coefficients(unsigned lpc_order,
 
     for (i = 0; i < lpc_order; i++) {
         const double sum = error + lp_coeff[lpc_order - 1][i] * (1 << *shift);
-        const int round_sum = lround(sum);
-        qlp_coeff[i] = MIN(MAX(round_sum, min_coeff), max_coeff);
+        const long round_sum = lround(sum);
+        qlp_coeff[i] = (int)(MIN(MAX(round_sum, min_coeff), max_coeff));
         assert(qlp_coeff[i] <= (1 << (precision - 1)) - 1);
         assert(qlp_coeff[i] >= -(1 << (precision - 1)));
         error = sum - qlp_coeff[i];

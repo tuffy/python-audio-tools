@@ -292,9 +292,9 @@ Downmixer_read(pcmconverter_Downmixer *self, PyObject *args)
             lround(fR[i] - REAR_GAIN * mono_rear + CENTER_GAIN * fC[i]);
 
         put_sample(framelist->samples, 0, 2, i,
-                   MAX(MIN(left_i, SAMPLE_MAX), SAMPLE_MIN));
+                   (int)(MAX(MIN(left_i, SAMPLE_MAX), SAMPLE_MIN)));
         put_sample(framelist->samples, 1, 2, i,
-                   MAX(MIN(right_i, SAMPLE_MAX), SAMPLE_MIN));
+                   (int)(MAX(MIN(right_i, SAMPLE_MAX), SAMPLE_MIN)));
     }
 
     return (PyObject*)framelist;
@@ -400,7 +400,7 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
     const unsigned frames_read =
         self->pcmreader->read(
             self->pcmreader,
-            RESAMPLER_BLOCK_SIZE - self->src_data.input_frames,
+            (unsigned)(RESAMPLER_BLOCK_SIZE - self->src_data.input_frames),
             pcm_data);
     int_to_double_f i_to_f_conv = int_to_double_converter(bits_per_sample);
     double_to_int_f f_to_i_conv = double_to_int_converter(bits_per_sample);
@@ -439,7 +439,7 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
     framelist = new_FrameList(self->audiotools_pcm,
                               channels,
                               bits_per_sample,
-                              self->src_data.output_frames_gen);
+                              (unsigned)(self->src_data.output_frames_gen));
     for (i = 0; i < framelist->samples_length; i++) {
         framelist->samples[i] = f_to_i_conv(self->src_data.data_out[i]);
     }
