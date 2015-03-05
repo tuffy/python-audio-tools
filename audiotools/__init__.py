@@ -1677,9 +1677,9 @@ def file_type(file):
             return None
     elif header[0:4] == b"OggS":
         # possibly Ogg FLAC, Ogg Vorbis or Ogg Opus
-        if header[0x1C:0x21] == b"\x7FFLAC":
-            return OggFlacAudio
-        elif header[0x1C:0x23] == b"\x01vorbis":
+        #if header[0x1C:0x21] == b"\x7FFLAC":
+        #    return OggFlacAudio
+        if header[0x1C:0x23] == b"\x01vorbis":
             return VorbisAudio
         elif header[0x1C:0x26] == b"OpusHead\x01":
             return OpusAudio
@@ -5727,7 +5727,6 @@ from audiotools.au import AuAudio
 from audiotools.wav import WaveAudio
 from audiotools.aiff import AiffAudio
 from audiotools.flac import FlacAudio
-from audiotools.flac import OggFlacAudio
 from audiotools.wavpack import WavPackAudio
 from audiotools.shn import ShortenAudio
 from audiotools.mp3 import MP3Audio
@@ -5749,7 +5748,6 @@ from audiotools.m4a_atoms import M4A_META_Atom
 from audiotools.vorbiscomment import VorbisComment
 
 AVAILABLE_TYPES = (FlacAudio,
-                   OggFlacAudio,
                    MP3Audio,
                    MP2Audio,
                    WaveAudio,

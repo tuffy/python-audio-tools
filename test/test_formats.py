@@ -4919,40 +4919,40 @@ class OggVerify:
             self.assertEqual(os.path.isfile("dummy.wav"), False)
 
 
-class OggFlacFileTest(OggVerify,
-                      LosslessFileTest):
-    def setUp(self):
-        from audiotools.decoders import OggFlacDecoder
-
-        self.audio_class = audiotools.OggFlacAudio
-        self.suffix = "." + self.audio_class.SUFFIX
-
-        self.decoder = OggFlacDecoder
-
-    @FORMAT_OGGFLAC
-    def test_init(self):
-        # check missing file
-        self.assertRaises(audiotools.flac.InvalidFLAC,
-                          audiotools.OggFlacAudio,
-                          "/dev/null/foo")
-
-        # check invalid file
-        with tempfile.NamedTemporaryFile(suffix=".oga") as invalid_file:
-            for c in [b"i", b"n", b"v", b"a", b"l", b"i", b"d",
-                      b"s", b"t", b"r", b"i", b"n", b"g", b"x", b"x", b"x"]:
-                invalid_file.write(c)
-                invalid_file.flush()
-                self.assertRaises(audiotools.flac.InvalidFLAC,
-                                  audiotools.OggFlacAudio,
-                                  invalid_file.name)
-
-        # check some decoder errors,
-        # mostly to ensure a failed init doesn't make Python explode
-        self.assertRaises(TypeError, self.decoder)
-
-        self.assertRaises(TypeError, self.decoder, None)
-
-        self.assertRaises(ValueError, self.decoder, "/dev/null", -1)
+#class OggFlacFileTest(OggVerify,
+#                      LosslessFileTest):
+#    def setUp(self):
+#        from audiotools.decoders import OggFlacDecoder
+#
+#        self.audio_class = audiotools.OggFlacAudio
+#        self.suffix = "." + self.audio_class.SUFFIX
+#
+#        self.decoder = OggFlacDecoder
+#
+#    @FORMAT_OGGFLAC
+#    def test_init(self):
+#        # check missing file
+#        self.assertRaises(audiotools.flac.InvalidFLAC,
+#                          audiotools.OggFlacAudio,
+#                          "/dev/null/foo")
+#
+#        # check invalid file
+#        with tempfile.NamedTemporaryFile(suffix=".oga") as invalid_file:
+#            for c in [b"i", b"n", b"v", b"a", b"l", b"i", b"d",
+#                      b"s", b"t", b"r", b"i", b"n", b"g", b"x", b"x", b"x"]:
+#                invalid_file.write(c)
+#                invalid_file.flush()
+#                self.assertRaises(audiotools.flac.InvalidFLAC,
+#                                  audiotools.OggFlacAudio,
+#                                  invalid_file.name)
+#
+#        # check some decoder errors,
+#        # mostly to ensure a failed init doesn't make Python explode
+#        self.assertRaises(TypeError, self.decoder)
+#
+#        self.assertRaises(TypeError, self.decoder, None)
+#
+#        self.assertRaises(ValueError, self.decoder, "/dev/null", -1)
 
 
 class ShortenFileTest(TestForeignWaveChunks,

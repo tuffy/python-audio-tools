@@ -33,7 +33,13 @@ typedef enum {OK,
               INVALID_SUBFRAME_HEADER,
               INVALID_FIXED_ORDER,
               INVALID_LPC_ORDER,
-              INVALID_CODING_METHOD} status_t;
+              INVALID_CODING_METHOD,
+              INVALID_WASTED_BPS,
+              INVALID_PARTITION_ORDER,
+              BLOCK_SIZE_MISMATCH,
+              SAMPLE_RATE_MISMATCH,
+              BPS_MISMATCH,
+              CHANNEL_COUNT_MISMATCH} status_t;
 
 typedef enum {INDEPENDENT,
               LEFT_DIFFERENCE,
@@ -250,7 +256,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->remaining_samples = 0;
     self->closed = 0;
     audiotools__MD5Init(&(self->md5));
-    self->perform_validation = 0;
+    self->perform_validation = 1;
     self->stream_finalized = 0;
     self->audiotools_pcm = NULL;
     self->beginning_of_frames = NULL;
@@ -297,6 +303,8 @@ FlacDecoder_init(decoders_FlacDecoder *self,
                           bC  = 0x100,
                           sL  = 0x200,
                           sR  = 0x400};
+                    const uint8_t empty_md5[16] = {0, 0, 0, 0, 0, 0, 0, 0,
+                                                   0, 0, 0, 0, 0, 0, 0, 0};
 
                     read_STREAMINFO(self->bitstream, &(self->streaminfo));
                     /*use a dummy channel mask for now*/
@@ -328,6 +336,12 @@ FlacDecoder_init(decoders_FlacDecoder *self,
                         fL | fR | fC | LFE | bL | bR | sL | sR;
                         break;
                     }
+
+                    /*turn off MD5 checking if MD5 sum is empty*/
+                    if (memcmp(self->streaminfo.MD5, empty_md5, 16) == 0) {
+                        self->perform_validation = 0;
+                    }
+
                     streaminfo_read = 1;
                 } else {
                     PyErr_SetString(PyExc_ValueError,
@@ -919,6 +933,10 @@ read_frame_header(BitstreamReader *r,
         case 14: frame_header->block_size = 16384; break;
         case 15: frame_header->block_size = 32768; break;
         }
+        if (frame_header->block_size > streaminfo->maximum_block_size) {
+            br_etry(r);
+            return BLOCK_SIZE_MISMATCH;
+        }
 
         switch (encoded_sample_rate) {
         case 0:
@@ -943,6 +961,10 @@ read_frame_header(BitstreamReader *r,
             br_etry(r);
             return INVALID_SAMPLE_RATE;
         }
+        if (frame_header->sample_rate != streaminfo->sample_rate) {
+            br_etry(r);
+            return SAMPLE_RATE_MISMATCH;
+        }
 
         switch (encoded_bps) {
         case 0:
@@ -958,6 +980,10 @@ read_frame_header(BitstreamReader *r,
         case 7:
             br_etry(r);
             return INVALID_BPS;
+        }
+        if (frame_header->bits_per_sample != streaminfo->bits_per_sample) {
+            br_etry(r);
+            return BPS_MISMATCH;
         }
 
         switch (encoded_channels) {
@@ -987,6 +1013,10 @@ read_frame_header(BitstreamReader *r,
         default:
             br_etry(r);
             return INVALID_CHANNEL_ASSIGNMENT;
+        }
+        if (frame_header->channel_count != streaminfo->channel_count) {
+            br_etry(r);
+            return CHANNEL_COUNT_MISMATCH;
         }
 
         r->skip(r, 8); /*CRC-8*/
@@ -1199,6 +1229,12 @@ read_subframe(BitstreamReader *r,
             return status;
         } else {
             const unsigned effective_bps = bits_per_sample - wasted_bps;
+
+            if (wasted_bps >= bits_per_sample) {
+                br_etry(r);
+                return INVALID_WASTED_BPS;
+            }
+
             switch (type) {
             case CONSTANT:
                 read_CONSTANT_subframe(r,
@@ -1219,6 +1255,7 @@ read_subframe(BitstreamReader *r,
                                          effective_bps,
                                          order,
                                          channel_data)) != OK) {
+                    br_etry(r);
                     return status;
                 }
                 break;
@@ -1229,6 +1266,7 @@ read_subframe(BitstreamReader *r,
                                        effective_bps,
                                        order,
                                        channel_data)) != OK) {
+                    br_etry(r);
                     return status;
                 }
                 break;
@@ -1384,7 +1422,7 @@ read_LPC_subframe(BitstreamReader *r,
                   unsigned predictor_order,
                   int samples[])
 {
-    if (predictor_order >= block_size) {
+    if (predictor_order > block_size) {
         return INVALID_LPC_ORDER;
     } else {
         unsigned i;
@@ -1452,6 +1490,11 @@ read_residual_block(BitstreamReader *r,
         rice_bits = 5;
     } else {
         return INVALID_CODING_METHOD;
+    }
+
+    if ((block_size % partition_count) ||
+        (predictor_order > (block_size / partition_count))) {
+        return INVALID_PARTITION_ORDER;
     }
 
     for (p = 0; p < partition_count; p++) {
@@ -1721,6 +1764,12 @@ flac_exception(status_t status)
     case INVALID_FIXED_ORDER:
     case INVALID_LPC_ORDER:
     case INVALID_CODING_METHOD:
+    case INVALID_WASTED_BPS:
+    case INVALID_PARTITION_ORDER:
+    case BLOCK_SIZE_MISMATCH:
+    case SAMPLE_RATE_MISMATCH:
+    case BPS_MISMATCH:
+    case CHANNEL_COUNT_MISMATCH:
         return PyExc_ValueError;
     case IOERROR_HEADER:
     case IOERROR_SUBFRAME:
@@ -1760,5 +1809,17 @@ flac_strerror(status_t status)
         return "invalid LPC subframe order";
     case INVALID_CODING_METHOD:
         return "invalid coding method";
+    case INVALID_WASTED_BPS:
+        return "invalid wasted BPS in subframe header";
+    case INVALID_PARTITION_ORDER:
+        return "invalid residual partition order";
+    case BLOCK_SIZE_MISMATCH:
+        return "frame header block size larger than maximum";
+    case SAMPLE_RATE_MISMATCH:
+        return "frame header sample rate mismatch";
+    case BPS_MISMATCH:
+        return "frame header bits-per-sample mismatch";
+    case CHANNEL_COUNT_MISMATCH:
+        return "frame header channel count mismatch";
     }
 }

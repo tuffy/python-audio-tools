@@ -5068,13 +5068,13 @@ class test_flac_cuesheet(testcuesheet):
         self.assertTrue(True)
 
 
-class test_oggflac_cuesheet(test_flac_cuesheet):
-    def setUp(self):
-        self.audio_class = audiotools.OggFlacAudio
-
-    @LIB_CUESHEET
-    def test_attributes(self):
-        pass
+#class test_oggflac_cuesheet(test_flac_cuesheet):
+#    def setUp(self):
+#        self.audio_class = audiotools.OggFlacAudio
+#
+#    @LIB_CUESHEET
+#    def test_attributes(self):
+#        pass
 
 
 class test_tta_cuesheet(test_flac_cuesheet):
@@ -5229,8 +5229,7 @@ class TestMultiChannel(unittest.TestCase):
                                   audiotools.WavPackAudio]
 
         # these support a subset of ChannelMasks up to 6 channels
-        self.flac_channel_masks = [audiotools.FlacAudio,
-                                   audiotools.OggFlacAudio]
+        self.flac_channel_masks = [audiotools.FlacAudio]
 
         # these support a reordered subset of ChannelMasks up to 8 channels
         self.vorbis_channel_masks = [audiotools.VorbisAudio,
@@ -5529,7 +5528,7 @@ class TestMultiChannel(unittest.TestCase):
                                                channels,
                                                True)
 
-        for audio_class in [audiotools.FlacAudio, audiotools.OggFlacAudio]:
+        for audio_class in [audiotools.FlacAudio]:
             for channels in range(1, 9):
                 self.__test_undefined_mask_blank__(audio_class,
                                                    channels,

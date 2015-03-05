@@ -3757,8 +3757,7 @@ class FlacMetaData(MetaDataTest):
                                  "album_number",
                                  "album_total",
                                  "comment"]
-        self.supported_formats = [audiotools.FlacAudio,
-                                  audiotools.OggFlacAudio]
+        self.supported_formats = [audiotools.FlacAudio]
 
     def empty_metadata(self):
         return self.metadata_class.converted(audiotools.MetaData())
@@ -3932,33 +3931,32 @@ class FlacMetaData(MetaDataTest):
                         audiotools.flac.Flac_CUESHEET.BLOCK_ID),
                     new_cuesheet)
 
-                if audio_class is not audiotools.OggFlacAudio:
-                    # seektable not updated with set_metadata()
-                    # but can be updated with update_metadata()
+                # seektable not updated with set_metadata()
+                # but can be updated with update_metadata()
 
-                    # Ogg FLAC doesn't really support seektables as such
+                # Ogg FLAC doesn't really support seektables as such
 
-                    metadata = track.get_metadata()
+                metadata = track.get_metadata()
 
-                    old_seektable = metadata.get_block(
-                        audiotools.flac.Flac_SEEKTABLE.BLOCK_ID)
+                old_seektable = metadata.get_block(
+                    audiotools.flac.Flac_SEEKTABLE.BLOCK_ID)
 
-                    new_seektable = audiotools.flac.Flac_SEEKTABLE(
-                        seekpoints=[(1, 1, 4096)] +
-                        old_seektable.seekpoints[1:])
-                    metadata.replace_blocks(
-                        audiotools.flac.Flac_SEEKTABLE.BLOCK_ID,
-                        [new_seektable])
-                    track.set_metadata(metadata)
-                    self.assertEqual(
-                        track.get_metadata().get_block(
-                            audiotools.flac.Flac_SEEKTABLE.BLOCK_ID),
-                        old_seektable)
-                    track.update_metadata(metadata)
-                    self.assertEqual(
-                        track.get_metadata().get_block(
-                            audiotools.flac.Flac_SEEKTABLE.BLOCK_ID),
-                        new_seektable)
+                new_seektable = audiotools.flac.Flac_SEEKTABLE(
+                    seekpoints=[(1, 1, 4096)] +
+                    old_seektable.seekpoints[1:])
+                metadata.replace_blocks(
+                    audiotools.flac.Flac_SEEKTABLE.BLOCK_ID,
+                    [new_seektable])
+                track.set_metadata(metadata)
+                self.assertEqual(
+                    track.get_metadata().get_block(
+                        audiotools.flac.Flac_SEEKTABLE.BLOCK_ID),
+                    old_seektable)
+                track.update_metadata(metadata)
+                self.assertEqual(
+                    track.get_metadata().get_block(
+                        audiotools.flac.Flac_SEEKTABLE.BLOCK_ID),
+                    new_seektable)
 
                 # application blocks not updated with set_metadata()
                 # but can be updated with update_metadata()
@@ -4664,9 +4662,7 @@ class FlacMetaData(MetaDataTest):
     def test_replay_gain(self):
         import test_streams
 
-        for input_class in [audiotools.FlacAudio,
-                            audiotools.OggFlacAudio,
-                            audiotools.VorbisAudio]:
+        for input_class in [audiotools.FlacAudio, audiotools.VorbisAudio]:
             temp1 = tempfile.NamedTemporaryFile(
                 suffix="." + input_class.SUFFIX)
             try:
@@ -4685,8 +4681,7 @@ class FlacMetaData(MetaDataTest):
                                      "ReplayGain not present for class %s" %
                                      (input_class.NAME))
 
-                for output_class in [audiotools.FlacAudio,
-                                     audiotools.OggFlacAudio]:
+                for output_class in [audiotools.FlacAudio]:
                     temp2 = tempfile.NamedTemporaryFile(
                         suffix="." + input_class.SUFFIX)
                     try:
@@ -7777,7 +7772,6 @@ class VorbisCommentTest(MetaDataTest):
         import test_streams
 
         for input_class in [audiotools.FlacAudio,
-                            audiotools.OggFlacAudio,
                             audiotools.VorbisAudio]:
             temp1 = tempfile.NamedTemporaryFile(
                 suffix="." + input_class.SUFFIX)

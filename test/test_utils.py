@@ -1076,8 +1076,7 @@ class covertag_errors(UtilTest):
     def test_oversized_metadata(self):
         from bz2 import decompress
 
-        for audio_class in [audiotools.FlacAudio,
-                            audiotools.OggFlacAudio]:
+        for audio_class in [audiotools.FlacAudio]:
             tempflac = tempfile.NamedTemporaryFile(
                 suffix="." + audio_class.SUFFIX)
             big_bmp = tempfile.NamedTemporaryFile(suffix=".bmp")
@@ -2993,7 +2992,6 @@ class trackcmp(UtilTest):
 
 class trackinfo(UtilTest):
     METADATA_FORMATS = (audiotools.FlacAudio,
-                        audiotools.OggFlacAudio,
                         audiotools.MP3Audio,
                         audiotools.MP2Audio,
                         audiotools.VorbisAudio,
@@ -3331,8 +3329,7 @@ class tracklint(UtilTest):
 
     @UTIL_TRACKLINT
     def test_vorbis(self):
-        for audio_class in [audiotools.OggFlacAudio,
-                            audiotools.VorbisAudio]:
+        for audio_class in [audiotools.VorbisAudio]:
             bad_vorbiscomment = audiotools.VorbisComment(
                 [u"TITLE=Track Name  ",
                  u"TRACKNUMBER=02",
@@ -5244,8 +5241,7 @@ class tracktag_errors(UtilTest):
 
     @UTIL_TRACKTAG
     def test_oversized_metadata(self):
-        for audio_class in [audiotools.FlacAudio,
-                            audiotools.OggFlacAudio]:
+        for audio_class in [audiotools.FlacAudio]:
             tempflac = tempfile.NamedTemporaryFile(
                 suffix="." + audio_class.SUFFIX)
             tempwv = tempfile.NamedTemporaryFile(

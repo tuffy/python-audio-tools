@@ -1885,17 +1885,6 @@ class FlacAudio(WaveContainer, AiffContainer):
         from audiotools import __default_quality__
         from audiotools import VERSION
 
-        def sizes_to_offsets(sizes):
-            """takes list of (frame_size, frame_frames) tuples
-            and converts it to a list of (cumulative_size, frame_frames)
-            tuples"""
-
-            current_position = 0
-            offsets = []
-            for frame_size, frame_frames in sizes:
-                offsets.append((current_position, frame_frames))
-                current_position += frame_size
-            return offsets
 
         if ((compression is None) or (compression not in
                                       cls.COMPRESSION_MODES)):
@@ -2048,8 +2037,13 @@ class FlacAudio(WaveContainer, AiffContainer):
         from bisect import bisect_right
 
         if offsets is None:
+            sizes = []
             with self.to_pcm() as pcmreader:
-                offsets = pcmreader.offsets()
+                pair = pcmreader.frame_size()
+                while pair is not None:
+                    sizes.append(pair)
+                    pair = pcmreader.frame_size()
+            offsets = sizes_to_offsets(sizes)
 
         if seekpoint_interval is None:
             seekpoint_interval = self.sample_rate() * 10
@@ -3470,3 +3464,15 @@ class OggFlacAudio(FlacAudio):
                 output_track.update_metadata(metadata)
 
             return fixes_performed + metadata_fixes
+
+def sizes_to_offsets(sizes):
+    """takes list of (frame_size, frame_frames) tuples
+    and converts it to a list of (cumulative_size, frame_frames)
+    tuples"""
+
+    current_position = 0
+    offsets = []
+    for frame_size, frame_frames in sizes:
+        offsets.append((current_position, frame_frames))
+        current_position += frame_size
+    return offsets
