@@ -1,9 +1,0 @@
-<?xml version="1.0" ?>
-<struct endianness="big">
-  <field size="4" value="1110b">total bytes</field>
-  <field size="4" value="0001b">value</field>
-  <field size="2" value="10b">header₀</field>
-  <field size="6" value="000010b">continuation bits₀</field>
-  <field size="2" value="10b">header₁</field>
-  <field size="6" value="000100b">continuation bits₁</field>
-</struct>

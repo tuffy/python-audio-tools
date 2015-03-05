@@ -48,95 +48,6 @@ figures/id3v24/uslt.pdf \
 figures/id3v24/w___.pdf \
 figures/id3v24/wxxx.pdf
 
-FLAC = \
-flac/algorithms/decode_flac.tex \
-flac/algorithms/read_metadata.tex \
-flac/algorithms/decode_frame.tex \
-flac/algorithms/read_frame_header.tex \
-flac/algorithms/read_utf8.tex \
-flac/algorithms/decode_block_size.tex \
-flac/algorithms/decode_sample_rate.tex \
-flac/algorithms/decode_bps.tex \
-flac/algorithms/decode_channels.tex \
-flac/algorithms/decode_subframe.tex \
-flac/algorithms/decode_constant.tex \
-flac/algorithms/decode_verbatim.tex \
-flac/algorithms/decode_fixed.tex \
-flac/algorithms/decode_lpc.tex \
-flac/algorithms/decode_residual.tex \
-flac/algorithms/decorrelate_channels.tex \
-flac/algorithms/encode_flac.tex \
-flac/algorithms/write_metadata.tex \
-flac/algorithms/encode_frame.tex \
-flac/algorithms/write_frame_header.tex \
-flac/algorithms/encode_block_size.tex \
-flac/algorithms/encode_sample_rate.tex \
-flac/algorithms/encode_bps.tex \
-flac/algorithms/write_utf8.tex \
-flac/algorithms/encode_subframe.tex \
-flac/algorithms/calculate_wastedbps.tex \
-flac/algorithms/write_subframe_header.tex \
-flac/algorithms/encode_fixed_subframe.tex \
-flac/algorithms/encode_residual.tex \
-flac/algorithms/calculate_residual_partitions.tex \
-flac/algorithms/encode_lpc_subframe.tex \
-flac/algorithms/calculate_qlp_precision.tex \
-flac/algorithms/encode_window_samples.tex \
-flac/algorithms/encode_autocorrelate.tex \
-flac/algorithms/encode_lp_coeffs.tex \
-flac/algorithms/encode_best_order.tex \
-flac/algorithms/encode_quantize_coeffs.tex \
-flac/algorithms/write_lpc_subframe.tex \
-flac/figures/application.pdf \
-flac/figures/block_header.pdf \
-flac/figures/constant.pdf \
-flac/figures/cuesheet.pdf \
-flac/figures/cuesheet-example.pdf \
-flac/figures/fixed.pdf \
-flac/figures/fixed2.pdf \
-flac/figures/fixed-enc-example.pdf \
-flac/figures/fixed-parse.pdf \
-flac/figures/frame.pdf \
-flac/figures/frames.pdf \
-flac/figures/header-example.pdf \
-flac/figures/lag0.pdf \
-flac/figures/lag1.pdf \
-flac/figures/lag2.pdf \
-flac/figures/lag3.pdf \
-flac/figures/lpc.pdf \
-flac/figures/lpc2.pdf \
-flac/figures/lpc-parse.pdf \
-flac/figures/lpc-parse2.pdf \
-flac/figures/metadata.pdf \
-flac/figures/metadata-blocks.pdf \
-flac/figures/padding.pdf \
-flac/figures/picture.pdf \
-flac/figures/picture-example.pdf \
-flac/figures/read_utf8.pdf \
-flac/figures/residual.pdf \
-flac/figures/residual-example1.pdf \
-flac/figures/residual-example2.pdf \
-flac/figures/residual-example3.pdf \
-flac/figures/residual-example4.pdf \
-flac/figures/residual-example5.pdf \
-flac/figures/residual-parse.pdf \
-flac/figures/residuals-enc-example.pdf \
-flac/figures/seektable.pdf \
-flac/figures/seektable-example.pdf \
-flac/figures/stream.pdf \
-flac/figures/stream2.pdf \
-flac/figures/stream3.pdf \
-flac/figures/streaminfo.pdf \
-flac/figures/streaminfo-example.pdf \
-flac/figures/subframes.pdf \
-flac/figures/tukey.pdf \
-flac/figures/utf8.pdf \
-flac/figures/verbatim.pdf \
-flac/figures/vorbiscomment.pdf \
-flac/figures/vorbiscomment-example.pdf \
-flac/figures/write_utf8.pdf \
-figures/oggflac_stream.pdf
-
 
 M4A = figures/m4a/quicktime.pdf \
 figures/m4a/alb-example.pdf \
@@ -550,7 +461,6 @@ $(WAVE) \
 $(AIFF) \
 figures/au_stream.pdf \
 $(SHORTEN) \
-$(FLAC) \
 $(TTA) \
 $(WAVPACK) \
 $(APEV2) \
@@ -580,13 +490,6 @@ au.tex \
 shorten.tex \
 shorten/decode.tex \
 shorten/encode.tex \
-flac.tex \
-flac/metadata.tex \
-flac/decode.tex \
-flac/encode.tex \
-flac/encode/fixed.tex \
-flac/encode/residual.tex \
-flac/encode/lpc.tex \
 tta.tex \
 tta/metadata.tex \
 tta/decode.tex \
@@ -617,7 +520,6 @@ alac/encode/atoms.tex \
 alac/encode/lpc.tex \
 alac/encode/residual.tex \
 vorbis.tex \
-oggflac.tex \
 speex.tex \
 musepack.tex \
 dvda2.tex \
@@ -640,7 +542,7 @@ all: audioformats-letter.pdf audioformats-a4.pdf
 
 clean:
 	rm -f *.toc *.aux *.log *.out $(FIGURES)
-	rm -f figures/pcm.fig flac/figures/tukey.fig
+	rm -f figures/pcm.fig
 	rm -f audioformats-a4.tex audioformats-letter.tex
 	rm -f audioformats-a4.pdf audioformats-letter.pdf
 	rm -f pseudocode $(PS_DIR)/pseudocode.tab.c $(PS_DIR)/lex.yy.c $(PSEUDOCODE_OBJECTS)
@@ -679,12 +581,6 @@ $(PS_DIR)/latex.o: $(PS_DIR)/latex.h $(PS_DIR)/latex.c
 	$(CC) -g -c -Wall $(PS_DIR)/latex.c -o $@
 
 mp3_decode.pdf: mp3_decode.tex $(MP3)
-	python pdflatexbuild.py -halt-on-error $<
-
-flac-codec.tex: flac-codec.template header.tex footer.tex
-	python simple-template.py -D PAPERSIZE=letterpaper $< > $@
-
-flac-codec.pdf: flac-codec.tex flac.tex $(FLAC)
 	python pdflatexbuild.py -halt-on-error $<
 
 alac-codec.tex: alac-codec.template header.tex footer.tex

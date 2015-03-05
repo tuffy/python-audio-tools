@@ -5,7 +5,6 @@
 \include{aiff}
 \include{au}
 \include{shorten}
-\include{flac}
 \include{tta}
 \include{wavpack}
 \include{apev2}
@@ -15,7 +14,6 @@
 \include{alac}
 \include{ogg}
 \include{vorbis}
-\include{oggflac}
 \include{speex}
 \include{musepack}
 \include{dvda2}

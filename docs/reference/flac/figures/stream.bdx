@@ -1,7 +1,0 @@
-<?xml version="1.0" ?><diagram>
-  <row>
-    <col end="31" start="0" width=".20">header (‘fLaC’)</col>
-    <col width=".30">Metadata Blocks</col>
-    <col width=".50">Frames</col>
-  </row>
-</diagram>
