@@ -863,6 +863,7 @@ read_VORBIS_COMMENT(BitstreamReader *r, unsigned *channel_mask)
         const unsigned entry_len = r->read(r, 32);
         if ((entry_len > mask_key_len) && (entry_len <= mask_entry_len)) {
             r->read_bytes(r, (uint8_t*)channel_mask_entry, entry_len);
+            channel_mask_entry[entry_len] = '\0';
             if (strncmp(channel_mask_key,
                         channel_mask_entry,
                         mask_key_len) == 0) {
