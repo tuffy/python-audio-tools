@@ -867,7 +867,7 @@ class audiotools_output(Extension):
                     extra_link_args.extend(
                         system_libraries.extra_link_args("alsa"))
                 sources.append("src/output/alsa.c")
-                sources.append("src/pcmconv.c")
+                sources.append("src/framelist.c")
                 defines.append(("ALSA", "1"))
                 self.__library_manifest__.append(("libasound2",
                                                   "ALSA output",
@@ -887,8 +887,8 @@ class audiotools_output(Extension):
                     system_libraries.extra_link_args("libpulse"))
             sources.append("src/output/pulseaudio.c")
             # only include pcmconv once
-            if "src/pcmconv.c" not in sources:
-                sources.append("src/pcmconv.c")
+            if "src/framelist.c" not in sources:
+                sources.append("src/framelist.c")
             defines.append(("PULSEAUDIO", "1"))
             self.__library_manifest__.append(("libpulse",
                                               "PulseAudio output",
