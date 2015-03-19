@@ -2554,8 +2554,9 @@ BitstreamRecorder_init(bitstream_BitstreamRecorder *self,
     if (!PyArg_ParseTuple(args, "i", &little_endian))
         return -1;
 
-    self->bitstream = bw_open_recorder(little_endian ?
-                                       BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    self->bitstream =
+        bw_open_bytes_recorder(
+            little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
     return 0;
 }
@@ -2695,12 +2696,9 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
     } else if ((iterator = PyObject_GetIter(values)) == NULL) {
         return NULL;
     } else {
-        BitstreamRecorder* stream;
-        if (is_little_endian) {
-            stream = bw_open_recorder(BS_LITTLE_ENDIAN);
-        } else {
-            stream = bw_open_recorder(BS_BIG_ENDIAN);
-        }
+        BitstreamRecorder* stream =
+            bw_open_bytes_recorder(
+                is_little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
         if (!bitstream_build((BitstreamWriter*)stream,
                              format,
                              iterator)) {

@@ -59,6 +59,7 @@ typedef enum {BR_FILE, BR_BUFFER, BR_QUEUE, BR_EXTERNAL} br_type;
 typedef enum {BW_FILE,
               BW_EXTERNAL,
               BW_RECORDER,
+              BW_BYTES_RECORDER,
               BW_ACCUMULATOR,
               BW_LIMITED_ACCUMULATOR} bw_type;
 typedef enum {BS_INST_UNSIGNED,
@@ -718,13 +719,23 @@ typedef void
 (*bw_setpos_f)(struct BitstreamWriter_s* self,
                const bw_pos_t* pos);
 
+struct BitstreamRecorderEntry;
+
+
 #define BITSTREAMWRITER_TYPE                                \
     bs_endianness endianness;                               \
     bw_type type;                                           \
                                                             \
     union {                                                 \
         FILE* file;                                         \
-        struct bw_buffer* recorder;                         \
+        struct {                                            \
+            unsigned bits_written;                          \
+            unsigned maximum_size;                          \
+            struct BitstreamRecorderEntry *entries;         \
+            unsigned entry_count;                           \
+            unsigned max_entries;                           \
+        } recorder;                                         \
+        struct bw_buffer* string_recorder;                  \
         struct bw_external_output* external;                \
         unsigned accumulator;                               \
         struct {                                            \
@@ -988,22 +999,53 @@ bw_open_external(void* user_data,
                  ext_close_f close,
                  ext_free_f free);
 
+/*bw_open_recorder returns BitstreamWriter subclass which
+  simply takes the instructions sent to it, stores them,
+  and possibly plays them back on another BitstreamWriter
+
+  this type of recorder is *not* seekable because going back
+  and chopping up writes isn't feasible*/
 BitstreamRecorder*
 bw_open_recorder(bs_endianness endianness);
 
-/*records up to the given number of bytes
-  or calls bw_abort() if the maximum number of bytes is exceeeded
 
-  a maximum size of 0 indicates no limit*/
+/*bw_open_limited_recorder works like bw_open_recorder
+  but calls bw_abort() if the maximum size (in bits) is exceeded
+
+  if maximum_size is 0, the stream has no size limit*/
 BitstreamRecorder*
-bw_open_limited_recorder(bs_endianness endianness, unsigned maximum_size);
+bw_open_limited_recorder(bs_endianness endianness,
+                         unsigned maximum_size);
 
 
+/*bw_open_bytes_recorder returns a BitstreamWriter subclass
+  which takes the instructions sent to it,
+  dumps them into a byte buffer, and can have that buffer returned
+  for use elsewhere
+
+  this type of recorder is seekable, but may not be ideal
+  for storing lots of large instructions (only to dump them later)*/
+BitstreamRecorder*
+bw_open_bytes_recorder(bs_endianness endianness);
+
+
+/*bw_open_limited_bytes_recorder works like bw_open_bytes_recorder
+  but calls bw_abort() if the maximum size (in bits) is exceeded
+
+  if maximum_size is 0, the stream has no limit*/
+BitstreamRecorder*
+bw_open_limited_bytes_recorder(bs_endianness endianness,
+                               unsigned maximum_size);
+
+
+/*bw_open_accumulator returns a bit counter
+  which simply takes instructions and keeps a count of
+  how many bits they use*/
 BitstreamAccumulator*
 bw_open_accumulator(bs_endianness endianness);
 
 
-/*accumulates up to the maximum number of bytes
+/*accumulates up to the maximum number of bits
   or calls bw_abort() if the maximum number of bytes is exceeded
 
   a maximum size of 0 indicates no limit*/

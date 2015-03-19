@@ -199,9 +199,11 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
 
     /*write header and comment packets to Ogg stream*/
     {
-        BitstreamRecorder *header = bw_open_recorder(BS_LITTLE_ENDIAN);
+        BitstreamRecorder *header =
+            bw_open_bytes_recorder(BS_LITTLE_ENDIAN);
         BitstreamWriter *header_w =(BitstreamWriter*)header;
-        BitstreamRecorder *comment = bw_open_recorder(BS_LITTLE_ENDIAN);
+        BitstreamRecorder *comment =
+            bw_open_bytes_recorder(BS_LITTLE_ENDIAN);
         BitstreamWriter *comment_w = (BitstreamWriter*)comment;
         int i;
 

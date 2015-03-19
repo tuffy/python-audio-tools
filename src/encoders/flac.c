@@ -206,6 +206,21 @@ write_residual_block(BitstreamWriter *output,
                      unsigned predictor_order,
                      const int residuals[]);
 
+static void
+write_compressed_residual_partition(BitstreamWriter *output,
+                                    unsigned coding_method,
+                                    unsigned partition_order,
+                                    unsigned partition_size,
+                                    const int residuals[]);
+
+static void
+write_uncompressed_residual_partition(BitstreamWriter *output,
+                                      unsigned coding_method,
+                                      unsigned bits_per_residual,
+                                      unsigned partition_size,
+                                      const int residuals[]);
+
+
 /*given a set of options and residuals,
   determines the best partition order
   and sets 2 ^ partition_order residuals
@@ -247,6 +262,9 @@ ceil_div(unsigned n, unsigned d)
 
 static void
 tukey_window(double alpha, unsigned block_size, double *window);
+
+static unsigned
+largest_residual_bits(const int residual[], unsigned residual_count);
 
 /***********************************
  * public function implementations *
@@ -1070,7 +1088,7 @@ encode_subframe(BitstreamWriter *output,
         if (options->use_fixed) {
             fixed_subframe =
                 bw_open_limited_recorder(BS_BIG_ENDIAN,
-                                         ceil_div(smallest_subframe_size, 8));
+                                         smallest_subframe_size);
 
             if (!setjmp(*bw_try((BitstreamWriter*)fixed_subframe))) {
                 encode_fixed_subframe((BitstreamWriter*)fixed_subframe,
@@ -1081,19 +1099,8 @@ encode_subframe(BitstreamWriter *output,
                                       wasted_bps);
                 bw_etry((BitstreamWriter*)fixed_subframe);
 
-                if (!smallest_subframe_size ||
-                    (fixed_subframe->bits_written(fixed_subframe) <=
-                     smallest_subframe_size)) {
-                    smallest_subframe_size =
-                        fixed_subframe->bits_written(fixed_subframe);
-                } else {
-                    /*FIXED subframe too large*/
-
-                    /*this is a rare case when the FIXED subframe
-                      isn't larger by some whole number of bytes*/
-                    fixed_subframe->close(fixed_subframe);
-                    fixed_subframe = NULL;
-                }
+                smallest_subframe_size =
+                    fixed_subframe->bits_written(fixed_subframe);
             } else {
                 /*FIXED subframe too large*/
                 bw_etry((BitstreamWriter*)fixed_subframe);
@@ -1105,7 +1112,7 @@ encode_subframe(BitstreamWriter *output,
         if (options->max_lpc_order) {
             lpc_subframe =
                 bw_open_limited_recorder(BS_BIG_ENDIAN,
-                                         ceil_div(smallest_subframe_size, 8));
+                                         smallest_subframe_size);
 
             if (!setjmp(*bw_try((BitstreamWriter*)lpc_subframe))) {
                 encode_lpc_subframe((BitstreamWriter*)lpc_subframe,
@@ -1116,22 +1123,12 @@ encode_subframe(BitstreamWriter *output,
                                     wasted_bps);
                 bw_etry((BitstreamWriter*)lpc_subframe);
 
-                if (!smallest_subframe_size ||
-                    (lpc_subframe->bits_written(lpc_subframe) <=
-                     smallest_subframe_size)) {
-                    smallest_subframe_size =
-                        lpc_subframe->bits_written(lpc_subframe);
-                    if (fixed_subframe) {
-                        fixed_subframe->close(fixed_subframe);
-                        fixed_subframe = NULL;
-                    }
-                } else {
-                    /*LPC subframe too large*/
+                smallest_subframe_size =
+                    lpc_subframe->bits_written(lpc_subframe);
 
-                    /*this is a rare case when the LPC subframe
-                      isn't larger by some whole number of bytes*/
-                    lpc_subframe->close(lpc_subframe);
-                    lpc_subframe = NULL;
+                if (fixed_subframe) {
+                    fixed_subframe->close(fixed_subframe);
+                    fixed_subframe = NULL;
                 }
             } else {
                 /*LPC subframe too large*/
@@ -1658,24 +1655,116 @@ write_residual_block(BitstreamWriter *output,
     for (p = 0; p < partition_count; p++) {
         unsigned partition_size =
             (sample_count / partition_count) - (p == 0 ? predictor_order : 0);
-        const int shift = 1 << rice_parameters[p];
 
-        output->write(output, coding ? 5 : 4, rice_parameters[p]);
+        if (options->use_verbatim || (partition_size == 0)) {
+            /*if our residuals get too large,
+              count on the VERBATIM subframe to bail us out*/
 
-        for (; partition_size; partition_size--) {
-            const int unsigned_ =
-                residuals[i] >= 0 ?
-                residuals[i] << 1 :
-                ((-residuals[i] - 1) << 1) + 1;
+            write_compressed_residual_partition(
+                output,
+                coding,
+                rice_parameters[p],
+                partition_size,
+                residuals + i);
 
-            const div_t split = div(unsigned_, shift);
+            i += partition_size;
+        } else {
+            /*if VERBATIM isn't an option,
+              switch to escaped values if our residuals get too large*/
 
-            output->write_unary(output, 1, split.quot);
+            const unsigned max_bits =
+                largest_residual_bits(residuals + i, partition_size);
 
-            output->write(output, rice_parameters[p], split.rem);
+            BitstreamRecorder *partition =
+                bw_open_limited_recorder(BS_BIG_ENDIAN,
+                                         max_bits * partition_size);
 
-            i += 1;
+            BitstreamWriter *partition_w = (BitstreamWriter*)partition;
+
+            if (!setjmp(*bw_try(partition_w))) {
+                write_compressed_residual_partition(
+                    partition_w,
+                    coding,
+                    rice_parameters[p],
+                    partition_size,
+                    residuals + i);
+
+                i += partition_size;
+
+                bw_etry(partition_w);
+
+                /*ensure partition is closed
+                  even if the dump to output should fail*/
+                if (!setjmp(*bw_try(output))) {
+                    partition->copy(partition, output);
+                    bw_etry(output);
+                    partition->close(partition);
+                } else {
+                    bw_etry(output);
+                    partition->close(partition);
+                    bw_abort(output);
+                }
+            } else {
+                /*partition too large, so switch to escaped values*/
+                bw_etry(partition_w);
+                partition->close(partition);
+
+                write_uncompressed_residual_partition(
+                    output,
+                    coding,
+                    max_bits,
+                    partition_size,
+                    residuals + i);
+                i += partition_size;
+            }
         }
+    }
+}
+
+static void
+write_compressed_residual_partition(BitstreamWriter *output,
+                                    unsigned coding_method,
+                                    unsigned partition_order,
+                                    unsigned partition_size,
+                                    const int residuals[])
+{
+    const int shift = 1 << partition_order;
+
+    output->write(output, coding_method ? 5 : 4, partition_order);
+
+    for (; partition_size; partition_size--) {
+        const int unsigned_ =
+            residuals[0] >= 0 ?
+            residuals[0] << 1 :
+            ((-residuals[0] - 1) << 1) + 1;
+
+        const div_t split = div(unsigned_, shift);
+
+        output->write_unary(output, 1, split.quot);
+
+        output->write(output, partition_order, split.rem);
+
+        residuals += 1;
+    }
+}
+
+static void
+write_uncompressed_residual_partition(BitstreamWriter *output,
+                                      unsigned coding_method,
+                                      unsigned bits_per_residual,
+                                      unsigned partition_size,
+                                      const int residuals[])
+{
+    if (coding_method == 1) {
+        output->write(output, 5, 31);
+    } else {
+        output->write(output, 4, 15);
+    }
+    output->write(output, 5, bits_per_residual);
+    for (; partition_size; partition_size--) {
+        output->write_signed(output, bits_per_residual, residuals[0]);
+
+        residuals += 1;
     }
 }
 
@@ -1857,6 +1946,21 @@ tukey_window(double alpha, unsigned block_size, double *window)
         } else {
             window[i] = 1.0;
         }
+    }
+}
+
+static unsigned
+largest_residual_bits(const int residual[], unsigned residual_count)
+{
+    int max_abs_residual = 0;
+    for (; residual_count; residual_count--) {
+        max_abs_residual = MAX(max_abs_residual, abs(residual[0]));
+        residual += 1;
+    }
+    if (max_abs_residual > 0) {
+        return ((unsigned)ceil(log2(max_abs_residual))) + 2;
+    } else {
+        return 2;
     }
 }
 

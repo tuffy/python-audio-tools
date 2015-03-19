@@ -493,8 +493,8 @@ int main(int argc, char* argv[]) {
     unsigned bits_per_sample = 16;
 
     unsigned block_size = 256;
-    BitstreamRecorder* header = bw_open_recorder(BS_BIG_ENDIAN);
-    BitstreamRecorder* footer = bw_open_recorder(BS_BIG_ENDIAN);
+    BitstreamRecorder* header = bw_open_string_recorder(BS_BIG_ENDIAN);
+    BitstreamRecorder* footer = bw_open_string_recorder(BS_BIG_ENDIAN);
 
     pcmreader* pcmreader;
     FILE *output_file;

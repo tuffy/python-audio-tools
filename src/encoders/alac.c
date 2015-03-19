@@ -1162,7 +1162,7 @@ ALACEncoder_init(encoders_ALACEncoder *self,
     self->encoder.options.maximum_interlacing_leftweight = 4;
     self->framelist_type = NULL;
     self->channels = aa_int_new();
-    self->output_buffer = bw_open_recorder(BS_BIG_ENDIAN);
+    self->output_buffer = bw_open_bytes_recorder(BS_BIG_ENDIAN);
 
     if (!PyArg_ParseTupleAndKeywords(
         args, kwds, "iiiii|ii", kwlist,

@@ -342,24 +342,34 @@ DEF_WRITE(bw_write_bits_f_be, unsigned int)
 DEF_WRITE(bw_write_bits_f_le, unsigned int)
 DEF_WRITE(bw_write_bits_e_be, unsigned int)
 DEF_WRITE(bw_write_bits_e_le, unsigned int)
-DEF_WRITE(bw_write_bits_r_be, unsigned int)
-DEF_WRITE(bw_write_bits_r_le, unsigned int)
+DEF_WRITE(bw_write_bits_r, unsigned int);
+DEF_WRITE(bw_write_bits_sr_be, unsigned int)
+DEF_WRITE(bw_write_bits_sr_le, unsigned int)
 DEF_WRITE(bw_write_bits_a, unsigned int)
 DEF_WRITE(bw_write_bits_la, unsigned int)
 DEF_WRITE(bw_write_bits_c, unsigned int)
 DEF_WRITE(bw_write_signed_bits_be, int)
 DEF_WRITE(bw_write_signed_bits_le, int)
+DEF_WRITE(bw_write_signed_bits_r, int)
+DEF_WRITE(bw_write_signed_bits_a, int)
+DEF_WRITE(bw_write_signed_bits_la, int)
+DEF_WRITE(bw_write_signed_bits_c, int)
 DEF_WRITE(bw_write_bits64_f_be, uint64_t)
 DEF_WRITE(bw_write_bits64_f_le, uint64_t)
 DEF_WRITE(bw_write_bits64_e_be, uint64_t)
 DEF_WRITE(bw_write_bits64_e_le, uint64_t)
-DEF_WRITE(bw_write_bits64_r_be, uint64_t)
-DEF_WRITE(bw_write_bits64_r_le, uint64_t)
+DEF_WRITE(bw_write_bits64_r, uint64_t)
+DEF_WRITE(bw_write_bits64_sr_be, uint64_t)
+DEF_WRITE(bw_write_bits64_sr_le, uint64_t)
 DEF_WRITE(bw_write_bits64_a, uint64_t)
 DEF_WRITE(bw_write_bits64_la, uint64_t)
 DEF_WRITE(bw_write_bits64_c, uint64_t)
 DEF_WRITE(bw_write_signed_bits64_be, int64_t)
 DEF_WRITE(bw_write_signed_bits64_le, int64_t)
+DEF_WRITE(bw_write_signed_bits64_r, int64_t)
+DEF_WRITE(bw_write_signed_bits64_a, int64_t)
+DEF_WRITE(bw_write_signed_bits64_la, int64_t)
+DEF_WRITE(bw_write_signed_bits64_c, int64_t)
 
 
 #define DEF_WRITE_BIGINT(FUNC_NAME)  \
@@ -371,23 +381,28 @@ DEF_WRITE_BIGINT(bw_write_bits_bigint_f_be)
 DEF_WRITE_BIGINT(bw_write_bits_bigint_f_le)
 DEF_WRITE_BIGINT(bw_write_bits_bigint_e_be)
 DEF_WRITE_BIGINT(bw_write_bits_bigint_e_le)
-DEF_WRITE_BIGINT(bw_write_bits_bigint_r_be)
-DEF_WRITE_BIGINT(bw_write_bits_bigint_r_le)
+DEF_WRITE_BIGINT(bw_write_bits_bigint_sr_be)
+DEF_WRITE_BIGINT(bw_write_bits_bigint_sr_le)
+DEF_WRITE_BIGINT(bw_write_bits_bigint_r)
 DEF_WRITE_BIGINT(bw_write_bits_bigint_a)
 DEF_WRITE_BIGINT(bw_write_bits_bigint_la)
 DEF_WRITE_BIGINT(bw_write_bits_bigint_c)
 DEF_WRITE_BIGINT(bw_write_signed_bits_bigint_be)
 DEF_WRITE_BIGINT(bw_write_signed_bits_bigint_le)
+DEF_WRITE_BIGINT(bw_write_signed_bits_bigint_r)
+DEF_WRITE_BIGINT(bw_write_signed_bits_bigint_a)
+DEF_WRITE_BIGINT(bw_write_signed_bits_bigint_la)
 
 
-static void
-bw_write_unary(BitstreamWriter* self, int stop_bit, unsigned int value);
+#define DEF_WRITE_UNARY(FUNC_NAME) \
+  static void \
+  FUNC_NAME(BitstreamWriter* self, int stop_bit, unsigned int value);
 
-static void
-bw_write_unary_a(BitstreamWriter *self, int stop_bit, unsigned int value);
-
-static void
-bw_write_unary_la(BitstreamWriter *self, int stop_bit, unsigned int value);
+DEF_WRITE_UNARY(bw_write_unary)
+DEF_WRITE_UNARY(bw_write_unary_r)
+DEF_WRITE_UNARY(bw_write_unary_a)
+DEF_WRITE_UNARY(bw_write_unary_la)
+DEF_WRITE_UNARY(bw_write_unary_c)
 
 
 #define DEF_BW_SET_ENDIANNESS(FUNC_NAME)                       \
@@ -396,6 +411,7 @@ bw_write_unary_la(BitstreamWriter *self, int stop_bit, unsigned int value);
 DEF_BW_SET_ENDIANNESS(bw_set_endianness_f)
 DEF_BW_SET_ENDIANNESS(bw_set_endianness_e)
 DEF_BW_SET_ENDIANNESS(bw_set_endianness_r)
+DEF_BW_SET_ENDIANNESS(bw_set_endianness_sr)
 DEF_BW_SET_ENDIANNESS(bw_set_endianness_a)
 DEF_BW_SET_ENDIANNESS(bw_set_endianness_c)
 
@@ -414,6 +430,7 @@ bw_write_huffman(BitstreamWriter* self,
 DEF_WRITE_BYTES(bw_write_bytes_file)
 DEF_WRITE_BYTES(bw_write_bytes_e)
 DEF_WRITE_BYTES(bw_write_bytes_r)
+DEF_WRITE_BYTES(bw_write_bytes_sr)
 DEF_WRITE_BYTES(bw_write_bytes_a)
 DEF_WRITE_BYTES(bw_write_bytes_la)
 DEF_WRITE_BYTES(bw_write_bytes_c)
@@ -427,6 +444,7 @@ bw_build(BitstreamWriter* self, const char* format, ...);
   static int \
   FUNC_NAME(const BitstreamWriter* self);
 DEF_WRITE_ALIGNED(bw_byte_aligned)
+DEF_WRITE_ALIGNED(bw_byte_aligned_r)
 DEF_WRITE_ALIGNED(bw_byte_aligned_a)
 DEF_WRITE_ALIGNED(bw_byte_aligned_la)
 
@@ -435,6 +453,7 @@ DEF_WRITE_ALIGNED(bw_byte_aligned_la)
   static void \
   FUNC_NAME(BitstreamWriter* self);
 DEF_WRITE_ALIGN(bw_byte_align)
+DEF_WRITE_ALIGN(bw_byte_align_r)
 DEF_WRITE_ALIGN(bw_byte_align_a)
 
 
@@ -442,7 +461,7 @@ DEF_WRITE_ALIGN(bw_byte_align_a)
     static void                      \
     FUNC_NAME(BitstreamWriter* self);
 DEF_FLUSH(bw_flush_f)
-DEF_FLUSH(bw_flush_r_a_c)
+DEF_FLUSH(bw_flush_noop)
 DEF_FLUSH(bw_flush_e)
 
 
@@ -451,7 +470,7 @@ DEF_FLUSH(bw_flush_e)
     FUNC_NAME(BitstreamWriter* self);
 DEF_BW_GETPOS(bw_getpos_file)
 DEF_BW_GETPOS(bw_getpos_e)
-DEF_BW_GETPOS(bw_getpos_r)
+DEF_BW_GETPOS(bw_getpos_sr)
 DEF_BW_GETPOS(bw_getpos_c)
 
 
@@ -460,7 +479,7 @@ DEF_BW_GETPOS(bw_getpos_c)
     FUNC_NAME(BitstreamWriter* self, const bw_pos_t* pos);
 DEF_BW_SETPOS(bw_setpos_file)
 DEF_BW_SETPOS(bw_setpos_e)
-DEF_BW_SETPOS(bw_setpos_r)
+DEF_BW_SETPOS(bw_setpos_sr)
 DEF_BW_SETPOS(bw_setpos_c)
 
 
@@ -469,7 +488,7 @@ DEF_BW_SETPOS(bw_setpos_c)
     FUNC_NAME(bw_pos_t* pos);
 DEF_BW_POSDEL(bw_pos_del_f)
 DEF_BW_POSDEL(bw_pos_del_e)
-DEF_BW_POSDEL(bw_pos_del_r)
+DEF_BW_POSDEL(bw_pos_del_sr)
 
 
 static void
@@ -492,53 +511,56 @@ DEF_BW_CLOSE_INTERNAL(bw_close_internal_stream_a, BitstreamAccumulator*)
 DEF_BW_FREE(bw_free_f, BitstreamWriter*)
 DEF_BW_FREE(bw_free_e, BitstreamWriter*)
 DEF_BW_FREE(bw_free_r, BitstreamRecorder*)
+DEF_BW_FREE(bw_free_sr, BitstreamRecorder*)
 DEF_BW_FREE(bw_free_a, BitstreamAccumulator*)
 
 
 static void
 bw_close_f_e(BitstreamWriter* self);
 static void
-bw_close_r(BitstreamRecorder* self);
+bw_close_r(BitstreamRecorder *self);
 static void
 bw_close_a(BitstreamAccumulator* self);
 
 
 static unsigned int
-bw_bits_written_r(const BitstreamRecorder* self);
-
-
+bw_bits_written_r(const BitstreamRecorder *self);
 static unsigned int
-bw_bytes_written_r(const BitstreamRecorder* self);
-
-
-static void
-bw_reset_r(BitstreamRecorder* self);
-
-
-static void
-bw_copy_r(const BitstreamRecorder* self, BitstreamWriter* target);
-
-
-static const uint8_t*
-bw_data_r(const BitstreamRecorder* self);
-
+bw_bits_written_sr(const BitstreamRecorder* self);
 static unsigned int
 bw_bits_written_a(const BitstreamAccumulator* self);
 
 
 static unsigned int
+bw_bytes_written_r(const BitstreamRecorder *self);
+static unsigned int
+bw_bytes_written_sr(const BitstreamRecorder* self);
+static unsigned int
 bw_bytes_written_a(const BitstreamAccumulator* self);
-
-
-static void
-bw_reset_a(BitstreamAccumulator* self);
-
 static unsigned int
 bw_bits_written_la(const BitstreamAccumulator* self);
 
 
 static void
+bw_reset_r(BitstreamRecorder *self);
+static void
+bw_reset_sr(BitstreamRecorder* self);
+static void
+bw_reset_a(BitstreamAccumulator* self);
+static void
 bw_reset_la(BitstreamAccumulator* self);
+
+
+static void
+bw_copy_r(const BitstreamRecorder* self, BitstreamWriter *target);
+static void
+bw_copy_sr(const BitstreamRecorder *self, BitstreamWriter *target);
+
+
+static const uint8_t*
+bw_data_r(const BitstreamRecorder *self);
+static const uint8_t*
+bw_data_sr(const BitstreamRecorder* self);
 
 
 static void
@@ -560,6 +582,85 @@ bw_pop_callback(BitstreamWriter* self,
 static void
 bw_call_callbacks(BitstreamWriter* self,
                   uint8_t byte);
+
+
+/*******************************************************************
+ *                     recorder entry-specific                     *
+ *******************************************************************/
+
+struct BitstreamRecorderEntry {
+    union {
+        struct {
+            unsigned int count;
+            unsigned int value;
+        } write;
+        struct {
+            unsigned int count;
+            int value;
+        } write_signed;
+        struct {
+            unsigned int count;
+            uint64_t value;
+        } write_64;
+        struct {
+            unsigned int count;
+            int64_t value;
+        } write_signed_64;
+        struct {
+            unsigned int count;
+            mpz_t value;
+        } write_bigint;
+        struct {
+            unsigned int count;
+            mpz_t value;
+        } write_signed_bigint;
+        struct {
+            int stop_bit;
+            unsigned int value;
+        } write_unary;
+        struct {
+            uint8_t *bytes;
+            unsigned int byte_count;
+        } write_bytes;
+        bs_endianness set_endianness;
+    } _;
+
+    void (*playback)(struct BitstreamRecorderEntry *self,
+                     struct BitstreamWriter_s *writer);
+
+    void (*reset)(struct BitstreamRecorderEntry *self);
+};
+
+/*given a BitstreamRecorder, returns a new entry
+  suitable for population by a write routine*/
+static struct BitstreamRecorderEntry*
+new_entry(struct BitstreamWriter_s *writer);
+
+
+#define RECORDER_ENTRY_DEFS(NAME)           \
+  static void                               \
+  NAME(struct BitstreamRecorderEntry *self, \
+       struct BitstreamWriter_s *writer);   \
+
+RECORDER_ENTRY_DEFS(playback_write_bits)
+RECORDER_ENTRY_DEFS(playback_write_signed_bits)
+RECORDER_ENTRY_DEFS(playback_write_64)
+RECORDER_ENTRY_DEFS(playback_write_signed_64)
+RECORDER_ENTRY_DEFS(playback_write_bigint);
+RECORDER_ENTRY_DEFS(playback_write_signed_bigint)
+RECORDER_ENTRY_DEFS(playback_write_unary)
+RECORDER_ENTRY_DEFS(playback_write_bytes)
+RECORDER_ENTRY_DEFS(playback_set_endianness)
+
+
+#define RECORDER_RESET_DEFS(NAME)            \
+  static void                                \
+  NAME(struct BitstreamRecorderEntry *self);
+
+RECORDER_RESET_DEFS(reset_noop)
+RECORDER_RESET_DEFS(reset_write_bigint)
+RECORDER_RESET_DEFS(reset_write_signed_bigint)
+RECORDER_RESET_DEFS(reset_write_bytes)
 
 
 /*******************************************************************
@@ -2724,7 +2825,69 @@ bw_open_limited_recorder(bs_endianness endianness, unsigned maximum_size)
     bs->endianness = endianness;
     bs->type = BW_RECORDER;
 
-    bs->output.recorder = bw_buf_new(maximum_size);
+    bs->output.recorder.bits_written = 0;
+    bs->output.recorder.maximum_size = maximum_size;
+    bs->output.recorder.entries = NULL;
+    bs->output.recorder.entry_count = 0;
+    bs->output.recorder.max_entries = 0;
+    bs->buffer_size = 0;
+    bs->buffer = 0;
+
+    bs->callbacks = NULL;
+    bs->exceptions = NULL;
+    bs->exceptions_used = NULL;
+
+    bs->write = bw_write_bits_r;
+    bs->write_signed = bw_write_signed_bits_r;
+    bs->write_64 = bw_write_bits64_r;
+    bs->write_signed_64 = bw_write_signed_bits64_r;
+    bs->write_bigint = bw_write_bits_bigint_r;
+    bs->write_signed_bigint = bw_write_signed_bits_bigint_r;
+    bs->set_endianness = bw_set_endianness_r;
+    bs->write_unary = bw_write_unary_r;
+    bs->write_huffman_code = bw_write_huffman;
+    bs->write_bytes = bw_write_bytes_r;
+    bs->build = bw_build;
+    bs->byte_aligned = bw_byte_aligned_r;
+    bs->byte_align = bw_byte_align_r;
+    bs->flush = bw_flush_noop;
+    bs->add_callback = bw_add_callback;
+    bs->push_callback = bw_push_callback;
+    bs->pop_callback = bw_pop_callback;
+    bs->call_callbacks = bw_call_callbacks;
+    bs->getpos = bw_getpos_c;
+    bs->setpos = bw_setpos_c;
+
+    bs->bits_written = bw_bits_written_r;
+    bs->bytes_written = bw_bytes_written_r;
+    bs->reset = bw_reset_r;
+    bs->copy = bw_copy_r;
+    bs->data = bw_data_r;
+    bs->close_internal_stream = bw_close_internal_stream_r;
+    bs->free = bw_free_r;
+    bs->close = bw_close_r;
+
+    return bs;
+}
+
+
+BitstreamRecorder*
+bw_open_bytes_recorder(bs_endianness endianness)
+{
+    return bw_open_limited_bytes_recorder(endianness, 0);
+}
+
+
+BitstreamRecorder*
+bw_open_limited_bytes_recorder(bs_endianness endianness,
+                               unsigned maximum_size)
+{
+    BitstreamRecorder *bs = malloc(sizeof(BitstreamRecorder));
+    bs->endianness = endianness;
+    bs->type = BW_BYTES_RECORDER;
+
+    bs->output.string_recorder =
+        bw_buf_new(maximum_size / 8 + ((maximum_size % 8) ? 1 : 0));
     bs->buffer_size = 0;
     bs->buffer = 0;
 
@@ -2734,45 +2897,45 @@ bw_open_limited_recorder(bs_endianness endianness, unsigned maximum_size)
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        bs->write = bw_write_bits_r_be;
+        bs->write = bw_write_bits_sr_be;
         bs->write_signed = bw_write_signed_bits_be;
-        bs->write_64 = bw_write_bits64_r_be;
+        bs->write_64 = bw_write_bits64_sr_be;
         bs->write_signed_64 = bw_write_signed_bits64_be;
-        bs->write_bigint = bw_write_bits_bigint_r_be;
+        bs->write_bigint = bw_write_bits_bigint_sr_be;
         bs->write_signed_bigint = bw_write_signed_bits_bigint_be;
         break;
     case BS_LITTLE_ENDIAN:
-        bs->write = bw_write_bits_r_le;
+        bs->write = bw_write_bits_sr_le;
         bs->write_signed = bw_write_signed_bits_le;
-        bs->write_64 = bw_write_bits64_r_le;
+        bs->write_64 = bw_write_bits64_sr_le;
         bs->write_signed_64 = bw_write_signed_bits64_le;
-        bs->write_bigint = bw_write_bits_bigint_r_le;
+        bs->write_bigint = bw_write_bits_bigint_sr_le;
         bs->write_signed_bigint = bw_write_signed_bits_bigint_le;
         break;
     }
 
-    bs->set_endianness = bw_set_endianness_r;
+    bs->set_endianness = bw_set_endianness_sr;
     bs->write_unary = bw_write_unary;
     bs->write_huffman_code = bw_write_huffman;
-    bs->write_bytes = bw_write_bytes_r;
+    bs->write_bytes = bw_write_bytes_sr;
     bs->build = bw_build;
     bs->byte_aligned = bw_byte_aligned;
     bs->byte_align = bw_byte_align;
-    bs->flush = bw_flush_r_a_c;
+    bs->flush = bw_flush_noop;
     bs->add_callback = bw_add_callback;
     bs->push_callback = bw_push_callback;
     bs->pop_callback = bw_pop_callback;
     bs->call_callbacks = bw_call_callbacks;
-    bs->getpos = bw_getpos_r;
-    bs->setpos = bw_setpos_r;
+    bs->getpos = bw_getpos_sr;
+    bs->setpos = bw_setpos_sr;
 
-    bs->bits_written = bw_bits_written_r;
-    bs->bytes_written = bw_bytes_written_r;
-    bs->reset = bw_reset_r;
-    bs->copy = bw_copy_r;
-    bs->data = bw_data_r;
+    bs->bits_written = bw_bits_written_sr;
+    bs->bytes_written = bw_bytes_written_sr;
+    bs->reset = bw_reset_sr;
+    bs->copy = bw_copy_sr;
+    bs->data = bw_data_sr;
     bs->close_internal_stream = bw_close_internal_stream_r;
-    bs->free = bw_free_r;
+    bs->free = bw_free_sr;
     bs->close = bw_close_r;
 
     return bs;
@@ -2793,25 +2956,12 @@ bw_open_accumulator(bs_endianness endianness)
     bs->exceptions = NULL;
     bs->exceptions_used = NULL;
 
-    switch (endianness) {
-    case BS_BIG_ENDIAN:
-        bs->write = bw_write_bits_a;
-        bs->write_signed = bw_write_signed_bits_be;
-        bs->write_64 = bw_write_bits64_a;
-        bs->write_signed_64 = bw_write_signed_bits64_be;
-        bs->write_bigint = bw_write_bits_bigint_a;
-        bs->write_signed_bigint = bw_write_signed_bits_bigint_be;
-        break;
-    case BS_LITTLE_ENDIAN:
-        bs->write = bw_write_bits_a;
-        bs->write_signed = bw_write_signed_bits_le;
-        bs->write_64 = bw_write_bits64_a;
-        bs->write_signed_64 = bw_write_signed_bits64_le;
-        bs->write_bigint = bw_write_bits_bigint_a;
-        bs->write_signed_bigint = bw_write_signed_bits_bigint_le;
-        break;
-    }
-
+    bs->write = bw_write_bits_a;
+    bs->write_signed = bw_write_signed_bits_a;
+    bs->write_64 = bw_write_bits64_a;
+    bs->write_signed_64 = bw_write_signed_bits64_a;
+    bs->write_bigint = bw_write_bits_bigint_a;
+    bs->write_signed_bigint = bw_write_signed_bits_bigint_a;
     bs->set_endianness = bw_set_endianness_a;
     bs->write_unary = bw_write_unary_a;
     bs->write_huffman_code = bw_write_huffman;
@@ -2819,7 +2969,7 @@ bw_open_accumulator(bs_endianness endianness)
     bs->build = bw_build;
     bs->byte_aligned = bw_byte_aligned_a;
     bs->byte_align = bw_byte_align_a;
-    bs->flush = bw_flush_r_a_c;
+    bs->flush = bw_flush_noop;
     bs->add_callback = bw_add_callback;
     bs->push_callback = bw_push_callback;
     bs->pop_callback = bw_pop_callback;
@@ -2856,25 +3006,12 @@ bw_open_limited_accumulator(bs_endianness endianness, unsigned maximum_size)
         bs->exceptions = NULL;
         bs->exceptions_used = NULL;
 
-        switch (endianness) {
-        case BS_BIG_ENDIAN:
-            bs->write = bw_write_bits_la;
-            bs->write_signed = bw_write_signed_bits_be;
-            bs->write_64 = bw_write_bits64_la;
-            bs->write_signed_64 = bw_write_signed_bits64_be;
-            bs->write_bigint = bw_write_bits_bigint_la;
-            bs->write_signed_bigint = bw_write_signed_bits_bigint_be;
-            break;
-        case BS_LITTLE_ENDIAN:
-            bs->write = bw_write_bits_la;
-            bs->write_signed = bw_write_signed_bits_le;
-            bs->write_64 = bw_write_bits64_la;
-            bs->write_signed_64 = bw_write_signed_bits64_le;
-            bs->write_bigint = bw_write_bits_bigint_la;
-            bs->write_signed_bigint = bw_write_signed_bits_bigint_le;
-            break;
-        }
-
+        bs->write = bw_write_bits_la;
+        bs->write_signed = bw_write_signed_bits_la;
+        bs->write_64 = bw_write_bits64_la;
+        bs->write_signed_64 = bw_write_signed_bits64_la;
+        bs->write_bigint = bw_write_bits_bigint_la;
+        bs->write_signed_bigint = bw_write_signed_bits_bigint_la;
         bs->set_endianness = bw_set_endianness_a;
         bs->write_unary = bw_write_unary_la;
         bs->write_huffman_code = bw_write_huffman;
@@ -2882,7 +3019,7 @@ bw_open_limited_accumulator(bs_endianness endianness, unsigned maximum_size)
         bs->build = bw_build;
         bs->byte_aligned = bw_byte_aligned_la;
         bs->byte_align = bw_byte_align_a;
-        bs->flush = bw_flush_r_a_c;
+        bs->flush = bw_flush_noop;
         bs->add_callback = bw_add_callback;
         bs->push_callback = bw_push_callback;
         bs->pop_callback = bw_pop_callback;
@@ -3006,16 +3143,24 @@ FUNC_WRITE_BITS_BE(bw_write_bits_e_be,
                    unsigned int, ext_putc, self->output.external)
 FUNC_WRITE_BITS_LE(bw_write_bits_e_le,
                    unsigned int, ext_putc, self->output.external)
-FUNC_WRITE_BITS_BE(bw_write_bits_r_be,
-                   unsigned int, bw_buf_putc, self->output.recorder)
-FUNC_WRITE_BITS_LE(bw_write_bits_r_le,
-                   unsigned int, bw_buf_putc, self->output.recorder)
+FUNC_WRITE_BITS_BE(bw_write_bits_sr_be,
+                   unsigned int, bw_buf_putc, self->output.string_recorder)
+FUNC_WRITE_BITS_LE(bw_write_bits_sr_le,
+                   unsigned int, bw_buf_putc, self->output.string_recorder)
 
 
 static void
 bw_write_bits_c(BitstreamWriter* self,
                 unsigned int count,
                 unsigned int value)
+{
+    bw_abort(self);
+}
+
+static void
+bw_write_signed_bits_c(BitstreamWriter *self,
+                       unsigned int count,
+                       int value)
 {
     bw_abort(self);
 }
@@ -3056,15 +3201,23 @@ FUNC_WRITE_BITS_BE(bw_write_bits64_e_be,
                    uint64_t, ext_putc, self->output.external)
 FUNC_WRITE_BITS_LE(bw_write_bits64_e_le,
                    uint64_t, ext_putc, self->output.external)
-FUNC_WRITE_BITS_BE(bw_write_bits64_r_be,
-                   uint64_t, bw_buf_putc, self->output.recorder)
-FUNC_WRITE_BITS_LE(bw_write_bits64_r_le,
-                   uint64_t, bw_buf_putc, self->output.recorder)
+FUNC_WRITE_BITS_BE(bw_write_bits64_sr_be,
+                   uint64_t, bw_buf_putc, self->output.string_recorder)
+FUNC_WRITE_BITS_LE(bw_write_bits64_sr_le,
+                   uint64_t, bw_buf_putc, self->output.string_recorder)
 
 static void
 bw_write_bits64_c(BitstreamWriter* self,
                   unsigned int count,
                   uint64_t value)
+{
+    bw_abort(self);
+}
+
+static void
+bw_write_signed_bits64_c(BitstreamWriter *self,
+                         unsigned int count,
+                         int64_t value)
 {
     bw_abort(self);
 }
@@ -3169,8 +3322,8 @@ FUNC_WRITE_BITS_BIGINT_BE(bw_write_bits_bigint_f_be, fputc,
                           self->output.file)
 FUNC_WRITE_BITS_BIGINT_BE(bw_write_bits_bigint_e_be, ext_putc,
                           self->output.external)
-FUNC_WRITE_BITS_BIGINT_BE(bw_write_bits_bigint_r_be, bw_buf_putc,
-                          self->output.recorder)
+FUNC_WRITE_BITS_BIGINT_BE(bw_write_bits_bigint_sr_be, bw_buf_putc,
+                          self->output.string_recorder)
 
 #define FUNC_WRITE_BITS_BIGINT_LE(FUNC_NAME, BYTE_FUNC, BYTE_FUNC_ARG)  \
     static void                                                         \
@@ -3248,8 +3401,8 @@ FUNC_WRITE_BITS_BIGINT_LE(bw_write_bits_bigint_f_le, fputc,
                           self->output.file)
 FUNC_WRITE_BITS_BIGINT_LE(bw_write_bits_bigint_e_le, ext_putc,
                           self->output.external)
-FUNC_WRITE_BITS_BIGINT_LE(bw_write_bits_bigint_r_le, bw_buf_putc,
-                          self->output.recorder)
+FUNC_WRITE_BITS_BIGINT_LE(bw_write_bits_bigint_sr_le, bw_buf_putc,
+                          self->output.string_recorder)
 
 static void
 bw_write_bits_bigint_c(BitstreamWriter* self,
@@ -3346,7 +3499,20 @@ bw_write_bits_a(BitstreamWriter *self, unsigned int count, unsigned int value)
 }
 
 static void
+bw_write_signed_bits_a(BitstreamWriter *self, unsigned int count, int value)
+{
+    self->output.accumulator += count;
+}
+
+static void
 bw_write_bits64_a(BitstreamWriter *self, unsigned int count, uint64_t value)
+{
+    self->output.accumulator += count;
+}
+
+static void
+bw_write_signed_bits64_a(BitstreamWriter *self, unsigned int count,
+                         int64_t value)
 {
     self->output.accumulator += count;
 }
@@ -3355,6 +3521,14 @@ static void
 bw_write_bits_bigint_a(BitstreamWriter *self,
                        unsigned int count,
                        const mpz_t value)
+{
+    self->output.accumulator += count;
+}
+
+static void
+bw_write_signed_bits_bigint_a(BitstreamWriter *self,
+                              unsigned int count,
+                              const mpz_t value)
 {
     self->output.accumulator += count;
 }
@@ -3377,7 +3551,27 @@ bw_write_bits_la(BitstreamWriter *self, unsigned int count, unsigned int value)
 }
 
 static void
+bw_write_signed_bits_la(BitstreamWriter *self, unsigned int count,
+                        int value)
+{
+    if ((self->output.limited_accumulator.written += count) >
+        self->output.limited_accumulator.total) {
+        bw_abort(self);
+    }
+}
+
+static void
 bw_write_bits64_la(BitstreamWriter *self, unsigned int count, uint64_t value)
+{
+    if ((self->output.limited_accumulator.written += count) >
+        self->output.limited_accumulator.total) {
+        bw_abort(self);
+    }
+}
+
+static void
+bw_write_signed_bits64_la(BitstreamWriter *self, unsigned int count,
+                          int64_t value)
 {
     if ((self->output.limited_accumulator.written += count) >
         self->output.limited_accumulator.total) {
@@ -3389,6 +3583,17 @@ static void
 bw_write_bits_bigint_la(BitstreamWriter *self,
                         unsigned int count,
                         const mpz_t value)
+{
+    if ((self->output.limited_accumulator.written += count) >
+        self->output.limited_accumulator.total) {
+        bw_abort(self);
+    }
+}
+
+static void
+bw_write_signed_bits_bigint_la(BitstreamWriter *self,
+                               unsigned int count,
+                               const mpz_t value)
 {
     if ((self->output.limited_accumulator.written += count) >
         self->output.limited_accumulator.total) {
@@ -3501,19 +3706,19 @@ bw_set_endianness_e(BitstreamWriter* self, bs_endianness endianness)
 }
 
 static void
-bw_set_endianness_r(BitstreamWriter* self, bs_endianness endianness)
+bw_set_endianness_sr(BitstreamWriter* self, bs_endianness endianness)
 {
     __bw_set_endianness__(self, endianness);
     switch (endianness) {
     case BS_LITTLE_ENDIAN:
-        self->write = bw_write_bits_r_le;
-        self->write_64 = bw_write_bits64_r_le;
-        self->write_bigint = bw_write_bits_bigint_r_le;
+        self->write = bw_write_bits_sr_le;
+        self->write_64 = bw_write_bits64_sr_le;
+        self->write_bigint = bw_write_bits_bigint_sr_le;
         break;
     case BS_BIG_ENDIAN:
-        self->write = bw_write_bits_r_be;
-        self->write_64 = bw_write_bits64_r_be;
-        self->write_bigint = bw_write_bits_bigint_r_be;
+        self->write = bw_write_bits_sr_be;
+        self->write_64 = bw_write_bits64_sr_be;
+        self->write_bigint = bw_write_bits_bigint_sr_be;
         break;
     }
 }
@@ -3521,7 +3726,7 @@ bw_set_endianness_r(BitstreamWriter* self, bs_endianness endianness)
 static void
 bw_set_endianness_a(BitstreamWriter* self, bs_endianness endianness)
 {
-    __bw_set_endianness__(self, endianness);
+    /*do nothing*/
 }
 
 static void
@@ -3624,15 +3829,15 @@ bw_write_bytes_e(BitstreamWriter* self,
 }
 
 static void
-bw_write_bytes_r(BitstreamWriter* self,
-                 const uint8_t* bytes,
-                 unsigned int count)
+bw_write_bytes_sr(BitstreamWriter* self,
+                  const uint8_t* bytes,
+                  unsigned int count)
 {
     if (self->buffer_size == 0) {
         struct bs_callback* callback;
 
         /*stream is byte aligned, so perform optimized write*/
-        if (bw_buf_write(self->output.recorder, bytes, count)) {
+        if (bw_buf_write(self->output.string_recorder, bytes, count)) {
             bw_abort(self);
         }
 
@@ -3801,7 +4006,7 @@ bw_flush_f(BitstreamWriter* self)
 }
 
 static void
-bw_flush_r_a_c(BitstreamWriter* self)
+bw_flush_noop(BitstreamWriter* self)
 {
     /*recorders and accumulators are always flushed,
       closed streams do nothing when flushed*/
@@ -3853,7 +4058,7 @@ bw_getpos_e(BitstreamWriter* self)
 }
 
 static bw_pos_t*
-bw_getpos_r(BitstreamWriter* self)
+bw_getpos_sr(BitstreamWriter* self)
 {
     bw_pos_t* pos;
 
@@ -3861,8 +4066,8 @@ bw_getpos_r(BitstreamWriter* self)
 
     pos = malloc(sizeof(bw_pos_t));
     pos->writer = self;
-    bw_buf_getpos(self->output.recorder, &pos->position.recorder);
-    pos->del = bw_pos_del_r;
+    bw_buf_getpos(self->output.string_recorder, &pos->position.recorder);
+    pos->del = bw_pos_del_sr;
     return pos;
 }
 
@@ -3897,12 +4102,13 @@ bw_setpos_e(BitstreamWriter* self, const bw_pos_t* pos)
 }
 
 static void
-bw_setpos_r(BitstreamWriter* self, const bw_pos_t* pos)
+bw_setpos_sr(BitstreamWriter* self, const bw_pos_t* pos)
 {
     assert(pos->writer == self);
     assert(self->buffer_size == 0);
 
-    if (bw_buf_setpos(self->output.recorder, pos->position.recorder)) {
+    if (bw_buf_setpos(self->output.string_recorder,
+                      pos->position.recorder)) {
         /*this may happen if someone resets the stream
           and then tries to setpos afterward*/
         bw_abort(self);
@@ -3930,7 +4136,7 @@ bw_pos_del_e(bw_pos_t* pos)
 }
 
 static void
-bw_pos_del_r(bw_pos_t* pos)
+bw_pos_del_sr(bw_pos_t* pos)
 {
     free(pos);
 }
@@ -3941,10 +4147,14 @@ bw_close_methods(BitstreamWriter* self)
 {
     /*swap read methods with closed methods that generate read errors*/
     self->write = bw_write_bits_c;
+    self->write_signed = bw_write_signed_bits_c;
     self->write_64 = bw_write_bits64_c;
+    self->write_signed_64 = bw_write_signed_bits64_c;
     self->write_bigint = bw_write_bits_bigint_c;
+    self->write_signed_bigint = bw_write_bits_bigint_c;
+    self->write_unary = bw_write_unary_c;
     self->write_bytes = bw_write_bytes_c;
-    self->flush = bw_flush_r_a_c;
+    self->flush = bw_flush_noop;
     self->set_endianness = bw_set_endianness_c;
     self->getpos = bw_getpos_c;
     self->setpos = bw_setpos_c;
@@ -3967,12 +4177,6 @@ static void
 bw_close_internal_stream_cf(BitstreamWriter* self)
 {
     return;
-}
-
-static void
-bw_close_internal_stream_r(BitstreamRecorder* self)
-{
-    bw_close_methods((BitstreamWriter*)self);
 }
 
 static void
@@ -4030,10 +4234,10 @@ bw_free_e(BitstreamWriter* self)
 
 
 static void
-bw_free_r(BitstreamRecorder* self)
+bw_free_sr(BitstreamRecorder* self)
 {
     /*deallocate buffer*/
-    bw_buf_free(self->output.recorder);
+    bw_buf_free(self->output.string_recorder);
 
     /*perform additional deallocations on rest of struct*/
     bw_free_f((BitstreamWriter*)self);
@@ -4046,37 +4250,334 @@ bw_close_f_e(BitstreamWriter* self)
     self->free(self);
 }
 
-static void
-bw_close_r(BitstreamRecorder* self)
-{
-    self->close_internal_stream(self);
-    self->free(self);
-}
-
 static unsigned int
-bw_bits_written_r(const BitstreamRecorder* self)
+bw_bits_written_sr(const BitstreamRecorder* self)
 {
-    return (unsigned int)(bw_buf_size(self->output.recorder) * 8 +
+    return (unsigned int)(bw_buf_size(self->output.string_recorder) * 8 +
                           self->buffer_size);
 }
 
 static unsigned int
-bw_bytes_written_r(const BitstreamRecorder* self)
+bw_bytes_written_sr(const BitstreamRecorder* self)
 {
-    return bw_buf_size(self->output.recorder);
+    return bw_buf_size(self->output.string_recorder);
 }
 
 static void
-bw_reset_r(BitstreamRecorder* self)
+bw_reset_sr(BitstreamRecorder* self)
 {
     self->buffer = 0;
     self->buffer_size = 0;
-    bw_buf_reset(self->output.recorder);
+    bw_buf_reset(self->output.string_recorder);
 }
 
+static void
+bw_write_bits_r(BitstreamWriter *self,
+                unsigned int count,
+                unsigned int value)
+{
+    self->output.recorder.bits_written += count;
+    if (self->output.recorder.maximum_size &&
+        (self->output.recorder.bits_written >
+         self->output.recorder.maximum_size)) {
+        bw_abort(self);
+    } else {
+        struct BitstreamRecorderEntry *entry = new_entry(self);
+        entry->_.write.count = count;
+        entry->_.write.value = value;
+        entry->playback = playback_write_bits;
+        entry->reset = reset_noop;
+    }
+}
 
 static void
-bw_copy_r(const BitstreamRecorder* self, BitstreamWriter* target)
+playback_write_bits(struct BitstreamRecorderEntry *self,
+                    BitstreamWriter *writer)
+{
+    writer->write(writer, self->_.write.count, self->_.write.value);
+}
+
+static void
+bw_write_signed_bits_r(BitstreamWriter *self,
+                       unsigned int count,
+                       int value)
+{
+    self->output.recorder.bits_written += count;
+    if (self->output.recorder.maximum_size &&
+        (self->output.recorder.bits_written >
+         self->output.recorder.maximum_size)) {
+        bw_abort(self);
+    } else {
+        struct BitstreamRecorderEntry *entry = new_entry(self);
+        entry->_.write_signed.count = count;
+        entry->_.write_signed.value = value;
+        entry->playback = playback_write_signed_bits;
+        entry->reset = reset_noop;
+    }
+}
+
+static void
+playback_write_signed_bits(struct BitstreamRecorderEntry *self,
+                           BitstreamWriter *writer)
+{
+    writer->write_signed(writer,
+                         self->_.write_signed.count,
+                         self->_.write_signed.value);
+}
+
+static void
+bw_write_bits64_r(BitstreamWriter *self,
+                  unsigned int count,
+                  uint64_t value)
+{
+    self->output.recorder.bits_written += count;
+    if (self->output.recorder.maximum_size &&
+        (self->output.recorder.bits_written >
+         self->output.recorder.maximum_size)) {
+        bw_abort(self);
+    } else {
+        struct BitstreamRecorderEntry *entry = new_entry(self);
+        entry->_.write_64.count = count;
+        entry->_.write_64.value = value;
+        entry->playback = playback_write_64;
+        entry->reset = reset_noop;
+    }
+}
+
+static void
+playback_write_64(struct BitstreamRecorderEntry *self,
+                  BitstreamWriter *writer)
+{
+    writer->write_64(writer,
+                     self->_.write_64.count,
+                     self->_.write_64.value);
+}
+
+static void
+bw_write_signed_bits64_r(BitstreamWriter *self,
+                         unsigned int count,
+                         int64_t value)
+{
+    self->output.recorder.bits_written += count;
+    if (self->output.recorder.maximum_size &&
+        (self->output.recorder.bits_written >
+         self->output.recorder.maximum_size)) {
+        bw_abort(self);
+    } else {
+        struct BitstreamRecorderEntry *entry = new_entry(self);
+        entry->_.write_signed_64.count = count;
+        entry->_.write_signed_64.value = value;
+        entry->playback = playback_write_signed_64;
+        entry->reset = reset_noop;
+    }
+}
+
+static void
+playback_write_signed_64(struct BitstreamRecorderEntry *self,
+                         BitstreamWriter *writer)
+{
+    writer->write_signed_64(writer,
+                            self->_.write_signed_64.count,
+                            self->_.write_signed_64.value);
+}
+
+static void
+bw_write_bits_bigint_r(BitstreamWriter *self,
+                       unsigned int count,
+                       const mpz_t value)
+{
+    self->output.recorder.bits_written += count;
+    if (self->output.recorder.maximum_size &&
+        (self->output.recorder.bits_written >
+         self->output.recorder.maximum_size)) {
+        bw_abort(self);
+    } else {
+        struct BitstreamRecorderEntry *entry = new_entry(self);
+        entry->_.write_bigint.count = count;
+        mpz_init_set(entry->_.write_bigint.value, value);
+        entry->playback = playback_write_bigint;
+        entry->reset = reset_write_bigint;
+    }
+}
+
+static void
+playback_write_bigint(struct BitstreamRecorderEntry *self,
+                      BitstreamWriter *writer)
+{
+    writer->write_bigint(writer,
+                         self->_.write_bigint.count,
+                         self->_.write_bigint.value);
+}
+
+static void
+reset_write_bigint(struct BitstreamRecorderEntry *self)
+{
+    mpz_clear(self->_.write_bigint.value);
+}
+
+static void
+bw_write_signed_bits_bigint_r(BitstreamWriter *self,
+                              unsigned int count,
+                              const mpz_t value)
+{
+    self->output.recorder.bits_written += count;
+    if (self->output.recorder.maximum_size &&
+        (self->output.recorder.bits_written >
+         self->output.recorder.maximum_size)) {
+        bw_abort(self);
+    } else {
+        struct BitstreamRecorderEntry *entry = new_entry(self);
+        entry->_.write_signed_bigint.count = count;
+        mpz_init_set(entry->_.write_signed_bigint.value, value);
+        entry->playback = playback_write_signed_bigint;
+        entry->reset = reset_write_signed_bigint;
+    }
+}
+
+static void
+playback_write_signed_bigint(struct BitstreamRecorderEntry *self,
+                             BitstreamWriter *writer)
+{
+    writer->write_signed_bigint(writer,
+                                self->_.write_signed_bigint.count,
+                                self->_.write_signed_bigint.value);
+}
+
+static void
+reset_write_signed_bigint(struct BitstreamRecorderEntry *self)
+{
+    mpz_clear(self->_.write_signed_bigint.value);
+}
+
+static void
+bw_write_unary_r(BitstreamWriter *self,
+                 int stop_bit,
+                 unsigned int value)
+{
+    self->output.recorder.bits_written += (value + 1);
+    if (self->output.recorder.maximum_size &&
+        (self->output.recorder.bits_written >
+         self->output.recorder.maximum_size)) {
+        bw_abort(self);
+    } else {
+        struct BitstreamRecorderEntry *entry = new_entry(self);
+        entry->_.write_unary.stop_bit = stop_bit;
+        entry->_.write_unary.value = value;
+        entry->playback = playback_write_unary;
+        entry->reset = reset_noop;
+    }
+}
+
+static void
+bw_write_unary_c(BitstreamWriter *self,
+                 int stop_bit,
+                 unsigned int value)
+{
+    bw_abort(self);
+}
+
+static void
+playback_write_unary(struct BitstreamRecorderEntry *self,
+                     BitstreamWriter *writer)
+{
+    writer->write_unary(writer,
+                        self->_.write_unary.stop_bit,
+                        self->_.write_unary.value);
+}
+
+static void
+bw_write_bytes_r(BitstreamWriter *self,
+                 const uint8_t *bytes,
+                 unsigned int byte_count)
+{
+    self->output.recorder.bits_written += (byte_count * 8);
+    if (self->output.recorder.maximum_size &&
+        (self->output.recorder.bits_written >
+         self->output.recorder.maximum_size)) {
+        bw_abort(self);
+    } else {
+        struct BitstreamRecorderEntry *entry = new_entry(self);
+        entry->_.write_bytes.bytes = malloc(sizeof(uint8_t) * byte_count);
+        memcpy(entry->_.write_bytes.bytes,
+               bytes,
+               sizeof(uint8_t) * byte_count);
+        entry->_.write_bytes.byte_count = byte_count;
+        entry->playback = playback_write_bytes;
+        entry->reset = reset_write_bytes;
+    }
+}
+
+static void
+playback_write_bytes(struct BitstreamRecorderEntry *self,
+                     BitstreamWriter *writer)
+{
+    writer->write_bytes(writer,
+                        self->_.write_bytes.bytes,
+                        self->_.write_bytes.byte_count);
+}
+
+static void
+reset_write_bytes(struct BitstreamRecorderEntry *self)
+{
+    free(self->_.write_bytes.bytes);
+}
+
+static void
+bw_set_endianness_r(BitstreamWriter *self, bs_endianness endianness)
+{
+    struct BitstreamRecorderEntry *entry = new_entry(self);
+    entry->_.set_endianness = endianness;
+    entry->playback = playback_set_endianness;
+    entry->reset = reset_noop;
+}
+
+static void
+playback_set_endianness(struct BitstreamRecorderEntry *self,
+                        BitstreamWriter *writer)
+{
+    writer->set_endianness(writer, self->_.set_endianness);
+}
+
+static unsigned
+bw_bits_written_r(const BitstreamRecorder *self)
+{
+    return self->output.recorder.bits_written;
+}
+
+static unsigned
+bw_bytes_written_r(const BitstreamRecorder *self)
+{
+    return self->output.recorder.bits_written / 8;
+}
+
+static void
+bw_byte_align_r(BitstreamWriter* bs)
+{
+    while (!bs->byte_aligned(bs)) {
+        bs->write(bs, 1, 0);
+    }
+}
+
+static int
+bw_byte_aligned_r(const BitstreamWriter *self)
+{
+    return (self->output.recorder.bits_written % 8) == 0;
+}
+
+static void
+bw_reset_r(BitstreamRecorder *self)
+{
+    unsigned i;
+    for (i = 0; i < self->output.recorder.entry_count; i++) {
+        struct BitstreamRecorderEntry *entry =
+            self->output.recorder.entries + i;
+        entry->reset(entry);
+    }
+    self->output.recorder.entry_count = 0;
+}
+
+static void
+bw_copy_sr(const BitstreamRecorder *self, BitstreamWriter *target)
 {
     /*dump all the bytes from our internal buffer*/
     target->write_bytes(target, self->data(self), self->bytes_written(self));
@@ -4089,10 +4590,48 @@ bw_copy_r(const BitstreamRecorder* self, BitstreamWriter* target)
     }
 }
 
-static const uint8_t*
-bw_data_r(const BitstreamRecorder* self)
+static void
+bw_copy_r(const BitstreamRecorder* self, BitstreamWriter* target)
 {
-    return self->output.recorder->buffer;
+    /*dump all entries from our internal buffer*/
+    unsigned i;
+    for (i = 0; i < self->output.recorder.entry_count; i++) {
+        struct BitstreamRecorderEntry *entry =
+            self->output.recorder.entries + i;
+        entry->playback(entry, target);
+    }
+}
+
+static void
+bw_close_r(BitstreamRecorder* self)
+{
+    self->close_internal_stream(self);
+    self->free(self);
+}
+
+static void
+bw_free_r(BitstreamRecorder *self)
+{
+    bw_reset_r(self);
+    free(self->output.recorder.entries);
+    bw_free_f((BitstreamWriter*)self);
+}
+
+static const uint8_t*
+bw_data_sr(const BitstreamRecorder *self)
+{
+    return self->output.string_recorder->buffer;
+}
+
+static const uint8_t*
+bw_data_r(const BitstreamRecorder *self)
+{
+    BitstreamRecorder *rec = bw_open_bytes_recorder(self->endianness);
+    const uint8_t *buffer;
+    self->copy(self, (BitstreamWriter*)rec);
+    buffer = rec->data(rec);
+    rec->close(rec);
+    return buffer;
 }
 
 static unsigned int
@@ -4134,6 +4673,12 @@ bw_free_a(BitstreamAccumulator *self)
 {
     /*perform deallocations on reset of struct*/
     bw_free_f((BitstreamWriter*)self);
+}
+
+static void
+bw_close_internal_stream_r(BitstreamRecorder* self)
+{
+    bw_close_methods((BitstreamWriter*)self);
 }
 
 static void
@@ -4336,6 +4881,39 @@ void
 byte_counter(uint8_t byte, unsigned* total_bytes)
 {
     *total_bytes += 1;
+}
+
+static struct BitstreamRecorderEntry*
+new_entry(BitstreamWriter *writer)
+{
+    /*ensure there's at least one entry in the queue*/
+    if (writer->output.recorder.entries == 0) {
+        writer->output.recorder.max_entries = 1;
+        writer->output.recorder.entries =
+            malloc(sizeof(struct BitstreamRecorderEntry) *
+                   writer->output.recorder.max_entries);
+    }
+
+    /*widen the queue for more entries if necessary*/
+    if (writer->output.recorder.entry_count ==
+        writer->output.recorder.max_entries) {
+        writer->output.recorder.max_entries *= 2;
+        writer->output.recorder.entries =
+            realloc(writer->output.recorder.entries,
+                    sizeof(struct BitstreamRecorderEntry) *
+                    writer->output.recorder.max_entries);
+    }
+
+    /*return the next entry on the queue*/
+    return writer->output.recorder.entries +
+           (writer->output.recorder.entry_count++);
+}
+
+static void
+reset_noop(struct BitstreamRecorderEntry *self)
+{
+    /*does nothing*/
+    return;
 }
 
 
@@ -6697,28 +7275,6 @@ test_writer(bs_endianness endianness) {
         writer->add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
         checks[i](writer, endianness);
         writer->close(writer);
-        assert(sums[0] == 4);
-        assert(sums[1] == 8);
-        assert(sums[2] == 81);
-    }
-
-    /*check recorder-based callback functions*/
-    for (i = 0; i < total_checks; i++) {
-        BitstreamRecorder *recorder;
-        sums[0] = sums[1] = 0;
-        sums[2] = 1;
-        recorder = bw_open_recorder(endianness);
-        recorder->add_callback((BitstreamWriter*)recorder,
-                               (bs_callback_f)func_add_one,
-                               &(sums[0]));
-        recorder->add_callback((BitstreamWriter*)recorder,
-                               (bs_callback_f)func_add_two,
-                               &(sums[1]));
-        recorder->add_callback((BitstreamWriter*)recorder,
-                               (bs_callback_f)func_mult_three,
-                               &(sums[2]));
-        checks[i]((BitstreamWriter*)recorder, endianness);
-        recorder->close(recorder);
         assert(sums[0] == 4);
         assert(sums[1] == 8);
         assert(sums[2] == 81);
