@@ -1767,6 +1767,8 @@ class TestFrameList(unittest.TestCase):
 
     @LIB_CORE
     def test_conversion(self):
+        import sys
+
         for format in audiotools.AVAILABLE_TYPES:
             temp_track = tempfile.NamedTemporaryFile(
                 suffix="." + format.SUFFIX)
@@ -5256,9 +5258,8 @@ class TestMultiChannel(unittest.TestCase):
 
     def __test_undefined_mask_blank__(self, audio_class, channels,
                                       should_be_blank):
-        temp_file = tempfile.NamedTemporaryFile(
-            suffix="." + audio_class.SUFFIX)
-        try:
+        with tempfile.NamedTemporaryFile(
+            suffix="." + audio_class.SUFFIX) as temp_file:
             temp_track = audio_class.from_pcm(
                 temp_file.name,
                 Join_Reader(
@@ -5278,11 +5279,12 @@ class TestMultiChannel(unittest.TestCase):
                                      audio_class,
                                      channels))
                 pcm = temp_track.to_pcm()
-                self.assertEqual(int(pcm.channel_mask),
-                                 int(temp_track.channel_mask()))
+                self.assertEqual(
+                    pcm.channel_mask,
+                    int(temp_track.channel_mask()),
+                    "%s != %s" % (audiotools.ChannelMask(pcm.channel_mask),
+                                  temp_track.channel_mask()))
                 audiotools.transfer_framelist_data(pcm, lambda x: None)
-        finally:
-            temp_file.close()
 
     def __test_error_mask_blank__(self, audio_class, channels,
                                   channel_mask):

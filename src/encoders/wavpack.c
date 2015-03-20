@@ -292,7 +292,7 @@ init_context(struct wavpack_encoder_context* context,
     context->cache.mid_side = aa_int_new();
     context->cache.correlated = aa_int_new();
     context->cache.correlation_temp = aa_int_new();
-    context->cache.sub_block = bw_open_recorder(BS_LITTLE_ENDIAN);
+    context->cache.sub_block = bw_open_bytes_recorder(BS_LITTLE_ENDIAN);
 
     /*initialize encoding parameters for each block in the set*/
     context->blocks_per_set = block_channels->len;

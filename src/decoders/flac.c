@@ -329,7 +329,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
                         break;
                     case 7:
                         self->channel_mask =
-                        fL | fR | fC | LFE | bC | bL | bR;
+                        fL | fR | fC | LFE | bC | sL | sR;
                         break;
                     case 8:
                         self->channel_mask =
