@@ -4,7 +4,6 @@
 
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -25,45 +24,27 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-typedef enum {OK,
-              IOERROR,
-              CRCMISMATCH,
-              INVALID_SIGNATURE,
-              UNSUPPORTED_FORMAT} status;
-
-struct tta_cache {
-    a_int* k0;
-    a_int* sum0;
-    a_int* k1;
-    a_int* sum1;
-    aa_int* residual;
-    aa_int* filtered;
-    aa_int* predicted;
+struct tta_header {
+    unsigned channels;
+    unsigned bits_per_sample;
+    unsigned sample_rate;
+    unsigned total_pcm_frames;
 };
 
 #ifndef STANDALONE
 typedef struct {
     PyObject_HEAD
 
-    struct {
-        unsigned channels;
-        unsigned bits_per_sample;
-        unsigned sample_rate;
-        unsigned total_pcm_frames;
-    } header;
+    struct tta_header header;
 
-    unsigned remaining_pcm_frames;
+    unsigned default_block_size;
     unsigned total_tta_frames;
     unsigned current_tta_frame;
-    unsigned block_size;
     unsigned* seektable;
-
-    struct tta_cache cache;
 
     int closed;
 
     BitstreamReader* bitstream;
-    aa_int* framelist;
 
     /*a framelist generator*/
     PyObject* audiotools_pcm;
@@ -175,43 +156,3 @@ PyTypeObject decoders_TTADecoderType = {
     TTADecoder_new,            /* tp_new */
   };
 #endif
-
-static void
-init_cache(struct tta_cache *cache);
-
-static void
-free_cache(struct tta_cache *cache);
-
-static status
-read_header(BitstreamReader* bitstream,
-            unsigned* channels,
-            unsigned* bits_per_sample,
-            unsigned* sample_rate,
-            unsigned* total_pcm_frames);
-
-static status
-read_seektable(BitstreamReader* bitstream,
-               unsigned total_tta_frames,
-               unsigned seektable[]);
-
-static status
-read_frame(BitstreamReader* frame,
-           struct tta_cache* cache,
-           unsigned block_size,
-           unsigned channels,
-           unsigned bits_per_sample,
-           aa_int* framelist);
-
-static void
-hybrid_filter(const a_int* residual,
-              unsigned bits_per_sample,
-              a_int* filtered);
-
-static void
-fixed_prediction(const a_int* filtered,
-                 unsigned bits_per_sample,
-                 a_int* predicted);
-
-static void
-decorrelate_channels(const aa_int* predicted,
-                     aa_int* decorrelated);

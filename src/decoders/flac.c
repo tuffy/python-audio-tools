@@ -534,29 +534,29 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
                                                  frame_header.block_size);
 
         /*decode subframes based on channel assignment*/
-        status_t (*decoder)(BitstreamReader *r,
-                            const struct frame_header *frame_header,
-                            int samples[]) = NULL;
+        status_t (*decode)(BitstreamReader *r,
+                           const struct frame_header *frame_header,
+                           int samples[]) = NULL;
 
         switch (frame_header.channel_assignment) {
         case INDEPENDENT:
-            decoder = decode_independent;
+            decode = decode_independent;
             break;
         case LEFT_DIFFERENCE:
-            decoder = decode_left_difference;
+            decode = decode_left_difference;
             break;
         case DIFFERENCE_RIGHT:
-            decoder = decode_difference_right;
+            decode = decode_difference_right;
             break;
         case AVERAGE_DIFFERENCE:
-            decoder = decode_average_difference;
+            decode = decode_average_difference;
             break;
         }
-        assert(decoder);
+        assert(decode);
 
-        if ((status = decoder(self->bitstream,
-                              &frame_header,
-                              framelist->samples)) != OK) {
+        if ((status = decode(self->bitstream,
+                             &frame_header,
+                             framelist->samples)) != OK) {
             Py_DECREF((PyObject*)framelist);
             self->bitstream->pop_callback(self->bitstream, NULL);
             PyErr_SetString(flac_exception(status), flac_strerror(status));

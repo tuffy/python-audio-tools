@@ -1,7 +1,5 @@
 #include "tta.h"
 #include "../common/tta_crc.h"
-#include "../pcm_conv.h"
-#include "../pcmconv.h"
 #include "../framelist.h"
 #include <string.h>
 
@@ -24,13 +22,107 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-/*returns x/y rounded up
-  each argument is evaluated twice*/
-#ifndef DIV_CEIL
-#define DIV_CEIL(x, y) ((x) / (y) + (((x) % (y)) ? 1 : 0))
-#endif
+typedef enum {
+    OK,
+    IO_ERROR,
+    CRC_MISMATCH,
+    FRAME_TOO_SMALL,
+    INVALID_SIGNATURE,
+    INVALID_FORMAT
+} status_t;
 
-#ifndef STANDALONE
+struct residual_params {
+    unsigned k0;
+    unsigned k1;
+    unsigned sum0;
+    unsigned sum1;
+};
+
+struct filter_params {
+    unsigned shift;
+    int previous_residual;
+    int round;
+    int qm[8];
+    int dx[8];
+    int dl[8];
+};
+
+struct prediction_params {
+    unsigned shift;
+    int previous_sample;
+};
+
+/*******************************
+ * private function signatures *
+ *******************************/
+
+/*given a total frame size (including the 4 bytes of CRC-32),
+  returns a substream of (frame_size - 4) bytes
+  or NULL if an error occurs
+  with "error" set accordingly*/
+static BitstreamReader*
+read_frame(BitstreamReader *tta_file,
+           unsigned frame_size,
+           status_t *status);
+
+/*reads a TTA header from the frame to "header"
+  returns OK on success, or some error value*/
+static status_t
+read_header(BitstreamReader *frame, struct tta_header *header);
+
+/*returns a freshly allocated array of "total_tta_frames" frame sizes*/
+static unsigned*
+read_seektable(BitstreamReader *frame, unsigned total_tta_frames);
+
+static void
+read_tta_frame(BitstreamReader *frame,
+               unsigned channels,
+               unsigned bits_per_sample,
+               unsigned block_size,
+               int samples[]);
+
+static void
+init_residual_params(struct residual_params *params);
+
+static int
+read_residual(struct residual_params *params, BitstreamReader *frame);
+
+static void
+init_filter_params(unsigned bits_per_sample,
+                   struct filter_params *params);
+
+static int
+run_filter(struct filter_params *params, int residual);
+
+static void
+init_prediction_params(unsigned bits_per_sample,
+                       struct prediction_params *params);
+
+static int
+run_prediction(struct prediction_params *params, int filtered);
+
+static void
+decorrelate_channels(unsigned channel_count,
+                     const int predicted[],
+                     int samples[]);
+
+static PyObject*
+tta_exception(status_t error);
+
+static const char*
+tta_strerror(status_t error);
+
+static inline unsigned
+div_ceil(unsigned x, unsigned y)
+{
+    ldiv_t div = ldiv((long)x, (long)y);
+    return div.rem ? ((unsigned)div.quot + 1) : (unsigned)div.quot;
+}
+
+/***********************************
+ * public function implementations *
+ ***********************************/
+
 PyObject*
 TTADecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     decoders_TTADecoder *self;
@@ -43,21 +135,13 @@ TTADecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 int
 TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
     PyObject *file;
+    BitstreamReader *header;
+    BitstreamReader *seektable;
+    status_t status;
 
-    /*initialize temporary buffers*/
-    self->total_tta_frames = 0;
-    self->current_tta_frame = 0;
     self->seektable = NULL;
-
-    init_cache(&(self->cache));
-
-    self->closed = 1;
-
     self->bitstream = NULL;
-    self->framelist = aa_int_new();
-
     self->audiotools_pcm = NULL;
-
     self->frames_start = NULL;
 
     if (!PyArg_ParseTuple(args, "O", &file)) {
@@ -66,7 +150,6 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
         Py_INCREF(file);
     }
 
-    /*open the TTA file*/
     self->bitstream = br_open_external(
         file,
         BS_LITTLE_ENDIAN,
@@ -79,67 +162,43 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
         (ext_close_f)bs_close_python,
         (ext_free_f)bs_free_python_decref);
 
-    switch (read_header(self->bitstream,
-                        &(self->header.channels),
-                        &(self->header.bits_per_sample),
-                        &(self->header.sample_rate),
-                        &(self->header.total_pcm_frames))) {
-    default:
-        self->remaining_pcm_frames = self->header.total_pcm_frames;
-        break;
-    case INVALID_SIGNATURE:
-        PyErr_SetString(PyExc_ValueError, "invalid header signature");
+    /*read and validate header*/
+    if ((header = read_frame(self->bitstream, 22, &status)) == NULL) {
+        PyErr_SetString(tta_exception(status), tta_strerror(status));
         return -1;
-    case UNSUPPORTED_FORMAT:
-        PyErr_SetString(PyExc_ValueError, "unsupported TTA format");
-        return -1;
-    case CRCMISMATCH:
-        PyErr_SetString(PyExc_ValueError, "CRC error reading header");
-        return -1;
-    case IOERROR:
-        PyErr_SetString(PyExc_IOError, "I/O error reading header");
-        return -1;
-    }
-
-    /*determine the default block size*/
-    self->block_size = (self->header.sample_rate * 256) / 245;
-
-    /*determine the total number of TTA frames*/
-    self->total_tta_frames = DIV_CEIL(self->header.total_pcm_frames,
-                                      self->block_size);
-
-    self->seektable = malloc(sizeof(unsigned int) * self->total_tta_frames);
-
-    switch (read_seektable(self->bitstream,
-                           self->total_tta_frames,
-                           self->seektable)) {
-    default:
-        /*do nothing*/
-        break;
-    case CRCMISMATCH:
-        PyErr_SetString(PyExc_ValueError, "CRC error reading seektable");
-        return -1;
-    case IOERROR:
-        PyErr_SetString(PyExc_IOError, "I/O error reading seektable");
-        return -1;
-    }
-
-    /*setup a framelist generator function*/
-    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
-        return -1;
-
-    /*place a mark after the seektable for possible rewinding
-      if the stream is file-based*/
-    if (!setjmp(*br_try(self->bitstream))) {
-        self->frames_start = self->bitstream->getpos(self->bitstream);
-        br_etry(self->bitstream);
     } else {
-        br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error getting stream position");
-        return -1;
+        status = read_header(header, &(self->header));
+        header->close(header);
+        if (status != OK) {
+            PyErr_SetString(tta_exception(status), tta_strerror(status));
+            return -1;
+        }
     }
 
-    /*mark stream as not closed and ready for reading*/
+    /*calculate some parameters from header*/
+    self->default_block_size = (self->header.sample_rate * 256) / 245;
+    self->total_tta_frames = div_ceil(self->header.total_pcm_frames,
+                                      self->default_block_size);
+    self->current_tta_frame = 0;
+
+    /*read seektable*/
+    if ((seektable = read_frame(self->bitstream,
+                                4 * self->total_tta_frames + 4,
+                                &status)) == NULL) {
+        PyErr_SetString(tta_exception(status), tta_strerror(status));
+        return -1;
+    } else {
+        self->seektable = read_seektable(seektable, self->total_tta_frames);
+        seektable->close(seektable);
+    }
+
+    /*get FrameList generator for output*/
+    self->audiotools_pcm = open_audiotools_pcm();
+
+    /*mark beginning of frames for seeking*/
+    self->frames_start = self->bitstream->getpos(self->bitstream);
+
+    /*mark file as not closed*/
     self->closed = 0;
 
     return 0;
@@ -147,22 +206,17 @@ TTADecoder_init(decoders_TTADecoder *self, PyObject *args, PyObject *kwds) {
 
 void
 TTADecoder_dealloc(decoders_TTADecoder *self) {
-    if (self->seektable != NULL)
-        free(self->seektable);
+    free(self->seektable);
 
-    free_cache(&(self->cache));
-
-    if (self->frames_start != NULL) {
-        self->frames_start->del(self->frames_start);
-    }
-
-    if (self->bitstream != NULL) {
+    if (self->bitstream) {
         self->bitstream->free(self->bitstream);
     }
 
-    self->framelist->del(self->framelist);
-
     Py_XDECREF(self->audiotools_pcm);
+
+    if (self->frames_start) {
+        self->frames_start->del(self->frames_start);
+    }
 
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -204,74 +258,49 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
         return NULL;
-    } else if (self->remaining_pcm_frames == 0) {
+    } else if (self->current_tta_frame == self->total_tta_frames) {
         return empty_FrameList(self->audiotools_pcm,
                                self->header.channels,
                                self->header.bits_per_sample);
     } else {
-        const unsigned frame_size = self->seektable[self->current_tta_frame++];
-        const unsigned block_size = MIN(self->remaining_pcm_frames,
-                                        self->block_size);
-        BitstreamReader *frame;
-        status status;
-        uint32_t frame_crc = 0xFFFFFFFF;
+        unsigned block_size;
+        status_t status;
+        BitstreamReader *tta_frame =
+            read_frame(self->bitstream,
+                       self->seektable[self->current_tta_frame],
+                       &status);
+        pcm_FrameList *framelist;
 
-        /*read "frame_size" - 4 bytes of data from stream*/
-        self->bitstream->add_callback(self->bitstream,
-                                      (bs_callback_f)tta_crc32,
-                                      &frame_crc);
-
-        if (!setjmp(*br_try(self->bitstream))) {
-            frame = self->bitstream->substream(self->bitstream,
-                                               frame_size - 4);
-            br_etry(self->bitstream);
-            self->bitstream->pop_callback(self->bitstream, NULL);
-        } else {
-            /*read error attempting to populate frame with bytes*/
-            br_etry(self->bitstream);
-            self->bitstream->pop_callback(self->bitstream, NULL);
-            PyErr_SetString(PyExc_IOError, "I/O error reading frame");
-            return NULL;
+        if (!tta_frame) {
+            PyErr_SetString(tta_exception(status), tta_strerror(status));
         }
 
-        /*check CRC32 at end of frame prior to decoding*/
-        if (!setjmp(*br_try(self->bitstream))) {
-            const unsigned crc32 = self->bitstream->read(self->bitstream, 32);
-
-            br_etry(self->bitstream);
-
-            if ((frame_crc ^ 0xFFFFFFFF) != crc32) {
-                /*CRC32 mismatch*/
-                frame->close(frame);
-                PyErr_SetString(PyExc_ValueError, "CRC mismatch reading frame");
-                return NULL;
-            }
+        if ((self->current_tta_frame + 1) < self->total_tta_frames) {
+            block_size = self->default_block_size;
+        } else if ((self->header.total_pcm_frames %
+                    self->default_block_size) == 0) {
+            block_size = self->default_block_size;
         } else {
-            /*I/O error reading CRC32*/
-            frame->close(frame);
-            br_etry(self->bitstream);
-            PyErr_SetString(PyExc_IOError, "I/O error reading frame");
-            return NULL;
+            block_size =
+                self->header.total_pcm_frames % self->default_block_size;
         }
 
-        status = read_frame(frame,
-                            &(self->cache),
-                            block_size,
-                            self->header.channels,
-                            self->header.bits_per_sample,
-                            self->framelist);
+        framelist = new_FrameList(self->audiotools_pcm,
+                                  self->header.channels,
+                                  self->header.bits_per_sample,
+                                  block_size);
 
-        frame->close(frame);
+        read_tta_frame(tta_frame,
+                       self->header.channels,
+                       self->header.bits_per_sample,
+                       block_size,
+                       framelist->samples);
 
-        if (status != IOERROR) {
-            self->remaining_pcm_frames -= block_size;
-            return aa_int_to_FrameList(self->audiotools_pcm,
-                                       self->framelist,
-                                       self->header.bits_per_sample);
-        } else {
-            PyErr_SetString(PyExc_ValueError, "I/O error during frame read");
-            return NULL;
-        }
+        tta_frame->close(tta_frame);
+
+        self->current_tta_frame += 1;
+
+        return (PyObject*)framelist;
     }
 }
 
@@ -304,12 +333,9 @@ TTADecoder_seek(decoders_TTADecoder *self, PyObject *args)
           and adjust both current TTA frame and
           remaining number of PCM frames according to new position*/
         self->current_tta_frame = 0;
-        self->remaining_pcm_frames = self->header.total_pcm_frames;
 
-        while ((current_pcm_frame + self->block_size) < seeked_offset) {
-            const unsigned block_size = MIN(self->remaining_pcm_frames,
-                                            self->block_size);
-            if (block_size > 0) {
+        while (seeked_offset > self->default_block_size) {
+            if (self->current_tta_frame < self->total_tta_frames) {
                 const unsigned frame_size =
                     self->seektable[self->current_tta_frame];
 
@@ -317,9 +343,9 @@ TTADecoder_seek(decoders_TTADecoder *self, PyObject *args)
                                       (long)frame_size,
                                       BS_SEEK_CUR);
 
-                current_pcm_frame += block_size;
+                current_pcm_frame += self->default_block_size;
                 self->current_tta_frame++;
-                self->remaining_pcm_frames -= block_size;
+                seeked_offset -= self->default_block_size;
             } else {
                 /*no additional frames to seek to*/
                 break;
@@ -336,6 +362,7 @@ TTADecoder_seek(decoders_TTADecoder *self, PyObject *args)
         return NULL;
     }
 
+    return Py_None;
 }
 
 PyObject*
@@ -366,522 +393,361 @@ TTADecoder_exit(decoders_TTADecoder* self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
 }
-#endif
 
-static void
-init_cache(struct tta_cache *cache)
+/************************************
+ * private function implementations *
+ ************************************/
+
+static BitstreamReader*
+read_frame(BitstreamReader *tta_file,
+           unsigned frame_size,
+           status_t *status)
 {
-    cache->k0 = a_int_new();
-    cache->sum0 = a_int_new();
-    cache->k1 = a_int_new();
-    cache->sum1 = a_int_new();
-    cache->residual = aa_int_new();
-    cache->filtered = aa_int_new();
-    cache->predicted = aa_int_new();
-}
+    uint32_t calculated_checksum = 0xFFFFFFFF;
+    BitstreamReader *frame;
 
-static void
-free_cache(struct tta_cache *cache)
-{
-    cache->k0->del(cache->k0);
-    cache->sum0->del(cache->sum0);
-    cache->k1->del(cache->k1);
-    cache->sum1->del(cache->sum1);
-    cache->residual->del(cache->residual);
-    cache->filtered->del(cache->filtered);
-    cache->predicted->del(cache->predicted);
-}
+    if (frame_size <= 4) {
+        *status = FRAME_TOO_SMALL;
+        return NULL;
+    }
 
-static status
-read_header(BitstreamReader* bitstream,
-            unsigned* channels,
-            unsigned* bits_per_sample,
-            unsigned* sample_rate,
-            unsigned* total_pcm_frames)
-{
-    if (!setjmp(*br_try(bitstream))) {
-        uint8_t signature[4];
-        unsigned format;
-        uint32_t header_crc = 0xFFFFFFFF;
-
-        /*read the file header*/
-        bitstream->add_callback(bitstream,
-                                (bs_callback_f)tta_crc32,
-                                &header_crc);
-        bitstream->parse(bitstream,
-                         "4b 16u 16u 16u 32u 32u",
-                         signature,
-                         &format,
-                         channels,
-                         bits_per_sample,
-                         sample_rate,
-                         total_pcm_frames);
-
-        if (memcmp(signature, "TTA1", 4)) {
-            br_etry(bitstream);
-            return INVALID_SIGNATURE;
-        } else if (format != 1) {
-            br_etry(bitstream);
-            return UNSUPPORTED_FORMAT;
-        }
-
-        /*check header's CRC for correctness*/
-        bitstream->pop_callback(bitstream, NULL);
-        if ((header_crc ^ 0xFFFFFFFF) !=
-            bitstream->read(bitstream, 32)) {
-            br_etry(bitstream);
-            return CRCMISMATCH;
-        }
-
-        br_etry(bitstream);
-        return OK;
+    /*get the main data chunk to be returned*/
+    tta_file->add_callback(tta_file,
+                           (bs_callback_f)tta_crc32,
+                           &calculated_checksum);
+    if (!setjmp(*br_try(tta_file))) {
+        frame = tta_file->substream(tta_file, frame_size - 4);
+        br_etry(tta_file);
+        tta_file->pop_callback(tta_file, NULL);
     } else {
-        br_etry(bitstream);
-        return IOERROR;
-    }
-}
-
-static status
-read_seektable(BitstreamReader* bitstream,
-               unsigned total_tta_frames,
-               unsigned seektable[])
-{
-    if (!setjmp(*br_try(bitstream))) {
-        uint32_t seektable_crc = 0xFFFFFFFF;
-        unsigned i;
-
-        /*read the seektable*/
-        bitstream->add_callback(bitstream,
-                                (bs_callback_f)tta_crc32,
-                                &seektable_crc);
-        for (i = 0; i < total_tta_frames; i++) {
-            seektable[i] = bitstream->read(bitstream, 32);
-        }
-
-        /*check seektable's CRC for correctness*/
-        bitstream->pop_callback(bitstream, NULL);
-        if ((seektable_crc ^ 0xFFFFFFFF) != bitstream->read(bitstream, 32)) {
-            br_etry(bitstream);
-            return CRCMISMATCH;
-        }
-
-        br_etry(bitstream);
-        return OK;
-    } else {
-        br_etry(bitstream);
-        return IOERROR;
-    }
-}
-
-static status
-read_frame(BitstreamReader* frame,
-           struct tta_cache* cache,
-           unsigned block_size,
-           unsigned channels,
-           unsigned bits_per_sample,
-           aa_int* framelist)
-{
-    unsigned c;
-    a_int* k0 = cache->k0;
-    a_int* sum0 = cache->sum0;
-    a_int* k1 = cache->k1;
-    a_int* sum1 = cache->sum1;
-    aa_int* residual = cache->residual;
-    aa_int* filtered = cache->filtered;
-    aa_int* predicted = cache->predicted;
-
-    k0->mset(k0, channels, 10);
-    sum0->mset(sum0, channels, 1 << 14);
-    k1->mset(k1, channels, 10);
-    sum1->mset(sum1, channels, 1 << 14);
-
-    /*initialize residuals for each channel*/
-    residual->reset(residual);
-    for (c = 0; c < channels; c++) {
-        a_int* residual_ch = residual->append(residual);
-        residual_ch->resize(residual_ch, block_size);
+        /*some I/O error getting the whole frame*/
+        br_etry(tta_file);
+        tta_file->pop_callback(tta_file, NULL);
+        *status = IO_ERROR;
+        return NULL;
     }
 
-    /*read residuals from bitstream*/
-    if (!setjmp(*br_try(frame))) {
-        unsigned i;
+    /*validate CRC-32 at end of frame*/
+    if (!setjmp(*br_try(tta_file))) {
+        uint32_t frame_checksum = tta_file->read(tta_file, 32);
+        br_etry(tta_file);
 
-        for (i = 0; i < block_size; i++) {
-            for (c = 0; c < channels; c++) {
-                const unsigned MSB = frame->read_unary(frame, 0);
-                unsigned u;
-
-                if (MSB == 0) {
-                    u = frame->read(frame, k0->_[c]);
-                } else {
-                    const unsigned LSB = frame->read(frame, k1->_[c]);
-                    const unsigned unshifted = ((MSB - 1) << k1->_[c]) + LSB;
-                    u = unshifted + (1 << k0->_[c]);
-                    sum1->_[c] += unshifted - (sum1->_[c] >> 4);
-                    if ((k1->_[c] > 0) &&
-                        (sum1->_[c] < (1 << (k1->_[c] + 4)))) {
-                        k1->_[c] -= 1;
-                    } else if (sum1->_[c] > (1 << (k1->_[c] + 5))) {
-                        k1->_[c] += 1;
-                    }
-                }
-                sum0->_[c] += u - (sum0->_[c] >> 4);
-                if ((k0->_[c] > 0) &&
-                    (sum0->_[c] < (1 << (k0->_[c] + 4)))) {
-                    k0->_[c] -= 1;
-                } else if (sum0->_[c] > (1 << (k0->_[c] + 5))) {
-                    k0->_[c] += 1;
-                }
-
-                if (u % 2) {
-                    a_append(residual->_[c], (int)((u + 1) / 2));
-                } else {
-                    a_append(residual->_[c], -(int)(u / 2));
-                }
-            }
-        }
-
-        br_etry(frame);
-    } else {
-        br_etry(frame);
-        return IOERROR;
-    }
-
-    filtered->reset(filtered);
-    predicted->reset(predicted);
-    if (channels > 1) {
-        for (c = 0; c < channels; c++) {
-            /*run hybrid filter*/
-            hybrid_filter(residual->_[c],
-                          bits_per_sample,
-                          filtered->append(filtered));
-
-            /*run fixed order prediction*/
-            fixed_prediction(filtered->_[c],
-                             bits_per_sample,
-                             predicted->append(predicted));
-        }
-
-        /*perform channel decorrelation*/
-        decorrelate_channels(predicted, framelist);
-    } else {
-        framelist->reset(framelist);
-
-        /*run hybid filter*/
-        hybrid_filter(residual->_[0],
-                      bits_per_sample,
-                      filtered->append(filtered));
-
-        /*run fixed order prediction*/
-        fixed_prediction(filtered->_[0],
-                         bits_per_sample,
-                         framelist->append(framelist));
-    }
-
-    return OK;
-}
-
-static void
-hybrid_filter(const a_int* residual,
-              unsigned bits_per_sample,
-              a_int* filtered)
-{
-    const unsigned block_size = residual->len;
-    const int32_t shift = (bits_per_sample == 16) ? 9 : 10;
-    const int32_t round = (1 << (shift - 1));
-    unsigned i;
-    int32_t qm[] = {0, 0, 0, 0, 0, 0, 0, 0};
-    int32_t dx[] = {0, 0, 0, 0, 0, 0, 0, 0};
-    int32_t dl[] = {0, 0, 0, 0, 0, 0, 0, 0};
-
-    filtered->reset_for(filtered, block_size);
-
-    for (i = 0; i < block_size; i++) {
-        int f;
-
-        if (i == 0) {
-            f = residual->_[0] + (round >> shift);
+        if (frame_checksum == (calculated_checksum ^ 0xFFFFFFFF)) {
+            return frame;
         } else {
-            int64_t sum;
-
-            if (residual->_[i - 1] < 0) {
-                qm[0] -= dx[0];
-                qm[1] -= dx[1];
-                qm[2] -= dx[2];
-                qm[3] -= dx[3];
-                qm[4] -= dx[4];
-                qm[5] -= dx[5];
-                qm[6] -= dx[6];
-                qm[7] -= dx[7];
-            } else if (residual->_[i - 1] > 0) {
-                qm[0] += dx[0];
-                qm[1] += dx[1];
-                qm[2] += dx[2];
-                qm[3] += dx[3];
-                qm[4] += dx[4];
-                qm[5] += dx[5];
-                qm[6] += dx[6];
-                qm[7] += dx[7];
-            }
-
-            sum = round + (dl[0] * qm[0]) +
-                          (dl[1] * qm[1]) +
-                          (dl[2] * qm[2]) +
-                          (dl[3] * qm[3]) +
-                          (dl[4] * qm[4]) +
-                          (dl[5] * qm[5]) +
-                          (dl[6] * qm[6]) +
-                          (dl[7] * qm[7]);
-
-            f = residual->_[i] + (int)(sum >> shift);
+            frame->close(frame);
+            *status = CRC_MISMATCH;
+            return NULL;
         }
-        a_append(filtered, f);
-
-        dx[0] = dx[1];
-        dx[1] = dx[2];
-        dx[2] = dx[3];
-        dx[3] = dx[4];
-        dx[4] = (dl[4] >= 0) ? 1 : -1;
-        dx[5] = (dl[5] >= 0) ? 2 : -2;
-        dx[6] = (dl[6] >= 0) ? 2 : -2;
-        dx[7] = (dl[7] >= 0) ? 4 : -4;
-        dl[0] = dl[1];
-        dl[1] = dl[2];
-        dl[2] = dl[3];
-        dl[3] = dl[4];
-        dl[4] = -dl[5] + (-dl[6] + (f - dl[7]));
-        dl[5] = -dl[6] + (f - dl[7]);
-        dl[6] = f - dl[7];
-        dl[7] = f;
+    } else {
+        /*some I/O error getting the checksum bytes*/
+        br_etry(tta_file);
+        frame->close(frame);
+        *status = IO_ERROR;
+        return NULL;
     }
 }
 
-static void
-fixed_prediction(const a_int* filtered,
-                 unsigned bits_per_sample,
-                 a_int* predicted)
+static status_t
+read_header(BitstreamReader *frame, struct tta_header *header)
 {
-    const unsigned block_size = filtered->len;
-    const unsigned shift = (bits_per_sample == 8) ? 4 : 5;
+    uint8_t signature[4];
+    unsigned format;
+
+    frame->parse(frame, "4b 3*16u 2*32u",
+                 signature,
+                 &format,
+                 &(header->channels),
+                 &(header->bits_per_sample),
+                 &(header->sample_rate),
+                 &(header->total_pcm_frames));
+
+    if (memcmp(signature, "TTA1", 4)) {
+        return INVALID_SIGNATURE;
+    } else if (format != 1) {
+        return INVALID_FORMAT;
+    } else {
+        return OK;
+    }
+}
+
+/*returns a freshly allocated array of "total_tta_frames" frame sizes*/
+static unsigned*
+read_seektable(BitstreamReader *frame, unsigned total_tta_frames)
+{
+    unsigned *seektable = malloc(sizeof(unsigned) * total_tta_frames);
     unsigned i;
 
-    predicted->reset_for(predicted, block_size);
-    a_append(predicted, filtered->_[0]);
-    for (i = 1; i < block_size; i++) {
-        const int64_t v = ((((int64_t)predicted->_[i - 1]) << shift) -
-                           predicted->_[i - 1]);
-        a_append(predicted, filtered->_[i] + (int)(v >> shift));
+    for (i = 0; i < total_tta_frames; i++) {
+        seektable[i] = frame->read(frame, 32);
+    }
+
+    return seektable;
+}
+
+static void
+read_tta_frame(BitstreamReader *frame,
+               unsigned channels,
+               unsigned bits_per_sample,
+               unsigned block_size,
+               int samples[])
+{
+    struct residual_params residual_params[channels];
+    struct filter_params filter_params[channels];
+    struct prediction_params prediction_params[channels];
+    unsigned c;
+
+    /*initialize per-channel parameters*/
+    for (c = 0; c < channels; c++) {
+        init_residual_params(residual_params + c);
+        init_filter_params(bits_per_sample, filter_params + c);
+        init_prediction_params(bits_per_sample, prediction_params + c);
+    }
+
+    for (; block_size; block_size--) {
+        int predicted[channels];
+
+        for (c = 0; c < channels; c++) {
+            /*run fixed prediction over filtered values*/
+            predicted[c] = run_prediction(
+                prediction_params + c,
+                /*run hybrid filter over residuals*/
+                run_filter(
+                    filter_params + c,
+                    /*decode a PCM frame's worth of residuals*/
+                    read_residual(
+                        residual_params + c,
+                        frame)));
+        }
+
+        /*decorrelate channels to samples*/
+        decorrelate_channels(channels,
+                             predicted,
+                             samples);
+
+        /*move on to next batch of samples*/
+        samples += channels;
     }
 }
 
 static void
-decorrelate_channels(const aa_int* predicted,
-                     aa_int* decorrelated)
+init_residual_params(struct residual_params *params)
 {
-    const unsigned channels = predicted->len;
-    const unsigned block_size = predicted->_[0]->len;
-
-    decorrelated->reset(decorrelated);
-
-    if (channels == 1) {
-        unsigned i;
-        a_int* decorrelated_ch = decorrelated->append(decorrelated);
-        decorrelated_ch->resize(decorrelated_ch, block_size);
-
-        for (i = 0; i < block_size; i++) {
-            a_append(decorrelated_ch, predicted->_[0]->_[i]);
-        }
-    } else if (channels > 1) {
-        unsigned i;
-        unsigned j;
-        unsigned c = channels - 1;
-        a_int* decorrelated_ch = decorrelated->append(decorrelated);
-        decorrelated_ch->resize(decorrelated_ch, block_size);
-
-        for (i = 0; i < block_size; i++) {
-            a_append(decorrelated_ch,
-                     predicted->_[c]->_[i] +
-                     (predicted->_[c - 1]->_[i] / 2));
-        }
-
-        for (j = 1; j < channels; j++) {
-            decorrelated_ch = decorrelated->append(decorrelated);
-            decorrelated_ch->resize(decorrelated_ch, block_size);
-            c = channels - j - 1;
-            for (i = 0; i < block_size; i++) {
-                a_append(decorrelated_ch,
-                         decorrelated->_[j - 1]->_[i] - predicted->_[c]->_[i]);
-            }
-        }
-    }
-
-    decorrelated->reverse(decorrelated);
+    params->k0 = params->k1 = 10;
+    params->sum0 = params->sum1 = 1 << 14;
 }
 
-#ifdef STANDALONE
-#include <errno.h>
-
-int main(int argc, char* argv[]) {
-    FILE* file;
-    BitstreamReader* bitstream;
-    BitstreamReader* frame;
-    struct tta_cache cache;
-    aa_int* framelist;
-    unsigned channels;
-    unsigned bits_per_sample;
-    unsigned sample_rate;
-    unsigned remaining_pcm_frames;
-    unsigned total_tta_frames;
-    unsigned current_tta_frame = 0;
-    unsigned block_size;
-    unsigned* seektable = NULL;
-    int_to_pcm_f converter;
-    unsigned output_data_size;
-    unsigned char* output_data;
-    unsigned bytes_per_sample;
-
-    /*open input file for reading*/
-    if ((file = fopen(argv[1], "rb")) == NULL) {
-        fprintf(stderr, "*** %s: %s\n", argv[1], strerror(errno));
+static inline int
+adjustment(unsigned sum, unsigned k)
+{
+    if ((k > 0) && (1 << (k + 4) > sum)) {
+        return -1;
+    } else if (sum > (1 << (k + 5))) {
         return 1;
     } else {
-        /*open bitstream and setup cache*/
-        bitstream = br_open(file, BS_LITTLE_ENDIAN);
-        init_cache(&cache);
-        framelist = aa_int_new();
-        output_data_size = 1;
-        output_data = malloc(output_data_size);
+        return 0;
     }
-
-    /*read header*/
-    switch (read_header(bitstream,
-                        &channels,
-                        &bits_per_sample,
-                        &sample_rate,
-                        &remaining_pcm_frames)) {
-    default:
-        bytes_per_sample = bits_per_sample / 8;
-        break;
-    case INVALID_SIGNATURE:
-        fprintf(stderr, "invalid header signature\n");
-        goto error;
-    case UNSUPPORTED_FORMAT:
-        fprintf(stderr, "unsupported TTA format\n");
-        goto error;
-    case CRCMISMATCH:
-        fprintf(stderr, "CRC error reading header\n");
-        goto error;
-    case IOERROR:
-        fprintf(stderr, "I/O error reading header\n");
-        goto error;
-    }
-
-
-    /*determine the default block size*/
-    block_size = (sample_rate * 256) / 245;
-
-    /*determine the total number of TTA frames*/
-    total_tta_frames = DIV_CEIL(remaining_pcm_frames, block_size);
-
-    seektable = malloc(sizeof(unsigned int) * total_tta_frames);
-
-    /*read seektable*/
-    switch (read_seektable(bitstream,
-                           total_tta_frames,
-                           seektable)) {
-    default:
-        /*do nothing*/
-        break;
-    case CRCMISMATCH:
-        fprintf(stderr, "CRC error reading seektable\n");
-        goto error;
-    case IOERROR:
-        fprintf(stderr, "I/O error reading seektable\n");
-        goto error;
-    }
-
-    /*setup a framelist converter function*/
-    converter = int_to_pcm_converter(bits_per_sample, 0, 1);
-
-    /*read TTA frames*/
-    while (remaining_pcm_frames) {
-        const unsigned frame_block_size = MIN(block_size, remaining_pcm_frames);
-        unsigned pcm_size;
-        unsigned c;
-        unsigned f;
-        status status;
-
-        if (!setjmp(*br_try(bitstream))) {
-            frame = bitstream->substream(bitstream,
-                                         seektable[current_tta_frame++]);
-            br_etry(bitstream);
-        } else {
-            br_etry(bitstream);
-            fprintf(stderr, "I/O error reading frame\n");
-            goto error;
-        }
-
-        status = read_frame(frame,
-                            &cache,
-                            frame_block_size,
-                            channels,
-                            bits_per_sample,
-                            framelist);
-
-        frame->close(frame);
-
-        switch (status) {
-        default:
-            /*convert framelist to string*/
-            pcm_size = (bits_per_sample / 8) * frame_block_size * channels;
-            if (pcm_size > output_data_size) {
-                output_data_size = pcm_size;
-                output_data = realloc(output_data, output_data_size);
-            }
-            for (c = 0; c < channels; c++) {
-                const a_int* channel_data = framelist->_[c];
-                for (f = 0; f < frame_block_size; f++) {
-                    converter(channel_data->_[f],
-                              output_data +
-                              ((f * channels) + c) *
-                              bytes_per_sample);
-                }
-            }
-
-            /*output framelist as string to stdout*/
-            fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
-
-            /*deduct block size from total*/
-            remaining_pcm_frames -= frame_block_size;
-            break;
-        case IOERROR:
-            fprintf(stderr, "I/O error during frame read\n");
-            goto error;
-        case CRCMISMATCH:
-            fprintf(stderr, "CRC mismatch reading frame\n");
-            goto error;
-        }
-    }
-
-    /*close bitstream and free cache*/
-    bitstream->close(bitstream);
-    free(output_data);
-    free_cache(&cache);
-    framelist->del(framelist);
-    if (seektable != NULL)
-        free(seektable);
-
-    return 0;
-error:
-    bitstream->close(bitstream);
-    free(output_data);
-    free_cache(&cache);
-    framelist->del(framelist);
-    if (seektable != NULL)
-        free(seektable);
-
-    return 1;
 }
 
-#include "../common/tta_crc.c"
-#endif
+static int
+read_residual(struct residual_params *params, BitstreamReader *frame)
+{
+    const unsigned MSB = frame->read_unary(frame, 0);
+    int unsigned_;
+    int residual;
+
+    if (MSB) {
+        const unsigned LSB = frame->read(frame, params->k1);
+        const unsigned unshifted = ((MSB - 1) << params->k1) | LSB;
+        unsigned_ = unshifted + (1 << params->k0);
+        params->sum1 += (unshifted - (params->sum1 >> 4));
+        params->k1 += adjustment(params->sum1, params->k1);
+    } else {
+        unsigned_ = frame->read(frame, params->k0);
+    }
+
+    if (unsigned_ % 2) {
+        residual = (unsigned_ + 1) >> 1;
+    } else {
+        residual = -(unsigned_ >> 1);
+    }
+    params->sum0 += (unsigned_ - (params->sum0 >> 4));
+    params->k0 += adjustment(params->sum0, params->k0);
+
+    return residual;
+}
+
+static void
+init_filter_params(unsigned bits_per_sample,
+                   struct filter_params *params)
+{
+    switch (bits_per_sample) {
+    case 8:
+        params->shift = 10;
+        break;
+    case 16:
+        params->shift = 9;
+        break;
+    case 24:
+        params->shift = 10;
+        break;
+    }
+    params->previous_residual = 0;
+    params->round = 1 << (params->shift - 1);
+    params->qm[0] =
+    params->qm[1] =
+    params->qm[2] =
+    params->qm[3] =
+    params->qm[4] =
+    params->qm[5] =
+    params->qm[6] =
+    params->qm[7] = 0;
+    params->dx[0] =
+    params->dx[1] =
+    params->dx[2] =
+    params->dx[3] =
+    params->dx[4] =
+    params->dx[5] =
+    params->dx[6] =
+    params->dx[7] = 0;
+    params->dl[0] =
+    params->dl[1] =
+    params->dl[2] =
+    params->dl[3] =
+    params->dl[4] =
+    params->dl[5] =
+    params->dl[6] =
+    params->dl[7] = 0;
+}
+
+static inline int
+sign(int x) {
+    if (x > 0) {
+        return 1;
+    } else if (x < 0) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+static int
+run_filter(struct filter_params *params, int residual)
+{
+    const int previous_sign = sign(params->previous_residual);
+    int32_t sum = params->round;
+    int filtered = residual;
+
+    params->previous_residual = residual;
+
+    sum += params->dl[0] * (params->qm[0] += previous_sign * params->dx[0]);
+    sum += params->dl[1] * (params->qm[1] += previous_sign * params->dx[1]);
+    sum += params->dl[2] * (params->qm[2] += previous_sign * params->dx[2]);
+    sum += params->dl[3] * (params->qm[3] += previous_sign * params->dx[3]);
+    sum += params->dl[4] * (params->qm[4] += previous_sign * params->dx[4]);
+    sum += params->dl[5] * (params->qm[5] += previous_sign * params->dx[5]);
+    sum += params->dl[6] * (params->qm[6] += previous_sign * params->dx[6]);
+    sum += params->dl[7] * (params->qm[7] += previous_sign * params->dx[7]);
+
+    filtered += (sum >> params->shift);
+
+    params->dx[0] = params->dx[1];
+    params->dx[1] = params->dx[2];
+    params->dx[2] = params->dx[3];
+    params->dx[3] = params->dx[4];
+    params->dx[4] = params->dl[4] >= 0 ? 1 : -1;
+    params->dx[5] = params->dl[5] >= 0 ? 2 : -2;
+    params->dx[6] = params->dl[6] >= 0 ? 2 : -2;
+    params->dx[7] = params->dl[7] >= 0 ? 4 : -4;
+    params->dl[0] = params->dl[1];
+    params->dl[1] = params->dl[2];
+    params->dl[2] = params->dl[3];
+    params->dl[3] = params->dl[4];
+    params->dl[4] =
+        -(params->dl[5]) + (-(params->dl[6]) + (filtered - params->dl[7]));
+    params->dl[5] = -(params->dl[6]) + (filtered - params->dl[7]);
+    params->dl[6] = filtered - params->dl[7];
+    params->dl[7] = filtered;
+
+    return filtered;
+}
+
+static void
+init_prediction_params(unsigned bits_per_sample,
+                       struct prediction_params *params)
+{
+    switch (bits_per_sample) {
+    case 8:
+        params->shift = 4;
+        break;
+    case 16:
+        params->shift = 5;
+        break;
+    case 24:
+        params->shift = 5;
+        break;
+    }
+    params->previous_sample = 0;
+}
+
+static int
+run_prediction(struct prediction_params *params, int filtered)
+{
+    const int predicted =
+        filtered + (((params->previous_sample << params->shift) -
+                    params->previous_sample) >> params->shift);
+    params->previous_sample = predicted;
+    return predicted;
+}
+
+static void
+decorrelate_channels(unsigned channel_count,
+                     const int predicted[],
+                     int samples[])
+{
+    if (channel_count == 1) {
+        samples[0] = predicted[0];
+    } else if (channel_count > 1) {
+        samples[channel_count - 1] =
+            predicted[channel_count - 1] +
+            (predicted[channel_count - 2] / 2);
+        for (channel_count--; channel_count; channel_count--) {
+            samples[channel_count - 1] =
+                samples[channel_count] - predicted[channel_count - 1];
+        }
+    }
+}
+
+static PyObject*
+tta_exception(status_t error)
+{
+    switch (error) {
+    case OK:
+    case CRC_MISMATCH:
+    case INVALID_SIGNATURE:
+    case INVALID_FORMAT:
+        return PyExc_ValueError;
+    case IO_ERROR:
+    case FRAME_TOO_SMALL:
+        return PyExc_IOError;
+    }
+}
+
+static const char*
+tta_strerror(status_t error)
+{
+    switch (error) {
+    case OK:
+        return "no error";
+    case IO_ERROR:
+        return "I/O error";
+    case CRC_MISMATCH:
+        return "CRC-32 mismatch";
+    case FRAME_TOO_SMALL:
+        return "frame too small";
+    case INVALID_SIGNATURE:
+        return "invalid file signature";
+    case INVALID_FORMAT:
+        return "invalid file format";
+    }
+}
