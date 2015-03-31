@@ -54,8 +54,8 @@ shnenc: $(OBJS) encoders/shn.c encoders/shn.h buffer.o pcm_conv.o
 wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o pcm_conv.o
 	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o pcm_conv.o $(OBJS) -DSTANDALONE
 
-ttaenc: $(OBJS) encoders/tta.c encoders/tta.h pcm_conv.o
-	$(CC) $(FLAGS) -o ttaenc encoders/tta.c pcm_conv.o $(OBJS) -DSTANDALONE
+ttaenc: encoders/tta.c encoders/tta.h pcmreader.o pcm_conv.o bitstream.a
+	$(CC) $(FLAGS) -o ttaenc encoders/tta.c pcmreader.o pcm_conv.o bitstream.a -DSTANDALONE
 
 vorbisenc: $(OBJS) encoders/vorbis.c
 	$(CC) $(FLAGS) -o vorbisenc encoders/vorbis.c $(OBJS) -DSTANDALONE -lvorbis -logg -lvorbisenc

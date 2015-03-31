@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include "pcmreader.h"
-#ifndef STANDALONE
 #include "pcm_conv.h"
-#endif
 
 #ifndef MIN
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -224,6 +222,7 @@ pcmreader_raw_read(struct PCMReader *self,
     const unsigned samples_read = pcm_frames_read * self->channels;
 
     register unsigned i;
+
     for (i = 0; i < samples_read; i++) {
         *pcm_data = converter(buffer + (i * bytes_per_sample));
         pcm_data += 1;

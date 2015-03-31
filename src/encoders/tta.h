@@ -1,8 +1,9 @@
 #ifndef STANDALONE
 #include <Python.h>
 #endif
+
 #include "../bitstream.h"
-#include "../array.h"
+#include "../pcmreader.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -23,54 +24,20 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-struct tta_cache {
-    aa_int* correlated;
-    aa_int* predicted;
-    aa_int* residual;
-    a_int* k0;
-    a_int* sum0;
-    a_int* k1;
-    a_int* sum1;
+struct tta_frame_size {
+    unsigned byte_size;
+    struct tta_frame_size *next; /*NULL at end of list*/
 };
 
-static void
-cache_init(struct tta_cache* cache);
+/*encodes as many TTA frames as possible from pcmreader to output
+  and returns a list of TTA frame sizes
+  which must be deallocated when no longer needed
+  using free_tta_frame_sizes()
 
-static void
-cache_free(struct tta_cache* cache);
+  returns NULL if some error occurs reading from PCMReader*/
+struct tta_frame_size*
+ttaenc_encode_tta_frames(struct PCMReader *pcmreader,
+                         BitstreamWriter *output);
 
-static int
-encode_frame(BitstreamWriter* output,
-             struct tta_cache* cache,
-             const aa_int* framelist,
-             unsigned bits_per_sample);
-
-static void
-correlate_channels(const aa_int* channels,
-                   aa_int* correlated);
-
-static void
-fixed_prediction(const a_int* channel,
-                 unsigned bits_per_sample,
-                 a_int* predicted);
-
-static void
-hybrid_filter(const a_int* predicted,
-              unsigned bits_per_sample,
-              a_int* residual);
-
-static void
-tta_byte_counter(uint8_t byte, int* frame_size);
-
-#ifdef STANDALONE
-static void
-write_header(BitstreamWriter* output,
-             unsigned channels,
-             unsigned bits_per_sample,
-             unsigned sample_rate,
-             unsigned total_pcm_frames);
-
-static void
-write_seektable(BitstreamWriter* output,
-                const a_int* frame_sizes);
-#endif
+void
+free_tta_frame_sizes(struct tta_frame_size *frame_sizes);

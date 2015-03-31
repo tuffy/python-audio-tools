@@ -1,5 +1,4 @@
 #include "tta.h"
-#include "../pcmconv.h"
 #include "../common/tta_crc.h"
 
 /********************************************************
@@ -21,11 +20,378 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-/*returns x/y rounded up
-  each argument is evaluated twice*/
-#ifndef DIV_CEIL
-#define DIV_CEIL(x, y) ((x) / (y) + (((x) % (y)) ? 1 : 0))
-#endif
+struct prediction_params {
+    unsigned shift;
+    int previous_sample;
+};
+
+struct filter_params {
+    unsigned shift;
+    int previous_residual;
+    int round;
+    int qm[8];
+    int dx[8];
+    int dl[8];
+};
+
+struct residual_params {
+    int k0;
+    int k1;
+    int sum0;
+    int sum1;
+};
+
+/*******************************
+ * private function signatures *
+ *******************************/
+
+static unsigned
+encode_frame(struct PCMReader *pcmreader,
+             unsigned block_size,
+             BitstreamWriter *output);
+
+static void
+correlate_channels(unsigned channels,
+                   const int samples[],
+                   int correlated[]);
+
+static void
+init_prediction_params(unsigned bits_per_sample,
+                       struct prediction_params *params);
+
+static int
+run_prediction(struct prediction_params *params, int correlated);
+
+static void
+init_filter_params(unsigned bits_per_sample,
+                   struct filter_params *params);
+
+static int
+run_filter(struct filter_params *params, int predicted);
+
+static void
+init_residual_params(struct residual_params *params);
+
+static void
+write_residual(struct residual_params *params,
+               int residual,
+               BitstreamWriter *output);
+
+static struct tta_frame_size*
+append_size(struct tta_frame_size *stack, unsigned size);
+
+static void
+reverse_frame_sizes(struct tta_frame_size **stack);
+
+/***********************************
+ * public function implementations *
+ ***********************************/
+
+struct tta_frame_size*
+ttaenc_encode_tta_frames(struct PCMReader *pcmreader,
+                         BitstreamWriter *output)
+{
+    struct tta_frame_size *frame_sizes = NULL;
+    unsigned samples_read;
+    const unsigned block_size = (pcmreader->sample_rate * 256) / 245;
+
+    unsigned frame_size = 0;
+
+    output->add_callback(output, (bs_callback_f)byte_counter, &frame_size);
+
+    do {
+        samples_read = encode_frame(pcmreader, block_size, output);
+        frame_sizes = append_size(frame_sizes, frame_size);
+        frame_size = 0;
+    } while (samples_read == block_size);
+
+    output->pop_callback(output, NULL);
+
+    if (pcmreader->status == PCM_OK) {
+        /*if not error, reverse frame lengths stack and return it*/
+        reverse_frame_sizes(&frame_sizes);
+        return frame_sizes;
+    } else {
+        /*otherwise, delete frame lengths stack and return NULL*/
+        free_tta_frame_sizes(frame_sizes);
+        return NULL;
+    }
+
+}
+
+void
+free_tta_frame_sizes(struct tta_frame_size *frame_sizes)
+{
+    while (frame_sizes) {
+        struct tta_frame_size *next = frame_sizes->next;
+        free(frame_sizes);
+        frame_sizes = next;
+    }
+}
+
+/************************************
+ * private function implementations *
+ ************************************/
+
+static unsigned
+encode_frame(struct PCMReader *pcmreader,
+             unsigned block_size,
+             BitstreamWriter *output)
+{
+    const unsigned channels = pcmreader->channels;
+    struct prediction_params prediction_params[channels];
+    struct filter_params filter_params[channels];
+    struct residual_params residual_params[channels];
+    const unsigned to_read = block_size;
+    uint32_t crc32 = 0xFFFFFFFF;
+    unsigned c;
+
+    /*initialize per-channel parameters*/
+    for (c = 0; c < channels; c++) {
+        init_prediction_params(pcmreader->bits_per_sample,
+                               prediction_params + c);
+        init_filter_params(pcmreader->bits_per_sample,
+                           filter_params + c);
+        init_residual_params(residual_params + c);
+    }
+
+    output->add_callback(output, (bs_callback_f)tta_crc32, &crc32);
+
+    for (; block_size; block_size--) {
+        int samples[channels];
+
+        if (pcmreader->read(pcmreader, 1, samples)) {
+            int correlated[channels];
+
+            correlate_channels(channels, samples, correlated);
+
+            for (c = 0; c < channels; c++) {
+                const int predicted = run_prediction(
+                    prediction_params + c,
+                    correlated[c]);
+                const int filtered = run_filter(
+                    filter_params + c,
+                    predicted);
+                write_residual(residual_params + c, filtered, output);
+            }
+        } else {
+            break;
+        }
+    }
+
+    output->byte_align(output);
+    output->pop_callback(output, NULL);
+    output->write(output, 32, crc32 ^ 0xFFFFFFFF);
+
+    return to_read - block_size;
+}
+
+static void
+correlate_channels(unsigned channels,
+                   const int samples[],
+                   int correlated[])
+{
+    assert(channels > 0);
+    if (channels == 1) {
+        correlated[0] = samples[0];
+    } else {
+        unsigned c;
+        for (c = 0; c < (channels - 1); c++) {
+            correlated[c] = samples[c + 1] - samples[c];
+        }
+        /*this should round toward zero*/
+        correlated[channels - 1] =
+            samples[channels - 1] - (correlated[channels - 2] / 2);
+    }
+}
+
+static void
+init_prediction_params(unsigned bits_per_sample,
+                       struct prediction_params *params)
+{
+    switch (bits_per_sample) {
+    case 8:
+        params->shift = 4;
+        break;
+    case 16:
+        params->shift = 5;
+        break;
+    case 24:
+        params->shift = 5;
+        break;
+    }
+    params->previous_sample = 0;
+}
+
+static int
+run_prediction(struct prediction_params *params, int correlated)
+{
+    const int predicted =
+        correlated - (((params->previous_sample << params->shift) -
+                      params->previous_sample) >> params->shift);
+    params->previous_sample = correlated;
+    return predicted;
+}
+
+static void
+init_filter_params(unsigned bits_per_sample,
+                   struct filter_params *params)
+{
+    switch (bits_per_sample) {
+    case 8:
+        params->shift = 10;
+        break;
+    case 16:
+        params->shift = 9;
+        break;
+    case 24:
+        params->shift = 10;
+        break;
+    }
+    params->previous_residual = 0;
+    params->round = 1 << (params->shift - 1);
+    params->qm[0] =
+    params->qm[1] =
+    params->qm[2] =
+    params->qm[3] =
+    params->qm[4] =
+    params->qm[5] =
+    params->qm[6] =
+    params->qm[7] = 0;
+    params->dx[0] =
+    params->dx[1] =
+    params->dx[2] =
+    params->dx[3] =
+    params->dx[4] =
+    params->dx[5] =
+    params->dx[6] =
+    params->dx[7] = 0;
+    params->dl[0] =
+    params->dl[1] =
+    params->dl[2] =
+    params->dl[3] =
+    params->dl[4] =
+    params->dl[5] =
+    params->dl[6] =
+    params->dl[7] = 0;
+}
+
+static inline int
+sign(int x) {
+    if (x > 0) {
+        return 1;
+    } else if (x < 0) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+static int
+run_filter(struct filter_params *params, int predicted)
+{
+    const int previous_sign = sign(params->previous_residual);
+    int32_t sum = params->round;
+    int residual = predicted;
+
+    sum += params->dl[0] * (params->qm[0] += previous_sign * params->dx[0]);
+    sum += params->dl[1] * (params->qm[1] += previous_sign * params->dx[1]);
+    sum += params->dl[2] * (params->qm[2] += previous_sign * params->dx[2]);
+    sum += params->dl[3] * (params->qm[3] += previous_sign * params->dx[3]);
+    sum += params->dl[4] * (params->qm[4] += previous_sign * params->dx[4]);
+    sum += params->dl[5] * (params->qm[5] += previous_sign * params->dx[5]);
+    sum += params->dl[6] * (params->qm[6] += previous_sign * params->dx[6]);
+    sum += params->dl[7] * (params->qm[7] += previous_sign * params->dx[7]);
+
+    residual -= (sum >> params->shift);
+    params->previous_residual = residual;
+
+    params->dx[0] = params->dx[1];
+    params->dx[1] = params->dx[2];
+    params->dx[2] = params->dx[3];
+    params->dx[3] = params->dx[4];
+    params->dx[4] = params->dl[4] >= 0 ? 1 : -1;
+    params->dx[5] = params->dl[5] >= 0 ? 2 : -2;
+    params->dx[6] = params->dl[6] >= 0 ? 2 : -2;
+    params->dx[7] = params->dl[7] >= 0 ? 4 : -4;
+    params->dl[0] = params->dl[1];
+    params->dl[1] = params->dl[2];
+    params->dl[2] = params->dl[3];
+    params->dl[3] = params->dl[4];
+    params->dl[4] =
+        -(params->dl[5]) + (-(params->dl[6]) + (predicted - params->dl[7]));
+    params->dl[5] = -(params->dl[6]) + (predicted - params->dl[7]);
+    params->dl[6] = predicted - params->dl[7];
+    params->dl[7] = predicted;
+
+    return residual;
+}
+
+static void
+init_residual_params(struct residual_params *params)
+{
+    params->k0 = params->k1 = 10;
+    params->sum0 = params->sum1 = 1 << 14;
+}
+
+static inline int
+adjustment(unsigned sum, unsigned k)
+{
+    if ((k > 0) && (1 << (k + 4) > sum)) {
+        return -1;
+    } else if (sum > (1 << (k + 5))) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+static void
+write_residual(struct residual_params *params,
+               int residual,
+               BitstreamWriter *output)
+{
+    const unsigned unsigned_ =
+        residual > 0 ? (residual * 2) - 1 : -(residual * 2);
+    if (unsigned_ < (1 << params->k0)) {
+        output->write_unary(output, 0, 0);
+        output->write(output, params->k0, unsigned_);
+    } else {
+        const unsigned shifted = unsigned_ - (1 << params->k0);
+        const unsigned MSB = 1 + (shifted >> params->k1);
+        const unsigned LSB = shifted - ((MSB - 1) << params->k1);
+        output->write_unary(output, 0, MSB);
+        output->write(output, params->k1, LSB);
+        params->sum1 += (shifted - (params->sum1 >> 4));
+        params->k1 += adjustment(params->sum1, params->k1);
+    }
+
+    params->sum0 += (unsigned_ - (params->sum0 >> 4));
+    params->k0 += adjustment(params->sum0, params->k0);
+}
+
+static struct tta_frame_size*
+append_size(struct tta_frame_size *stack, unsigned size)
+{
+    struct tta_frame_size *frame_size = malloc(sizeof(struct tta_frame_size));
+    frame_size->byte_size = size;
+    frame_size->next = stack;
+    return frame_size;
+}
+
+static void
+reverse_frame_sizes(struct tta_frame_size **stack)
+{
+    struct tta_frame_size *reversed = NULL;
+    struct tta_frame_size *top = *stack;
+    while (top) {
+        *stack = (*stack)->next;
+        top->next = reversed;
+        reversed = top;
+        top = *stack;
+    }
+    *stack = reversed;
+}
 
 #ifndef STANDALONE
 
@@ -38,26 +404,20 @@
 PyObject*
 encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
-    PyObject* file_obj;
+    PyObject *file_obj;
+    struct PCMReader *pcmreader;
     BitstreamWriter *output;
-    pcmreader* pcmreader;
-    unsigned block_size;
-    aa_int* framelist;
-    struct tta_cache cache;
-    a_int* frame_sizes;
-    PyObject* frame_sizes_obj;
-    unsigned i;
+    struct tta_frame_size *frame_sizes;
     static char *kwlist[] = {"file", "pcmreader", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(
             args, keywds, "OO&", kwlist,
             &file_obj,
-            pcmreader_converter,
-            &pcmreader))
+            py_obj_to_pcmreader,
+            &pcmreader)) {
         return NULL;
+    }
 
-    /*initialize temporary buffers and output file*/
-    block_size = (pcmreader->sample_rate * 256) / 245;
     output = bw_open_external(file_obj,
                               BS_LITTLE_ENDIAN,
                               4096,
@@ -68,356 +428,80 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
                               (ext_flush_f)bw_flush_python,
                               (ext_close_f)bs_close_python,
                               (ext_free_f)bs_free_python_nodecref);
-    framelist = aa_int_new();
-    cache_init(&cache);
-    frame_sizes = a_int_new();
 
-    /*convert PCMReader input to TTA frames*/
-    if (pcmreader->read(pcmreader, block_size, framelist))
-        goto error;
-    while (framelist->_[0]->len) {
-        frame_sizes->append(frame_sizes,
-                            encode_frame(output,
-                                         &cache,
-                                         framelist,
-                                         pcmreader->bits_per_sample));
-        if (pcmreader->read(pcmreader, block_size, framelist))
-            goto error;
-    }
+    frame_sizes = ttaenc_encode_tta_frames(pcmreader, output);
 
-    /*convert list of frame sizes to Python list of integers*/
-    frame_sizes_obj = PyList_New(0);
-    for (i = 0; i < frame_sizes->len; i++) {
-        PyObject* size = PyInt_FromLong((long)frame_sizes->_[i]);
-        if (PyList_Append(frame_sizes_obj, size)) {
-            Py_DECREF(frame_sizes_obj);
-            Py_DECREF(size);
-            goto error;
-        } else {
-            Py_DECREF(size);
-        }
-    }
-
-    /*free temporary buffers*/
     output->flush(output);
     output->free(output);
-    framelist->del(framelist);
-    cache_free(&cache);
-    frame_sizes->del(frame_sizes);
     pcmreader->del(pcmreader);
 
-    /*return list of frame size integers*/
-    return frame_sizes_obj;
-error:
-    /*free temporary buffers*/
-    output->free(output);
-    framelist->del(framelist);
-    cache_free(&cache);
-    frame_sizes->del(frame_sizes);
-    pcmreader->del(pcmreader);
-
-    /*return exception*/
-    return NULL;
+    if (frame_sizes) {
+        PyObject *frame_size_list = PyList_New(0);
+        struct tta_frame_size *sizes;
+        for (sizes = frame_sizes; sizes; sizes = sizes->next) {
+            PyObject *value = Py_BuildValue("I", sizes->byte_size);
+            if (!PyList_Append(frame_size_list, value)) {
+                Py_DECREF(value);
+            } else {
+                Py_DECREF(sizes);
+                Py_DECREF(value);
+                free_tta_frame_sizes(frame_sizes);
+                return NULL;
+            }
+        }
+        free_tta_frame_sizes(frame_sizes);
+        return frame_size_list;
+    } else {
+        /*some read error occurred during encoding*/
+        PyErr_SetString(PyExc_IOError, "read error during encoding");
+        return NULL;
+    }
 }
 #endif
 
-
-static void
-cache_init(struct tta_cache* cache)
-{
-    cache->correlated = aa_int_new();
-    cache->predicted = aa_int_new();
-    cache->residual = aa_int_new();
-    cache->k0 = a_int_new();
-    cache->sum0 = a_int_new();
-    cache->k1 = a_int_new();
-    cache->sum1 = a_int_new();
-}
-
-
-static void
-cache_free(struct tta_cache* cache)
-{
-    cache->correlated->del(cache->correlated);
-    cache->predicted->del(cache->predicted);
-    cache->residual->del(cache->residual);
-    cache->k0->del(cache->k0);
-    cache->sum0->del(cache->sum0);
-    cache->k1->del(cache->k1);
-    cache->sum1->del(cache->sum1);
-}
-
-
-int
-encode_frame(BitstreamWriter* output,
-             struct tta_cache* cache,
-             const aa_int* framelist,
-             unsigned bits_per_sample)
-{
-    const unsigned channels = framelist->len;
-    const unsigned block_size = framelist->_[0]->len;
-    unsigned i;
-    unsigned c;
-    int frame_size = 0;
-    uint32_t frame_crc = 0xFFFFFFFF;
-    a_int* k0 = cache->k0;
-    a_int* sum0 = cache->sum0;
-    a_int* k1 = cache->k1;
-    a_int* sum1 = cache->sum1;
-    aa_int* residual = cache->residual;
-
-    output->add_callback(output, (bs_callback_f)tta_byte_counter, &frame_size);
-    output->add_callback(output, (bs_callback_f)tta_crc32, &frame_crc);
-
-    cache->predicted->reset(cache->predicted);
-    residual->reset(residual);
-
-    if (channels == 1) {
-        /*run fixed order prediction on correlated channels*/
-        fixed_prediction(framelist->_[0],
-                         bits_per_sample,
-                         cache->predicted->append(cache->predicted));
-
-        /*run hybrid filter on predicted channels*/
-        hybrid_filter(cache->predicted->_[0],
-                      bits_per_sample,
-                      residual->append(residual));
-    } else {
-        /*correlate channels*/
-        correlate_channels(framelist, cache->correlated);
-
-        for (c = 0; c < channels; c++) {
-            /*run fixed order prediction on correlated channels*/
-            fixed_prediction(cache->correlated->_[c],
-                             bits_per_sample,
-                             cache->predicted->append(cache->predicted));
-
-            /*run hybrid filter on predicted channels*/
-            hybrid_filter(cache->predicted->_[c],
-                          bits_per_sample,
-                          residual->append(residual));
-        }
-    }
-
-    /*setup Rice parameters*/
-    k0->mset(k0, channels, 10);
-    sum0->mset(sum0, channels, (1 << 14));
-    k1->mset(k1, channels, 10);
-    sum1->mset(sum1, channels, (1 << 14));
-
-    /*encode residuals*/
-    for (i = 0; i < block_size; i++) {
-        for (c = 0; c < channels; c++) {
-            const int r = residual->_[c]->_[i];
-            unsigned u;
-
-            /*convert from signed to unsigned*/
-            if (r > 0) {
-                u = (r * 2) - 1;
-            } else {
-                u = (-r) * 2;
-            }
-
-            if (u < (1 << k0->_[c])) {
-                /*write MSB and LSB values*/
-                output->write_unary(output, 0, 0);
-                output->write(output, k0->_[c], u);
-            } else {
-                /*write MSB and LSB values*/
-                const unsigned shifted = u - (1 << k0->_[c]);
-                const unsigned MSB = 1 + (shifted >> k1->_[c]);
-                const unsigned LSB = shifted - ((MSB - 1) << k1->_[c]);
-
-                output->write_unary(output, 0, MSB);
-                output->write(output, k1->_[c], LSB);
-
-                /*update k1 and sum1*/
-                sum1->_[c] += shifted - (sum1->_[c] >> 4);
-                if ((k1->_[c] > 0) &&
-                    (sum1->_[c] < (1 << (k1->_[c] + 4)))) {
-                    k1->_[c] -= 1;
-                } else if (sum1->_[c] > (1 << (k1->_[c] + 5))) {
-                    k1->_[c] += 1;
-                }
-            }
-
-            /*update k0 and sum0*/
-            sum0->_[c] += u - (sum0->_[c] >> 4);
-            if ((k0->_[c] > 0) &&
-                (sum0->_[c] < (1 << (k0->_[c] + 4)))) {
-                k0->_[c] -= 1;
-            } else if (sum0->_[c] > (1 << (k0->_[c] + 5))) {
-                k0->_[c] += 1;
-            }
-
-        }
-    }
-
-    /*byte align output*/
-    output->byte_align(output);
-
-    /*write calculate CRC32 value*/
-    output->pop_callback(output, NULL);
-    output->write(output, 32, frame_crc ^ 0xFFFFFFFF);
-
-    output->pop_callback(output, NULL);
-
-    return frame_size;
-}
-
-static void
-correlate_channels(const aa_int* channels,
-                   aa_int* correlated)
-{
-    const unsigned block_size = channels->_[0]->len;
-    unsigned c;
-
-    correlated->reset(correlated);
-    for (c = 0; c < channels->len; c++) {
-        unsigned i;
-        a_int* correlated_ch = correlated->append(correlated);
-        correlated_ch->resize(correlated_ch, block_size);
-
-        if (c < (channels->len - 1)) {
-            for (i = 0; i < block_size; i++) {
-                a_append(correlated_ch,
-                         channels->_[c + 1]->_[i] - channels->_[c]->_[i]);
-            }
-        } else {
-            for (i = 0; i < block_size; i++) {
-                a_append(correlated_ch,
-                         channels->_[c]->_[i] -
-                         (correlated->_[c - 1]->_[i] / 2));
-            }
-        }
-    }
-}
-
-static void
-fixed_prediction(const a_int* channel,
-                 unsigned bits_per_sample,
-                 a_int* predicted)
-{
-    const unsigned block_size = channel->len;
-    const unsigned shift = (bits_per_sample == 8) ? 4 : 5;
-    unsigned i;
-
-    predicted->reset_for(predicted, block_size);
-    a_append(predicted, channel->_[0]);
-    for (i = 1; i < block_size; i++) {
-        const int64_t v = ((((int64_t)channel->_[i - 1]) << shift) -
-                           channel->_[i - 1]);
-        a_append(predicted, channel->_[i] - (int)(v >> shift));
-    }
-}
-
-static void
-hybrid_filter(const a_int* predicted,
-              unsigned bits_per_sample,
-              a_int* residual)
-{
-    const unsigned block_size = predicted->len;
-    const int32_t shift = (bits_per_sample == 16) ? 9 : 10;
-    const int32_t round = (1 << (shift - 1));
-    int32_t qm[] = {0, 0, 0, 0, 0, 0, 0, 0};
-    int32_t dx[] = {0, 0, 0, 0, 0, 0, 0, 0};
-    int32_t dl[] = {0, 0, 0, 0, 0, 0, 0, 0};
-    unsigned i;
-
-    residual->reset_for(residual, block_size);
-
-    for (i = 0; i < block_size; i++) {
-        int p;
-        int r;
-
-        if (i == 0) {
-            p = predicted->_[0];
-            r = p + (round >> shift);
-        } else {
-            int64_t sum;
-
-            if (residual->_[i - 1] < 0) {
-                qm[0] -= dx[0];
-                qm[1] -= dx[1];
-                qm[2] -= dx[2];
-                qm[3] -= dx[3];
-                qm[4] -= dx[4];
-                qm[5] -= dx[5];
-                qm[6] -= dx[6];
-                qm[7] -= dx[7];
-            } else if (residual->_[i - 1] > 0) {
-                qm[0] += dx[0];
-                qm[1] += dx[1];
-                qm[2] += dx[2];
-                qm[3] += dx[3];
-                qm[4] += dx[4];
-                qm[5] += dx[5];
-                qm[6] += dx[6];
-                qm[7] += dx[7];
-            }
-
-            sum = round + (dl[0] * qm[0]) +
-                          (dl[1] * qm[1]) +
-                          (dl[2] * qm[2]) +
-                          (dl[3] * qm[3]) +
-                          (dl[4] * qm[4]) +
-                          (dl[5] * qm[5]) +
-                          (dl[6] * qm[6]) +
-                          (dl[7] * qm[7]);
-
-            p = predicted->_[i];
-            r = p - (int)(sum >> shift);
-        }
-        a_append(residual, r);
-
-        dx[0] = dx[1];
-        dx[1] = dx[2];
-        dx[2] = dx[3];
-        dx[3] = dx[4];
-        dx[4] = (dl[4] >= 0) ? 1 : -1;
-        dx[5] = (dl[5] >= 0) ? 2 : -2;
-        dx[6] = (dl[6] >= 0) ? 2 : -2;
-        dx[7] = (dl[7] >= 0) ? 4 : -4;
-        dl[0] = dl[1];
-        dl[1] = dl[2];
-        dl[2] = dl[3];
-        dl[3] = dl[4];
-        dl[4] = -dl[5] + (-dl[6] + (p - dl[7]));
-        dl[5] = -dl[6] + (p - dl[7]);
-        dl[6] = p - dl[7];
-        dl[7] = p;
-    }
-}
-
-void
-tta_byte_counter(uint8_t byte, int* frame_size)
-{
-    *frame_size += 1;
-}
 
 #ifdef STANDALONE
 #include <getopt.h>
 #include <string.h>
 #include <errno.h>
 
-int main(int argc, char* argv[]) {
-    char* output_file = NULL;
+static void
+write_header(unsigned bits_per_sample,
+             unsigned sample_rate,
+             unsigned channels,
+             unsigned total_pcm_frames,
+             BitstreamWriter *output);
+
+static void
+write_seektable(const struct tta_frame_size *frame_sizes,
+                BitstreamWriter *output);
+
+
+static inline unsigned
+div_ceil(unsigned x, unsigned y)
+{
+    ldiv_t div = ldiv((long)x, (long)y);
+    return div.rem ? ((unsigned)div.quot + 1) : (unsigned)div.quot;
+}
+
+
+int
+main(int argc, char* argv[]) {
+    char* output_filename = NULL;
+    FILE *output_file;
     unsigned channels = 2;
     unsigned sample_rate = 44100;
     unsigned bits_per_sample = 16;
     unsigned total_pcm_frames = 0;
 
+    struct PCMReader *pcmreader;
+    BitstreamWriter *output;
+    bw_pos_t *seektable_pos;
+    unsigned i;
+    struct tta_frame_size *frame_sizes;
+
     unsigned total_tta_frames;
     unsigned block_size;
-
-    FILE* file;
-    BitstreamWriter* writer;
-    a_int* tta_frame_sizes;
-    pcmreader* pcmreader;
-    aa_int* framelist;
-    struct tta_cache cache;
-    unsigned written_pcm_frames = 0;
-    bw_pos_t* seektable;
 
     char c;
     const static struct option long_opts[] = {
@@ -436,8 +520,8 @@ int main(int argc, char* argv[]) {
                             NULL)) != -1) {
         switch (c) {
         case 1:
-            if (output_file == NULL) {
-                output_file = optarg;
+            if (output_filename == NULL) {
+                output_filename = optarg;
             } else {
                 printf("only one output file allowed\n");
                 return 1;
@@ -481,8 +565,13 @@ int main(int argc, char* argv[]) {
             break;
         }
     }
-    if (output_file == NULL) {
+
+    errno = 0;
+    if (output_filename == NULL) {
         printf("exactly 1 output file required\n");
+        return 1;
+    } else if ((output_file = fopen(output_filename, "wb")) == NULL) {
+        fprintf(stderr, "*** Error %s: %s\n", output_filename, strerror(errno));
         return 1;
     }
 
@@ -493,117 +582,83 @@ int main(int argc, char* argv[]) {
     assert(sample_rate > 0);
     assert(total_pcm_frames > 0);
 
-    printf("Encoding from stdin using parameters:\n");
-    printf("channels         %u\n", channels);
-    printf("sample rate      %u\n", sample_rate);
-    printf("bits-per-sample  %u\n", bits_per_sample);
-    printf("total PCM frames %u\n", total_pcm_frames);
-    printf("little-endian, signed samples\n");
-
     block_size = (sample_rate * 256) / 245;
+    total_tta_frames = div_ceil(total_pcm_frames, block_size);
 
-    total_tta_frames = DIV_CEIL(total_pcm_frames, block_size);
-    printf("block size       %u\n", block_size);
-    printf("total TTA frames %u\n", total_tta_frames);
+    printf("total TTA frames : %u\n", total_tta_frames);
 
-    /*open output file for writing*/
-    if ((file = fopen(output_file, "wb")) == NULL) {
-        fprintf(stderr, "* %s: %s", output_file, strerror(errno));
-        return 1;
-    } else {
-        /*allocate temporary buffers*/
-        writer = bw_open(file, BS_LITTLE_ENDIAN);
-        tta_frame_sizes = a_int_new();
-        framelist = aa_int_new();
-        cache_init(&cache);
-    }
+    pcmreader = pcmreader_open_raw(stdin,
+                                   sample_rate,
+                                   channels,
+                                   0,
+                                   bits_per_sample,
+                                   1, 1);
+    output = bw_open(output_file, BS_LITTLE_ENDIAN);
+
+    pcmreader_display(pcmreader, stderr);
 
     /*write TTA header*/
-    write_header(writer,
-                 channels,
-                 bits_per_sample,
+    write_header(bits_per_sample,
                  sample_rate,
-                 total_pcm_frames);
+                 channels,
+                 total_pcm_frames,
+                 output);
 
-    /*write placeholder seektable*/
-    tta_frame_sizes->mset(tta_frame_sizes, total_tta_frames, 0);
-    seektable = writer->getpos(writer);
-    write_seektable(writer, tta_frame_sizes);
-    tta_frame_sizes->reset(tta_frame_sizes);
-
-    /*write frames from PCMReader*/
-    pcmreader = open_pcmreader(stdin,
-                               sample_rate,
-                               channels,
-                               0,
-                               bits_per_sample,
-                               0,
-                               1);
-    pcmreader->read(pcmreader, block_size, framelist);
-    while (framelist->_[0]->len) {
-        /*actual size may be different from requested block size*/
-        written_pcm_frames += framelist->_[0]->len;
-        tta_frame_sizes->append(tta_frame_sizes,
-                                encode_frame(writer,
-                                             &cache,
-                                             framelist,
-                                             bits_per_sample));
-        pcmreader->read(pcmreader, block_size, framelist);
+    /*write dummy seektable*/
+    seektable_pos = output->getpos(output);
+    for (i = 0; i < total_tta_frames; i++) {
+        output->write(output, 32, 0);
     }
+    output->write(output, 32, 0);
 
-    /*ensure read frames are a match for --total-pcm-frames*/
-    assert(written_pcm_frames == total_pcm_frames);
-    assert(tta_frame_sizes->len == total_tta_frames);
+    /*write TTA frames*/
+    frame_sizes = ttaenc_encode_tta_frames(pcmreader, output);
 
-    /*go back and write proper seektable*/
-    writer->setpos(writer, seektable);
-    write_seektable(writer, tta_frame_sizes);
-    seektable->del(seektable);
+    /*write finalized seektable*/
+    output->setpos(output, seektable_pos);
+    write_seektable(frame_sizes, output);
+    free_tta_frame_sizes(frame_sizes);
+    seektable_pos->del(seektable_pos);
 
-    /*deallocate temporary buffers*/
+    /*close output file and PCMReader*/
+    output->close(output);
+    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
-    tta_frame_sizes->del(tta_frame_sizes);
-    framelist->del(framelist);
-    cache_free(&cache);
-
-    /*close output file*/
-    writer->close(writer);
 
     return 0;
 }
 
 static void
-write_header(BitstreamWriter* output,
-             unsigned channels,
-             unsigned bits_per_sample,
+write_header(unsigned bits_per_sample,
              unsigned sample_rate,
-             unsigned total_pcm_frames)
+             unsigned channels,
+             unsigned total_pcm_frames,
+             BitstreamWriter *output)
 {
-    unsigned header_crc = 0xFFFFFFFF;
-    output->add_callback(output, (bs_callback_f)tta_crc32, &header_crc);
-    output->build(output, "4b 16u 16u 16u 32u 32u",
-                  "TTA1",
-                  1,
-                  channels,
-                  bits_per_sample,
-                  sample_rate,
-                  total_pcm_frames);
+    const uint8_t signature[] = "TTA1";
+    uint32_t crc32 = 0xFFFFFFFF;
+    output->add_callback(output, (bs_callback_f)tta_crc32, &crc32);
+    output->write_bytes(output, signature, 4);
+    output->write(output, 16, 1);
+    output->write(output, 16, channels);
+    output->write(output, 16, bits_per_sample);
+    output->write(output, 32, sample_rate);
+    output->write(output, 32, total_pcm_frames);
     output->pop_callback(output, NULL);
-    output->write(output, 32, header_crc ^ 0xFFFFFFFF);
+    output->write(output, 32, crc32 ^ 0xFFFFFFFF);
 }
 
 static void
-write_seektable(BitstreamWriter* output,
-                const a_int* frame_sizes)
+write_seektable(const struct tta_frame_size *frame_sizes,
+                BitstreamWriter *output)
 {
-    unsigned i;
-    unsigned seektable_crc = 0xFFFFFFFF;
-    output->add_callback(output, (bs_callback_f)tta_crc32, &seektable_crc);
-    for (i = 0; i < frame_sizes->len; i++) {
-        output->write(output, 32, frame_sizes->_[i]);
+    uint32_t crc32 = 0xFFFFFFFF;
+    output->add_callback(output, (bs_callback_f)tta_crc32, &crc32);
+    for (; frame_sizes; frame_sizes = frame_sizes->next) {
+        output->write(output, 32, frame_sizes->byte_size);
     }
     output->pop_callback(output, NULL);
-    output->write(output, 32, seektable_crc ^ 0xFFFFFFFF);
+    output->write(output, 32, crc32 ^ 0xFFFFFFFF);
 }
 
 

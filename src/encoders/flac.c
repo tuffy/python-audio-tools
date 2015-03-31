@@ -254,12 +254,6 @@ samples_identical(unsigned sample_count, const int *samples);
 static unsigned
 calculate_wasted_bps(unsigned sample_count, const int *samples);
 
-static inline unsigned
-ceil_div(unsigned n, unsigned d)
-{
-    return (n / d) + (n % d ? 1 : 0);
-}
-
 static void
 tukey_window(double alpha, unsigned block_size, double *window);
 
@@ -457,7 +451,7 @@ flacenc_encode_flac(struct PCMReader *pcmreader,
         free(options->window);
 
         /*delete any frame lengths*/
-        free_frame_sizes(frame_sizes);
+        free_flac_frame_sizes(frame_sizes);
 
         /*indicate read error has occurred*/
         return NULL;
@@ -465,7 +459,7 @@ flacenc_encode_flac(struct PCMReader *pcmreader,
 }
 
 void
-free_frame_sizes(struct flac_frame_size *sizes)
+free_flac_frame_sizes(struct flac_frame_size *sizes)
 {
     while (sizes) {
         struct flac_frame_size *next = sizes->next;
@@ -625,11 +619,11 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
             } else {
                 Py_DECREF(sizes);
                 Py_DECREF(tuple);
-                free_frame_sizes(frame_sizes);
+                free_flac_frame_sizes(frame_sizes);
                 return NULL;
             }
         }
-        free_frame_sizes(frame_sizes);
+        free_flac_frame_sizes(frame_sizes);
         return frame_size_list;
     } else {
         /*some read error occurred during encoding*/

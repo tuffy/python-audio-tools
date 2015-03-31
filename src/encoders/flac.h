@@ -61,7 +61,7 @@ struct flac_frame_size {
   using the given options
   and returns a linked list of frame sizes
   which must be deallocated when no longer needed
-  using free_frame_sizes()
+  using free_flac_frame_sizes()
 
   returns NULL if some error occurs reading from PCMReader*/
 struct flac_frame_size*
@@ -72,7 +72,7 @@ flacenc_encode_flac(struct PCMReader *pcmreader,
 
 /*deallocates linked list of frame sizes*/
 void
-free_frame_sizes(struct flac_frame_size *sizes);
+free_flac_frame_sizes(struct flac_frame_size *sizes);
 
 #ifndef STANDALONE
 PyObject*
