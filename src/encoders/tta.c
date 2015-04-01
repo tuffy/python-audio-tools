@@ -45,9 +45,11 @@ struct residual_params {
  * private function signatures *
  *******************************/
 
-static unsigned
-encode_frame(struct PCMReader *pcmreader,
+static void
+encode_frame(unsigned bits_per_sample,
+             unsigned channels,
              unsigned block_size,
+             const int samples[],
              BitstreamWriter *output);
 
 static void
@@ -92,20 +94,29 @@ ttaenc_encode_tta_frames(struct PCMReader *pcmreader,
                          BitstreamWriter *output)
 {
     struct tta_frame_size *frame_sizes = NULL;
-    unsigned samples_read;
-    const unsigned block_size = (pcmreader->sample_rate * 256) / 245;
-
+    const unsigned default_block_size = (pcmreader->sample_rate * 256) / 245;
+    unsigned block_size;
     unsigned frame_size = 0;
+    int *samples = malloc(default_block_size *
+                          pcmreader->channels *
+                          sizeof(int));
 
     output->add_callback(output, (bs_callback_f)byte_counter, &frame_size);
 
-    do {
-        samples_read = encode_frame(pcmreader, block_size, output);
+    while ((block_size =
+            pcmreader->read(pcmreader, default_block_size, samples)) > 0) {
+        encode_frame(pcmreader->bits_per_sample,
+                     pcmreader->channels,
+                     block_size,
+                     samples,
+                     output);
         frame_sizes = append_size(frame_sizes, frame_size);
         frame_size = 0;
-    } while (samples_read == block_size);
+    }
 
     output->pop_callback(output, NULL);
+
+    free(samples);
 
     if (pcmreader->status == PCM_OK) {
         /*if not error, reverse frame lengths stack and return it*/
@@ -133,57 +144,50 @@ free_tta_frame_sizes(struct tta_frame_size *frame_sizes)
  * private function implementations *
  ************************************/
 
-static unsigned
-encode_frame(struct PCMReader *pcmreader,
+static void
+encode_frame(unsigned bits_per_sample,
+             unsigned channels,
              unsigned block_size,
+             const int samples[],
              BitstreamWriter *output)
 {
-    const unsigned channels = pcmreader->channels;
     struct prediction_params prediction_params[channels];
     struct filter_params filter_params[channels];
     struct residual_params residual_params[channels];
-    const unsigned to_read = block_size;
     uint32_t crc32 = 0xFFFFFFFF;
     unsigned c;
 
     /*initialize per-channel parameters*/
     for (c = 0; c < channels; c++) {
-        init_prediction_params(pcmreader->bits_per_sample,
-                               prediction_params + c);
-        init_filter_params(pcmreader->bits_per_sample,
-                           filter_params + c);
+        init_prediction_params(bits_per_sample, prediction_params + c);
+        init_filter_params(bits_per_sample, filter_params + c);
         init_residual_params(residual_params + c);
     }
 
     output->add_callback(output, (bs_callback_f)tta_crc32, &crc32);
 
     for (; block_size; block_size--) {
-        int samples[channels];
+        int correlated[channels];
 
-        if (pcmreader->read(pcmreader, 1, samples)) {
-            int correlated[channels];
+        correlate_channels(channels, samples, correlated);
 
-            correlate_channels(channels, samples, correlated);
-
-            for (c = 0; c < channels; c++) {
-                const int predicted = run_prediction(
-                    prediction_params + c,
-                    correlated[c]);
-                const int filtered = run_filter(
+        for (c = 0; c < channels; c++) {
+            write_residual(
+                residual_params + c,
+                run_filter(
                     filter_params + c,
-                    predicted);
-                write_residual(residual_params + c, filtered, output);
-            }
-        } else {
-            break;
+                    run_prediction(
+                        prediction_params + c,
+                        correlated[c])),
+                output);
         }
+
+        samples += channels;
     }
 
     output->byte_align(output);
     output->pop_callback(output, NULL);
     output->write(output, 32, crc32 ^ 0xFFFFFFFF);
-
-    return to_read - block_size;
 }
 
 static void

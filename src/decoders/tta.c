@@ -273,6 +273,7 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
 
         if (!tta_frame) {
             PyErr_SetString(tta_exception(status), tta_strerror(status));
+            return NULL;
         }
 
         if ((self->current_tta_frame + 1) < self->total_tta_frames) {
@@ -723,6 +724,7 @@ tta_exception(status_t error)
 {
     switch (error) {
     case OK:
+    default:
     case CRC_MISMATCH:
     case INVALID_SIGNATURE:
     case INVALID_FORMAT:
@@ -738,6 +740,7 @@ tta_strerror(status_t error)
 {
     switch (error) {
     case OK:
+    default:
         return "no error";
     case IO_ERROR:
         return "I/O error";
