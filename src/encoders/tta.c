@@ -435,8 +435,6 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     frame_sizes = ttaenc_encode_tta_frames(pcmreader, output);
 
-    output->flush(output);
-    output->free(output);
     pcmreader->del(pcmreader);
 
     if (frame_sizes) {
@@ -454,9 +452,12 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
             }
         }
         free_tta_frame_sizes(frame_sizes);
+        output->flush(output);
+        output->free(output);
         return frame_size_list;
     } else {
         /*some read error occurred during encoding*/
+        output->free(output);
         PyErr_SetString(PyExc_IOError, "read error during encoding");
         return NULL;
     }
