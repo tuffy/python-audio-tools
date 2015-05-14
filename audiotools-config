@@ -85,70 +85,43 @@ def display_defaults(config, msg):
 
     row = table.row()
     row.add_column(u"  ")
-    row.add_column(_.LAB_AT_CONFIG_TYPE)
+    row.add_column(u"Format")
     row.add_column(u" ")
-    row.add_column(_.LAB_AT_CONFIG_BINARIES, "right")
+    row.add_column(u"Readable")
+    row.add_column(u" ")
+    row.add_column(u"Writable")
     row.add_column(u" ")
     row.add_column(_.LAB_AT_CONFIG_DEFAULT_QUALITY)
 
-    table.divider_row([u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
+    table.divider_row([u" ", _.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
 
     for audio_type in sorted(audiotools.AVAILABLE_TYPES,
                              key=lambda x: x.NAME):
         row = table.row()
-        row.add_column(u"  ")
+        row.add_column(u"")
+        row.add_column(audiotools.output_text(label_string(audio_type.NAME)),
+                       "right")
+        row.add_column(u"")
 
-        row.add_column(
-            audiotools.output_text(
-                label_string(audio_type.NAME),
-                fg_color=("green" if audio_type.available(audiotools.BIN)
-                          else "red"),
-                style=("underline" if
-                       (config.get_default("System",
-                                           "default_type",
-                                           "wav") == audio_type.NAME)
-                       else None)),
-            "right")
+        row.add_column(u"yes" if audio_type.supports_to_pcm() else u"no",
+                       "right")
 
-        row.add_column(u" ")
+        row.add_column(u"")
 
-        if len(audio_type.BINARIES) < 1:
-            row.add_column(u"")
-        elif len(audio_type.BINARIES) < 2:
-            row.add_column(audiotools.output_text(
-                label_string(audio_type.BINARIES[0]),
-                fg_color=("green" if
-                          audiotools.BIN.can_execute(
-                              audiotools.BIN[audio_type.BINARIES[0]])
-                          else "red")),
-                "right")
-        else:
-            row.add_column(
-                audiotools.output_text(u", ").join(
-                    [audiotools.output_text(
-                        label_string(b),
-                        fg_color=("green" if
-                                  audiotools.BIN.can_execute(
-                                      audiotools.BIN[b]) else "red"))
-                     for b in audio_type.BINARIES]),
-                "right")
+        row.add_column(u"yes" if audio_type.supports_from_pcm() else u"no",
+                       "right")
 
-        row.add_column(u" ")
+        row.add_column(u"")
 
         if len(audio_type.COMPRESSION_MODES) < 2:
-            row.add_column(u" ")
+            row.add_column(u"")
         else:
-            quality = label_string(
-                config.get_default("Quality",
-                                   audio_type.NAME,
-                                   audio_type.DEFAULT_COMPRESSION))
-            if quality in audio_type.COMPRESSION_DESCRIPTIONS:
-                row.add_column(
-                    u"%s - %s" %
-                    (quality,
-                     audio_type.COMPRESSION_DESCRIPTIONS[quality]))
-            else:
-                row.add_column(quality)
+            row.add_column(
+                label_string(
+                    config.get_default("Quality",
+                                       audio_type.NAME,
+                                       audio_type.DEFAULT_COMPRESSION)),
+                "right")
 
     for row in table.format(msg.output_isatty()):
         msg.output(row)

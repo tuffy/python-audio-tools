@@ -441,6 +441,17 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         return True
 
     @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        try:
+            from audiotools.encoders import encode_wavpack
+            return True
+        except ImportError:
+            return False
+
+    @classmethod
     def from_pcm(cls, filename, pcmreader,
                  compression=None,
                  total_pcm_frames=None,
@@ -493,10 +504,21 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         return cls(filename)
 
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        try:
+            from audiotools.decoders import WavPackDecoder
+            return True
+        except ImportError:
+            return False
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        from audiotools import decoders
+        from audiotools.decoders import WavPackDecoder
         from audiotools import PCMReaderError
 
         try:
@@ -509,7 +531,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                                   bits_per_sample=self.__bitspersample__)
 
         try:
-            return decoders.WavPackDecoder(f)
+            return WavPackDecoder(f)
         except (IOError, ValueError) as msg:
             f.close()
             return PCMReaderError(error_message=str(msg),

@@ -176,6 +176,17 @@ class VorbisAudio(AudioFile):
 
         return self.__sample_rate__
 
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .to_pcm() method"""
+
+        try:
+            from audiotools.decoders import VorbisDecoder
+            return True
+        except ImportError:
+            return False
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
@@ -190,6 +201,17 @@ class VorbisAudio(AudioFile):
                                   self.channels(),
                                   int(self.channel_mask()),
                                   self.bits_per_sample())
+
+    @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        try:
+            from audiotools.encoders import encode_vorbis
+            return True
+        except ImportError:
+            return False
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

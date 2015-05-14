@@ -128,11 +128,12 @@ if (__name__ == '__main__'):
 
     conversion = parser.add_argument_group(_.OPT_CAT_ENCODING)
 
-    conversion.add_argument("-t", "--type",
-                            dest="type",
-                            choices=list(sorted(audiotools.TYPE_MAP.keys())) +
-                            ["help"],
-                            help=_.OPT_TYPE)
+    conversion.add_argument(
+        "-t", "--type",
+        dest="type",
+        choices=sorted(list(t.NAME for t in audiotools.AVAILABLE_TYPES
+                            if t.supports_from_pcm()) + ["help"]),
+        help=_.OPT_TYPE)
 
     conversion.add_argument("-q", "--quality",
                             dest="quality",
@@ -256,16 +257,19 @@ if (__name__ == '__main__'):
                    "type": AudioType.NAME})
         sys.exit(1)
 
-    audiofiles = audiotools.open_files([options.filename],
-                                       sorted=False,
-                                       messenger=msg)
-    if len(audiofiles) != 1:
-        msg.error(_.ERR_1_FILE_REQUIRED)
-        sys.exit(1)
-    else:
-        audiofile = audiofiles[0]
+    try:
+        audiofile = audiotools.open(options.filename)
         input_filename = audiotools.Filename(audiofile.filename)
         input_filenames = {input_filename}
+    except audiotools.UnsupportedFile:
+        msg.error(_.ERR_UNSUPPORTED_FILE % (filename,))
+        sys.exit(1)
+    except audiotools.InvalidFile as err:
+        msg.error(str(err))
+        sys.exit(1)
+    except IOError:
+        msg.error(_.ERR_OPEN_IOERROR % (filename,))
+        sys.exit(1)
 
     base_directory = options.dir
     encoded_filenames = []
@@ -480,8 +484,8 @@ if (__name__ == '__main__'):
                 total_pcm_frames=int(length * audiofile.sample_rate()))
 
         try:
-            encoded_tracks = audiotools.open_files(
-                queue.run(options.max_processes))
+            encoded_tracks = map(audiotools.open,
+                                 queue.run(options.max_processes))
         except audiotools.EncodingError as err:
             msg.error(err)
             sys.exit(1)
@@ -549,8 +553,8 @@ if (__name__ == '__main__'):
                 total_pcm_frames=int(length * audiofile.sample_rate()))
 
         try:
-            encoded_tracks = audiotools.open_files(
-                queue.run(options.max_processes))
+            encoded_tracks = map(audiotools.open,
+                                 queue.run(options.max_processes))
         except audiotools.EncodingError as err:
             msg.error(err)
             temp_blob.close()

@@ -804,10 +804,24 @@ class AiffAudio(AiffContainer):
 
         new_aiff.close()
 
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .to_pcm() method"""
+
+        return True
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
         return AiffReader(self.filename)
+
+    @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        return True
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

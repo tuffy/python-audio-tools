@@ -218,41 +218,66 @@ if (__name__ == '__main__'):
         if os.path.isfile(args[0]) and os.path.isfile(args[1]):
             # comparing two files
 
-            audiofiles = audiotools.open_files(args,
-                                               messenger=msg,
-                                               sorted=False)
-            if len(audiofiles) != 2:
-                msg.error(_.ERR_TRACKCMP_TYPE_MISMATCH)
+            filename_a = audiotools.Filename(args[0])
+            filename_b = audiotools.Filename(args[1])
+
+            try:
+                audiofile_a = audiotools.open(args[0])
+            except audiotools.UnsupportedFile:
+                msg.error(_.ERR_UNSUPPORTED_FILE % (filename_a,))
                 sys.exit(1)
-            else:
-                (path1, path2, mismatch) = cmp_files(None,
-                                                     audiofiles[0],
-                                                     audiofiles[1])
-                if mismatch is not None:
-                    msg.output(cmp_result((path1, path2, mismatch),
-                                          msg.output_isatty()))
-                    sys.exit(1)
+
+            if not audiofile_a.__class__.supports_to_pcm():
+                msg.error(_.ERR_UNSUPPORTED_TO_PCM %
+                          {"filename":filename_a, "type":audiofile_a.NAME})
+                sys.exit(1)
+
+            try:
+                audiofile_b = audiotools.open(args[1])
+            except audiotools.UnsupportedFile:
+                msg.error(_.ERR_UNSUPPORTED_FILE % (filename_b,))
+                sys.exit(1)
+
+            if not audiofile_b.__class__.supports_to_pcm():
+                msg.error(_.ERR_UNSUPPORTED_TO_PCM %
+                          {"filename":filename_b, "type":audiofile_b.NAME})
+                sys.exit(1)
+
+            (path1, path2, mismatch) = cmp_files(None,
+                                                 audiofile_a,
+                                                 audiofile_b)
+            if mismatch is not None:
+                msg.output(cmp_result((path1, path2, mismatch),
+                                      msg.output_isatty()))
+                sys.exit(1)
         elif os.path.isdir(args[0]) and os.path.isdir(args[1]):
             # comparing two directories
 
             to_compare = []
             results = []
 
-            files1 = {f.filename: f for f in
-                      audiotools.open_files(
-                          [path for path in
-                           [os.path.join(args[0], f) for f in
-                            os.listdir(args[0])] if os.path.isfile(path)],
-                          sorted=False,
-                          messenger=msg)}
+            dir1 = args[0]
+            files1 = {}
+            dir2 = args[1]
+            files2 = {}
 
-            files2 = {f.filename: f for f in
-                      audiotools.open_files(
-                          [path for path in
-                           [os.path.join(args[1], f) for f in
-                            os.listdir(args[1])] if os.path.isfile(path)],
-                          sorted=False,
-                          messenger=msg)}
+            for (files, dir) in [(files1, dir1), (files2, dir2)]:
+                for path in [os.path.join(dir, f) for f in os.listdir(dir)]:
+                    if os.path.isfile(path):
+                        try:
+                            audiofile = audiotools.open(path)
+                            if audiofile.__class__.supports_to_pcm():
+                                files[audiofile.filename] = audiofile
+                            else:
+                                msg.warning(_.ERR_UNSUPPORTED_TO_PCM %
+                                            {"filename":audiofile.filename,
+                                             "type":audiofile.NAME})
+                        except audiotools.UnsupportedFile:
+                            pass
+                        except audiotools.InvalidFile as err:
+                            msg.warning(str(err))
+                        except IOError:
+                            msg.warning(_.ERR_OPEN_IOERROR % (path,))
 
             # first, attempt to match files by their stream characteristics
             streams1 = {}
@@ -385,9 +410,18 @@ if (__name__ == '__main__'):
             sys.exit(1)
     elif len(args) > 2:
         # possibly comparing disk image against tracks
-        audiofiles = sorted(
-            audiotools.open_files(args, messenger=msg, sorted=False),
-            key=lambda t: t.total_frames())
+        audiofiles = []
+        for arg in args:
+            if os.path.isfile(arg):
+                try:
+                    audiofiles.append(audiotools.open(arg))
+                except audiotools.UnsupportedFile:
+                    pass
+                except audiotools.InvalidFile as err:
+                    msg.warning(str(err))
+                except IOError:
+                    msg.warning(_.ERR_OPEN_IOERROR % (path,))
+        audiofiles.sort(key=lambda t: t.total_frames())
 
         if (sum(t.total_frames() for t in audiofiles[0:-1]) !=
             audiofiles[-1].total_frames()):

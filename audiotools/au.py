@@ -213,6 +213,13 @@ class AuAudio(AudioFile):
 
         return True
 
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .to_pcm() method"""
+
+        return True
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
@@ -231,6 +238,13 @@ class AuAudio(AudioFile):
         header = f.read(data_offset - struct.calcsize(">4sI"))
         return (struct.pack(">4sI%ds" % (len(header)),
                             magic_number, data_offset, header), "")
+
+    @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        return True
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

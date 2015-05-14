@@ -198,12 +198,34 @@ class MP3Audio(AudioFile):
 
         return False
 
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .to_pcm() method"""
+
+        try:
+            from audiotools.decoders import MP3Decoder
+            return True
+        except ImportError:
+            return False
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
         from audiotools.decoders import MP3Decoder
 
         return MP3Decoder(self.filename)
+
+    @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        try:
+            from audiotools.encoders import encode_mp3
+            return True
+        except ImportError:
+            return False
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -664,6 +686,17 @@ class MP2Audio(MP3Audio):
                                         224, 256, 320, 384)))
     COMPRESSION_DESCRIPTIONS = {"64": COMP_TWOLAME_64,
                                 "384": COMP_TWOLAME_384}
+
+    @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        try:
+            from audiotools.encoders import encode_mp2
+            return True
+        except ImportError:
+            return False
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

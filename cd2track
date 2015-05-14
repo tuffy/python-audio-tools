@@ -101,12 +101,12 @@ if (__name__ == '__main__'):
 
     conversion = parser.add_argument_group(_.OPT_CAT_EXTRACTION)
 
-    conversion.add_argument("-t", "--type",
-                            dest="type",
-                            choices=sorted(list(audiotools.TYPE_MAP.keys()) +
-                                           ["help"]),
-                            default=audiotools.DEFAULT_TYPE,
-                            help=_.OPT_TYPE)
+    conversion.add_argument(
+        "-t", "--type",
+        dest="type",
+        choices=sorted(list(t.NAME for t in audiotools.AVAILABLE_TYPES
+                            if t.supports_from_pcm()) + ["help"]),
+        help=_.OPT_TYPE)
 
     conversion.add_argument("-q", "--quality",
                             dest="quality",

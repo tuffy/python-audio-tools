@@ -274,11 +274,12 @@ if (__name__ == '__main__'):
 
     conversion = parser.add_argument_group(_.OPT_CAT_CONVERSION)
 
-    conversion.add_argument("-t", "--type",
-                            dest="type",
-                            choices=sorted(list(audiotools.TYPE_MAP.keys()) +
-                                           ["help"]),
-                            help=_.OPT_TYPE)
+    conversion.add_argument(
+        "-t", "--type",
+        dest="type",
+        choices=sorted(list(t.NAME for t in audiotools.AVAILABLE_TYPES
+                            if t.supports_from_pcm()) + ["help"]),
+        help=_.OPT_TYPE)
 
     conversion.add_argument("-q", "--quality",
                             dest="quality",
@@ -429,6 +430,10 @@ if (__name__ == '__main__'):
                 exp.error_msg(msg)
                 sys.exit(1)
 
+    if not AudioType.supports_from_pcm():
+        msg.error(_.ERR_UNSUPPORTED_FROM_PCM % {"type":AudioType.NAME})
+        sys.exit(1)
+
     # whether to add ReplayGain to newly converted files
     if AudioType.supports_replay_gain():
         add_replay_gain = ((options.add_replay_gain if
@@ -450,15 +455,28 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     # grab the list of AudioFile objects we are converting from
+    audiofiles = []
     input_filenames = set()
-    try:
-        audiofiles = audiotools.open_files(options.filenames,
-                                           messenger=msg,
-                                           no_duplicates=True,
-                                           opened_files=input_filenames)
-    except audiotools.DuplicateFile as err:
-        msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
-        sys.exit(1)
+    for filename in map(audiotools.Filename, options.filenames):
+        if filename not in input_filenames:
+            input_filenames.add(filename)
+        else:
+            msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
+            sys.exit(1)
+
+        try:
+            audiofile = audiotools.open(str(filename))
+            if audiofile.__class__.supports_to_pcm():
+                audiofiles.append(audiofile)
+            else:
+                msg.warning(_.ERR_UNSUPPORTED_TO_PCM %
+                            {"filename":filename, "type":audiofile.NAME})
+        except audiotools.UnsupportedFile:
+            msg.warning(_.ERR_UNSUPPORTED_FILE % (filename,))
+        except audiotools.InvalidFile as err:
+            msg.warning(str(err))
+        except IOError:
+            msg.warning(_.ERR_OPEN_IOERROR % (filename,))
 
     if len(audiofiles) < 1:
         msg.error(_.ERR_FILES_REQUIRED)
@@ -756,8 +774,8 @@ if (__name__ == '__main__'):
 
         # perform actual track conversion
         try:
-            output_files = audiotools.open_files(
-                queue.run(options.max_processes))
+            output_files = map(audiotools.open,
+                               queue.run(options.max_processes))
         except audiotools.EncodingError as err:
             msg.error(err)
             sys.exit(1)

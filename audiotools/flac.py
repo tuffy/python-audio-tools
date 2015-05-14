@@ -1844,14 +1844,14 @@ class FlacAudio(WaveContainer, AiffContainer):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        from audiotools import decoders
+        from audiotools.decoders import FlacDecoder
         from audiotools import PCMReaderError
 
         try:
             flac = open(self.filename, "rb")
             if self.__stream_offset__ > 0:
                 flac.seek(self.__stream_offset__)
-            return decoders.FlacDecoder(flac)
+            return FlacDecoder(flac)
         except (IOError, ValueError) as msg:
             # The only time this is likely to occur is
             # if the FLAC is modified between when FlacAudio
@@ -1862,6 +1862,14 @@ class FlacAudio(WaveContainer, AiffContainer):
                                   channels=self.channels(),
                                   channel_mask=int(self.channel_mask()),
                                   bits_per_sample=self.bits_per_sample())
+
+    @classmethod
+    def supports_to_pcm(cls):
+        try:
+            from audiotools.decoders import FlacDecoder
+            return True
+        except ImportError:
+            return False
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -2024,6 +2032,14 @@ class FlacAudio(WaveContainer, AiffContainer):
             raise
         finally:
             pcmreader.close()
+
+    @classmethod
+    def supports_from_pcm(cls):
+        try:
+            from audiotools.encoders import encode_flac
+            return True
+        except ImportError:
+            return False
 
     def seekable(self):
         """returns True if the file is seekable"""

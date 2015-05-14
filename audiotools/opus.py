@@ -161,6 +161,17 @@ class OpusAudio(VorbisAudio):
 
         return 48000
 
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .to_pcm() method"""
+
+        try:
+            from audiotools.decoders import OpusDecoder
+            return True
+        except ImportError:
+            return False
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data
 
@@ -178,6 +189,17 @@ class OpusAudio(VorbisAudio):
                                   channels=self.channels(),
                                   channel_mask=int(self.channel_mask()),
                                   bits_per_sample=self.bits_per_sample())
+
+    @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        try:
+            from audiotools.encoders import encode_opus
+            return True
+        except ImportError:
+            return False
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

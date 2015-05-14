@@ -7869,89 +7869,69 @@
    There needs to be a single-pass approach to encoding chunked files
    that doesn't involve pulling out the chunk data ahead of time.
 
-   Perhaps some sort of chunk iterator which indicates the appropriate
-   place where the PCM data will go.
+   Perhaps a simple .to_wave(), .from_wave() approach
+   which returns a whole .wav file as a file stream
+   would be easiest.
 ** TODO Make AudioFile.available() classmethod finer-grained
    That is, formats can be readable but not writable, or taggable but
    not readable or writeable.  This will allow read-only support for
    some obscure formats like .tak or .ape by porting implementations
    from ffmpeg but without having to build encoders for them as well.
-*** TODO Add AudioFile.supports_to_pcm()
-    - [ ] AudioFile
-    - [ ] ALACAudio
-    - [ ] AiffAudio
-    - [ ] AuAudio
-    - [ ] FlacAudio
-    - [ ] M4AAudio
-    - [ ] MP2Audio
-    - [ ] MP3Audio
-    - [ ] OggFlacAudio
-    - [ ] OpusAudio
-    - [ ] ShortenAudio
-    - [ ] TrueAudio
-    - [ ] VorbisAudio
-    - [ ] WavPackAudio
-    - [ ] WaveAudio
-*** TODO Add AudioFile.supports_from_pcm()
-    - [ ] AudioFile
-    - [ ] ALACAudio
-    - [ ] AiffAudio
-    - [ ] AuAudio
-    - [ ] FlacAudio
-    - [ ] M4AAudio
-    - [ ] MP2Audio
-    - [ ] MP3Audio
-    - [ ] OggFlacAudio
-    - [ ] OpusAudio
-    - [ ] ShortenAudio
-    - [ ] TrueAudio
-    - [ ] VorbisAudio
-    - [ ] WavPackAudio
-    - [ ] WaveAudio
-*** TODO Add AudioFile.supports_verify()
-    in most instances, this should be the same as supports_to_pcm()
-    - [ ] AudioFile
-    - [ ] ALACAudio
-    - [ ] AiffAudio
-    - [ ] AuAudio
-    - [ ] FlacAudio
-    - [ ] M4AAudio
-    - [ ] MP2Audio
-    - [ ] MP3Audio
-    - [ ] OggFlacAudio
-    - [ ] OpusAudio
-    - [ ] ShortenAudio
-    - [ ] TrueAudio
-    - [ ] VorbisAudio
-    - [ ] WavPackAudio
-    - [ ] WaveAudio
+*** DONE Add AudioFile.supports_to_pcm()
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Add AudioFile.supports_from_pcm()
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
 *** DONE Add AudioFile.supports_metadata()
 *** TODO Remove AudioFile.missing_components() ?
     Leave this job to setup.py and audiotools-config, perhaps.
-*** TODO Utilities
-**** TODO audiotools-config
+*** DONE Utilities
+**** DONE audiotools-config
      Needs to display format availability in a more fine-grained fashion.
-**** TODO cd2track
-     - [ ] output format must supports_from_pcm()
-**** TODO track2cd
-     - [ ] input format must supports_to_pcm()
-**** TODO track2track
-     - [ ] input format(s) must supports_to_pcm()
-     - [ ] output format must supports_from_pcm()
-**** TODO trackcat
-     - [ ] input format(s) must supports_to_pcm()
-     - [ ] output format must supports_from_pcm()
-**** TODO trackcmp
-     - [ ] input format(s) must supports_to_pcm()
-**** TODO trackplay
-     - [ ] input format(s) must supports_to_pcm()
-**** TODO tracksplit
-     - [ ] input format must supports_to_pcm()
-     - [ ] output format must supports_from_pcm()
-**** TODO tracktag
-     - [ ] files must supports_metadata()
-**** TODO trackverify
-     - [ ] input format must supports_verify()
+**** DONE cd2track
+     - [X] output format must supports_from_pcm()
+**** DONE track2cd
+     - [X] input format must supports_to_pcm()
+**** DONE track2track
+     - [X] input format(s) must supports_to_pcm()
+     - [X] output format must supports_from_pcm()
+**** DONE trackcat
+     - [X] input format(s) must supports_to_pcm()
+     - [X] output format must supports_from_pcm()
+**** DONE trackcmp
+     - [X] input format(s) must supports_to_pcm()
+**** DONE trackplay
+     - [X] input format(s) must supports_to_pcm()
+**** DONE tracksplit
+     - [X] input file must supports_to_pcm()
+     - [X] output format must supports_from_pcm()
+**** DONE trackverify
+     - [X] input format must supports_to_pcm()
 *** TODO Update documentation
 *** TODO Update unit tests
 ** TODO Add seeking to Ogg FLAC decoder

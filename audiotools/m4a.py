@@ -437,6 +437,13 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
 
         return self.__length__ - 1024
 
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .to_pcm() method"""
+
+        return BIN.can_execute(BIN["faad"])
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
@@ -455,6 +462,13 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                              channel_mask=int(self.channel_mask()),
                              bits_per_sample=self.bits_per_sample(),
                              process=sub)
+
+    @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        return BIN.can_execute(BIN["faac"])
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -576,6 +590,13 @@ class M4AAudio_nero(M4AAudio_faac):
                    "downloads-nerodigital-nero-aac-codec.php"}
 
     @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        return BIN.can_execute(BIN["neroAacEnc"])
+
+    @classmethod
     def from_pcm(cls, filename, pcmreader,
                  compression=None, total_pcm_frames=None):
         """encodes a new file from PCM data
@@ -622,6 +643,13 @@ class M4AAudio_nero(M4AAudio_faac):
             tempwavefile.close()
             if os.path.isfile(tempwave_name):
                 os.unlink(tempwave_name)
+
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .to_pcm() method"""
+
+        return BIN.can_execute(BIN["neroAacDec"])
 
     def to_pcm(self):
         from audiotools import PCMFileReader
@@ -881,6 +909,17 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                     b"stco")
             return has_stts and has_stsc and has_stco
 
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .to_pcm() method"""
+
+        try:
+            from audiotools.decoders import ALACDecoder
+            return True
+        except ImportError:
+            return False
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
@@ -895,6 +934,17 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                                   channels=self.channels(),
                                   channel_mask=int(self.channel_mask()),
                                   bits_per_sample=self.bits_per_sample())
+
+    @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        try:
+            from audiotools.encoders import encode_alac
+            return True
+        except ImportError:
+            return False
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

@@ -678,11 +678,25 @@ class WaveAudio(WaveContainer):
 
         return self.__channel_mask__
 
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .to_pcm() method"""
+
+        return True
+
     # Returns the PCMReader object for this WAV's data
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
         return WaveReader(self.filename)
+
+    @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        return True
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

@@ -115,13 +115,26 @@ class TrueAudio(AudioFile, ApeGainedAudio):
 
         return True
 
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns a PCMReader object containing the track's PCM data
+
+        if an error occurs initializing a decoder, this should
+        return a PCMReaderError with an appropriate error message"""
+
+        try:
+            from audiotools.decoders import TTADecoder
+            return True
+        except ImportError:
+            return False
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data
 
         if an error occurs initializing a decoder, this should
         return a PCMReaderError with an appropriate error message"""
 
-        from audiotools import decoders
+        from audiotools.decoders import TTADecoder
         from audiotools import PCMReaderError
         from audiotools.id3 import skip_id3v2_comment
 
@@ -135,7 +148,7 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                                   bits_per_sample=self.bits_per_sample())
         try:
             skip_id3v2_comment(tta)
-            return decoders.TTADecoder(tta)
+            return TTADecoder(tta)
         except (IOError, ValueError) as msg:
             # This isn't likely unless the TTA file is modified
             # between when TrueAudio is instantiated
@@ -146,6 +159,17 @@ class TrueAudio(AudioFile, ApeGainedAudio):
                                   channels=self.channels(),
                                   channel_mask=int(self.channel_mask()),
                                   bits_per_sample=self.bits_per_sample())
+
+    @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        try:
+            from audiotools.encoders import encode_tta
+            return True
+        except ImportError:
+            return False
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,

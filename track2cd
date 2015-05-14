@@ -160,10 +160,25 @@ if (__name__ == '__main__'):
                                                     "cdrom_write_offset",
                                                     0)
 
-    audiofiles = audiotools.open_files(options.filenames,
-                                       sorted=False,
-                                       messenger=msg,
-                                       warn_duplicates=True)
+    audiofiles = []
+    for filename in map(audiotools.Filename, options.filenames):
+        try:
+            audiofile = audiotools.open(str(filename))
+            if audiofile.__class__.supports_to_pcm():
+                audiofiles.append(audiofile)
+            else:
+                msg.error(_.ERR_UNSUPPORTED_TO_PCM %
+                          {"filename":filename, "type":audiofile.NAME})
+                sys.exit(1)
+        except audiotools.UnsupportedFile:
+            msg.error(_.ERR_UNSUPPORTED_FILE % (filename,))
+            sys.exit(1)
+        except audiotools.InvalidFile as err:
+            msg.error(str(err))
+            sys.exit(1)
+        except IOError:
+            msg.error(_.ERR_OPEN_IOERROR % (filename,))
+            sys.exit(1)
 
     if len(audiofiles) < 1:
         msg.error(_.ERR_FILES_REQUIRED)

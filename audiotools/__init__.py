@@ -1730,7 +1730,6 @@ def open(filename):
 
     this works solely by examining the file's contents
     after opening it
-    raises UnsupportedFile if it's not a file we support based on its headers
     raises InvalidFile if the file appears to be something we support,
     but has errors of some sort
     raises IOError if some problem occurs attempting to open the file
@@ -1739,7 +1738,7 @@ def open(filename):
     f = __open__(filename, "rb")
     try:
         audio_class = file_type(f)
-        if (audio_class is not None) and audio_class.available(BIN):
+        if audio_class is not None:
             return audio_class(filename)
         else:
             raise UnsupportedFile(filename)
@@ -3990,6 +3989,13 @@ class AudioFile(object):
 
         raise NotImplementedError()
 
+    @classmethod
+    def supports_to_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .to_pcm() method"""
+
+        return False
+
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data
 
@@ -3997,6 +4003,13 @@ class AudioFile(object):
         return a PCMReaderError with an appropriate error message"""
 
         raise NotImplementedError()
+
+    @classmethod
+    def supports_from_pcm(cls):
+        """returns True if all necessary components are available
+        to support the .from_pcm() classmethod"""
+
+        return False
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
