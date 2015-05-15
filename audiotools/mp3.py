@@ -625,52 +625,6 @@ class MP3Audio(AudioFile):
 
         return self.__pcm_frames__
 
-    @classmethod
-    def available(cls, system_binaries):
-        """returns True if all necessary compenents are available
-        to support format"""
-
-        try:
-            from audiotools.decoders import MP3Decoder
-            from audiotools.encoders import encode_mp3
-
-            return True
-        except ImportError:
-            return False
-
-    @classmethod
-    def missing_components(cls, messenger):
-        """given a Messenger object, displays missing binaries or libraries
-        needed to support this format and where to get them"""
-
-        from audiotools.text import (ERR_LIBRARY_NEEDED,
-                                     ERR_LIBRARY_DOWNLOAD_URL,
-                                     ERR_PROGRAM_PACKAGE_MANAGER)
-
-        format_ = cls.NAME.decode('ascii')
-
-        # display where to get libmp3lame
-        messenger.info(
-            ERR_LIBRARY_NEEDED %
-            {"library": u"\"libmp3lame\"",
-             "format": format_})
-        messenger.info(
-            ERR_LIBRARY_DOWNLOAD_URL %
-            {"library": u"mp3lame",
-             "url": "http://lame.sourceforge.net/"})
-
-        # then display where to get libmpg123
-        messenger.info(
-            ERR_LIBRARY_NEEDED %
-            {"library": u"\"libmpg123\"",
-             "format": format_})
-        messenger.info(
-            ERR_LIBRARY_DOWNLOAD_URL %
-            {"library": u"mpg123",
-             "url": u"http://www.mpg123.org/"})
-
-        messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
-
 
 class MP2Audio(MP3Audio):
     """an MP2 audio file"""
@@ -760,49 +714,3 @@ class MP2Audio(MP3Audio):
             raise EncodingError(str(err))
         finally:
             pcmreader.close()
-
-    @classmethod
-    def available(cls, system_binaries):
-        """returns True if all necessary compenents are available
-        to support format"""
-
-        try:
-            from audiotools.decoders import MP3Decoder
-            from audiotools.encoders import encode_mp2
-
-            return True
-        except ImportError:
-            return False
-
-    @classmethod
-    def missing_components(cls, messenger):
-        """given a Messenger object, displays missing binaries or libraries
-        needed to support this format and where to get them"""
-
-        from audiotools.text import (ERR_LIBRARY_NEEDED,
-                                     ERR_LIBRARY_DOWNLOAD_URL,
-                                     ERR_PROGRAM_PACKAGE_MANAGER)
-
-        format_ = cls.NAME.decode('ascii')
-
-        # display where to get libtwo,ame
-        messenger.info(
-            ERR_LIBRARY_NEEDED %
-            {"library": u"\"libtwolame\"",
-             "format": format_})
-        messenger.info(
-            ERR_LIBRARY_DOWNLOAD_URL %
-            {"library": u"twolame",
-             "url": "http://twolame.sourceforge.net/"})
-
-        # then display where to get libmpg123
-        messenger.info(
-            ERR_LIBRARY_NEEDED %
-            {"library": u"\"libmpg123\"",
-             "format": format_})
-        messenger.info(
-            ERR_LIBRARY_DOWNLOAD_URL %
-            {"library": u"mpg123",
-             "url": u"http://www.mpg123.org/"})
-
-        messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)

@@ -507,42 +507,6 @@ class VorbisAudio(AudioFile):
 
             self.update_metadata(vorbis_comment)
 
-    @classmethod
-    def available(cls, system_binaries):
-        """returns True if all necessary compenents are available
-        to support format"""
-
-        try:
-            from audiotools.decoders import VorbisDecoder
-            from audiotools.encoders import encode_vorbis
-
-            return True
-        except ImportError:
-            return False
-
-    @classmethod
-    def missing_components(cls, messenger):
-        """given a Messenger object, displays missing binaries or libraries
-        needed to support this format and where to get them"""
-
-        from audiotools.text import (ERR_LIBRARY_NEEDED,
-                                     ERR_LIBRARY_DOWNLOAD_URL,
-                                     ERR_PROGRAM_PACKAGE_MANAGER)
-
-        format_ = cls.NAME.decode('ascii')
-
-        # display where to get vorbisfile
-        messenger.info(
-            ERR_LIBRARY_NEEDED %
-            {"library": u"\"libvorbisfile\"",
-             "format": format_})
-        messenger.info(
-            ERR_LIBRARY_DOWNLOAD_URL %
-            {"library": u"libvorbisfile",
-             "url": "http://www.xiph.org/"})
-
-        messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
-
 
 class VorbisChannelMask(ChannelMask):
     """the Vorbis-specific channel mapping"""

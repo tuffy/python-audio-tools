@@ -461,7 +461,7 @@ if (__name__ == '__main__'):
         if filename not in input_filenames:
             input_filenames.add(filename)
         else:
-            msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
+            msg.error(_.ERR_DUPLICATE_FILE % (filename,))
             sys.exit(1)
 
         try:

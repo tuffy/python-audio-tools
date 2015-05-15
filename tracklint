@@ -31,15 +31,14 @@ def display_messages(messenger, track, messages):
                         "message": message})
 
 
-def audiofiles(paths, processed_filenames, unsupported_types, messenger):
+def audiofiles(paths, processed_filenames, messenger):
     directories = [p for p in paths if os.path.isdir(p)]
     files = [p for p in paths if os.path.isfile(p)]
 
     for f in audiotools.open_files(files,
                                    messenger=messenger,
                                    warn_duplicates=True,
-                                   opened_files=processed_filenames,
-                                   unsupported_formats=unsupported_types):
+                                   opened_files=processed_filenames):
         yield f
 
     for directory in directories:
@@ -48,8 +47,7 @@ def audiofiles(paths, processed_filenames, unsupported_types, messenger):
                     [os.path.join(d, f) for f in fs],
                     messenger=messenger,
                     warn_duplicates=True,
-                    opened_files=processed_filenames,
-                    unsupported_formats=unsupported_types):
+                    opened_files=processed_filenames):
                 yield f
 
 
@@ -120,12 +118,10 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger(options.verbosity == "quiet")
 
     processed_filenames = set()
-    unsupported_types = set()
 
     if options.fix:
         for track in audiofiles(options.filenames,
                                 processed_filenames,
-                                unsupported_types,
                                 messenger=msg):
             try:
                 update(track, msg)
@@ -139,6 +135,5 @@ if (__name__ == '__main__'):
     else:  # a dry-run of the fixing procedure, with no changes made
         for track in audiofiles(options.filenames,
                                 processed_filenames,
-                                unsupported_types,
                                 messenger=msg):
             display_messages(msg, track, track.clean())

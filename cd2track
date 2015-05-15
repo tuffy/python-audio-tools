@@ -106,7 +106,8 @@ if (__name__ == '__main__'):
         dest="type",
         choices=sorted(list(t.NAME for t in audiotools.AVAILABLE_TYPES
                             if t.supports_from_pcm()) + ["help"]),
-        help=_.OPT_TYPE)
+        help=_.OPT_TYPE,
+        default=audiotools.DEFAULT_TYPE)
 
     conversion.add_argument("-q", "--quality",
                             dest="quality",

@@ -460,39 +460,3 @@ class OpusAudio(VorbisAudio):
             reader.close()
 
         return AudioFile.verify(self, progress)
-
-    @classmethod
-    def available(cls, system_binaries):
-        """returns True if all necessary compenents are available
-        to support format"""
-
-        try:
-            from audiotools.decoders import OpusDecoder
-            from audiotools.encoders import encode_opus
-
-            return True
-        except ImportError:
-            return False
-
-    @classmethod
-    def missing_components(cls, messenger):
-        """given a Messenger object, displays missing binaries or libraries
-        needed to support this format and where to get them"""
-
-        from audiotools.text import (ERR_LIBRARY_NEEDED,
-                                     ERR_LIBRARY_DOWNLOAD_URL,
-                                     ERR_PROGRAM_PACKAGE_MANAGER)
-
-        format_ = cls.NAME.decode('ascii')
-
-        # display where to get vorbisfile
-        messenger.info(
-            ERR_LIBRARY_NEEDED %
-            {"library": u"\"libopus\" and \"opusfile\"",
-             "format": format_})
-        messenger.info(
-            ERR_LIBRARY_DOWNLOAD_URL %
-            {"library": u"libopus and opusfile",
-             "url": "http://www.opus-codec.org/"})
-
-        messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)

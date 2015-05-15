@@ -1891,7 +1891,7 @@ def sorted_tracks(audiofiles):
 
 def open_files(filename_list, sorted=True, messenger=None,
                no_duplicates=False, warn_duplicates=False,
-               opened_files=None, unsupported_formats=None):
+               opened_files=None):
     """returns a list of AudioFile objects
     from a list of filename strings or Filename objects
 
@@ -1909,10 +1909,6 @@ def open_files(filename_list, sorted=True, messenger=None,
 
     "opened_files" is a set object containing previously opened
     Filename objects and which newly opened Filename objects are added to
-
-    "unsupported_formats" is a set object containing the .NAME strings
-    of AudioFile objects which have already been displayed
-    as unsupported in order to avoid displaying duplicate messages
     """
 
     from audiotools.text import (ERR_DUPLICATE_FILE,
@@ -1920,8 +1916,6 @@ def open_files(filename_list, sorted=True, messenger=None,
 
     if opened_files is None:
         opened_files = set()
-    if unsupported_formats is None:
-        unsupported_formats = set()
 
     to_return = []
 
@@ -1939,17 +1933,7 @@ def open_files(filename_list, sorted=True, messenger=None,
                 audio_class = file_type(f)
 
             if audio_class is not None:
-                if audio_class.available(BIN):
-                    # is a supported audio type with needed binaries
-                    to_return.append(audio_class(str(filename)))
-                elif ((messenger is not None) and
-                      (audio_class.NAME not in unsupported_formats)):
-                    # is a supported audio type without needed binaries
-                    # or libraries
-                    audio_class.missing_components(messenger)
-
-                    # but only display format binaries message once
-                    unsupported_formats.add(audio_class.NAME)
+                to_return.append(audio_class(str(filename)))
             else:
                 # not a support audio type
                 pass
@@ -4280,68 +4264,6 @@ class AudioFile(object):
         else:
             return True
 
-    @classmethod
-    def available(cls, system_binaries):
-        """returns True if all necessary compenents are available
-        to support format"""
-
-        for command in cls.BINARIES:
-            if not system_binaries.can_execute(system_binaries[command]):
-                return False
-        else:
-            return True
-
-    @classmethod
-    def missing_components(cls, messenger):
-        """given a Messenger object, displays missing binaries or libraries
-        needed to support this format and where to get them"""
-
-        binaries = cls.BINARIES
-        urls = cls.BINARY_URLS
-        format_ = cls.NAME.decode('ascii')
-
-        if len(binaries) == 0:
-            # no binaries, so they can't be missing, so nothing to display
-            pass
-        elif len(binaries) == 1:
-            # one binary has only a single URL to display
-            from audiotools.text import (ERR_PROGRAM_NEEDED,
-                                         ERR_PROGRAM_DOWNLOAD_URL,
-                                         ERR_PROGRAM_PACKAGE_MANAGER)
-            messenger.info(
-                ERR_PROGRAM_NEEDED %
-                {"program": u"\"%s\"" % (binaries[0].decode('ascii')),
-                 "format": format_})
-            messenger.info(
-                ERR_PROGRAM_DOWNLOAD_URL %
-                {"program": binaries[0].decode('ascii'),
-                 "url": urls[binaries[0]]})
-            messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
-        else:
-            # multiple binaries may have one or more URLs to display
-            from audiotools.text import (ERR_PROGRAMS_NEEDED,
-                                         ERR_PROGRAMS_DOWNLOAD_URL,
-                                         ERR_PROGRAM_DOWNLOAD_URL,
-                                         ERR_PROGRAM_PACKAGE_MANAGER)
-            messenger.info(
-                ERR_PROGRAMS_NEEDED %
-                {"programs": u", ".join([u"\"%s\"" % (b.decode('ascii'))
-                                         for b in binaries]),
-                 "format": format_})
-            if len({urls[b] for b in binaries}) == 1:
-                # if they all come from one URL (like Vorbis tools)
-                # display only that URL
-                messenger.info(
-                    ERR_PROGRAMS_DOWNLOAD_URL % {"url": urls[binaries[0]]})
-            else:
-                # otherwise, display the URL for each binary
-                for b in binaries:
-                    messenger.info(
-                        ERR_PROGRAM_DOWNLOAD_URL %
-                        {"program": b.decode('ascii'),
-                         "url": urls[b]})
-            messenger.info(ERR_PROGRAM_PACKAGE_MANAGER)
-
     def clean(self, output_filename=None):
         """cleans the file of known data and metadata problems
 
@@ -5774,9 +5696,7 @@ AVAILABLE_TYPES = (FlacAudio,
                    OpusAudio,
                    TrueAudio)
 
-TYPE_MAP = {track_type.NAME: track_type
-            for track_type in AVAILABLE_TYPES
-            if track_type.available(BIN)}
+TYPE_MAP = {track_type.NAME: track_type for track_type in AVAILABLE_TYPES}
 
 DEFAULT_QUALITY = {track_type.NAME:
                    config.get_default("Quality",
