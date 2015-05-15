@@ -7872,7 +7872,7 @@
    Perhaps a simple .to_wave(), .from_wave() approach
    which returns a whole .wav file as a file stream
    would be easiest.
-** TODO Make AudioFile.available() classmethod finer-grained
+** DONE Make AudioFile.available() classmethod finer-grained
    That is, formats can be readable but not writable, or taggable but
    not readable or writeable.  This will allow read-only support for
    some obscure formats like .tak or .ape by porting implementations
@@ -7908,7 +7908,7 @@
     - [X] WavPackAudio
     - [X] WaveAudio
 *** DONE Add AudioFile.supports_metadata()
-*** TODO Remove AudioFile.missing_components() ?
+*** DONE Remove AudioFile.missing_components() ?
     Leave this job to setup.py and audiotools-config, perhaps.
 *** DONE Utilities
 **** DONE audiotools-config
@@ -7932,8 +7932,8 @@
      - [X] output format must supports_from_pcm()
 **** DONE trackverify
      - [X] input format must supports_to_pcm()
-*** TODO Update documentation
-*** TODO Update unit tests
+*** DONE Update documentation
+*** DONE Update unit tests
 ** TODO Add seeking to Ogg FLAC decoder
    Might as well make the format consistent
 ** TODO Support building cue sheets from discs

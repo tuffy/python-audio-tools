@@ -492,6 +492,11 @@ AudioFile Objects
    May return a :class:`PCMReaderError` if an error occurs
    initializing the decoder.
 
+.. classmethod:: AudioFile.supports_to_pcm()
+
+   Returns ``True`` if the necessary libraries or binaries
+   are installed to support decoding this format.
+
 .. classmethod:: AudioFile.from_pcm(filename, pcmreader[, compression][, total_pcm_frames])
 
    Takes a filename string, :class:`PCMReader`-compatible object,
@@ -511,6 +516,11 @@ AudioFile Objects
 
    >>> audiotools.MP3Audio.from_pcm("track.mp3",
    ...                              audiotools.open("track.flac").to_pcm())
+
+.. classmethod:: AudioFile.supports_from_pcm()
+
+   Returns ``True`` if the necessary libraries or binaries
+   are installed to support encoding this format.
 
 .. method:: AudioFile.convert(filename, target_class[, compression[, progress]])
 
@@ -674,19 +684,6 @@ AudioFile Objects
 
    Raises :exc:`IOError` if some error occurs when writing the new file.
    Raises :exc:`ValueError` if the file itself is invalid.
-
-.. classmethod:: AudioFile.available(system_binaries)
-
-   Takes the :attr:`audiotools.BIN` object of system binaries.
-   Returns ``True`` if all the binaries necessary to implement
-   this :class:`AudioFile`-compatible class are present and executable.
-   Returns ``False`` if not.
-
-.. classmethod:: AudioFile.missing_components(messenger)
-
-   Takes a :class:`Messenger` object and displays missing binaries
-   or libraries needed to support this format and where to get them,
-   if any.
 
 WaveContainer Objects
 ^^^^^^^^^^^^^^^^^^^^^
