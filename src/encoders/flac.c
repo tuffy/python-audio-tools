@@ -1337,7 +1337,7 @@ write_lpc_subframe(BitstreamWriter *output,
                    const int coefficients[])
 {
     int residuals[sample_count - 1];
-    unsigned i;
+    register unsigned i;
 
     for (i = 0; i < predictor_order; i++) {
         output->write_signed(output, bits_per_sample, samples[i]);
@@ -1348,8 +1348,8 @@ write_lpc_subframe(BitstreamWriter *output,
         output->write_signed(output, precision, coefficients[i]);
     }
     for (i = predictor_order; i < sample_count; i++) {
-        int64_t sum = 0;
-        unsigned j;
+        register int64_t sum = 0;
+        register unsigned j;
         for (j = 0; j < predictor_order; j++) {
             sum += ((int64_t)coefficients[j] * (int64_t)samples[i - j - 1]);
         }
@@ -1503,13 +1503,14 @@ compute_autocorrelation_values(unsigned sample_count,
                                double autocorrelated[])
 {
     unsigned i;
-    unsigned j;
 
     for (i = 0; i <= max_lpc_order; i++) {
-        autocorrelated[i] = 0.0;
+        register double a = 0.0;
+        register unsigned j;
         for (j = 0; j < sample_count - i; j++) {
-            autocorrelated[i] += windowed_signal[j] * windowed_signal[j + i];
+            a += windowed_signal[j] * windowed_signal[j + i];
         }
+        autocorrelated[i] = a;
     }
 }
 
@@ -1796,8 +1797,8 @@ best_rice_parameters(const struct flac_encoding_options *options,
                     (p == 0) ? 0 :
                     p * sample_count / partition_count - predictor_order;
                 const unsigned end = start + partition_samples;
-                unsigned j;
-                unsigned partition_sum = 0;
+                register unsigned j;
+                register unsigned partition_sum = 0;
                 unsigned partition_size;
 
                 for (j = start; j < end; j++) {
