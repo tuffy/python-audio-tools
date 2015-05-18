@@ -374,8 +374,6 @@ class Track(SheetTrack):
 
 class Index(SheetIndex):
     def __init__(self, number, timestamp):
-        assert(isinstance(number, (int, long)))
-        assert(isinstance(timestamp, (int, long)))
         self.__number__ = number
         self.__timestamp__ = timestamp
 
