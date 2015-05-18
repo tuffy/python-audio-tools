@@ -16,6 +16,8 @@ ttaenc \
 ttadec \
 opusenc
 
+CC = gcc
+
 all: $(BINARIES)
 
 clean:
@@ -43,7 +45,7 @@ ttadec: $(OBJS) decoders/tta.c decoders/tta.h pcm_conv.o
 	$(CC) $(FLAGS) -o ttadec decoders/tta.c $(OBJS) pcm_conv.o -DSTANDALONE
 
 flacenc: encoders/flac.c encoders/flac.h bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o
-	$(CC) $(FLAGS) -o $@ encoders/flac.c bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
+	$(CC) $(FLAGS) -pg -o $@ encoders/flac.c bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
 
 alacenc: $(OBJS) encoders/alac.c encoders/alac.h pcm_conv.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c $(OBJS) pcm_conv.o -DSTANDALONE -lm

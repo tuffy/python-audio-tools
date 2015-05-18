@@ -899,7 +899,7 @@ class Flac_CUESHEET(Sheet):
                    tracks=([Flac_CUESHEET_track.converted(t, sample_rate)
                             for t in sheet] +
                            [Flac_CUESHEET_track(offset=total_pcm_frames,
-                                                number=170,
+                                                number=170 if is_cdda else 255,
                                                 ISRC=b"\x00" * 12,
                                                 track_type=0,
                                                 pre_emphasis=0,
@@ -1780,7 +1780,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                     self.sample_rate(),
                     (self.sample_rate() == 44100) and
                     (self.channels() == 2) and
-                    (self.bits_per_sample() == 16))])
+                    (self.bits_per_sample() == 16) and
+                    (len(cuesheet) <= 99))])
 
             # wipe out any CDTOC tag
             try:

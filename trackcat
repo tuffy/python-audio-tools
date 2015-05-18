@@ -77,6 +77,12 @@ if (__name__ == '__main__'):
                         metavar="FILENAME",
                         help=_.OPT_CUESHEET_TRACKCAT)
 
+    parser.add_argument("--add-cue",
+                        action="store_true",
+                        default=False,
+                        dest="add_cuesheet",
+                        help=_.OPT_ADD_CUESHEET_TRACKCAT)
+
     parser.add_argument("-V", "--verbose",
                         dest="verbosity",
                         choices=audiotools.VERBOSITY_LEVELS,
@@ -205,35 +211,6 @@ if (__name__ == '__main__'):
         msg.error(_.ERR_BPS_MISMATCH)
         sys.exit(1)
 
-    # if embedding a cuesheet, try to read it before doing any work
-    if options.cuesheet is not None:
-        try:
-            cuesheet = audiotools.read_sheet(options.cuesheet)
-
-            # ensure cuesheet will embed properly
-            if not cuesheet.image_formatted():
-                msg.error(_.ERR_CUE_INVALID_FORMAT)
-                sys.exit(1)
-
-            if len(cuesheet) != len(audiofiles):
-                msg.error(_.ERR_CUE_INSUFFICIENT_TRACKS)
-                sys.exit(1)
-
-            for (input_track, cuesheet_track) in zip(audiofiles,
-                                                     cuesheet.track_numbers()):
-                track_length = cuesheet.track_length(cuesheet_track)
-                if ((track_length is not None) and
-                    (track_length != input_track.seconds_length())):
-                    msg.error(_.ERR_CUE_LENGTH_MISMATCH % (cuesheet_track))
-                    sys.exit(1)
-
-            input_filenames.add(audiotools.Filename(options.cuesheet))
-        except audiotools.SheetException as err:
-            msg.error(err)
-            sys.exit(1)
-    else:
-        cuesheet = None
-
     if options.filename is None:
         msg.error(_.ERR_NO_OUTPUT_FILE)
         sys.exit(1)
@@ -276,6 +253,44 @@ if (__name__ == '__main__'):
                   {"quality": options.quality,
                    "type": AudioType.NAME})
         sys.exit(1)
+
+    # if embedding a cuesheet, try to read it before doing any work
+    if options.cuesheet is not None:
+        try:
+            cuesheet = audiotools.read_sheet(options.cuesheet)
+
+            # ensure cuesheet will embed properly
+            if not cuesheet.image_formatted():
+                msg.error(_.ERR_CUE_INVALID_FORMAT)
+                sys.exit(1)
+
+            if len(cuesheet) != len(audiofiles):
+                msg.error(_.ERR_CUE_INSUFFICIENT_TRACKS)
+                sys.exit(1)
+
+            for (input_track, cuesheet_track) in zip(audiofiles,
+                                                     cuesheet.track_numbers()):
+                track_length = cuesheet.track_length(cuesheet_track)
+                if ((track_length is not None) and
+                    (track_length != input_track.seconds_length())):
+                    msg.error(_.ERR_CUE_LENGTH_MISMATCH % (cuesheet_track))
+                    sys.exit(1)
+
+            input_filenames.add(audiotools.Filename(options.cuesheet))
+        except audiotools.SheetException as err:
+            msg.error(err)
+            sys.exit(1)
+    elif options.add_cuesheet is not None:
+        if len(audiofiles) <= (99 if AudioType is not audiotools.FlacAudio
+                               else 254):
+            cuesheet = audiotools.Sheet.from_tracks(
+                audiofiles,
+                filename=output_filename.__unicode__())
+        else:
+            msg.error(_.ERR_TOO_MANY_CUESHEET_FILES)
+            sys.exit(1)
+    else:
+        cuesheet = None
 
     # constuct a MetaData object from our audiofiles
     # which may be None if there is no metadata

@@ -4507,6 +4507,27 @@ class Sheet(object):
         return cls(sheet_tracks=[SheetTrack.converted(t) for t in sheet],
                    metadata=sheet.get_metadata())
 
+    @classmethod
+    def from_tracks(cls, audiofiles, filename=u"CDImage.wav"):
+        """given an iterable of AudioFile objects, returns a Sheet
+        filename is an optional name for the sheet as a Unicode object"""
+
+        from fractions import Fraction
+
+        sheet_tracks = []
+        offset = Fraction(0, 1)
+
+        for (number, audiofile) in enumerate(audiofiles, 1):
+            sheet_tracks.append(
+                SheetTrack(number=number,
+                           track_indexes=[SheetIndex(number=1,
+                                                     offset=offset)],
+                           metadata=audiofile.get_metadata(),
+                           filename=filename))
+            offset += audiofile.seconds_length()
+
+        return cls(sheet_tracks=sheet_tracks, metadata=None)
+
     def __repr__(self):
         return "Sheet(sheet_tracks=%s, metadata=%s)" % \
             (repr(self.__sheet_tracks__), repr(self.__metadata__))

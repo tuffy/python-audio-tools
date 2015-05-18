@@ -138,6 +138,7 @@ OPT_SPEED = u"the speed to burn the CD at"
 OPT_CUESHEET_TRACK2CD = u"the cuesheet to use for writing tracks"
 OPT_JOINT = u"the maximum number of processes to run at a time"
 OPT_CUESHEET_TRACKCAT = u"a cuesheet to embed in the output file"
+OPT_ADD_CUESHEET_TRACKCAT = u"create a cuesheet to embed in the output file"
 OPT_CUESHEET_TRACKSPLIT = u"the cuesheet to use for splitting track"
 OPT_CUESHEET_TRACKVERIFY = \
     u"the cuesheet to verify disc image with AccurateRip"
@@ -687,6 +688,7 @@ ERR_OUTPUT_OUTPUTS_ARE_INPUT = \
     u"output tracks must have different names than input tracks"
 ERR_OUTPUT_INVALID_FORMAT = u"output tracks must have valid format string"
 ERR_CANCELLED = u"cancelled"
+ERR_TOO_MANY_CUESHEET_FILES = u"too many files for cuesheet"
 
 # Cleaning messages
 CLEAN_REMOVE_DUPLICATE_TAG = u"removed duplicate tag %(field)s"

@@ -29,6 +29,13 @@ San Francisco, California, 94105, USA.
     <option long="cue" arg="filename">
       a cuesheet to embed in the output file
     </option>
+    <option long="add-cue">
+      Embed a cuesheet in the output file using the track lengths
+      as index points.
+      This option assures a concatenated file can be re-split
+      into its original tracks even if the original
+      cuesheet is not available.
+    </option>
     <option short="V" long="verbose" arg="verbosity">
       The level of output to display.
       Choose between 'normal', 'quiet' and 'debug'.
