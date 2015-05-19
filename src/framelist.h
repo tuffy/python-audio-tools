@@ -78,3 +78,12 @@ put_sample(int *pcm_data,
 {
     pcm_data[(pcm_frame * channel_count) + channel_number] = sample;
 }
+
+/*given channel number a and b (which must be less than channel count)
+  swaps the given samples in those channels over the entirety of pcm_data*/
+void
+swap_channel_data(int *pcm_data,
+                  unsigned channel_a,
+                  unsigned channel_b,
+                  unsigned channel_count,
+                  unsigned pcm_frames);

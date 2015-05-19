@@ -1,7 +1,6 @@
 #include <Python.h>
 #include <stdint.h>
 #include <vorbis/vorbisfile.h>
-#include "../array.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -32,7 +31,6 @@ typedef struct {
     long rate;
     int closed;
 
-    aa_int* channels;
     PyObject* audiotools_pcm;
 } decoders_VorbisDecoder;
 

@@ -72,3 +72,18 @@ put_channel_data(int *pcm_data,
         channel_data += 1;
     }
 }
+
+void
+swap_channel_data(int *pcm_data,
+                  unsigned channel_a,
+                  unsigned channel_b,
+                  unsigned channel_count,
+                  unsigned pcm_frames)
+{
+    for (; pcm_frames; pcm_frames--) {
+        const int c = pcm_data[channel_a];
+        pcm_data[channel_a] = pcm_data[channel_b];
+        pcm_data[channel_b] = c;
+        pcm_data += channel_count;
+    }
+}
