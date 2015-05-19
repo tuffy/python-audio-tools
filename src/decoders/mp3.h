@@ -1,8 +1,6 @@
 #include <Python.h>
 #include <stdint.h>
 #include <mpg123.h>
-#include "../array.h"
-#include "../pcmconv.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -34,7 +32,6 @@ typedef struct {
     int closed;
 
     PyObject *audiotools_pcm;
-    a_int *buffer;
 } decoders_MP3Decoder;
 
 static PyObject*
