@@ -33,7 +33,6 @@ Sine_Mono_init(decoders_Sine_Mono* self, PyObject *args, PyObject *kwds) {
     double f1;
     double f2;
 
-    self->buffer = aa_int_new();
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
@@ -81,7 +80,6 @@ Sine_Mono_init(decoders_Sine_Mono* self, PyObject *args, PyObject *kwds) {
 }
 
 void Sine_Mono_dealloc(decoders_Sine_Mono* self) {
-    self->buffer->del(self->buffer);
     Py_XDECREF(self->audiotools_pcm);
 
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -99,12 +97,12 @@ Sine_Mono_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 static PyObject*
 Sine_Mono_read(decoders_Sine_Mono* self, PyObject* args) {
+    pcm_FrameList *framelist;
     int requested_frames;
     int frames_to_read;
-    int i;
     double d;
     int ia;
-    a_int* buffer1;
+    int *samples;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
@@ -115,25 +113,28 @@ Sine_Mono_read(decoders_Sine_Mono* self, PyObject* args) {
         return NULL;
 
     frames_to_read = MIN(MAX(requested_frames, 1), self->remaining_pcm_frames);
+    self->remaining_pcm_frames -= frames_to_read;
 
-    self->buffer->reset(self->buffer);
-    buffer1 = self->buffer->append(self->buffer);
+    framelist = new_FrameList(self->audiotools_pcm,
+                              1,
+                              self->bits_per_sample,
+                              frames_to_read);
 
-    for (i = 0; i < frames_to_read; i++) {
+    samples = framelist->samples;
+
+    for (; frames_to_read; frames_to_read--) {
         d = ((self->a1 * sin(self->theta1)) +
              (self->a2 * sin(self->theta2))) * (double)(self->full_scale);
 
         ia = (int)(d + 0.5);
-        buffer1->append(buffer1, ia);
+        *samples = ia;
+        samples++;
         self->theta1 += self->delta1;
         self->theta2 += self->delta2;
     }
 
-    self->remaining_pcm_frames -= frames_to_read;
 
-    return aa_int_to_FrameList(self->audiotools_pcm,
-                               self->buffer,
-                               self->bits_per_sample);
+    return (PyObject*)framelist;
 }
 
 static PyObject*
@@ -196,8 +197,6 @@ Sine_Stereo_init(decoders_Sine_Stereo* self, PyObject *args, PyObject *kwds) {
     double f1;
     double f2;
 
-    self->buffer = aa_int_new();
-
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
@@ -246,7 +245,6 @@ Sine_Stereo_init(decoders_Sine_Stereo* self, PyObject *args, PyObject *kwds) {
 }
 
 void Sine_Stereo_dealloc(decoders_Sine_Stereo* self) {
-    self->buffer->del(self->buffer);
     Py_XDECREF(self->audiotools_pcm);
 
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -263,13 +261,13 @@ Sine_Stereo_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 static PyObject*
 Sine_Stereo_read(decoders_Sine_Stereo* self, PyObject* args) {
+    pcm_FrameList *framelist;
     int requested_frames;
     int frames_to_read;
     int i;
     double d;
     int ia;
-    a_int* buffer1;
-    a_int* buffer2;
+    int *samples;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
@@ -281,29 +279,29 @@ Sine_Stereo_read(decoders_Sine_Stereo* self, PyObject* args) {
 
     frames_to_read = MIN(MAX(requested_frames, 1), self->remaining_pcm_frames);
 
-    self->buffer->reset(self->buffer);
-    buffer1 = self->buffer->append(self->buffer);
-    buffer2 = self->buffer->append(self->buffer);
+    framelist = new_FrameList(self->audiotools_pcm,
+                              2,
+                              self->bits_per_sample,
+                              frames_to_read);
+    samples = framelist->samples;
 
     for (i = 0; i < frames_to_read; i++) {
         d = ((self->a1 * sin(self->theta1)) +
              (self->a2 * sin(self->theta2))) * (double)(self->full_scale);
         ia = (int)(d + 0.5);
-        buffer1->append(buffer1, ia);
+        put_sample(samples, 0, 2, i, ia);
         d = -((self->a1 * sin(self->theta1 * self->fmult)) +
               (self->a2 * sin(self->theta2 * self->fmult))) *
             (double)(self->full_scale);
         ia = (int)(d + 0.5);
-        buffer2->append(buffer2, ia);
+        put_sample(samples, 1, 2, i, ia);
         self->theta1 += self->delta1;
         self->theta2 += self->delta2;
     }
 
     self->remaining_pcm_frames -= frames_to_read;
 
-    return aa_int_to_FrameList(self->audiotools_pcm,
-                               self->buffer,
-                               self->bits_per_sample);
+    return (PyObject*)framelist;
 }
 
 static PyObject*
@@ -363,8 +361,6 @@ Sine_Stereo_channel_mask(decoders_Sine_Stereo *self, void *closure) {
 
 int
 Sine_Simple_init(decoders_Sine_Simple* self, PyObject *args, PyObject *kwds) {
-    self->buffer = aa_int_new();
-
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
@@ -406,7 +402,6 @@ Sine_Simple_init(decoders_Sine_Simple* self, PyObject *args, PyObject *kwds) {
 }
 
 void Sine_Simple_dealloc(decoders_Sine_Simple* self) {
-    self->buffer->del(self->buffer);
     Py_XDECREF(self->audiotools_pcm);
 
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -424,26 +419,30 @@ Sine_Simple_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 static PyObject*
 Sine_Simple_read(decoders_Sine_Simple* self, PyObject* args) {
+    pcm_FrameList *framelist;
     int requested_frames;
     int frames_to_read;
     int i;
-    a_int* buffer;
     double d;
     int ia;
+    int *samples;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
         return NULL;
     }
 
-
     if (!PyArg_ParseTuple(args, "i", &requested_frames))
         return NULL;
 
-    self->buffer->reset(self->buffer);
-    buffer = self->buffer->append(self->buffer);
-
     frames_to_read = MIN(MAX(requested_frames, 1), self->remaining_pcm_frames);
+
+    framelist = new_FrameList(self->audiotools_pcm,
+                              1,
+                              self->bits_per_sample,
+                              frames_to_read);
+
+    samples = framelist->samples;
 
     for (i = 0; i < frames_to_read; i++) {
         d = (double)(self->max_value) *
@@ -451,14 +450,14 @@ Sine_Simple_read(decoders_Sine_Simple* self, PyObject* args) {
                  (double)(self->i % self->count)) /
                 (double)(self->count));
         ia = (int)(round(d));
-        buffer->append(buffer, ia);
+        *samples = ia;
+        samples++;
         self->i += 1;
     }
 
     self->remaining_pcm_frames -= frames_to_read;
-    return aa_int_to_FrameList(self->audiotools_pcm,
-                               self->buffer,
-                               self->bits_per_sample);
+
+    return (PyObject*)framelist;
 }
 
 static PyObject*
@@ -537,7 +536,6 @@ SameSample_init(decoders_SameSample* self, PyObject *args, PyObject *kwds)
                              NULL};
 
     self->closed = 0;
-    self->buffer = a_int_new();
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
@@ -596,7 +594,6 @@ SameSample_init(decoders_SameSample* self, PyObject *args, PyObject *kwds)
 
 void SameSample_dealloc(decoders_SameSample* self)
 {
-    self->buffer->del(self->buffer);
     Py_XDECREF(self->audiotools_pcm);
 
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -606,6 +603,10 @@ static PyObject*
 SameSample_read(decoders_SameSample* self, PyObject* args)
 {
     int pcm_frames;
+    unsigned total_samples;
+    pcm_FrameList *framelist;
+    const int sample = self->sample;
+    int *samples;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "unable to read closed stream");
@@ -617,16 +618,23 @@ SameSample_read(decoders_SameSample* self, PyObject* args)
 
     pcm_frames = MIN(MAX(pcm_frames, 1), self->remaining_pcm_frames);
 
-    self->buffer->mset(self->buffer,
-                       pcm_frames * self->channels,
-                       self->sample);
+    framelist = new_FrameList(self->audiotools_pcm,
+                              self->channels,
+                              self->bits_per_sample,
+                              pcm_frames);
+
+    samples = framelist->samples;
+
+    for (total_samples = pcm_frames * self->channels;
+         total_samples;
+         total_samples--) {
+         *samples = sample;
+         samples++;
+    }
 
     self->remaining_pcm_frames -= pcm_frames;
 
-    return a_int_to_FrameList(self->audiotools_pcm,
-                              self->buffer,
-                              self->channels,
-                              self->bits_per_sample);
+    return (PyObject*)framelist;
 }
 
 static PyObject*

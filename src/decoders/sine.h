@@ -1,6 +1,5 @@
 #include <Python.h>
 #include <stdint.h>
-#include "../array.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -38,7 +37,6 @@ typedef struct {
 
     int closed;
 
-    aa_int* buffer;
     PyObject* audiotools_pcm;
 } decoders_Sine_Mono;
 
@@ -164,7 +162,6 @@ typedef struct {
 
     int closed;
 
-    aa_int* buffer;
     PyObject* audiotools_pcm;
 } decoders_Sine_Stereo;
 
@@ -285,7 +282,6 @@ typedef struct {
 
     int closed;
 
-    aa_int* buffer;
     PyObject* audiotools_pcm;
 } decoders_Sine_Simple;
 
@@ -405,7 +401,6 @@ typedef struct {
 
     int closed;
 
-    a_int* buffer;
     PyObject* audiotools_pcm;
 } decoders_SameSample;
 
