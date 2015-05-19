@@ -1,7 +1,5 @@
 #include <Python.h>
 #include <opus/opusfile.h>
-#include "../array.h"
-#include "../pcmconv.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -29,7 +27,6 @@ typedef struct {
 
     int channel_count;
     int closed;
-    aa_int *channels;
     PyObject *audiotools_pcm;
 } decoders_OpusDecoder;
 

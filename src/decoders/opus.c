@@ -40,7 +40,6 @@ OpusDecoder_init(decoders_OpusDecoder *self,
 
     self->opus_file = NULL;
     self->audiotools_pcm = NULL;
-    self->channels = NULL;
     self->closed = 0;
 
     if (!PyArg_ParseTuple(args, "s", &filename))
@@ -56,8 +55,6 @@ OpusDecoder_init(decoders_OpusDecoder *self,
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
 
-    self->channels = aa_int_new();
-
     return 0;
 }
 
@@ -68,9 +65,6 @@ OpusDecoders_dealloc(decoders_OpusDecoder *self)
         op_free(self->opus_file);
 
     Py_XDECREF(self->audiotools_pcm);
-
-    if (self->channels != NULL)
-        self->channels->del(self->channels);
 
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -161,6 +155,7 @@ OpusDecoder_channel_mask(decoders_OpusDecoder *self, void *closure)
 
 /*assume at least 120ms across 8 channels, minimum*/
 #define BUF_SIZE 5760 * 8
+#define BITS_PER_SAMPLE 16
 
 static PyObject*
 OpusDecoder_read(decoders_OpusDecoder* self, PyObject *args)
@@ -178,25 +173,19 @@ OpusDecoder_read(decoders_OpusDecoder* self, PyObject *args)
                                    BUF_SIZE,
                                    NULL)) >= 0) {
         const int channel_count = op_head(self->opus_file, -1)->channel_count;
-        aa_int *channels = self->channels;
-        int c;
-        void (*a_int_swap)(a_int* a, a_int* b) = channels->_[0]->swap;
+        int i;
+        pcm_FrameList *framelist = new_FrameList(self->audiotools_pcm,
+                                                 channel_count,
+                                                 BITS_PER_SAMPLE,
+                                                 pcm_frames_read);
+        int *samples = framelist->samples;
 
-        channels->reset(channels);
-
-        /*split buffer by channel*/
-        for (c = 0; c < channel_count; c++) {
-            a_int *channel = channels->append(channels);
-            int i;
-
-            channel->resize(channel, pcm_frames_read);
-            for (i = 0; i < pcm_frames_read; i++) {
-                a_append(channel, pcm[c + (i * channel_count)]);
-            }
+        for (i = 0; i < pcm_frames_read * channel_count; i++) {
+            samples[i] = pcm[i];
         }
 
         /*reorder channels to .wav order if necessary*/
-        switch (channel_count) {
+        switch (self->channel_count) {
         case 1:
         case 2:
         default:
@@ -204,7 +193,9 @@ OpusDecoder_read(decoders_OpusDecoder* self, PyObject *args)
             break;
         case 3:
             /*fL fC fR -> fL fR fC*/
-            a_int_swap(channels->_[1], channels->_[2]);
+            swap_channel_data(samples, 1, 2,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
             break;
         case 4:
             /*fL fR bL bR -> fL fR bL bR*/
@@ -212,53 +203,76 @@ OpusDecoder_read(decoders_OpusDecoder* self, PyObject *args)
             break;
         case 5:
             /*fL fC fR bL bR -> fL fR fC bL bR*/
-            a_int_swap(channels->_[1], channels->_[2]);
+            swap_channel_data(samples, 1, 2,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
             break;
         case 6:
             /*fL fC fR bL bR LFE -> fL fR fC bL bR LFE*/
-            a_int_swap(channels->_[1], channels->_[2]);
+            swap_channel_data(samples, 1, 2,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
 
             /*fL fR fC bL bR LFE -> fL fR fC LFE bR bL*/
-            a_int_swap(channels->_[3], channels->_[5]);
+            swap_channel_data(samples, 3, 5,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
 
             /*fL fR fC LFE bR bL -> fL fR fC LFE bL bR*/
-            a_int_swap(channels->_[4], channels->_[5]);
+            swap_channel_data(samples, 4, 5,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
             break;
         case 7:
             /*fL fC fR sL sR bC LFE -> fL fR fC sL sR bC LFE*/
-            a_int_swap(channels->_[1], channels->_[2]);
+            swap_channel_data(samples, 1, 2,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
 
             /*fL fR fC sL sR bC LFE -> fL fR fC LFE sR bC sL*/
-            a_int_swap(channels->_[3], channels->_[6]);
+            swap_channel_data(samples, 3, 6,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
 
             /*fL fR fC LFE sR bC sL -> fL fR fC LFE bC sR sL*/
-            a_int_swap(channels->_[4], channels->_[5]);
+            swap_channel_data(samples, 4, 5,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
 
             /*fL fR fC LFE bC sR sL -> fL fR fC LFE bC sL sR*/
-            a_int_swap(channels->_[5], channels->_[6]);
+            swap_channel_data(samples, 5, 6,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
             break;
         case 8:
             /*fL fC fR sL sR bL bR LFE -> fL fR fC sL sR bL bR LFE*/
-            a_int_swap(channels->_[1], channels->_[2]);
+            swap_channel_data(samples, 1, 2,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
 
             /*fL fR fC sL sR bL bR LFE -> fL fR fC LFE sR bL bR sL*/
-            a_int_swap(channels->_[3], channels->_[6]);
+            swap_channel_data(samples, 3, 6,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
 
             /*fL fR fC LFE sR bL bR sL -> fL fR fC LFE bL sR bR sL*/
-            a_int_swap(channels->_[4], channels->_[5]);
+            swap_channel_data(samples, 4, 5,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
 
             /*fL fR fC LFE bL sR bR sL -> fL fR fC LFE bL bR sR sL*/
-            a_int_swap(channels->_[5], channels->_[6]);
+            swap_channel_data(samples, 5, 6,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
 
             /*fL fR fC LFE bL bR sR sL -> fL fR fC LFE bL bR sL sR*/
-            a_int_swap(channels->_[6], channels->_[7]);
+            swap_channel_data(samples, 6, 7,
+                              self->channel_count,
+                              (unsigned)pcm_frames_read);
             break;
         }
 
-        /*return new FrameList object*/
-        return aa_int_to_FrameList(self->audiotools_pcm,
-                                   channels,
-                                   16);
+        return (PyObject*)framelist;
     } else {
         /*some sort of read error occurred*/
         PyErr_SetString(PyExc_ValueError, "error reading from file");

@@ -149,7 +149,7 @@ MP3Decoder_read(decoders_MP3Decoder* self, PyObject *args)
         framelist = new_FrameList(self->audiotools_pcm,
                                   self->channels,
                                   BITS_PER_SAMPLE,
-                                  buffer_size / 2 / self->channels);
+                                  (unsigned)(buffer_size / 2 / self->channels));
 
         samples = framelist->samples;
 
@@ -158,16 +158,6 @@ MP3Decoder_read(decoders_MP3Decoder* self, PyObject *args)
         }
 
         return (PyObject*)framelist;
-        ///*convert output buffer to FrameList object*/
-        //self->buffer->reset_for(self->buffer, (unsigned)(buffer_size / 2));
-        //for (i = 0; i < (buffer_size / 2); i++)
-        //    a_append(self->buffer, buffer[i]);
-
-        ///*return FrameList object*/
-        //return a_int_to_FrameList(self->audiotools_pcm,
-        //                          self->buffer,
-        //                          self->channels,
-        //                          16);
     default:
         /*raise exception*/
         PyErr_SetString(PyExc_ValueError, "error decoding MP3 frame");
