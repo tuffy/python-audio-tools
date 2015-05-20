@@ -253,7 +253,7 @@ class VorbisAudio(AudioFile):
         try:
 
             encode_vorbis(filename,
-                          BufferedPCMReader(pcmreader),
+                          pcmreader,
                           float(compression) / 10)
 
             if ((total_pcm_frames is not None) and

@@ -1273,7 +1273,7 @@ next_fixed_order(unsigned sample_count,
                  const int previous_order[],
                  int next_order[])
 {
-    unsigned i;
+    register unsigned i;
     for (i = 1; i < sample_count; i++) {
         next_order[i - 1] = previous_order[i] - previous_order[i - 1];
     }
@@ -1282,7 +1282,7 @@ next_fixed_order(unsigned sample_count,
 static uint64_t
 abs_sum(unsigned count, const int values[])
 {
-    uint64_t accumulator = 0;
+    register uint64_t accumulator = 0;
     for (; count; count--) {
         accumulator += abs(*values);
         values += 1;

@@ -1,8 +1,8 @@
-#include "../pcmconv.h"
 #include <stdlib.h>
 #include <time.h>
 #include <vorbis/vorbisenc.h>
 #include <ogg/ogg.h>
+#include "../pcmreader.h"
 
 #define BLOCK_SIZE 1024
 
@@ -46,17 +46,24 @@ static const char*
 encode_strerror(result_t result);
 
 static void
-reorder_channels(unsigned channel_mask, aa_int *samples);
+reorder_channels(unsigned channel_mask, unsigned pcm_frames, int *samples);
+
+static void
+swap_channel_data(int *pcm_data,
+                  unsigned channel_a,
+                  unsigned channel_b,
+                  unsigned channel_count,
+                  unsigned pcm_frames);
 
 static result_t
-encode_ogg_vorbis(char *filename, pcmreader *pcmreader, float quality);
+encode_ogg_vorbis(char *filename, struct PCMReader *pcmreader, float quality);
 
 #ifndef STANDALONE
 PyObject*
 encoders_encode_vorbis(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
     char *filename;
-    pcmreader *pcmreader;
+    struct PCMReader *pcmreader;
     float quality;
     result_t result;
 
@@ -67,7 +74,7 @@ encoders_encode_vorbis(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     if (!PyArg_ParseTupleAndKeywords(args, keywds, "sO&f", kwlist,
                                      &filename,
-                                     pcmreader_converter,
+                                     py_obj_to_pcmreader,
                                      &pcmreader,
                                      &quality)) {
         return NULL;
@@ -141,10 +148,22 @@ encode_strerror(result_t result)
     }
 }
 
+enum {
+    fL = 0x1,
+    fR = 0x2,
+    fC = 0x4,
+    LFE = 0x8,
+    bL = 0x10,
+    bR = 0x20,
+    bC = 0x100,
+    sL = 0x200,
+    sR = 0x400
+};
+
 static result_t
-encode_ogg_vorbis(char *filename, pcmreader *pcmreader, float quality)
+encode_ogg_vorbis(char *filename, struct PCMReader *pcmreader, float quality)
 {
-    aa_int *samples;
+    int samples[BLOCK_SIZE * pcmreader->channels];
     FILE *output;
     result_t result = ENCODE_OK;
     vorbis_info vorbis_info;
@@ -154,6 +173,8 @@ encode_ogg_vorbis(char *filename, pcmreader *pcmreader, float quality)
     ogg_stream_state ogg_stream;
     ogg_page ogg_page;
     int end_of_stream = 0;
+    int_to_double_f converter =
+        int_to_double_converter(pcmreader->bits_per_sample);
 
     /*ensure PCMReader object is compatible with Vorbis output*/
     if ((pcmreader->channels == 0) || (pcmreader->channels > 255)) {
@@ -166,24 +187,22 @@ encode_ogg_vorbis(char *filename, pcmreader *pcmreader, float quality)
         const unsigned channel_mask = pcmreader->channel_mask;
 
         if ((channels == 3) &&
-            (channel_mask != (0x1 | 0x2 | 0x4))) {
+            (channel_mask != (fL | fR | fC))) {
             return ERR_CHANNEL_ASSIGNMENT;
         } else if ((channels == 4) &&
-                   (channel_mask != (0x1 | 0x2 | 0x10 | 0x20))) {
+                   (channel_mask != (fL | fR | bL | bR))) {
             return ERR_CHANNEL_ASSIGNMENT;
         } else if ((channels == 5) &&
-                   (channel_mask != (0x1 | 0x2 | 0x4 | 0x10 | 0x20))) {
+                   (channel_mask != (fL | fR | fC | bL | bR))) {
             return ERR_CHANNEL_ASSIGNMENT;
         } else if ((channels == 6) &&
-                   (channel_mask != (0x1 | 0x2 | 0x4 | 0x8 | 0x10 | 0x20))) {
+                   (channel_mask != (fL | fR | fC | LFE | bL | bR))) {
             return ERR_CHANNEL_ASSIGNMENT;
         } else if ((channels == 7) &&
-                   (channel_mask != (0x1 | 0x2 | 0x4 | 0x8 |
-                                     0x100 | 0x200 | 0x400))) {
+                   (channel_mask != (fL | fR | fC | LFE | bC | sL | sR))) {
             return ERR_CHANNEL_ASSIGNMENT;
         } else if ((channels == 8) &&
-                   (channel_mask != (0x1 | 0x2 | 0x4 | 0x8 |
-                                     0x10 | 0x20 | 0x200 | 0x400))) {
+                   (channel_mask != (fL | fR | fC | LFE | bL | bR | sL | sR))) {
             return ERR_CHANNEL_ASSIGNMENT;
         }
     }
@@ -193,8 +212,6 @@ encode_ogg_vorbis(char *filename, pcmreader *pcmreader, float quality)
         return ERR_IOERROR;
     }
 
-    samples = aa_int_new();
-
     vorbis_info_init(&vorbis_info);
 
     /*this may fail if the quality is unsupported, etc.*/
@@ -203,11 +220,9 @@ encode_ogg_vorbis(char *filename, pcmreader *pcmreader, float quality)
                                pcmreader->sample_rate,
                                quality)) {
         fclose(output);
-        samples->del(samples);
         vorbis_info_clear(&vorbis_info);
         return ERR_INIT_VBR;
     }
-
 
     /*initialize analysis state and block storage*/
     vorbis_comment_init(&vorbis_comment);
@@ -243,39 +258,38 @@ encode_ogg_vorbis(char *filename, pcmreader *pcmreader, float quality)
     }
 
     while (!end_of_stream) {
-        const int adjustment = 1 << (pcmreader->bits_per_sample - 1);
         ogg_packet ogg_packet;
+        unsigned pcm_frames = pcmreader->read(pcmreader, BLOCK_SIZE, samples);
 
-        /*read FrameList from PCMReader*/
-        if (pcmreader->read(pcmreader, BLOCK_SIZE, samples)) {
-            result = ERR_PCMREADER;
-            goto cleanup;
-        } else if (samples->_[0]->len > BLOCK_SIZE) {
-            result = ERR_FRAMELIST_SIZE;
-            goto cleanup;
-        }
-
-        reorder_channels(pcmreader->channel_mask, samples);
-
-        if (samples->_[0]->len != 0) {
+        if (pcm_frames) {
+            const unsigned channel_count = pcmreader->channels;
             unsigned c;
+            float **buffer;
+
+            /*FIXME*/
+            reorder_channels(pcmreader->channel_mask, pcm_frames, samples);
 
             /*grab buffer to be populated*/
-            const unsigned samples_read = samples->_[0]->len;
-            float **buffer = vorbis_analysis_buffer(&vorbis_dsp, samples_read);
+            buffer = vorbis_analysis_buffer(&vorbis_dsp, pcm_frames);
 
             /*populate buffer with floating point samples
               on channel-by-channel basis*/
-            for (c = 0; c < samples->len; c++) {
-                const a_int *channel = samples->_[c];
+            for (c = 0; c < channel_count; c++) {
                 unsigned i;
 
-                for (i = 0; i < channel->len; i++) {
-                    buffer[c][i] = (float)(channel->_[i]) / adjustment;
+                for (i = 0; i < pcm_frames; i++) {
+                    buffer[c][i] =
+                        (float)converter(get_sample(samples,
+                                                    c,
+                                                    channel_count,
+                                                    i));
                 }
             }
 
-            vorbis_analysis_wrote(&vorbis_dsp, samples_read);
+            vorbis_analysis_wrote(&vorbis_dsp, pcm_frames);
+        } else if (pcmreader->status != PCM_OK) {
+            result = ERR_PCMREADER;
+            goto cleanup;
         } else {
             vorbis_analysis_wrote(&vorbis_dsp, 0);
         }
@@ -308,72 +322,84 @@ cleanup:
     vorbis_dsp_clear(&vorbis_dsp);
     vorbis_comment_clear(&vorbis_comment);
     vorbis_info_clear(&vorbis_info);
-    samples->del(samples);
     fclose(output);
 
     return result;
 }
 
 static void
-reorder_channels(unsigned channel_mask, aa_int *samples)
+reorder_channels(unsigned channel_mask, unsigned pcm_frames, int *samples)
 {
-    void (*a_int_swap)(a_int* a, a_int* b) = samples->_[0]->swap;
-
     /*reorder channels if necessary based on assignment*/
     switch (channel_mask) {
     default:
         break;
-    case (0x1 | 0x2 | 0x4):
+    case (fL | fR | fC):
         /*fL fR fC -> fL fC fR*/
-        a_int_swap(samples->_[1], samples->_[2]);
+        swap_channel_data(samples, 1, 2, 3, pcm_frames);
         break;
-    case (0x1 | 0x2 | 0x10 | 0x20):
+    case (fL | fR | bL | bR):
         /*fL fR bL bR -> fL fR bL bR*/
         /*no change*/
         break;
-    case (0x1 | 0x2 | 0x4 | 0x10 | 0x20):
+    case (fL | fR | fC | bL | bR):
         /*fL fR fC bL bR -> fL fC fR bL bR*/
-        a_int_swap(samples->_[1], samples->_[2]);
+        swap_channel_data(samples, 1, 2, 5, pcm_frames);
         break;
-    case (0x1 | 0x2 | 0x4 | 0x8 | 0x10 | 0x20):
+    case (fL | fR | fC | LFE | bL | bR):
         /*fL fR fC LFE bL bR -> fL fR fC LFE bR bL*/
-        a_int_swap(samples->_[4], samples->_[5]);
+        swap_channel_data(samples, 4, 5, 6, pcm_frames);
 
         /*fL fR fC LFE bR bL -> fL fR fC bL bR LFE*/
-        a_int_swap(samples->_[3], samples->_[5]);
+        swap_channel_data(samples, 3, 5, 6, pcm_frames);
 
         /*fL fR fC bL bR LFE -> fL fC fR bL bR LFE*/
-        a_int_swap(samples->_[1], samples->_[2]);
+        swap_channel_data(samples, 1, 2, 6, pcm_frames);
         break;
-    case (0x1 | 0x2 | 0x4 | 0x8 | 0x100 | 0x200 | 0x400):
+    case (fL | fR | fC | LFE | bC | sL | sR):
         /*fL fR fC LFE bC sL sR -> fL fR fC LFE bC sR sL*/
-        a_int_swap(samples->_[5], samples->_[6]);
+        swap_channel_data(samples, 5, 6, 7, pcm_frames);
 
         /*fL fR fC LFE bC sR sL -> fL fR fC LFE sR bC sL*/
-        a_int_swap(samples->_[4], samples->_[5]);
+        swap_channel_data(samples, 4, 5, 7, pcm_frames);
 
         /*fL fR fC LFE sR bC sL -> fL fR fC sL sR bC LFE*/
-        a_int_swap(samples->_[3], samples->_[6]);
+        swap_channel_data(samples, 3, 6, 7, pcm_frames);
 
         /*fL fR fC sL sR bC LFE -> fL fC fR sL sR bC LFE*/
-        a_int_swap(samples->_[1], samples->_[2]);
+        swap_channel_data(samples, 1, 2, 7, pcm_frames);
         break;
-    case (0x1 | 0x2 | 0x4 | 0x8 | 0x10 | 0x20 | 0x200 | 0x400):
+    case (fL | fR | fC | LFE | bL | bR | sL | sR):
         /*fL fR fC LFE bL bR sL sR -> fL fR fC LFE bL bR sR sL*/
-        a_int_swap(samples->_[6], samples->_[7]);
+        swap_channel_data(samples, 6, 7, 8, pcm_frames);
 
         /*fL fR fC LFE bL bR sR sL -> fL fR fC LFE bL sR bR sL*/
-        a_int_swap(samples->_[5], samples->_[6]);
+        swap_channel_data(samples, 5, 6, 8, pcm_frames);
 
         /*fL fR fC LFE bL sR bR sL -> fL fR fC LFE sR bL bR sL*/
-        a_int_swap(samples->_[4], samples->_[5]);
+        swap_channel_data(samples, 4, 5, 8, pcm_frames);
 
         /*fL fR fC LFE sR bL bR sL -> fL fR fC sL sR bL bR LFE*/
-        a_int_swap(samples->_[3], samples->_[6]);
+        swap_channel_data(samples, 3, 6, 8, pcm_frames);
 
         /*fL fR fC sL sR bL bR LFE -> fL fC fR sL sR bL bR LFE*/
-        a_int_swap(samples->_[1], samples->_[2]);
+        swap_channel_data(samples, 1, 2, 8, pcm_frames);
         break;
+    }
+}
+
+static void
+swap_channel_data(int *pcm_data,
+                  unsigned channel_a,
+                  unsigned channel_b,
+                  unsigned channel_count,
+                  unsigned pcm_frames)
+{
+    for (; pcm_frames; pcm_frames--) {
+        const int c = pcm_data[channel_a];
+        pcm_data[channel_a] = pcm_data[channel_b];
+        pcm_data[channel_b] = c;
+        pcm_data += channel_count;
     }
 }
 
