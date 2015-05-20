@@ -1,5 +1,5 @@
-#include "../pcmconv.h"
 #include <lame/lame.h>
+#include "../pcmreader.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -28,7 +28,7 @@ encoders_encode_mp3(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
     char *filename;
     FILE *output_file;
-    pcmreader* pcmreader;
+    struct PCMReader *pcmreader;
     static char *kwlist[] = {"filename",
                              "pcmreader",
 
@@ -36,16 +36,17 @@ encoders_encode_mp3(PyObject *dummy, PyObject *args, PyObject *keywds)
                              NULL};
     char *quality = NULL;
     lame_global_flags *gfp = NULL;
-    aa_int *samples = aa_int_new();
+    int buffer[BLOCK_SIZE * 2];
     short int buffer_l[BLOCK_SIZE];
     short int buffer_r[BLOCK_SIZE];
     unsigned char mp3buf[MP3BUF_SIZE];
+    unsigned pcm_frames;
     int to_output;
 
     if (!PyArg_ParseTupleAndKeywords(args, keywds, "sO&|s",
                                      kwlist,
                                      &filename,
-                                     pcmreader_converter,
+                                     py_obj_to_pcmreader,
                                      &pcmreader,
 
                                      &quality)) {
@@ -142,38 +143,23 @@ encoders_encode_mp3(PyObject *dummy, PyObject *args, PyObject *keywds)
     }
 
     /*for each non-empty FrameList from PCMReader, encode MP3 frame*/
-    if (pcmreader->read(pcmreader, BLOCK_SIZE, samples)) {
-        goto error;
-    } else if (samples->_[0]->len > BLOCK_SIZE) {
-        PyErr_SetString(PyExc_ValueError,
-                        "FrameList too large, please use BufferedPCMReader");
-        goto error;
-    }
-
-    while (samples->_[0]->len > 0) {
+    while ((pcm_frames = pcmreader->read(pcmreader, BLOCK_SIZE, buffer)) > 0) {
         unsigned i;
-
-        if (samples->len == 2) {
-            for (i = 0; i < samples->_[0]->len; i++) {
-                buffer_l[i] = (short int)samples->_[0]->_[i];
-                buffer_r[i] = (short int)samples->_[1]->_[i];
-            }
-        } else if (samples->len == 1) {
-            for (i = 0; i < samples->_[0]->len; i++) {
-                buffer_l[i] = (short int)samples->_[0]->_[i];
-                buffer_r[i] = (short int)samples->_[0]->_[i];
+        if (pcmreader->channels == 2) {
+            for (i = 0; i < pcm_frames; i++) {
+                buffer_l[i] = (short int)buffer[i * 2];
+                buffer_r[i] = (short int)buffer[i * 2 + 1];
             }
         } else {
-            PyErr_SetString(
-                PyExc_ValueError,
-                "invalid number of channels in framelist");
-            goto error;
+            for (i = 0; i < pcm_frames; i++) {
+                buffer_l[i] = buffer_r[i] = (short int)buffer[i];
+            }
         }
 
         switch (to_output = lame_encode_buffer(gfp,
                                                buffer_l,
                                                buffer_r,
-                                               samples->_[0]->len,
+                                               pcm_frames,
                                                mp3buf,
                                                MP3BUF_SIZE)) {
         default:
@@ -192,15 +178,11 @@ encoders_encode_mp3(PyObject *dummy, PyObject *args, PyObject *keywds)
             PyErr_SetString(PyExc_ValueError, "psycho acoustic error");
             goto error;
         }
+    }
 
-        if (pcmreader->read(pcmreader, BLOCK_SIZE, samples)) {
-            goto error;
-        } else if (samples->_[0]->len > BLOCK_SIZE) {
-            PyErr_SetString(
-                PyExc_ValueError,
-                "FrameList too large, please use BufferedPCMReader");
-            goto error;
-        }
+    if (pcmreader->status != PCM_OK) {
+        PyErr_SetString(PyExc_IOError, "I/O error from pcmreader");
+        goto error;
     }
 
     /*flush remaining MP3 data*/
@@ -215,7 +197,6 @@ encoders_encode_mp3(PyObject *dummy, PyObject *args, PyObject *keywds)
         lame_close(gfp);
 
     fclose(output_file);
-    samples->del(samples);
     pcmreader->del(pcmreader);
     Py_INCREF(Py_None);
     return Py_None;
@@ -224,7 +205,6 @@ error:
     if (gfp != NULL)
         lame_close(gfp);
     fclose(output_file);
-    samples->del(samples);
     pcmreader->del(pcmreader);
     return NULL;
 }

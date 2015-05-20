@@ -256,13 +256,12 @@ class MP3Audio(AudioFile):
                 pcmreader = CounterPCMReader(pcmreader)
 
             encode_mp3(filename,
-                       BufferedPCMReader(
-                           PCMConverter(pcmreader,
-                                        sample_rate=pcmreader.sample_rate,
-                                        channels=min(pcmreader.channels, 2),
-                                        channel_mask=ChannelMask.from_channels(
-                                            min(pcmreader.channels, 2)),
-                                        bits_per_sample=16)),
+                       PCMConverter(pcmreader,
+                                    sample_rate=pcmreader.sample_rate,
+                                    channels=min(pcmreader.channels, 2),
+                                    channel_mask=ChannelMask.from_channels(
+                                        min(pcmreader.channels, 2)),
+                                    bits_per_sample=16),
                        compression)
 
             if ((total_pcm_frames is not None) and
