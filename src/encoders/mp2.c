@@ -1,5 +1,5 @@
 #include <twolame.h>
-#include "../pcmconv.h"
+#include "../pcmreader.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -28,23 +28,24 @@ encoders_encode_mp2(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
     char *filename;
     FILE *output_file;
-    pcmreader* pcmreader;
+    struct PCMReader *pcmreader;
     static char *kwlist[] = {"filename",
                              "pcmreader",
                              "quality",
                              NULL};
     int quality;
     twolame_options *twolame_opts = NULL;
-    aa_int *samples = aa_int_new();
+    int buffer[BLOCK_SIZE * 2];
     short int buffer_l[BLOCK_SIZE];
     short int buffer_r[BLOCK_SIZE];
     unsigned char mp2buf[MP2BUF_SIZE];
+    unsigned pcm_frames;
     int to_output;
 
     if (!PyArg_ParseTupleAndKeywords(args, keywds, "sO&i",
                                      kwlist,
                                      &filename,
-                                     pcmreader_converter,
+                                     py_obj_to_pcmreader,
                                      &pcmreader,
                                      &quality)) {
         return NULL;
@@ -92,38 +93,23 @@ encoders_encode_mp2(PyObject *dummy, PyObject *args, PyObject *keywds)
     twolame_init_params(twolame_opts);
 
     /*for each non-empty FrameList from PCMReader, encode MP2 frame*/
-    if (pcmreader->read(pcmreader, BLOCK_SIZE, samples)) {
-        goto error;
-    } else if (samples->_[0]->len > BLOCK_SIZE) {
-        PyErr_SetString(PyExc_ValueError,
-                        "FrameList too large, please use BufferedPCMReader");
-        goto error;
-    }
-
-    while (samples->_[0]->len > 0) {
+    while ((pcm_frames = pcmreader->read(pcmreader, BLOCK_SIZE, buffer)) > 0) {
         unsigned i;
-
-        if (samples->len == 2) {
-            for (i = 0; i < samples->_[0]->len; i++) {
-                buffer_l[i] = (short int)samples->_[0]->_[i];
-                buffer_r[i] = (short int)samples->_[1]->_[i];
-            }
-        } else if (samples->len == 1) {
-            for (i = 0; i < samples->_[0]->len; i++) {
-                buffer_l[i] = (short int)samples->_[0]->_[i];
-                buffer_r[i] = (short int)samples->_[0]->_[i];
+        if (pcmreader->channels == 2) {
+            for (i = 0; i < pcm_frames; i++) {
+                buffer_l[i] = (short int)buffer[i * 2];
+                buffer_r[i] = (short int)buffer[i * 2 + 1];
             }
         } else {
-            PyErr_SetString(
-                PyExc_ValueError,
-                "invalid number of channels in framelist");
-            goto error;
+            for (i = 0; i < pcm_frames; i++) {
+                buffer_l[i] = buffer_r[i] = (short int)buffer[i];
+            }
         }
 
         if ((to_output = twolame_encode_buffer(twolame_opts,
                                                buffer_l,
                                                buffer_r,
-                                               samples->_[0]->len,
+                                               pcm_frames,
                                                mp2buf,
                                                MP2BUF_SIZE)) >= 0) {
             fwrite(mp2buf, sizeof(unsigned char), to_output, output_file);
@@ -131,15 +117,11 @@ encoders_encode_mp2(PyObject *dummy, PyObject *args, PyObject *keywds)
             PyErr_SetString(PyExc_ValueError, "error encoding MP2 frame");
             goto error;
         }
+    }
 
-        if (pcmreader->read(pcmreader, BLOCK_SIZE, samples)) {
-            goto error;
-        } else if (samples->_[0]->len > BLOCK_SIZE) {
-            PyErr_SetString(
-                PyExc_ValueError,
-                "FrameList too large, please use BufferedPCMReader");
-            goto error;
-        }
+    if (pcmreader->status != PCM_OK) {
+        PyErr_SetString(PyExc_IOError, "I/O error from pcmreader");
+        goto error;
     }
 
     /*flush remaining MP2 data*/
@@ -150,7 +132,6 @@ encoders_encode_mp2(PyObject *dummy, PyObject *args, PyObject *keywds)
     if (twolame_opts != NULL)
         twolame_close(&twolame_opts);
     fclose(output_file);
-    samples->del(samples);
     pcmreader->del(pcmreader);
     Py_INCREF(Py_None);
     return Py_None;
@@ -160,7 +141,6 @@ error:
     if (twolame_opts != NULL)
         twolame_close(&twolame_opts);
     fclose(output_file);
-    samples->del(samples);
     pcmreader->del(pcmreader);
     return NULL;
 }

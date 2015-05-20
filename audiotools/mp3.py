@@ -692,13 +692,12 @@ class MP2Audio(MP3Audio):
 
         try:
             encode_mp2(filename,
-                       BufferedPCMReader(
-                           PCMConverter(pcmreader,
-                                        sample_rate=sample_rate,
-                                        channels=min(pcmreader.channels, 2),
-                                        channel_mask=ChannelMask.from_channels(
-                                            min(pcmreader.channels, 2)),
-                                        bits_per_sample=16)),
+                       PCMConverter(pcmreader,
+                                    sample_rate=sample_rate,
+                                    channels=min(pcmreader.channels, 2),
+                                    channel_mask=ChannelMask.from_channels(
+                                        min(pcmreader.channels, 2)),
+                                    bits_per_sample=16),
                        int(compression))
 
             if ((total_pcm_frames is not None) and
