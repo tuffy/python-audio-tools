@@ -1,12 +1,11 @@
-#include "../pcmconv.h"
-#include "../array.h"
-#include "../bitstream.h"
 #include <opus/opus.h>
 #include <opus_multistream.h>
 #include <ogg/ogg.h>
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../bitstream.h"
+#include "../pcmreader.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -40,18 +39,27 @@ typedef enum {
 } result_t;
 
 static result_t
-encode_opus_file(char *filename, pcmreader *pcmreader,
-                 int quality, unsigned original_sample_rate);
+encode_opus_file(char *filename,
+                 struct PCMReader *pcmreader,
+                 int quality,
+                 unsigned original_sample_rate);
 
 static void
-reorder_channels(unsigned channel_mask, aa_int *samples);
+reorder_channels(unsigned channel_mask, unsigned pcm_frames, int *samples);
+
+static void
+swap_channel_data(int *pcm_data,
+                  unsigned channel_a,
+                  unsigned channel_b,
+                  unsigned channel_count,
+                  unsigned pcm_frames);
 
 #ifndef STANDALONE
 PyObject*
 encoders_encode_opus(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
     char *filename;
-    pcmreader* pcmreader = NULL;
+    struct PCMReader *pcmreader = NULL;
     int quality;
     int original_sample_rate;
     static char *kwlist[] = {"filename",
@@ -64,7 +72,7 @@ encoders_encode_opus(PyObject *dummy, PyObject *args, PyObject *keywds)
     if (!PyArg_ParseTupleAndKeywords(args, keywds, "sO&ii",
                                      kwlist,
                                      &filename,
-                                     pcmreader_converter,
+                                     py_obj_to_pcmreader,
                                      &pcmreader,
                                      &quality,
                                      &original_sample_rate)) {
@@ -132,8 +140,10 @@ encoders_encode_opus(PyObject *dummy, PyObject *args, PyObject *keywds)
 #endif
 
 static result_t
-encode_opus_file(char *filename, pcmreader *pcmreader,
-                 int quality, unsigned original_sample_rate)
+encode_opus_file(char *filename,
+                 struct PCMReader *pcmreader,
+                 int quality,
+                 unsigned original_sample_rate)
 {
     const int multichannel = (pcmreader->channels > 2);
     const unsigned channel_mapping = (pcmreader->channels > 8 ? 255 :
@@ -142,6 +152,8 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
     int coupled_stream_count;
     unsigned char stream_map[255];
 
+    int samples[BLOCK_SIZE * pcmreader->channels];
+    unsigned pcm_frames;
     result_t result = ENCODE_OK;
     FILE *output_file = NULL;
     ogg_stream_state ogg_stream;
@@ -149,7 +161,6 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
     OpusEncoder *opus_encoder = NULL;
     OpusMSEncoder *opus_ms_encoder = NULL;
     int error;
-    aa_int *samples = NULL;
     opus_int16 *opus_samples = NULL;
     unsigned char opus_frame[OPUS_FRAME_LEN];
     ogg_int64_t granulepos = 0;
@@ -278,69 +289,57 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
         comment->close(comment);
     }
 
-    samples = aa_int_new();
     opus_samples = malloc(sizeof(opus_int16) *
                           pcmreader->channels *
                           BLOCK_SIZE);
 
-    /*for each non-empty FrameList from PCMReader, encode Opus frame*/
-    if (pcmreader->read(pcmreader, BLOCK_SIZE, samples)) {
+    pcm_frames = pcmreader->read(pcmreader, BLOCK_SIZE, samples);
+    if (!pcm_frames && (pcmreader->status != PCM_OK)) {
         result = ERR_PCMREADER;
-        goto cleanup;
-    } else if (samples->_[0]->len > BLOCK_SIZE) {
-        result = ERR_BLOCK_SIZE;
         goto cleanup;
     }
 
-    while (samples->_[0]->len > 0) {
-        const int short_framelist = (samples->_[0]->len < BLOCK_SIZE);
-        unsigned c;
+    /*for each non-empty FrameList from PCMReader, encode Opus frame*/
+    while (pcm_frames) {
+        const int short_framelist = (pcm_frames < BLOCK_SIZE);
+        unsigned i;
         opus_int32 encoded_size;
         ogg_packet packet;
 
-        granulepos += samples->_[0]->len;
+        granulepos += pcm_frames;
 
         /*pad FrameList with additional null samples if necessary*/
-        for (c = 0; c < samples->len; c++) {
-            a_int *channel = samples->_[c];
-            channel->mappend(channel, BLOCK_SIZE - samples->_[0]->len, 0);
-        }
+        memset(samples + pcm_frames * pcmreader->channels,
+               0,
+               sizeof(int) * (BLOCK_SIZE - pcm_frames) * pcmreader->channels);
 
         /*rearrange channels to Vorbis order if necessary*/
-        reorder_channels(pcmreader->channel_mask, samples);
+        reorder_channels(pcmreader->channel_mask, BLOCK_SIZE, samples);
 
         /*place samples in interleaved buffer*/
-        for (c = 0; c < samples->len; c++) {
-            unsigned i;
-            a_int *channel = samples->_[c];
-
-            for (i = 0; i < channel->len; i++) {
-                opus_samples[c + (i * samples->len)] =
-                    (opus_int16)channel->_[i];
-            }
+        for (i = 0; i < (pcm_frames * pcmreader->channels); i++) {
+            opus_samples[i] = (opus_int16)samples[i];
         }
 
         /*call opus_encode on interleaved buffer to get next packet*/
         if (!multichannel) {
             encoded_size = opus_encode(opus_encoder,
                                        opus_samples,
-                                       samples->_[0]->len,
+                                       BLOCK_SIZE,
                                        opus_frame,
                                        OPUS_FRAME_LEN);
         } else {
             encoded_size = opus_multistream_encode(opus_ms_encoder,
                                                    opus_samples,
-                                                   samples->_[0]->len,
+                                                   BLOCK_SIZE,
                                                    opus_frame,
                                                    OPUS_FRAME_LEN);
         }
 
         /*get next FrameList to encode*/
-        if (pcmreader->read(pcmreader, BLOCK_SIZE, samples)) {
+        pcm_frames = pcmreader->read(pcmreader, BLOCK_SIZE, samples);
+        if (!pcm_frames && (pcmreader->status != PCM_OK)) {
             result = ERR_PCMREADER;
-            goto cleanup;
-        } else if (samples->_[0]->len > BLOCK_SIZE) {
-            result = ERR_BLOCK_SIZE;
             goto cleanup;
         }
 
@@ -351,7 +350,7 @@ encode_opus_file(char *filename, pcmreader *pcmreader,
         packet.packet = (unsigned char *)opus_frame;
         packet.bytes = encoded_size;
         packet.b_o_s = 0;
-        packet.e_o_s = (short_framelist || (samples->_[0]->len == 0));
+        packet.e_o_s = (short_framelist || (pcm_frames == 0));
         packet.granulepos = granulepos;
         packet.packetno = packetno;
 
@@ -376,35 +375,32 @@ cleanup:
     } else {
         opus_multistream_encoder_destroy(opus_ms_encoder);
     }
-    samples->del(samples);
     free(opus_samples);
     return result;
 }
 
+enum {
+    fL = 0x1,
+    fR = 0x2,
+    fC = 0x4,
+    LFE = 0x8,
+    bL = 0x10,
+    bR = 0x20,
+    bC = 0x100,
+    sL = 0x200,
+    sR = 0x400
+};
 
 static void
-reorder_channels(unsigned channel_mask, aa_int *samples)
+reorder_channels(unsigned channel_mask, unsigned pcm_frames, int *samples)
 {
-    enum {
-        fL  = 0x1,
-        fR  = 0x2,
-        fC  = 0x4,
-        LFE = 0x8,
-        bL  = 0x10,
-        bR  = 0x20,
-        bC  = 0x100,
-        sL  = 0x200,
-        sR  = 0x400
-    };
-    void (*a_int_swap)(a_int* a, a_int* b) = samples->_[0]->swap;
-
     /*reorder channels if necessary based on assignment*/
     switch (channel_mask) {
     default:
         break;
     case (fL | fR | fC):
         /*fL fR fC -> fL fC fR*/
-        a_int_swap(samples->_[1], samples->_[2]);
+        swap_channel_data(samples, 1, 2, 3, pcm_frames);
         break;
     case (fL | fR | bL | bR):
         /*fL fR bL bR -> fL fR bL bR*/
@@ -412,47 +408,62 @@ reorder_channels(unsigned channel_mask, aa_int *samples)
         break;
     case (fL | fR | fC | bL | bR):
         /*fL fR fC bL bR -> fL fC fR bL bR*/
-        a_int_swap(samples->_[1], samples->_[2]);
+        swap_channel_data(samples, 1, 2, 5, pcm_frames);
         break;
     case (fL | fR | fC | LFE | bL | bR):
         /*fL fR fC LFE bL bR -> fL fR fC LFE bR bL*/
-        a_int_swap(samples->_[4], samples->_[5]);
+        swap_channel_data(samples, 4, 5, 6, pcm_frames);
 
         /*fL fR fC LFE bR bL -> fL fR fC bL bR LFE*/
-        a_int_swap(samples->_[3], samples->_[5]);
+        swap_channel_data(samples, 3, 5, 6, pcm_frames);
 
         /*fL fR fC bL bR LFE -> fL fC fR bL bR LFE*/
-        a_int_swap(samples->_[1], samples->_[2]);
+        swap_channel_data(samples, 1, 2, 6, pcm_frames);
         break;
     case (fL | fR | fC | LFE | bC | sL | sR):
         /*fL fR fC LFE bC sL sR -> fL fR fC LFE bC sR sL*/
-        a_int_swap(samples->_[5], samples->_[6]);
+        swap_channel_data(samples, 5, 6, 7, pcm_frames);
 
         /*fL fR fC LFE bC sR sL -> fL fR fC LFE sR bC sL*/
-        a_int_swap(samples->_[4], samples->_[5]);
+        swap_channel_data(samples, 4, 5, 7, pcm_frames);
 
         /*fL fR fC LFE sR bC sL -> fL fR fC sL sR bC LFE*/
-        a_int_swap(samples->_[3], samples->_[6]);
+        swap_channel_data(samples, 3, 6, 7, pcm_frames);
 
         /*fL fR fC sL sR bC LFE -> fL fC fR sL sR bC LFE*/
-        a_int_swap(samples->_[1], samples->_[2]);
+        swap_channel_data(samples, 1, 2, 7, pcm_frames);
         break;
     case (fL | fR | fC | LFE | bL | bR | sL | sR):
         /*fL fR fC LFE bL bR sL sR -> fL fR fC LFE bL bR sR sL*/
-        a_int_swap(samples->_[6], samples->_[7]);
+        swap_channel_data(samples, 6, 7, 8, pcm_frames);
 
         /*fL fR fC LFE bL bR sR sL -> fL fR fC LFE bL sR bR sL*/
-        a_int_swap(samples->_[5], samples->_[6]);
+        swap_channel_data(samples, 5, 6, 8, pcm_frames);
 
         /*fL fR fC LFE bL sR bR sL -> fL fR fC LFE sR bL bR sL*/
-        a_int_swap(samples->_[4], samples->_[5]);
+        swap_channel_data(samples, 4, 5, 8, pcm_frames);
 
         /*fL fR fC LFE sR bL bR sL -> fL fR fC sL sR bL bR LFE*/
-        a_int_swap(samples->_[3], samples->_[6]);
+        swap_channel_data(samples, 3, 6, 8, pcm_frames);
 
         /*fL fR fC sL sR bL bR LFE -> fL fC fR sL sR bL bR LFE*/
-        a_int_swap(samples->_[1], samples->_[2]);
+        swap_channel_data(samples, 1, 2, 8, pcm_frames);
         break;
+    }
+}
+
+static void
+swap_channel_data(int *pcm_data,
+                  unsigned channel_a,
+                  unsigned channel_b,
+                  unsigned channel_count,
+                  unsigned pcm_frames)
+{
+    for (; pcm_frames; pcm_frames--) {
+        const int c = pcm_data[channel_a];
+        pcm_data[channel_a] = pcm_data[channel_b];
+        pcm_data[channel_b] = c;
+        pcm_data += channel_count;
     }
 }
 
@@ -510,7 +521,7 @@ int main(int argc, char *argv[])
         case 'h': /*fallthrough*/
         case ':':
         case '?':
-            printf("*** Usage: vorbisenc [options] <output.ogg>\n");
+            printf("*** Usage: opusenc [options] <output.opus>\n");
             printf("-c, --channels=#          number of input channels\n");
             return 0;
         default:

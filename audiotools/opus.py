@@ -250,12 +250,11 @@ class OpusAudio(VorbisAudio):
                 pcmreader = CounterPCMReader(pcmreader)
 
             encode_opus(filename,
-                        BufferedPCMReader(
-                            PCMConverter(pcmreader,
-                                         sample_rate=48000,
-                                         channels=pcmreader.channels,
-                                         channel_mask=pcmreader.channel_mask,
-                                         bits_per_sample=16)),
+                        PCMConverter(pcmreader,
+                                     sample_rate=48000,
+                                     channels=pcmreader.channels,
+                                     channel_mask=pcmreader.channel_mask,
+                                     bits_per_sample=16),
                         quality=int(compression),
                         original_sample_rate=pcmreader.sample_rate)
 
