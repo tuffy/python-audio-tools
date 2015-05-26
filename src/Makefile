@@ -1,8 +1,8 @@
 #This makefile is for generating debug standalone executables
 
-OBJS = array.o pcm.o pcmconv.o bitstream.a
 FLAGS = -Wall -g
-BINARIES = alacdec \
+BINARIES = \
+alacdec \
 shndec \
 wvdec \
 alacenc \
@@ -13,27 +13,12 @@ huffman \
 bitstream \
 bitstream-table \
 ttaenc \
-ttadec \
 opusenc
-
-CC = gcc
 
 all: $(BINARIES)
 
 clean:
-	rm -f $(BINARIES) $(OBJS)
-
-flacdec: $(OBJS) decoders/flac.c decoders/flac.h flac_crc.o buffer.o md5.o
-	$(CC) $(FLAGS) -o flacdec decoders/flac.c $(OBJS) flac_crc.o buffer.o md5.o -DSTANDALONE -DEXECUTABLE
-
-flacdec2: decoders/flac2.c bitstream.a flac_crc.o framelist.o pcm_conv.o
-	$(CC) $(FLAGS) -pg -o $@ decoders/flac2.c bitstream.a flac_crc.o framelist.o pcm_conv.o -DSTANDALONE -DEXECUTABLE
-
-oggflacdec: $(OBJS) decoders/oggflac.c decoders/oggflac.h flac.o flac_crc.o md5.o ogg.o ogg_crc.o buffer.o
-	$(CC) $(FLAGS) -o oggflacdec decoders/oggflac.c $(OBJS) flac.o flac_crc.o md5.o ogg.o ogg_crc.o buffer.o -DSTANDALONE
-
-wvdec: $(OBJS) decoders/wavpack.c decoders/wavpack.h md5.o pcm_conv.o
-	$(CC) $(FLAGS) -o wvdec decoders/wavpack.c $(OBJS) md5.o pcm_conv.o -DSTANDALONE
+	rm -f $(BINARIES) *.o *.a
 
 alacdec: $(OBJS) decoders/alac.c decoders/alac.h pcm_conv.o
 	$(CC) $(FLAGS) -o alacdec decoders/alac.c $(OBJS) pcm_conv.o -DSTANDALONE
@@ -41,20 +26,20 @@ alacdec: $(OBJS) decoders/alac.c decoders/alac.h pcm_conv.o
 shndec: $(OBJS) decoders/shn.c decoders/shn.h buffer.o pcm_conv.o
 	$(CC) $(FLAGS) -o shndec decoders/shn.c $(OBJS) buffer.o pcm_conv.o -DSTANDALONE -lm
 
-ttadec: $(OBJS) decoders/tta.c decoders/tta.h pcm_conv.o
-	$(CC) $(FLAGS) -o ttadec decoders/tta.c $(OBJS) pcm_conv.o -DSTANDALONE
+wvdec: $(OBJS) decoders/wavpack.c decoders/wavpack.h md5.o pcm_conv.o
+	$(CC) $(FLAGS) -o wvdec decoders/wavpack.c $(OBJS) md5.o pcm_conv.o -DSTANDALONE
+
+alacenc: encoders/alac.c encoders/alac.h bitstream.a array.o pcmreader.o pcm_conv.o
+	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c bitstream.a array.o pcmreader.o pcm_conv.o -DSTANDALONE -lm
 
 flacenc: encoders/flac.c encoders/flac.h bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o
 	$(CC) $(FLAGS) -pg -o $@ encoders/flac.c bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
 
-alacenc: $(OBJS) encoders/alac.c encoders/alac.h pcm_conv.o
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c $(OBJS) pcm_conv.o -DSTANDALONE -lm
-
 shnenc: $(OBJS) encoders/shn.c encoders/shn.h buffer.o pcm_conv.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c $(OBJS) buffer.o pcm_conv.o -DSTANDALONE -lm
 
-wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o pcm_conv.o
-	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o pcm_conv.o $(OBJS) -DSTANDALONE
+wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o pcm_conv.o array.o bitstream.a
+	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o pcm_conv.o array.o bitstream.a -DSTANDALONE
 
 ttaenc: encoders/tta.c encoders/tta.h pcmreader.o pcm_conv.o bitstream.a
 	$(CC) $(FLAGS) -o ttaenc encoders/tta.c pcmreader.o pcm_conv.o bitstream.a -DSTANDALONE
@@ -62,8 +47,8 @@ ttaenc: encoders/tta.c encoders/tta.h pcmreader.o pcm_conv.o bitstream.a
 vorbisenc: $(OBJS) encoders/vorbis.c
 	$(CC) $(FLAGS) -o vorbisenc encoders/vorbis.c $(OBJS) -DSTANDALONE -lvorbis -logg -lvorbisenc
 
-opusenc: $(OBJS) encoders/opus.c pcm_conv.o
-	$(CC) $(FLAGS) -o opusenc encoders/opus.c $(OBJS) pcm_conv.o -DSTANDALONE `pkg-config --cflags --libs opus ogg`
+opusenc: $(OBJS) encoders/opus.c bitstream.a pcm_conv.o pcmreader.o
+	$(CC) $(FLAGS) -o opusenc encoders/opus.c bitstream.a pcm_conv.o pcmreader.o -DSTANDALONE `pkg-config --cflags --libs opus ogg`
 
 huffman: huffman.c huffman.h parson.o
 	$(CC) $(FLAGS) -o huffman huffman.c parson.o -DEXECUTABLE

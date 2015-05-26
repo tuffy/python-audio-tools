@@ -479,7 +479,7 @@ int main(int argc, char *argv[])
     unsigned original_sample_rate = 48000;
     const unsigned sample_rate = 48000;
     const unsigned bits_per_sample = 16;
-    pcmreader *pcmreader = NULL;
+    struct PCMReader *pcmreader = NULL;
     result_t result;
 
     char c;
@@ -522,7 +522,10 @@ int main(int argc, char *argv[])
         case ':':
         case '?':
             printf("*** Usage: opusenc [options] <output.opus>\n");
-            printf("-c, --channels=#          number of input channels\n");
+            printf("-c, --channels=#             "
+                    "number of input channels\n");
+            printf("-r, --orignal-sample=rate=#  "
+                    "stream's original sample rate\n");
             return 0;
         default:
             break;
@@ -543,13 +546,13 @@ int main(int argc, char *argv[])
     printf("bits per sample %u\n", bits_per_sample);
     printf("little-endian, signed samples\n");
 
-    pcmreader = open_pcmreader(stdin,
-                               sample_rate,
-                               channels,
-                               0,
-                               bits_per_sample,
-                               0,
-                               1);
+    pcmreader = pcmreader_open_raw(stdin,
+                                   sample_rate,
+                                   channels,
+                                   0,
+                                   bits_per_sample,
+                                   0,
+                                   1);
 
     switch (result = encode_opus_file(output_file, pcmreader,
                                       10, original_sample_rate)) {
