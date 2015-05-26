@@ -5621,6 +5621,7 @@ class M4AMetaDataTest(MetaDataTest):
                                  "album_name",
                                  "artist_name",
                                  "composer_name",
+                                 "performer_name",
                                  "copyright",
                                  "year",
                                  "album_number",
@@ -5752,7 +5753,8 @@ class M4AMetaDataTest(MetaDataTest):
                    ('album_name', b'\xA9alb', u'd'),
                    ('composer_name', b'\xA9wrt', u'e'),
                    ('comment', b'\xA9cmt', u'f'),
-                   ('copyright', b'cprt', u'g')]
+                   ('copyright', b'cprt', u'g'),
+                   ('performer_name', b'aART', u'h')]
 
         for format in self.supported_formats:
             with tempfile.NamedTemporaryFile(

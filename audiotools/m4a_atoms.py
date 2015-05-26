@@ -1078,6 +1078,7 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                               "artist_name": b"\xa9ART",
                               "composer_name": b"\xa9wrt",
                               "copyright": b"cprt",
+                              "performer_name": b"aART",
                               "year": b"\xa9day",
                               "comment": b"\xa9cmt"}
 
