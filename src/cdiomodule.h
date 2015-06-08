@@ -1,6 +1,11 @@
 #include <Python.h>
+#ifdef OLD_PARANOIA
 #include <cdio/cdda.h>
 #include <cdio/paranoia.h>
+#else
+#include <cdio/cdparanoia/cdda.h>
+#include <cdio/cdparanoia/paranoia.h>
+#endif
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

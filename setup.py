@@ -172,6 +172,31 @@ class SystemLibraries(object):
         except OSError:
             return False
 
+    def lib_version(self, library):
+        """returns the library's version as a tuple"""
+
+        try:
+            pkg_config = subprocess.Popen(
+                ["pkg-config", "--modversion", library],
+                stdout=subprocess.PIPE,
+                stderr=open(os.devnull, "wb"),
+                universal_newlines=True)
+
+            pkg_config_stdout = pkg_config.stdout.read().strip()
+
+            if pkg_config.wait() == 0:
+                try:
+                    return tuple(int(s) for s in pkg_config_stdout.split("."))
+                except ValueError:
+                    # version isn't all integers
+                    return tuple()
+            else:
+                # library not found
+                return tuple()
+        except OSError:
+            # pkg-config not found
+            return tuple()
+
 
 system_libraries = SystemLibraries(configfile)
 
@@ -459,11 +484,26 @@ class audiotools_cdio(Extension):
                 libraries.update(set(["libcdio",
                                       "libcdio_cdda",
                                       "libcdio_paranoia"]))
+                try:
+                    if tuple(int(s) for s in
+                             system_libraries.configfile.get(
+                                 "Libraries",
+                                 "libcdio_paranoia_version")) < (0, 90):
+                        paranoia_version = [("OLD_PARANOIA", None)]
+                    else:
+                        paranoia_version = []
+                except (KeyError,ValueError):
+                    paranoia_version = []
             else:
                 extra_compile_args.extend(
                     system_libraries.extra_compile_args("libcdio_paranoia"))
                 extra_link_args.extend(
                     system_libraries.extra_link_args("libcdio_paranoia"))
+
+                if system_libraries.lib_version("libcdio_paranoia") < (0, 90):
+                    paranoia_version = [("OLD_PARANOIA", None)]
+                else:
+                    paranoia_version = []
 
             sources.extend(["src/cdiomodule.c",
                             "src/framelist.c",
@@ -476,6 +516,7 @@ class audiotools_cdio(Extension):
             self.__library_manifest__.append(("libcdio",
                                               "CDDA data extraction",
                                               False))
+            paranoia_version = []
 
         Extension.__init__(
             self,
@@ -483,7 +524,8 @@ class audiotools_cdio(Extension):
             sources=sources,
             libraries=list(libraries),
             extra_compile_args=extra_compile_args,
-            extra_link_args=extra_link_args)
+            extra_link_args=extra_link_args,
+            define_macros=paranoia_version)
 
     def library_manifest(self):
         for values in self.__library_manifest__:
