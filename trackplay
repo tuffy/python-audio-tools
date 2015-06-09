@@ -185,14 +185,15 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     audiofiles = []
-    for filename in options.filenames:
+    for filename in map(audiotools.Filename, options.filenames):
         try:
-            audiofile = audiotools.open(filename)
+            audiofile = audiotools.open(str(filename))
             if audiofile.__class__.supports_to_pcm():
                 audiofiles.append(audiofile)
             else:
                 msg.warning(_.ERR_UNSUPPORTED_TO_PCM %
-                            {"filename":filename, "type":audiofile.NAME})
+                            {"filename":filename,
+                             "type":audiofile.NAME})
         except audiotools.UnsupportedFile:
             msg.warning(_.ERR_UNSUPPORTED_FILE % (filename,))
         except audiotools.InvalidFile as err:

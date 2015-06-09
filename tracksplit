@@ -258,7 +258,8 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     try:
-        audiofile = audiotools.open(options.filename)
+        filename = audiotools.Filename(options.filename)
+        audiofile = audiotools.open(str(filename))
         input_filename = audiotools.Filename(audiofile.filename)
         input_filenames = {input_filename}
     except audiotools.UnsupportedFile:
