@@ -1,27 +1,38 @@
 /********************************************************
- Audio Tools, a module and set of tools for manipulating audio data
+ Bitstream Library, a module for reading bits of data
+
  Copyright (C) 2007-2015  Brian Langenberger
 
- This program is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
+ The Bitstream Library is free software; you can redistribute it and/or modify
+ it under the terms of either:
 
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
+   * the GNU Lesser General Public License as published by the Free
+     Software Foundation; either version 3 of the License, or (at your
+     option) any later version.
 
- You should have received a copy of the GNU General Public License
- along with this program; if not, write to the Free Software
- Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-*******************************************************/
+ or
+
+   * the GNU General Public License as published by the Free Software
+     Foundation; either version 2 of the License, or (at your option) any
+     later version.
+
+ or both in parallel, as here.
+
+ The Bitstream Library is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ for more details.
+
+ You should have received copies of the GNU General Public License and the
+ GNU Lesser General Public License along with the GNU MP Library.  If not,
+ see https://www.gnu.org/licenses/.
+ *******************************************************/
 
 {
 /* state = 0x0 (0 bits, 0x0 buffer) */
 {{0, 0x2},{0, 0x3}},
-/* state = 0x1 (0 bits, 0x1 buffer) */
-{{0, 0x6},{0, 0x7}},
+/* state = 0x1 (0 bits, 0x0 buffer) */
+{{0, 0x2},{0, 0x3}},
 /* state = 0x2 (1 bits, 0x0 buffer) */
 {{0, 0x4},{0, 0x5}},
 /* state = 0x3 (1 bits, 0x1 buffer) */

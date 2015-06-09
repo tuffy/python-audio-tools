@@ -1,7 +1,7 @@
 /********************************************************
  Bitstream Library, a module for reading bits of data
 
- Copyright (C) 2007-2015  Brian Langenberger
+ Copyright (C) 2007-2014  Brian Langenberger
 
  The Bitstream Library is free software; you can redistribute it and/or modify
  it under the terms of either:
@@ -32,34 +32,40 @@
 #include <stdint.h>
 #include <getopt.h>
 #include <assert.h>
-#include "array.h"
+#include <string.h>
 
 #define HELP_FORMAT "  %-15s %s\n"
 
 struct state {
-    unsigned size;
-    unsigned value;
+    unsigned short size;
+    /*bits from state where value[0] is least significant
+      and value[7] is most significant*/
+    unsigned short value[8];
 };
 
 typedef uint16_t state_t;
 
+/*given a 9 bit unsigned integer, returns the unpacked state*/
 void
 unpack_state(state_t packed, struct state* unpacked);
 
+/*packs the state as a 9 bit unsigned integer and returns it*/
 state_t
 pack_state(const struct state* unpacked);
 
+void
+state_print(FILE* output, const struct state* state);
+
+/*returns a true value if the state is the last one possible*/
 int
 last_state(const struct state* state);
 
-a_int*
-state_to_array(const struct state* state);
-
-void
-array_to_state(const a_int* array, struct state* state);
+/*returns the state's value as an unsigned integer*/
+unsigned
+state_value(const struct state* unpacked);
 
 unsigned
-array_to_unsigned(const a_int* array);
+value_to_unsigned(const unsigned short value[], unsigned short len);
 
 typedef void (*display_func_f)(FILE *output, const struct state* state);
 
@@ -189,7 +195,7 @@ int main(int argc, char *argv[])
             struct state state;
             unpack_state(s, &state);
             printf("/* state = 0x%X (%d bits, 0x%X buffer) */\n",
-                   s, state.size, state.value);
+                   s, state.size, state_value(&state));
             display_func(stdout, &state);
             if (!last_state(&state)) {
                 printf(",");
@@ -207,13 +213,15 @@ unpack_state(state_t packed, struct state* unpacked)
 {
     if ((packed == 0) || (packed == 1)) {
         unpacked->size = 0;
-        unpacked->value = 0;
     } else {
-        unsigned size;
+        unsigned short size;
         for (size = 8; size > 0; size--) {
             if (packed & (1 << size)) {
+                unsigned i;
                 unpacked->size = size;
-                unpacked->value = packed % (1 << size);
+                for (i = 0; i < size; i++) {
+                    unpacked->value[i] = (packed & (1 << i)) ? 1 : 0;
+                }
                 break;
             }
         }
@@ -224,50 +232,55 @@ state_t
 pack_state(const struct state* unpacked)
 {
     if (unpacked->size) {
-        return (1 << unpacked->size) | unpacked->value;
+        state_t s = (1 << unpacked->size);
+        unsigned short i;
+        for (i = 0; i < unpacked->size; i++) {
+            s |= (unpacked->value[i] << i);
+        }
+        return s;
     } else {
         return 0;
     }
 }
 
+void
+state_print(FILE* output, const struct state* state)
+{
+    unsigned short i;
+    fputs("[", output);
+    for (i = 0; i < state->size; i++) {
+        fprintf(output, "%hu", state->value[i]);
+        if ((i + 1) < state->size) {
+            fputs(",", output);
+        }
+    }
+    fputs("]", output);
+}
+
 int
 last_state(const struct state* state)
 {
-    return (state->size == 8) && (state->value == 0xFF);
-}
+    const static unsigned short last[8] = {1,1,1,1,1,1,1,1};
 
-a_int*
-state_to_array(const struct state* state)
-{
-    a_int *array = a_int_new();
-    unsigned i;
-    array->resize_for(array, state->size);
-    for (i = 0; i < state->size; i++) {
-        a_append(array, state->value & (1 << i) ? 1 : 0);
-    }
-    return array;
-}
-
-void
-array_to_state(const a_int* array, struct state* state)
-{
-    assert(array->len <= 8);
-    state->size = array->len;
-    state->value = array_to_unsigned(array);
+    return (state->size == 8) &&
+           (!memcmp(state->value, last, 8 * sizeof(unsigned short)));
 }
 
 unsigned
-array_to_unsigned(const a_int* array)
+state_value(const struct state* unpacked)
 {
-    unsigned i;
-    const unsigned array_len = array->len;
-    unsigned accumulator = 0;
-    for (i = 0; i < array_len; i++) {
-        if (array->_[i]) {
-            accumulator |= (1 << i);
-        }
+    return value_to_unsigned(unpacked->value, unpacked->size);
+}
+
+unsigned
+value_to_unsigned(const unsigned short value[], unsigned short len)
+{
+    unsigned u = 0;
+    unsigned short i;
+    for (i = 0; i < len; i++) {
+        u |= (value[i] << i);
     }
-    return accumulator;
+    return u;
 }
 
 #define FUNC_READ_BITS_TABLE(FUNC_NAME, READ_FUNC)            \
@@ -349,25 +362,23 @@ read_bits_be_func(const struct state* state,
                   state_t *next_state)
 {
     if (state->size) {
-        a_int *bits = state_to_array(state);
-        a_int *to_return = a_int_new();
-        struct state next;
+        if (read_bits >= state->size) {
+            *value_size = state->size;
+            *value = state_value(state);
+            *next_state = 0;
+        } else {
+            struct state remaining;
 
-        /*chop off the least-significant "read_bits" from the bank*/
-        bits->tail(bits, read_bits, to_return);
+            *value_size = read_bits;
+            *value = value_to_unsigned(
+                state->value + (state->size - read_bits), read_bits);
 
-        /*use the remaining most-significant bits in the bank
-          as our next state*/
-        bits->de_tail(bits, read_bits, bits);
-
-        /*convert arrays to values*/
-        *value_size = to_return->len;
-        *value = array_to_unsigned(to_return);
-        array_to_state(bits, &next);
-        *next_state = pack_state(&next);
-
-        bits->del(bits);
-        to_return->del(to_return);
+            remaining.size = state->size - read_bits;
+            memcpy(remaining.value,
+                   state->value,
+                   remaining.size * sizeof(unsigned short));
+            *next_state = pack_state(&remaining);
+        }
     } else {
         *value_size = 0;
         *value = 0;
@@ -383,25 +394,22 @@ read_bits_le_func(const struct state* state,
                   state_t *next_state)
 {
     if (state->size) {
-        a_int *bits = state_to_array(state);
-        a_int *to_return = a_int_new();
-        struct state next;
+        if (read_bits >= state->size) {
+            *value_size = state->size;
+            *value = state_value(state);
+            *next_state = 0;
+        } else {
+            struct state remaining;
 
-        /*chop off the most significant "read_bits" from the bank*/
-        bits->head(bits, read_bits, to_return);
+            *value_size = read_bits;
+            *value = value_to_unsigned(state->value, read_bits);
 
-        /*use the remaining least significant bits in the bank
-          as our next state*/
-        bits->de_head(bits, read_bits, bits);
-
-        /*convert arrays to values*/
-        *value_size = to_return->len;
-        *value = array_to_unsigned(to_return);
-        array_to_state(bits, &next);
-        *next_state = pack_state(&next);
-
-        bits->del(bits);
-        to_return->del(to_return);
+            remaining.size = state->size - read_bits;
+            memcpy(remaining.value,
+                   state->value + read_bits,
+                   remaining.size * sizeof(unsigned short));
+            *next_state = pack_state(&remaining);
+        }
     } else {
         *value_size = 0;
         *value = 0;
@@ -416,13 +424,12 @@ unread_bit_be_func(const struct state* state,
                    state_t *next_state)
 {
     if (state->size < 8) {
-        a_int *bits = state_to_array(state);
         struct state next;
 
         /*append new bit to most-significant field*/
-        bits->append(bits, unread_bit);
-        array_to_state(bits, &next);
-        bits->del(bits);
+        next.size = state->size + 1;
+        memcpy(next.value, state->value, state->size * sizeof(unsigned short));
+        next.value[state->size] = unread_bit;
         *limit_reached = 0;
         *next_state = pack_state(&next);
     } else {
@@ -438,13 +445,14 @@ unread_bit_le_func(const struct state* state,
                    state_t *next_state)
 {
     if (state->size < 8) {
-        a_int *bits = state_to_array(state);
         struct state next;
 
         /*prepend new bit to least-significant field*/
-        bits->insert(bits, 0, unread_bit);
-        array_to_state(bits, &next);
-        bits->del(bits);
+        next.size = state->size + 1;
+        memcpy(next.value + 1,
+               state->value,
+               state->size * sizeof(unsigned short));
+        next.value[0] = unread_bit;
         *limit_reached = 0;
         *next_state = pack_state(&next);
     } else {
@@ -461,22 +469,23 @@ read_unary_be_func(const struct state* state,
                    state_t *next_state)
 {
     if (state->size) {
-        a_int *bits = state_to_array(state);
-        *value = 0;
         unsigned i;
+        *value = 0;
 
         /*check bits in bank from most significant to least significant
           until "stop_bit" is reached*/
-        for (i = 0; i < bits->len; i++) {
-            const unsigned index = bits->len - i - 1;
-            if (bits->_[index] == stop_bit) {
+        for (i = 0; i < state->size; i++) {
+            const unsigned index = state->size - i - 1;
+            if (state->value[index] == stop_bit) {
                 struct state next;
 
                 /*use remaining bits as next state*/
-                bits->head(bits, index, bits);
+                next.size = index;
+                memcpy(next.value,
+                       state->value,
+                       next.size * sizeof(unsigned short));
+
                 *continue_ = 0;
-                array_to_state(bits, &next);
-                bits->del(bits);
                 *next_state = pack_state(&next);
                 return;
             } else {
@@ -485,7 +494,6 @@ read_unary_be_func(const struct state* state,
         }
 
         /*got to end of bits without hitting stop bit*/
-        bits->del(bits);
         *continue_ = 1;
         *next_state = 0;
     } else {
@@ -503,21 +511,22 @@ read_unary_le_func(const struct state* state,
                    state_t *next_state)
 {
     if (state->size) {
-        a_int *bits = state_to_array(state);
-        *value = 0;
         unsigned i;
+        *value = 0;
 
         /*check bits in bank from least significant to most significant
           until "stop_bit" is reached*/
-        for (i = 0; i < bits->len; i++) {
-            if (bits->_[i] == stop_bit) {
+        for (i = 0; i < state->size; i++) {
+            if (state->value[i] == stop_bit) {
                 struct state next;
 
                 /*use remaining bits as next state*/
-                bits->de_head(bits, i + 1, bits);
+                next.size = state->size - i - 1;
+                memcpy(next.value,
+                       state->value + i + 1,
+                       next.size * sizeof(unsigned short));
+
                 *continue_ = 0;
-                array_to_state(bits, &next);
-                bits->del(bits);
                 *next_state = pack_state(&next);
                 return;
             } else {
@@ -526,7 +535,6 @@ read_unary_le_func(const struct state* state,
         }
 
         /*got to end of bits without hitting stop bit*/
-        bits->del(bits);
         *continue_ = 1;
         *next_state = 0;
     } else {
