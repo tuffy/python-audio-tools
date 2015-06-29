@@ -1528,8 +1528,19 @@ class EncodingError(IOError):
     due to an error by the encoder"""
 
     def __init__(self, error_message):
+        error_message = str(error_message) if PY3 else unicode(error_message)
         IOError.__init__(self, error_message)
         self.error_message = error_message
+
+    if PY3:
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
+
+    def __unicode__(self):
+        return self.error_message
 
 
 class UnsupportedChannelMask(EncodingError):
@@ -1543,6 +1554,11 @@ class UnsupportedChannelMask(EncodingError):
             ERR_UNSUPPORTED_CHANNEL_MASK %
             {"target_filename": Filename(filename),
              "assignment": ChannelMask(mask)})
+        self.filename = filename
+        self.mask = mask
+
+    def __reduce__(self):
+        return (UnsupportedChannelMask, (self.filename, self.mask))
 
 
 class UnsupportedChannelCount(EncodingError):
@@ -1556,6 +1572,11 @@ class UnsupportedChannelCount(EncodingError):
             ERR_UNSUPPORTED_CHANNEL_COUNT %
             {"target_filename": Filename(filename),
              "channels": count})
+        self.filename = filename
+        self.count = count
+
+    def __reduce__(self):
+        return (UnsupportedChannelCount, (self.filename, self.count))
 
 
 class UnsupportedBitsPerSample(EncodingError):
@@ -1569,6 +1590,12 @@ class UnsupportedBitsPerSample(EncodingError):
             ERR_UNSUPPORTED_BITS_PER_SAMPLE %
             {"target_filename": Filename(filename),
              "bps": bits_per_sample})
+        self.filename = filename
+        self.bits_per_sample = bits_per_sample
+
+    def __reduce__(self):
+        return (UnsupportedBitsPerSample,
+                (self.filename, self.bits_per_sample))
 
 
 class DecodingError(IOError):
@@ -1578,7 +1605,19 @@ class DecodingError(IOError):
     and raise EncodingError"""
 
     def __init__(self, error_message):
+        assert(isinstance(error_message, str if PY3 else unicode))
         IOError.__init__(self, error_message)
+        self.error_message = error_message
+
+    if PY3:
+        def __str__(self):
+            return self.__unicode__()
+    else:
+        def __str__(self):
+            return self.__unicode__().encode('utf-8')
+
+    def __unicode__(self):
+        return self.error_message
 
 
 def file_type(file):
