@@ -1,5 +1,4 @@
 #include "vorbis.h"
-#include "../pcmconv.h"
 #include "../framelist.h"
 
 /********************************************************

@@ -1,6 +1,5 @@
 #include "wavpack.h"
 #include "../pcm_conv.h"
-#include "../pcmconv.h"
 #include "../framelist.h"
 #include <string.h>
 
@@ -290,7 +289,7 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     status error;
     struct block_header block_header;
     BitstreamReader* block_data;
-    PyObject* framelist;
+    pcm_FrameList* framelist;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
@@ -300,6 +299,10 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     channels_data->reset(channels_data);
 
     if (self->remaining_pcm_samples > 0) {
+        unsigned channels;
+        unsigned pcm_frames;
+        unsigned c;
+
         do {
             /*read block header*/
             if ((error = read_block_header(bs, &block_header)) != OK) {
@@ -337,18 +340,32 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
             }
         } while (block_header.final_block == 0);
 
+        channels = channels_data->len;
+        pcm_frames = channels_data->_[0]->len;
+
         /*deduct frame count from total remaining*/
-        self->remaining_pcm_samples -= MIN(channels_data->_[0]->len,
-                                           self->remaining_pcm_samples);
+        self->remaining_pcm_samples -=
+            MIN(pcm_frames, self->remaining_pcm_samples);
 
         /*convert all channels to single PCM framelist*/
-        framelist = aa_int_to_FrameList(self->audiotools_pcm,
-                                        channels_data,
-                                        self->bits_per_sample);
+        framelist = new_FrameList(self->audiotools_pcm,
+                                  channels,
+                                  self->bits_per_sample,
+                                  pcm_frames);
+
+        for (c = 0; c < channels; c++) {
+            assert(channels_data->_[c]->len == pcm_frames);
+
+            put_channel_data(framelist->samples,
+                             c,
+                             channels,
+                             pcm_frames,
+                             channels_data->_[c]->_);
+        }
 
         /*update stream's MD5 sum with framelist data*/
-        if (!WavPackDecoder_update_md5sum(self, framelist)) {
-            return framelist;
+        if (!WavPackDecoder_update_md5sum(self, (PyObject*)framelist)) {
+            return (PyObject*)framelist;
         } else {
             return NULL;
         }

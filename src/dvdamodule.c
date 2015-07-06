@@ -1,7 +1,6 @@
 #include "dvdamodule.h"
 #include "mod_defs.h"
 #include "framelist.h"
-#include "pcmconv.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

@@ -5,7 +5,6 @@
 #include <cdio/track.h>
 #include <cdio/types.h>
 #include "pcm_conv.h"
-#include "pcmconv.h"
 #include "framelist.h"
 #include "mod_defs.h"
 

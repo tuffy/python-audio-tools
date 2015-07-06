@@ -636,7 +636,6 @@ class audiotools_decoders(Extension):
 
         defines = [("VERSION", VERSION), ("HAS_PYTHON", None)]
         sources = ["src/array.c",
-                   "src/pcmconv.c",
                    "src/pcm_conv.c",
                    "src/framelist.c",
                    "src/common/md5.c",

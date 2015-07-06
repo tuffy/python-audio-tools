@@ -1,5 +1,4 @@
 #include "sine.h"
-#include "../pcmconv.h"
 #include "../framelist.h"
 
 /********************************************************

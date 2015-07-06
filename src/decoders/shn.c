@@ -1,7 +1,6 @@
 #include "shn.h"
 #include "../buffer.h"
 #include "../pcm_conv.h"
-#include "../pcmconv.h"
 #include "../framelist.h"
 #include <string.h>
 #include <math.h>
@@ -177,6 +176,11 @@ SHNDecoder_channel_mask(decoders_SHNDecoder *self, void *closure)
 PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 {
+    pcm_FrameList *framelist;
+    unsigned channels;
+    unsigned pcm_frames;
+    unsigned c;
+
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
         return NULL;
@@ -192,9 +196,23 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 
     switch (read_framelist(self, self->unshifted)) {
     case OK:
-        return aa_int_to_FrameList(self->audiotools_pcm,
-                                   self->unshifted,
-                                   self->bits_per_sample);
+        channels = self->header.channels;
+        pcm_frames = self->unshifted->_[0]->len;
+
+        framelist = new_FrameList(self->audiotools_pcm,
+                                  channels,
+                                  self->bits_per_sample,
+                                  pcm_frames);
+
+        for (c = 0; c < channels; c++) {
+            put_channel_data(framelist->samples,
+                             c,
+                             channels,
+                             pcm_frames,
+                             self->unshifted->_[c]->_);
+        }
+
+        return (PyObject*)framelist;
     case END_OF_STREAM:
         return empty_FrameList(self->audiotools_pcm,
                                self->header.channels,

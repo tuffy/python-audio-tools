@@ -1,5 +1,4 @@
 #include "alac.h"
-#include "../pcmconv.h"
 #include "../framelist.h"
 #include <string.h>
 
@@ -204,6 +203,11 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
     thread_state = PyEval_SaveThread();
 
     if (!setjmp(*br_try(mdat))) {
+        pcm_FrameList *framelist;
+        unsigned channels;
+        unsigned pcm_frames;
+        unsigned c;
+
         frameset_channels->reset(frameset_channels);
 
         /*get initial frame's channel count*/
@@ -244,9 +248,25 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
         alac_order_to_wave_order(frameset_channels);
 
         /*finally, build and return framelist object from the sample data*/
-        return aa_int_to_FrameList(self->audiotools_pcm,
-                                   frameset_channels,
-                                   self->bits_per_sample);
+        channels = frameset_channels->len;
+        pcm_frames = frameset_channels->_[0]->len;
+
+        framelist = new_FrameList(self->audiotools_pcm,
+                                  channels,
+                                  self->bits_per_sample,
+                                  pcm_frames);
+
+        for (c = 0; c < channels; c++) {
+            assert(frameset_channels->_[c]->len == pcm_frames);
+
+            put_channel_data(framelist->samples,
+                             c,
+                             channels,
+                             pcm_frames,
+                             frameset_channels->_[c]->_);
+        }
+
+        return (PyObject*)framelist;
     } else {
         br_etry(mdat);
         PyEval_RestoreThread(thread_state);
