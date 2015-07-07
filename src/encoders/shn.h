@@ -3,8 +3,7 @@
 
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array.h"
-#include "../pcmconv.h"
+#include "../pcmreader.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -64,22 +63,30 @@ write_header(BitstreamWriter* bs,
 /*returns 0 on success, 1 if an exception occurs during encoding*/
 static int
 encode_audio(BitstreamWriter* bs,
-             pcmreader* pcmreader,
+             struct PCMReader* pcmreader,
              int signed_samples,
              unsigned block_size);
 
 static int
-all_zero(const a_int* samples);
+all_zero(unsigned block_size, const int samples[]);
 
 static int
-wasted_bits(const a_int* samples);
+wasted_bits(unsigned block_size, const int samples[]);
 
 static void
-calculate_best_diff(const a_int* samples,
-                    const a_int* prev_samples,
-                    aa_int* deltas,
+calculate_best_diff(unsigned block_size,
+                    const int samples[],
+                    int prev_samples[3],
                     unsigned* diff,
                     unsigned* energy,
-                    a_int* residuals);
+                    int residual[]);
+
+static void
+compute_delta(unsigned samples_count,
+              const int samples[],
+              int delta[]);
+
+static unsigned
+delta_sum(unsigned samples_count, const int samples[]);
 
 #endif

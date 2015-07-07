@@ -35,8 +35,8 @@ alacenc: encoders/alac.c encoders/alac.h bitstream.a array.o pcmreader.o pcm_con
 flacenc: encoders/flac.c encoders/flac.h bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o
 	$(CC) $(FLAGS) -pg -o $@ encoders/flac.c bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
 
-shnenc: $(OBJS) encoders/shn.c encoders/shn.h buffer.o pcm_conv.o
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c $(OBJS) buffer.o pcm_conv.o -DSTANDALONE -lm
+shnenc: encoders/shn.c encoders/shn.h bitstream.a array.o pcmreader.o pcm_conv.o
+	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c bitstream.a array.o pcmreader.o pcm_conv.o -DSTANDALONE -lm
 
 wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o pcm_conv.o array.o bitstream.a
 	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o pcm_conv.o array.o bitstream.a -DSTANDALONE

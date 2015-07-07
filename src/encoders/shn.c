@@ -1,6 +1,7 @@
 #ifndef STANDALONE
 #include <Python.h>
 #endif
+#include <string.h>
 #include "shn.h"
 
 /********************************************************
@@ -38,7 +39,7 @@ encoders_encode_shn(PyObject *dummy,
     char *filename;
     FILE *output_file;
     BitstreamWriter* writer;
-    pcmreader* pcmreader;
+    struct PCMReader* pcmreader;
     int is_big_endian = 0;
     int signed_samples = 0;
     char* header_data;
@@ -61,7 +62,7 @@ encoders_encode_shn(PyObject *dummy,
     if (!PyArg_ParseTupleAndKeywords(args, keywds, "sO&iis#|s#I",
                                      kwlist,
                                      &filename,
-                                     pcmreader_converter,
+                                     py_obj_to_pcmreader,
                                      &pcmreader,
                                      &is_big_endian,
                                      &signed_samples,
@@ -177,24 +178,22 @@ write_header(BitstreamWriter* bs,
 
 static int
 encode_audio(BitstreamWriter* bs,
-             pcmreader* pcmreader,
+             struct PCMReader* pcmreader,
              int signed_samples,
              unsigned block_size)
 {
     unsigned left_shift = 0;
     int sign_adjustment;
 
-    /*allocate some temporary buffers*/
-    aa_int* frame = aa_int_new();
-    aa_int* wrapped_samples = aa_int_new();
-    a_int* shifted = a_int_new();
-    aa_int* deltas = aa_int_new();
-    a_int* residuals = a_int_new();
+    int frame[block_size * pcmreader->channels];
+    int *wrapped[pcmreader->channels];
+    unsigned frames_read;
     unsigned c;
-    unsigned i;
 
-    for (i = 0; i < pcmreader->channels; i++)
-        wrapped_samples->append(wrapped_samples);
+    /*allocate temporary wrapped samples buffer*/
+    for (c = 0; c < pcmreader->channels; c++) {
+        wrapped[c] = calloc(3, sizeof(int));
+    }
 
     if (!signed_samples) {
         sign_adjustment = 1 << (pcmreader->bits_per_sample - 1);
@@ -202,37 +201,40 @@ encode_audio(BitstreamWriter* bs,
         sign_adjustment = 0;
     }
 
-    if (pcmreader->read(pcmreader, block_size, frame))
-        goto error;
-
-    while (frame->_[0]->len > 0) {
-
-        if (frame->_[0]->len != block_size) {
+    while ((frames_read = pcmreader->read(pcmreader,
+                                          block_size,
+                                          frame)) > 0) {
+        if (frames_read != block_size) {
             /*PCM frame count has changed, so issue BLOCKSIZE command*/
-            block_size = frame->_[0]->len;
+            block_size = frames_read;
             write_unsigned(bs, COMMAND_SIZE, FN_BLOCKSIZE);
             write_long(bs, block_size);
         }
 
-        for (c = 0; c < frame->len; c++) {
-            a_int* channel = frame->_[c];
-            a_int* wrapped = wrapped_samples->_[c];
+        for (c = 0; c < pcmreader->channels; c++) {
+            unsigned i;
+            int channel[frames_read];
+
+            get_channel_data(frame,
+                             c,
+                             pcmreader->channels,
+                             frames_read,
+                             channel);
 
             /*convert signed samples to unsigned, if necessary*/
             if (sign_adjustment != 0)
-                for (i = 0; i < channel->len; i++)
-                    channel->_[i] += sign_adjustment;
+                for (i = 0; i < frames_read; i++)
+                    channel[i] += sign_adjustment;
 
-            if (all_zero(channel)) {
+            if (all_zero(frames_read, channel)) {
                 /*write ZERO command and wrap channel for next set*/
                 write_unsigned(bs, COMMAND_SIZE, FN_ZERO);
-                wrapped->extend(wrapped, channel);
-                wrapped->tail(wrapped, SAMPLES_TO_WRAP, wrapped);
             } else {
                 unsigned diff = 1;
                 unsigned energy = 0;
+                const unsigned wasted_BPS = wasted_bits(frames_read, channel);
+                int residual[frames_read];
 
-                unsigned wasted_BPS = wasted_bits(channel);
                 if (wasted_BPS != left_shift) {
                     /*issue BITSHIFT comand*/
                     left_shift = wasted_BPS;
@@ -241,69 +243,60 @@ encode_audio(BitstreamWriter* bs,
                 }
 
                 /*apply left shift to channel data*/
-                if (left_shift > 0) {
-                    shifted->reset_for(shifted, channel->len);
-                    for (i = 0; i < channel->len; i++)
-                        a_append(shifted, channel->_[i] >> left_shift);
-                } else {
-                    channel->copy(channel, shifted);
+                if (left_shift) {
+                    for (i = 0; i < frames_read; i++) {
+                        channel[i] >>= left_shift;
+                    }
                 }
 
                 /*calculate best DIFF, energy and residuals for shifted data*/
-                calculate_best_diff(shifted, wrapped, deltas,
-                                    &diff, &energy, residuals);
+                calculate_best_diff(frames_read,
+                                    channel,
+                                    wrapped[c],
+                                    &diff,
+                                    &energy,
+                                    residual);
 
                 /*issue DIFF command*/
                 write_unsigned(bs, COMMAND_SIZE, diff);
                 write_unsigned(bs, ENERGY_SIZE, energy);
-                for (i = 0; i < residuals->len; i++)
-                    write_signed(bs, energy, residuals->_[i]);
-
-                /*wrap shifted channel data for next set*/
-                wrapped->extend(wrapped, shifted);
-                wrapped->tail(wrapped, SAMPLES_TO_WRAP, wrapped);
+                for (i = 0; i < frames_read; i++)
+                    write_signed(bs, energy, residual[i]);
             }
         }
-
-        if (pcmreader->read(pcmreader, block_size, frame))
-            goto error;
     }
 
-    /*deallocate temporary buffers and return result*/
-    frame->del(frame);
-    wrapped_samples->del(wrapped_samples);
-    shifted->del(shifted);
-    deltas->del(deltas);
-    residuals->del(residuals);
-    return 0;
+    /*deallocate temporary wrapped samples buffer*/
+    for (c = 0; c < pcmreader->channels; c++) {
+        free(wrapped[c]);
+    }
 
- error:
-    frame->del(frame);
-    wrapped_samples->del(wrapped_samples);
-    shifted->del(shifted);
-    deltas->del(deltas);
-    residuals->del(residuals);
-    return 1;
+    /*return result*/
+    return (pcmreader->status == PCM_OK) ? 0 : 1;
 }
 
 static int
-all_zero(const a_int* samples)
+all_zero(unsigned block_size, const int samples[])
 {
-    unsigned i;
-    for (i = 0; i < samples->len; i++)
-        if (samples->_[i] != 0)
+    while (block_size) {
+        if (samples[0] != 0) {
             return 0;
+        } else {
+            block_size -= 1;
+            samples += 1;
+        }
+    }
     return 1;
 }
 
 static int
-wasted_bits(const a_int* samples)
+wasted_bits(unsigned block_size, const int samples[])
 {
     unsigned i;
-    unsigned wasted_bits_per_sample = INT_MAX;
+    unsigned wasted_bits_per_sample = UINT_MAX;
 
-    for (i = 0; i < samples->len; i++) {
-        int sample = samples->_[i];
+    for (i = 0; i < block_size; i++) {
+        int sample = samples[i];
         if (sample != 0) {
             unsigned wasted_bits;
             for (wasted_bits = 0;
@@ -317,7 +310,7 @@ wasted_bits(const a_int* samples)
         }
     }
 
-    if (wasted_bits_per_sample == INT_MAX) {
+    if (wasted_bits_per_sample == UINT_MAX) {
         return 0;
     } else {
         return wasted_bits_per_sample;
@@ -325,83 +318,40 @@ wasted_bits(const a_int* samples)
 }
 
 static void
-calculate_best_diff(const a_int* samples,
-                    const a_int* prev_samples,
-                    aa_int* deltas,
+calculate_best_diff(unsigned block_size,
+                    const int samples[],
+                    int prev_samples[3],
                     unsigned* diff,
                     unsigned* energy,
-                    a_int* residuals)
+                    int residual[])
 {
-    a_int* delta1;
-    a_int* delta2;
-    a_int* delta3;
-    unsigned sum1 = 0;
-    unsigned sum2 = 0;
-    unsigned sum3 = 0;
-    unsigned i;
-
-    assert(samples->len > 0);
-
-    deltas->reset(deltas);
-
-    /*determine delta1 from samples and previous samples*/
-    delta1 = deltas->append(deltas);
-    switch (prev_samples->len) {
-    case 0:
-        delta1->vset(delta1, 3,
-                     0 - 0,
-                     0 - 0,
-                     samples->_[0] - 0);
-        break;
-    case 1:
-        delta1->vset(delta1, 3,
-                     0 - 0,
-                     prev_samples->_[0] - 0,
-                     samples->_[0] - prev_samples->_[0]);
-        break;
-    case 2:
-        delta1->vset(delta1, 3,
-                     prev_samples->_[0] - 0,
-                     prev_samples->_[1] - prev_samples->_[0],
-                     samples->_[0] - prev_samples->_[1]);
-        break;
-    default:
-        delta1->vset(delta1, 3,
-                     prev_samples->_[prev_samples->len - 2] -
-                     prev_samples->_[prev_samples->len - 3],
-                     prev_samples->_[prev_samples->len - 1] -
-                     prev_samples->_[prev_samples->len - 2],
-                     samples->_[0] - prev_samples->_[prev_samples->len - 1]);
-        break;
-    }
-    delta1->resize_for(delta1, samples->len - 1);
-    for (i = 1; i < samples->len; i++)
-        a_append(delta1, samples->_[i] - samples->_[i - 1]);
-    assert(delta1->len == (samples->len + 2));
-
-    /*determine delta2 from delta1*/
-    delta2 = deltas->append(deltas);
-    delta2->resize_for(delta2, delta1->len - 1);
-    for (i = 1; i < delta1->len; i++)
-        a_append(delta2, delta1->_[i] - delta1->_[i - 1]);
-    assert(delta2->len == (samples->len + 1));
-
-    /*determine delta3 from delta2*/
-    delta3 = deltas->append(deltas);
-    delta3->resize_for(delta3, delta2->len - 1);
-    for (i = 1; i < delta2->len; i++)
-        a_append(delta3, delta2->_[i] - delta2->_[i - 1]);
-    assert(delta3->len == samples->len);
-
-    /*determine delta sums from non-negative deltas*/
-    for (i = 2; i < delta1->len; i++)
-        sum1 += abs(delta1->_[i]);
-    for (i = 1; i < delta2->len; i++)
-        sum2 += abs(delta2->_[i]);
-    for (i = 0; i < delta3->len; i++)
-        sum3 += abs(delta3->_[i]);
+    int buffer[block_size + 3];
+    int delta1[block_size + 2];
+    int delta2[block_size + 1];
+    int delta3[block_size];
+    unsigned sum1;
+    unsigned sum2;
+    unsigned sum3;
 
     *energy = 0;
+
+    /*combine samples and previous samples into a unified buffer*/
+    memcpy(buffer, prev_samples, 3 * sizeof(int));
+    memcpy(buffer + 3, samples, block_size * sizeof(int));
+
+    /*determine delta1 from samples and previous samples*/
+    compute_delta(block_size + 3, buffer, delta1);
+
+    /*determine delta2 from delta1*/
+    compute_delta(block_size + 2, delta1, delta2);
+
+    /*determine delta3 from delta2*/
+    compute_delta(block_size + 1, delta2, delta3);
+
+    /*determine delta sums from deltas*/
+    sum1 = delta_sum(block_size + 2, delta1);
+    sum2 = delta_sum(block_size + 1, delta2);
+    sum3 = delta_sum(block_size, delta3);
 
     /*determine DIFF command from minimum sum*/
     if (sum1 < MIN(sum2, sum3)) {
@@ -409,32 +359,58 @@ calculate_best_diff(const a_int* samples,
         *diff = 1;
 
         /*calculate energy from minimum sum*/
-        while ((samples->len << *energy) < sum1)
+        while ((block_size << *energy) < sum1)
             *energy += 1;
 
         /*residuals are determined from delta values*/
-        delta1->de_head(delta1, 2, residuals);
+        memcpy(residual, delta1 + 2, block_size * sizeof(int));
     } else if (sum2 < sum3) {
         /*use DIFF2 command*/
         *diff = 2;
 
         /*calculate energy from minimum sum*/
-        while ((samples->len << *energy) < sum2)
+        while ((block_size << *energy) < sum2)
             *energy += 1;
 
         /*residuals are determined from delta values*/
-        delta2->de_head(delta2, 1, residuals);
+        memcpy(residual, delta2 + 1, block_size * sizeof(int));
     } else {
         /*use DIFF3 command*/
         *diff = 3;
 
         /*calculate energy from minimum sum*/
-        while ((samples->len << *energy) < sum3)
+        while ((block_size << *energy) < sum3)
             *energy += 1;
 
         /*residuals are determined from delta values*/
-        delta3->copy(delta3, residuals);
+        memcpy(residual, delta3, block_size * sizeof(int));
     }
+
+    /*wrap the trailing 3 samples to prev_samples for next time*/
+    memcpy(prev_samples, buffer + block_size, 3 * sizeof(int));
+}
+
+static void
+compute_delta(unsigned samples_count,
+              const int samples[],
+              int delta[])
+{
+    for (samples_count--; samples_count; samples_count--) {
+        delta[0] = samples[1] - samples[0];
+        delta += 1;
+        samples += 1;
+    }
+}
+
+static unsigned
+delta_sum(unsigned samples_count, const int samples[])
+{
+    unsigned accumulator = 0;
+    for (; samples_count; samples_count--) {
+        accumulator += abs(samples[0]);
+        samples += 1;
+    }
+    return accumulator;
 }
 
 static void
@@ -493,10 +469,10 @@ int main(int argc, char* argv[]) {
     unsigned bits_per_sample = 16;
 
     unsigned block_size = 256;
-    BitstreamRecorder* header = bw_open_string_recorder(BS_BIG_ENDIAN);
-    BitstreamRecorder* footer = bw_open_string_recorder(BS_BIG_ENDIAN);
+    BitstreamRecorder* header = bw_open_bytes_recorder(BS_BIG_ENDIAN);
+    BitstreamRecorder* footer = bw_open_bytes_recorder(BS_BIG_ENDIAN);
 
-    pcmreader* pcmreader;
+    struct PCMReader* pcmreader;
     FILE *output_file;
     BitstreamWriter* writer;
     unsigned bytes_written = 0;
@@ -618,24 +594,20 @@ int main(int argc, char* argv[]) {
            (bits_per_sample == 16));
     assert(sample_rate > 0);
 
-    printf("Encoding from stdin using parameters:\n");
-    printf("channels        %u\n", channels);
-    printf("sample rate     %u\n", sample_rate);
-    printf("bits per sample %u\n", bits_per_sample);
-    printf("little-endian, signed samples\n");
+    /*open pcmreader on stdin*/
+    pcmreader = pcmreader_open_raw(stdin,
+                                   sample_rate,
+                                   channels,
+                                   0,
+                                   bits_per_sample,
+                                   1,
+                                   1);
+
+    pcmreader_display(pcmreader, stdout);
     printf("\n");
     printf("block size      %u\n", block_size);
     printf("header size     %u bytes\n", header->bytes_written(header));
     printf("footer size     %u bytes\n", footer->bytes_written(footer));
-
-    /*open pcmreader on stdin*/
-    pcmreader = open_pcmreader(stdin,
-                               sample_rate,
-                               channels,
-                               0,
-                               bits_per_sample,
-                               0,
-                               1);
 
     /*open given filename for writing*/
     if ((output_file = fopen(output_filename, "wb")) == NULL) {

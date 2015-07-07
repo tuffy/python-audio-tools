@@ -419,14 +419,14 @@ class ShortenAudio(WaveContainer, AiffContainer):
         try:
             if len(footer) == 0:
                 encode_shn(filename=filename,
-                           pcmreader=BufferedPCMReader(counter),
+                           pcmreader=counter,
                            is_big_endian=False,
                            signed_samples=pcmreader.bits_per_sample == 16,
                            header_data=header,
                            block_size=block_size)
             else:
                 encode_shn(filename=filename,
-                           pcmreader=BufferedPCMReader(counter),
+                           pcmreader=counter,
                            is_big_endian=False,
                            signed_samples=pcmreader.bits_per_sample == 16,
                            header_data=header,
