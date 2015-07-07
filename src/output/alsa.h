@@ -1,5 +1,6 @@
 #include <Python.h>
 #include <alsa/asoundlib.h>
+#include "../framelist.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -21,18 +22,22 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-typedef struct {
+typedef struct output_ALSAAudio_s {
     PyObject_HEAD
 
     unsigned sample_rate;
     unsigned channels;
     unsigned bits_per_sample;
+
     unsigned buffer_size;
     union {
         int8_t *int8;
         int16_t *int16;
-        float *float32;
+        int32_t *int32;
+        //float *float32;
     } buffer;
+
+    int (*play)(struct output_ALSAAudio_s *self, pcm_FrameList *framelist);
 
     PyObject *framelist_type;
     snd_pcm_t *output;
@@ -42,19 +47,37 @@ typedef struct {
     long volume_max;
 } output_ALSAAudio;
 
-static PyObject* ALSAAudio_play(output_ALSAAudio *self, PyObject *args);
-static PyObject* ALSAAudio_pause(output_ALSAAudio *self, PyObject *args);
-static PyObject* ALSAAudio_resume(output_ALSAAudio *self, PyObject *args);
-static PyObject* ALSAAudio_flush(output_ALSAAudio *self, PyObject *args);
-static PyObject* ALSAAudio_get_volume(output_ALSAAudio *self, PyObject *args);
-static PyObject* ALSAAudio_set_volume(output_ALSAAudio *self, PyObject *args);
-static PyObject* ALSAAudio_close(output_ALSAAudio *self, PyObject *args);
+static PyObject*
+ALSAAudio_play(output_ALSAAudio *self, PyObject *args);
 
-static PyObject* ALSAAudio_new(PyTypeObject *type,
-                                PyObject *args,
-                                PyObject *kwds);
-void ALSAAudio_dealloc(output_ALSAAudio *self);
-int ALSAAudio_init(output_ALSAAudio *self, PyObject *args, PyObject *kwds);
+static PyObject*
+ALSAAudio_pause(output_ALSAAudio *self, PyObject *args);
+
+static PyObject*
+ALSAAudio_resume(output_ALSAAudio *self, PyObject *args);
+
+static PyObject*
+ALSAAudio_flush(output_ALSAAudio *self, PyObject *args);
+
+static PyObject*
+ALSAAudio_get_volume(output_ALSAAudio *self, PyObject *args);
+
+static PyObject*
+ALSAAudio_set_volume(output_ALSAAudio *self, PyObject *args);
+
+static PyObject*
+ALSAAudio_close(output_ALSAAudio *self, PyObject *args);
+
+static PyObject*
+ALSAAudio_new(PyTypeObject *type,
+              PyObject *args,
+              PyObject *kwds);
+
+void
+ALSAAudio_dealloc(output_ALSAAudio *self);
+
+int
+ALSAAudio_init(output_ALSAAudio *self, PyObject *args, PyObject *kwds);
 
 PyGetSetDef ALSAAudio_getseters[] = {
     {NULL}
