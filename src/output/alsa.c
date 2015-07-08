@@ -142,19 +142,26 @@ ALSAAudio_init(output_ALSAAudio *self, PyObject *args, PyObject *kwds)
     }
 
     if ((error = snd_mixer_open(&self->mixer, 0)) < 0) {
-        PyErr_SetString(PyExc_IOError, "unable to open ALSA mixer");
-        return -1;
+        /*unable to open ALSA mixer*/
+        self->mixer = NULL;
+        return 0;
     } else if ((error = snd_mixer_attach(self->mixer, device)) < 0) {
-        PyErr_SetString(PyExc_IOError, "unable to attach ALSA mixer to card");
-        return -1;
+        /*unable to attach mixer to card*/
+        snd_mixer_close(self->mixer);
+        self->mixer = NULL;
+        return 0;
     } else if ((error = snd_mixer_selem_register(self->mixer,
                                                  NULL,
                                                  NULL)) < 0) {
-        PyErr_SetString(PyExc_IOError, "unable to register ALSA mixer");
-        return -1;
+        /*unable to register mixer*/
+        snd_mixer_close(self->mixer);
+        self->mixer = NULL;
+        return 0;
     } else if ((error = snd_mixer_load(self->mixer)) < 0) {
-        PyErr_SetString(PyExc_IOError, "unable to load ALSA mixer");
-        return -1;
+        /*unable to load mixer*/
+        snd_mixer_close(self->mixer);
+        self->mixer = NULL;
+        return 0;
     }
 
     /*walk through mixer elements to find Master or PCM*/
@@ -420,7 +427,7 @@ ALSAAudio_flush(output_ALSAAudio *self, PyObject *args)
 static PyObject*
 ALSAAudio_get_volume(output_ALSAAudio *self, PyObject *args)
 {
-    if (self->mixer_elem != NULL) {
+    if (self->mixer_elem) {
         /*get the average volume from all supported output channels*/
         const snd_mixer_selem_channel_id_t channels[] = {
             SND_MIXER_SCHN_FRONT_LEFT,
@@ -472,9 +479,11 @@ ALSAAudio_set_volume(output_ALSAAudio *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "d", &new_volume_d))
         return NULL;
 
-    new_volume = round(new_volume_d * self->volume_max);
+    if (self->mixer_elem) {
+        new_volume = round(new_volume_d * self->volume_max);
 
-    snd_mixer_selem_set_playback_volume_all(self->mixer_elem, new_volume);
+        snd_mixer_selem_set_playback_volume_all(self->mixer_elem, new_volume);
+    }
 
     Py_INCREF(Py_None);
     return Py_None;
