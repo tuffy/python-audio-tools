@@ -66,9 +66,11 @@ MOD_INIT(decoders)
     if (PyType_Ready(&decoders_ALACDecoderType) < 0)
         return MOD_ERROR_VAL;
 
+    #ifdef HAS_WAVPACK
     decoders_WavPackDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_WavPackDecoderType) < 0)
         return MOD_ERROR_VAL;
+    #endif
 
     #ifdef HAS_VORBIS
     decoders_VorbisDecoderType.tp_new = PyType_GenericNew;
@@ -124,9 +126,11 @@ MOD_INIT(decoders)
     PyModule_AddObject(m, "ALACDecoder",
                        (PyObject *)&decoders_ALACDecoderType);
 
+    #ifdef HAS_WAVPACK
     Py_INCREF(&decoders_WavPackDecoderType);
     PyModule_AddObject(m, "WavPackDecoder",
                        (PyObject *)&decoders_WavPackDecoderType);
+    #endif
 
     #ifdef HAS_VORBIS
     Py_INCREF(&decoders_VorbisDecoderType);

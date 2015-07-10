@@ -63,7 +63,8 @@ LIBRARY_URLS = {"libcdio_paranoia": "http://www.gnu.org/software/libcdio/",
                 "vorbisenc": "http://www.xiph.org",
                 "alsa": "http://www.alsa-project.org",
                 "libasound2": "http://www.alsa-project.org",
-                "libpulse": "http://www.freedesktop.org"}
+                "libpulse": "http://www.freedesktop.org",
+                "wavpack": "http://www.wavpack.com"}
 
 
 class SystemLibraries(object):
@@ -652,7 +653,6 @@ class audiotools_decoders(Extension):
                    "src/common/tta_crc.c",
                    "src/decoders/shn.c",
                    "src/decoders/alac.c",
-                   "src/decoders/wavpack.c",
                    "src/decoders/tta.c",
                    "src/decoders/sine.c",
                    "src/decoders.c"]
@@ -712,6 +712,24 @@ class audiotools_decoders(Extension):
         else:
             self.__library_manifest__.append(("opusfile",
                                               "Opus decoding",
+                                              False))
+
+        if system_libraries.present("wavpack"):
+            if system_libraries.guaranteed_present("wavpack"):
+                libraries.add("wavpack")
+            else:
+                extra_compile_args.extend(
+                    system_libraries.extra_compile_args("wavpack"))
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("wavpack"))
+            defines.append(("HAS_WAVPACK", None))
+            sources.append("src/decoders/wavpack.c")
+            self.__library_manifest__.append(("wavpack",
+                                              "Wavpack decoding",
+                                              True))
+        else:
+            self.__library_manifest__.append(("wavpack",
+                                              "Wavpack decoding",
                                               False))
 
         Extension.__init__(self,
