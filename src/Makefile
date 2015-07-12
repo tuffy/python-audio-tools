@@ -38,8 +38,8 @@ flacenc: encoders/flac.c encoders/flac.h bitstream.a pcmreader.o pcm_conv.o md5.
 shnenc: encoders/shn.c encoders/shn.h bitstream.a array.o pcmreader.o pcm_conv.o
 	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c bitstream.a array.o pcmreader.o pcm_conv.o -DSTANDALONE -lm
 
-wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o pcm_conv.o array.o bitstream.a
-	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c md5.o pcm_conv.o array.o bitstream.a -DSTANDALONE
+wvenc: $(OBJS) encoders/wavpack.c pcmreader.o pcm_conv.o bitstream.a
+	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c pcmreader.o pcm_conv.o bitstream.a -DSTANDALONE `pkg-config --cflags --libs wavpack`
 
 ttaenc: encoders/tta.c encoders/tta.h pcmreader.o pcm_conv.o bitstream.a
 	$(CC) $(FLAGS) -o ttaenc encoders/tta.c pcmreader.o pcm_conv.o bitstream.a -DSTANDALONE
