@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../pcmreader.h"
+#include "../pcm_conv.h"
 #include "../bitstream.h"
+#include "../common/md5.h"
 #include <wavpack/wavpack.h>
 
 /********************************************************
@@ -24,9 +26,17 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+static void
+update_md5sum(audiotools__MD5Context *md5sum,
+              const int pcm_data[],
+              unsigned channels,
+              unsigned bits_per_sample,
+              unsigned pcm_frames);
+
 static int
 block_out(BitstreamWriter *output, uint8_t *data, int32_t byte_count);
 
+/*FIXME - handle total samples*/
 /*FIXME - handle optional wav header, footer*/
 static int
 encode_wavpack(BitstreamWriter *output,
@@ -37,9 +47,12 @@ encode_wavpack(BitstreamWriter *output,
                int wasted_bits,
                int joint_stereo)
 {
+    audiotools__MD5Context md5;
+    unsigned char stream_md5[16];
     int *samples;
     unsigned pcm_frames_read;
     uint32_t total_samples_written = 0;
+    audiotools__MD5Init(&md5);
 
     /*get context and set block output function*/
     WavpackContext *context =
@@ -85,6 +98,11 @@ encode_wavpack(BitstreamWriter *output,
         if (!WavpackPackSamples(context, samples, pcm_frames_read)) {
             goto error;
         }
+        update_md5sum(&md5,
+                      samples,
+                      pcmreader->channels,
+                      pcmreader->bits_per_sample,
+                      pcm_frames_read);
         total_samples_written += pcm_frames_read;
     }
 
@@ -97,16 +115,25 @@ encode_wavpack(BitstreamWriter *output,
     }
 
     /*write calculated MD5 sum*/
-    /*FIXME*/
+    audiotools__MD5Final(stream_md5, &md5);
+    if (!WavpackStoreMD5Sum(context, stream_md5)) {
+        goto error;
+    }
 
     /*write RIFF trailer, if given*/
     /*FIXME*/
 
-    /*update total sample count, if necessary*/
-    /*FIXME*/
+    if (!WavpackFlushSamples(context)) {
+        goto error;
+    }
 
     /*close Wavpack*/
     WavpackCloseFile(context);
+
+    /*update total sample count, if necessary*/
+    /*FIXME*/
+    output->seek(output, 12, BS_SEEK_SET);
+    output->write(output, 32, total_samples_written);
 
     /*deallocate temporary space and return success*/
     free(samples);
@@ -119,13 +146,37 @@ error:
     return 1;
 }
 
+static void
+update_md5sum(audiotools__MD5Context *md5sum,
+              const int pcm_data[],
+              unsigned channels,
+              unsigned bits_per_sample,
+              unsigned pcm_frames)
+{
+    const unsigned bytes_per_sample = bits_per_sample / 8;
+    unsigned total_samples = pcm_frames * channels;
+    const unsigned buffer_size = total_samples * bytes_per_sample;
+    unsigned char buffer[buffer_size];
+    unsigned char *output_buffer = buffer;
+    void (*converter)(int, unsigned char *) =
+        int_to_pcm_converter(bits_per_sample, 0, 1);
+
+    for (; total_samples; total_samples--) {
+        converter(*pcm_data, output_buffer);
+        pcm_data += 1;
+        output_buffer += bytes_per_sample;
+    }
+
+    audiotools__MD5Update(md5sum, buffer, buffer_size);
+}
+
 static int
 block_out(BitstreamWriter *output, uint8_t *data, int32_t byte_count)
 {
     /*FIXME - implement this*/
     fprintf(stderr, "wrote %d bytes\n", byte_count);
     output->write_bytes(output, data, (unsigned int)byte_count);
-    return 0; /*FIXME - does this mean success?*/
+    return 1;
 }
 
 #ifdef STANDALONE
