@@ -719,6 +719,22 @@ typedef void
 (*bw_setpos_f)(struct BitstreamWriter_s* self,
                const bw_pos_t* pos);
 
+/*moves the stream directly to the given location, in bytes
+  relative to the beginning, current or end of the stream
+
+  no callbacks are called on the intervening bytes
+
+  writing partial bytes to the stream will not preserve the remainder
+  (i.e. seeking to the start of the file and writing a 3 bit value
+   will not preserve the remaining 5 bits; those will be lost)
+
+  may call bw_abort() if the position cannot be seeked to
+  or the stream is closed*/
+typedef void
+(*bw_seek_f)(struct BitstreamWriter_s* self,
+             long position,
+             bs_whence whence);
+
 struct BitstreamRecorderEntry;
 
 
@@ -854,7 +870,8 @@ struct BitstreamRecorderEntry;
                       uint8_t byte);                        \
                                                             \
     bw_getpos_f getpos;                                     \
-    bw_setpos_f setpos;
+    bw_setpos_f setpos;                                     \
+    bw_seek_f seek;
 
 typedef struct BitstreamWriter_s {
     BITSTREAMWRITER_TYPE
@@ -995,6 +1012,7 @@ bw_open_external(void* user_data,
                  ext_setpos_f setpos,
                  ext_getpos_f getpos,
                  ext_free_pos_f free_pos,
+                 ext_seek_f seek,
                  ext_flush_f flush,
                  ext_close_f close,
                  ext_free_f free);

@@ -97,6 +97,7 @@ struct bw_external_output {
     ext_setpos_f setpos;
     ext_getpos_f getpos;
     ext_free_pos_f free_pos;
+    ext_seek_f seek;
     ext_flush_f flush;
     ext_close_f close;
     ext_free_f free;
@@ -170,6 +171,7 @@ ext_open_w(void* user_data,
            ext_setpos_f setpos,
            ext_getpos_f getpos,
            ext_free_pos_f free_pos,
+           ext_seek_f seek,
            ext_flush_f flush,
            ext_close_f close,
            ext_free_f free);
@@ -205,6 +207,17 @@ ext_setpos_w(struct bw_external_output *stream, void *pos);
   returns NULL if an error occurs*/
 void*
 ext_getpos_w(struct bw_external_output *stream);
+
+
+/*analagous to fseek
+
+  moves current stream position to position
+  relative to stream position "whence"
+
+  returns 0 on success, nonzero on failure*/
+int
+ext_fseek_w(struct bw_external_output *stream, long position, int whence);
+
 
 /*analagous to fflush,
   this sends all buffered bytes to write function

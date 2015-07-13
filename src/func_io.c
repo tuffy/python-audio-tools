@@ -230,6 +230,7 @@ ext_open_w(void* user_data,
            ext_setpos_f setpos,
            ext_getpos_f getpos,
            ext_free_pos_f free_pos,
+           ext_seek_f seek,
            ext_flush_f flush,
            ext_close_f close,
            ext_free_f free)
@@ -241,6 +242,7 @@ ext_open_w(void* user_data,
     output->setpos = setpos;
     output->getpos = getpos;
     output->free_pos = free_pos;
+    output->seek = seek;
     output->flush = flush;
     output->close = close;
     output->free = free;
@@ -354,6 +356,18 @@ ext_getpos_w(struct bw_external_output *stream)
     } else {
         /*some error occurred when flushing stream*/
         return NULL;
+    }
+}
+
+int
+ext_fseek_w(struct bw_external_output *stream, long position, int whence)
+{
+    /*flush internal buffer before moving to new position*/
+    if (!ext_flush_w(stream)) {
+        return stream->seek(stream->user_data, position, whence);
+    } else {
+        /*error occurred flushing stream*/
+        return EOF;
     }
 }
 

@@ -483,6 +483,17 @@ DEF_BW_SETPOS(bw_setpos_sr)
 DEF_BW_SETPOS(bw_setpos_c)
 
 
+#define DEF_BW_SEEK(FUNC_NAME)       \
+    static void                      \
+    FUNC_NAME(BitstreamWriter *self, \
+              long position,         \
+              bs_whence whence);
+DEF_BW_SEEK(bw_seek_file)
+DEF_BW_SEEK(bw_seek_e)
+DEF_BW_SEEK(bw_seek_sr)
+DEF_BW_SEEK(bw_seek_c)
+
+
 #define DEF_BW_POSDEL(FUNC_NAME) \
     static void                  \
     FUNC_NAME(bw_pos_t* pos);
@@ -931,6 +942,54 @@ bw_buf_setpos(struct bw_buffer* buf, unsigned pos)
     } else {
         return EOF;
     }
+}
+
+/*returns 0 on a successful seek, -1 if a seek error occurs*/
+static int
+bw_buf_fseek(struct bw_buffer* buf,
+             long position,
+             bs_whence whence)
+{
+    /*ensure applying seek doesn't go out-of-bounds*/
+    switch (whence) {
+    case BS_SEEK_SET:
+        if (position < 0) {
+            buf->pos = 0;
+        } else if (position > buf->max_pos) {
+            buf->pos = buf->max_pos;
+        } else {
+            buf->pos = (unsigned)position;
+        }
+        break;
+    case BS_SEEK_CUR:
+        {
+            long pos = buf->pos;
+            pos += position;
+            if (pos < 0) {
+                buf->pos = 0;
+            } else if (pos > buf->max_pos) {
+                buf->pos = buf->max_pos;
+            } else {
+                buf->pos = (unsigned)pos;
+            }
+        }
+        break;
+    case BS_SEEK_END:
+        {
+            long pos = buf->max_pos;
+            pos += position;
+            if (pos < 0) {
+                buf->pos = 0;
+            } else if (pos > buf->max_pos) {
+                buf->pos = buf->max_pos;
+            } else {
+                buf->pos = (unsigned)pos;
+            }
+        }
+        break;
+    }
+
+    return 0;
 }
 
 static inline unsigned
@@ -2730,6 +2789,7 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->call_callbacks = bw_call_callbacks;
     bs->getpos = bw_getpos_file;
     bs->setpos = bw_setpos_file;
+    bs->seek = bw_seek_file;
 
     bs->close_internal_stream = bw_close_internal_stream_f;
     bs->free = bw_free_f;
@@ -2746,6 +2806,7 @@ bw_open_external(void* user_data,
                  ext_setpos_f setpos,
                  ext_getpos_f getpos,
                  ext_free_pos_f free_pos,
+                 ext_seek_f seek,
                  ext_flush_f flush,
                  ext_close_f close,
                  ext_free_f free)
@@ -2760,6 +2821,7 @@ bw_open_external(void* user_data,
                                      setpos,
                                      getpos,
                                      free_pos,
+                                     seek,
                                      flush,
                                      close,
                                      free);
@@ -2803,6 +2865,7 @@ bw_open_external(void* user_data,
     bs->call_callbacks = bw_call_callbacks;
     bs->setpos = bw_setpos_e;
     bs->getpos = bw_getpos_e;
+    bs->seek = bw_seek_e;
 
     bs->close_internal_stream = bw_close_internal_stream_e;
     bs->free = bw_free_e;
@@ -2857,6 +2920,7 @@ bw_open_limited_recorder(bs_endianness endianness, unsigned maximum_size)
     bs->call_callbacks = bw_call_callbacks;
     bs->getpos = bw_getpos_c;
     bs->setpos = bw_setpos_c;
+    bs->seek = bw_seek_c;
 
     bs->bits_written = bw_bits_written_r;
     bs->bytes_written = bw_bytes_written_r;
@@ -2928,6 +2992,7 @@ bw_open_limited_bytes_recorder(bs_endianness endianness,
     bs->call_callbacks = bw_call_callbacks;
     bs->getpos = bw_getpos_sr;
     bs->setpos = bw_setpos_sr;
+    bs->seek = bw_seek_sr;
 
     bs->bits_written = bw_bits_written_sr;
     bs->bytes_written = bw_bytes_written_sr;
@@ -2976,6 +3041,7 @@ bw_open_accumulator(bs_endianness endianness)
     bs->call_callbacks = bw_call_callbacks;
     bs->getpos = bw_getpos_c;
     bs->setpos = bw_setpos_c;
+    bs->seek = bw_seek_c;
 
     bs->bits_written = bw_bits_written_a;
     bs->bytes_written = bw_bytes_written_a;
@@ -3026,6 +3092,7 @@ bw_open_limited_accumulator(bs_endianness endianness, unsigned maximum_size)
         bs->call_callbacks = bw_call_callbacks;
         bs->getpos = bw_getpos_c;
         bs->setpos = bw_setpos_c;
+        bs->seek = bw_seek_c;
 
         bs->bits_written = bw_bits_written_la;
         bs->bytes_written = bw_bytes_written_a;
@@ -4117,6 +4184,46 @@ bw_setpos_sr(BitstreamWriter* self, const bw_pos_t* pos)
 
 static void
 bw_setpos_c(BitstreamWriter* self, const bw_pos_t* pos)
+{
+    bw_abort(self);
+}
+
+static void
+bw_seek_file(BitstreamWriter* self, long position, bs_whence whence)
+{
+    assert(self->buffer_size == 0);
+
+    if (fseek(self->output.file, position, whence) == -1) {
+        bw_abort(self);
+    }
+}
+
+static void
+bw_seek_e(BitstreamWriter* self, long position, bs_whence whence)
+{
+    struct bw_external_output* output = self->output.external;
+
+    assert(self->buffer_size == 0);
+
+    if (ext_fseek_w(output, position, whence)) {
+        bw_abort(self);
+    }
+}
+
+static void
+bw_seek_sr(BitstreamWriter* self, long position, bs_whence whence)
+{
+    assert(self->buffer_size == 0);
+
+    if (bw_buf_fseek(self->output.string_recorder,
+                     position,
+                     whence)) {
+        bw_abort(self);
+    }
+}
+
+static void
+bw_seek_c(BitstreamWriter* self, long position, bs_whence whence)
 {
     bw_abort(self);
 }
@@ -5351,6 +5458,9 @@ test_recorder_close_errors(BitstreamRecorder* recorder);
 
 void
 test_writer_marks(BitstreamWriter* writer);
+
+void
+test_writer_seeks(BitstreamWriter* writer, int whence);
 
 void
 writer_perform_write(BitstreamWriter* writer, bs_endianness endianness);
@@ -7151,6 +7261,7 @@ test_writer(bs_endianness endianness) {
                                   (ext_setpos_f)ext_fsetpos_test,
                                   (ext_getpos_f)ext_fgetpos_test,
                                   (ext_free_pos_f)ext_free_pos_test,
+                                  (ext_seek_f)ext_fseek_test,
                                   (ext_flush_f)ext_fflush_test,
                                   (ext_close_f)ext_fclose_test,
                                   (ext_free_f)ext_ffree_test);
@@ -7169,6 +7280,7 @@ test_writer(bs_endianness endianness) {
                               (ext_setpos_f)ext_fsetpos_test,
                               (ext_getpos_f)ext_fgetpos_test,
                               (ext_free_pos_f)ext_free_pos_test,
+                              (ext_seek_f)ext_fseek_test,
                               (ext_flush_f)ext_fflush_test,
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
@@ -7292,6 +7404,7 @@ test_writer(bs_endianness endianness) {
                                   (ext_setpos_f)ext_fsetpos_test,
                                   (ext_getpos_f)ext_fgetpos_test,
                                   (ext_free_pos_f)ext_free_pos_test,
+                                  (ext_seek_f)ext_fseek_test,
                                   (ext_flush_f)ext_fflush_test,
                                   (ext_close_f)ext_fclose_test,
                                   (ext_free_f)ext_ffree_test);
@@ -7340,6 +7453,20 @@ test_writer(bs_endianness endianness) {
     assert(fgetc(output_file) == 0xFF);
     fclose(output_file);
 
+    /*check that file-based seeking works*/
+    for (i = 0; i < 3; i++) {
+        output_file = fopen(temp_filename, "w+b");
+        writer = bw_open(output_file, endianness);
+        test_writer_seeks(writer, i);
+        writer->free(writer);
+        fseek(output_file, 0, 0);
+        assert(fgetc(output_file) == 0x00);
+        assert(fgetc(output_file) == 0x00);
+        assert(fgetc(output_file) == 0xFF);
+        assert(fgetc(output_file) == 0x00);
+        fclose(output_file);
+    }
+
     /*check that function-based marks work*/
     output_file = fopen(temp_filename, "w+b");
     writer = bw_open_external(output_file,
@@ -7349,6 +7476,7 @@ test_writer(bs_endianness endianness) {
                               (ext_setpos_f)ext_fsetpos_test,
                               (ext_getpos_f)ext_fgetpos_test,
                               (ext_free_pos_f)ext_free_pos_test,
+                              (ext_seek_f)ext_fseek_test,
                               (ext_flush_f)ext_fflush_test,
                               (ext_close_f)ext_fclose_test,
                               (ext_free_f)ext_ffree_test);
@@ -7360,6 +7488,50 @@ test_writer(bs_endianness endianness) {
     assert(fgetc(output_file) == 0x00);
     assert(fgetc(output_file) == 0xFF);
     fclose(output_file);
+
+    /*check that function-based seeking works*/
+    for (i = 0; i < 3; i++) {
+        output_file = fopen(temp_filename, "w+b");
+        writer = bw_open_external(output_file,
+                                  endianness,
+                                  4096,
+                                  (ext_write_f)ext_fwrite_test,
+                                  (ext_setpos_f)ext_fsetpos_test,
+                                  (ext_getpos_f)ext_fgetpos_test,
+                                  (ext_free_pos_f)ext_free_pos_test,
+                                  (ext_seek_f)ext_fseek_test,
+                                  (ext_flush_f)ext_fflush_test,
+                                  (ext_close_f)ext_fclose_test,
+                                  (ext_free_f)ext_ffree_test);
+        test_writer_seeks(writer, i);
+        writer->flush(writer);
+        writer->free(writer);
+        fseek(output_file, 0, 0);
+        assert(fgetc(output_file) == 0x00);
+        assert(fgetc(output_file) == 0x00);
+        assert(fgetc(output_file) == 0xFF);
+        assert(fgetc(output_file) == 0x00);
+        fclose(output_file);
+    }
+
+    /*check that bytes recorder-based marks works*/
+    writer = (BitstreamWriter*)bw_open_bytes_recorder(endianness);
+    test_writer_marks(writer);
+    assert(writer->output.string_recorder->buffer[0] == 0xFF);
+    assert(writer->output.string_recorder->buffer[1] == 0x00);
+    assert(writer->output.string_recorder->buffer[2] == 0xFF);
+    writer->free(writer);
+
+    /*check that bytes recorder-based seeking works*/
+    for (i = 0; i < 3; i++) {
+        writer = (BitstreamWriter*)bw_open_bytes_recorder(endianness);
+        test_writer_seeks(writer, i);
+        assert(writer->output.string_recorder->buffer[0] == 0x00);
+        assert(writer->output.string_recorder->buffer[1] == 0x00);
+        assert(writer->output.string_recorder->buffer[2] == 0xFF);
+        assert(writer->output.string_recorder->buffer[3] == 0x00);
+        writer->free(writer);
+    }
 }
 
 #define TEST_CLOSE_ERRORS(FUNC_NAME, CLASS)    \
@@ -8028,6 +8200,7 @@ void check_alignment_e(const align_check* check,
         (ext_setpos_f)ext_fsetpos_test,
         (ext_getpos_f)ext_fgetpos_test,
         (ext_free_pos_f)ext_free_pos_test,
+        (ext_seek_f)ext_fseek_test,
         (ext_flush_f)ext_fflush_test,
         (ext_close_f)ext_fclose_test,
         (ext_free_f)ext_ffree_test);
@@ -8612,5 +8785,29 @@ test_writer_marks(BitstreamWriter* writer)
     writer->setpos(writer, pos);
     writer->write(writer, 8, 0);
     pos->del(pos);
+}
+
+void
+test_writer_seeks(BitstreamWriter* writer, int whence)
+{
+    bw_pos_t* pos = writer->getpos(writer);
+    writer->write(writer, 32, 0);
+    writer->setpos(writer, pos);
+    pos->del(pos);
+    switch (whence) {
+    case 0:
+        writer->seek(writer, 2, SEEK_SET);
+        writer->write(writer, 8, 0xFF);
+        break;
+    case 1: /*SEEK_CUR*/
+        writer->seek(writer, 1, SEEK_CUR);
+        writer->seek(writer, 1, SEEK_CUR);
+        writer->write(writer, 8, 0xFF);
+        break;
+    case 2: /*SEEK_END*/
+        writer->seek(writer, -2, SEEK_END);
+        writer->write(writer, 8, 0xFF);
+        break;
+    }
 }
 #endif
