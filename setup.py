@@ -764,7 +764,6 @@ class audiotools_encoders(Extension):
                    "src/common/tta_crc.c",
                    "src/encoders/shn.c",
                    "src/encoders/alac.c",
-                   "src/encoders/wavpack.c",
                    "src/encoders/tta.c",
                    "src/encoders.c"]
         libraries = set()
@@ -846,6 +845,24 @@ class audiotools_encoders(Extension):
         else:
             self.__library_manifest__.append(("opus",
                                               "Opus encoding",
+                                              False))
+
+        if system_libraries.present("wavpack"):
+            if system_libraries.guaranteed_present("wavpack"):
+                libraries.add("wavpack")
+            else:
+                extra_compile_args.extend(
+                    system_libraries.extra_compile_args("wavpack"))
+                extra_link_args.extend(
+                    system_libraries.extra_link_args("wavpack"))
+            defines.append(("HAS_WAVPACK", None))
+            sources.append("src/encoders/wavpack.c")
+            self.__library_manifest__.append(("wavpack",
+                                              "Wavpack encoding",
+                                              True))
+        else:
+            self.__library_manifest__.append(("wavpack",
+                                              "Wavpack encoding",
                                               False))
 
         Extension.__init__(self,

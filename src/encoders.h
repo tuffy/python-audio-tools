@@ -69,25 +69,27 @@ PyMethodDef module_methods[] = {
      METH_VARARGS | METH_KEYWORDS, "Encode Shorten file from PCMReader"},
     {"encode_alac", (PyCFunction)encoders_encode_alac,
      METH_VARARGS | METH_KEYWORDS, "Encode ALAC file from PCMReader"},
+#ifdef HAS_WAVPACK
     {"encode_wavpack", (PyCFunction)encoders_encode_wavpack,
      METH_VARARGS | METH_KEYWORDS, "Encode WavPack file from PCMReader"},
+#endif
     {"encode_tta", (PyCFunction)encoders_encode_tta,
      METH_VARARGS | METH_KEYWORDS, "Encode TTA file from PCMReader"},
-    #ifdef HAS_MP3
+#ifdef HAS_MP3
     {"encode_mp3", (PyCFunction)encoders_encode_mp3,
      METH_VARARGS | METH_KEYWORDS, "Encode MP3 file from PCMReader"},
-    #endif
-    #ifdef HAS_MP2
+#endif
+#ifdef HAS_MP2
     {"encode_mp2", (PyCFunction)encoders_encode_mp2,
     METH_VARARGS | METH_KEYWORDS, "Encode MP2 file from PCMReader"},
-    #endif
-    #ifdef HAS_VORBIS
+#endif
+#ifdef HAS_VORBIS
     {"encode_vorbis", (PyCFunction)encoders_encode_vorbis,
     METH_VARARGS | METH_KEYWORDS, "Encode Vorbis file from PCMReader"},
-    #endif
-    #ifdef HAS_OPUS
+#endif
+#ifdef HAS_OPUS
     {"encode_opus", (PyCFunction)encoders_encode_opus,
     METH_VARARGS | METH_KEYWORDS, "Encode Opus file from PCMReader"},
-    #endif
+#endif
     {NULL}
 };

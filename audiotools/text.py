@@ -480,7 +480,7 @@ COMP_TWOLAME_64 = u"total bitrate of 64kbps"
 COMP_TWOLAME_384 = u"total bitrate of 384kbps"
 COMP_VORBIS_0 = u"very low quality, corresponds to oggenc -q 0"
 COMP_VORBIS_10 = u"very high quality, corresponds to oggenc -q 10"
-COMP_WAVPACK_VERYFAST = u"fastest encode/decode, worst compression"
+COMP_WAVPACK_FAST = u"fastest encode/decode, worst compression"
 COMP_WAVPACK_VERYHIGH = u"slowest encode/decode, best compression"
 
 # Errors

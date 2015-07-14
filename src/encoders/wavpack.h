@@ -41,11 +41,6 @@ static int
 block_out(BitstreamWriter *output, uint8_t *data, int32_t byte_count);
 
 static int
-read_file(const char *filename,
-          uint32_t *size,
-          uint8_t **data);
-
-static int
 encode_wavpack(BitstreamWriter *output,
                struct PCMReader *pcmreader,
                uint32_t total_pcm_frames,
@@ -56,8 +51,3 @@ encode_wavpack(BitstreamWriter *output,
                uint32_t footer_size,
                uint8_t *footer_data);
 
-static wavpack_compression_t
-str_to_compression(const char *compression);
-
-static const char*
-compression_to_str(wavpack_compression_t compression);

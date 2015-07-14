@@ -47,15 +47,15 @@ def __riff_chunk_ids__(data_size, data):
 class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
     """a WavPack audio file"""
 
-    from audiotools.text import (COMP_WAVPACK_VERYFAST,
+    from audiotools.text import (COMP_WAVPACK_FAST,
                                  COMP_WAVPACK_VERYHIGH)
 
     SUFFIX = "wv"
     NAME = SUFFIX
     DESCRIPTION = u"WavPack"
     DEFAULT_COMPRESSION = "standard"
-    COMPRESSION_MODES = ("veryfast", "fast", "standard", "high", "veryhigh")
-    COMPRESSION_DESCRIPTIONS = {"veryfast": COMP_WAVPACK_VERYFAST,
+    COMPRESSION_MODES = ("fast", "standard", "high", "veryhigh")
+    COMPRESSION_DESCRIPTIONS = {"fast": COMP_WAVPACK_FAST,
                                 "veryhigh": COMP_WAVPACK_VERYHIGH}
 
     BITS_PER_SAMPLE = (8, 16, 24, 32)
@@ -63,32 +63,6 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
                      12000, 16000, 22050,  24000,
                      32000, 44100, 48000,  64000,
                      88200, 96000, 192000, 0)
-
-    __options__ = {"veryfast": {"block_size": 44100,
-                                "joint_stereo": True,
-                                "false_stereo": True,
-                                "wasted_bits": True,
-                                "correlation_passes": 1},
-                   "fast": {"block_size": 44100,
-                            "joint_stereo": True,
-                            "false_stereo": True,
-                            "wasted_bits": True,
-                            "correlation_passes": 2},
-                   "standard": {"block_size": 44100,
-                                "joint_stereo": True,
-                                "false_stereo": True,
-                                "wasted_bits": True,
-                                "correlation_passes": 5},
-                   "high": {"block_size": 44100,
-                            "joint_stereo": True,
-                            "false_stereo": True,
-                            "wasted_bits": True,
-                            "correlation_passes": 10},
-                   "veryhigh": {"block_size": 44100,
-                                "joint_stereo": True,
-                                "false_stereo": True,
-                                "wasted_bits": True,
-                                "correlation_passes": 16}}
 
     def __init__(self, filename):
         """filename is a plain string"""
@@ -212,11 +186,12 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         try:
             (encode_wavpack if encoding_function is None
-             else encoding_function)(filename,
-                                     BufferedPCMReader(counter),
-                                     wave_header=header,
-                                     wave_footer=footer,
-                                     **cls.__options__[compression])
+             else encoding_function)(
+                filename=filename,
+                pcmreader=counter,
+                compression=compression,
+                wave_header=header,
+                wave_footer=footer)
 
             counter.close()
 
@@ -480,11 +455,11 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         try:
             (encode_wavpack if encoding_function is None
              else encoding_function)(
-                filename,
-                BufferedPCMReader(counter),
+                filename=filename,
+                pcmreader=counter,
                 total_pcm_frames=(total_pcm_frames if
                                   total_pcm_frames is not None else 0),
-                **cls.__options__[compression])
+                compression=compression)
             counter.close()
         except (ValueError, IOError) as msg:
             counter.close()

@@ -24,6 +24,129 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+static wavpack_compression_t
+str_to_compression(const char *compression);
+
+#ifndef STANDALONE
+
+PyObject*
+encoders_encode_wavpack(PyObject *dummy, PyObject *args, PyObject *keywds)
+{
+    static char *kwlist[] = {"filename",
+                             "pcmreader",
+
+                             "total_pcm_frames",
+                             "block_size",
+                             "compression",
+                             "wave_header",
+                             "wave_footer",
+                             NULL};
+    char *filename;
+    FILE *output_file = NULL;
+    BitstreamWriter *output;
+    struct PCMReader *pcmreader = NULL;
+    long long total_pcm_frames = 0;
+    int block_size = 22050;
+    char *compression_str = "normal";
+    wavpack_compression_t compression;
+#ifdef PY_SSIZE_T_CLEAN
+    Py_ssize_t header_len = 0;
+    Py_ssize_t footer_len = 0;
+#else
+    int header_len = 0;
+    int footer_len = 0;
+#endif
+    uint8_t *header_data = NULL;
+    uint8_t *footer_data = NULL;
+    int result;
+
+    if (!PyArg_ParseTupleAndKeywords(
+            args,
+            keywds,
+            "sO&|Liss#s#",
+            kwlist,
+            &filename,
+            py_obj_to_pcmreader,
+            &pcmreader,
+
+            &total_pcm_frames,
+            &block_size,
+            &compression_str,
+            &header_data,
+            &header_len,
+            &footer_data,
+            &footer_len)) {
+        return NULL;
+    }
+
+    /*sanity-check options*/
+    if ((total_pcm_frames < 0) || (total_pcm_frames > 0xFFFFFFFFLL)) {
+        PyErr_SetString(PyExc_ValueError,
+                        "total_pcm_frames must be between 0 and 0xFFFFFFFF");
+        return NULL;
+    }
+
+    if (block_size <= 0) {
+        PyErr_SetString(PyExc_ValueError, "block size must be > 0");
+        return NULL;
+    }
+
+    if ((compression = str_to_compression(compression_str))
+        == COMPRESSION_UNKNOWN) {
+        PyErr_SetString(PyExc_ValueError, "unknown compression level");
+        return NULL;
+    }
+
+    /*open output file for writing*/
+    errno = 0;
+    if ((output_file = fopen(filename, "wb")) == NULL) {
+        PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+        return NULL;
+    }
+
+    output = bw_open(output_file, BS_LITTLE_ENDIAN);
+
+    /*perform actual encoding*/
+    result = encode_wavpack(output,
+                            pcmreader,
+                            (uint32_t)total_pcm_frames,
+                            (unsigned)block_size,
+                            compression,
+                            (uint32_t)header_len,
+                            header_data,
+                            (uint32_t)footer_len,
+                            footer_data);
+
+    /*cleanup PCMReader and output file*/
+    output->close(output);
+    pcmreader->del(pcmreader);
+
+    /*return success or exception depending on result*/
+    switch (result) {
+    default:
+        Py_INCREF(Py_None);
+        return Py_None;
+    case 1:
+        PyErr_SetString(PyExc_IOError, "read error during encoding");
+        return NULL;
+    case 2:
+        PyErr_SetString(PyExc_ValueError, "total frames mismatch");
+        return NULL;
+    }
+}
+
+#else
+
+static int
+read_file(const char *filename,
+          uint32_t *size,
+          uint8_t **data);
+
+static const char*
+compression_to_str(wavpack_compression_t compression);
+
+#endif
+
 static int
 encode_wavpack(BitstreamWriter *output,
                struct PCMReader *pcmreader,
@@ -100,7 +223,6 @@ encode_wavpack(BitstreamWriter *output,
     /*actually compress audio and write blocks*/
     while ((pcm_frames_read =
             pcmreader->read(pcmreader, block_size, samples)) > 0) {
-        fprintf(stderr, "read %u frames\n", pcm_frames_read);
         if (!WavpackPackSamples(context, samples, pcm_frames_read)) {
             goto error;
         }
@@ -146,7 +268,7 @@ encode_wavpack(BitstreamWriter *output,
     /*update total sample count, if necessary*/
     if (total_pcm_frames) {
         if (total_pcm_frames != total_frames_written) {
-            return 1;
+            return 2;
         }
     } else {
         output->seek(output, 12, BS_SEEK_SET);
@@ -194,6 +316,28 @@ block_out(BitstreamWriter *output, uint8_t *data, int32_t byte_count)
     return 1;
 }
 
+static wavpack_compression_t
+str_to_compression(const char *compression)
+{
+    if (!strcmp(compression, "fast")) {
+        return COMPRESSION_FAST;
+    } else if (!strcmp(compression, "normal")) {
+        return COMPRESSION_NORMAL;
+    } else if (!strcmp(compression, "high")) {
+        return COMPRESSION_HIGH;
+    } else if (!strcmp(compression, "veryhigh")) {
+        return COMPRESSION_VERYHIGH;
+    } else {
+        return COMPRESSION_UNKNOWN;
+    }
+}
+
+#ifdef STANDALONE
+
+#include <getopt.h>
+#include <errno.h>
+#include <assert.h>
+
 static int
 read_file(const char *filename,
           uint32_t *size,
@@ -220,27 +364,11 @@ read_file(const char *filename,
     return 0;
 }
 
-static wavpack_compression_t
-str_to_compression(const char *compression)
-{
-    if (!strcmp(compression, "fast")) {
-        return COMPRESSION_FAST;
-    } else if (!strcmp(compression, "normal")) {
-        return COMPRESSION_NORMAL;
-    } else if (!strcmp(compression, "high")) {
-        return COMPRESSION_HIGH;
-    } else if (!strcmp(compression, "veryhigh")) {
-        return COMPRESSION_VERYHIGH;
-    } else {
-        return COMPRESSION_UNKNOWN;
-    }
-}
-
 static const char*
 compression_to_str(wavpack_compression_t compression)
 {
     switch (compression) {
-    case COMPRESSION_UNKNOWN:
+    default:
         return "unknown";
     case COMPRESSION_FAST:
         return "fast";
@@ -253,10 +381,6 @@ compression_to_str(wavpack_compression_t compression)
     }
 }
 
-#ifdef STANDALONE
-#include <getopt.h>
-#include <errno.h>
-#include <assert.h>
 
 static unsigned
 count_bits(unsigned value)
