@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../pcmreader.h"
 #include "../pcm_conv.h"
-#include "../bitstream.h"
-#include "../common/md5.h"
+#include "wavpack.h"
 #include <wavpack/wavpack.h>
 
 /********************************************************
@@ -26,32 +24,22 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-static void
-update_md5sum(audiotools__MD5Context *md5sum,
-              const int pcm_data[],
-              unsigned channels,
-              unsigned bits_per_sample,
-              unsigned pcm_frames);
-
-static int
-block_out(BitstreamWriter *output, uint8_t *data, int32_t byte_count);
-
-/*FIXME - handle total samples*/
-/*FIXME - handle optional wav header, footer*/
 static int
 encode_wavpack(BitstreamWriter *output,
                struct PCMReader *pcmreader,
+               uint32_t total_pcm_frames,
                unsigned block_size,
-               unsigned correlation_passes,
-               int false_stereo,
-               int wasted_bits,
-               int joint_stereo)
+               wavpack_compression_t compression,
+               uint32_t header_size,
+               uint8_t *header_data,
+               uint32_t footer_size,
+               uint8_t *footer_data)
 {
     audiotools__MD5Context md5;
     unsigned char stream_md5[16];
     int *samples;
     unsigned pcm_frames_read;
-    uint32_t total_samples_written = 0;
+    uint32_t total_frames_written = 0;
     audiotools__MD5Init(&md5);
 
     /*get context and set block output function*/
@@ -75,16 +63,34 @@ encode_wavpack(BitstreamWriter *output,
     config.channel_mask = pcmreader->channel_mask;
     config.num_channels = pcmreader->channels;
     config.sample_rate = pcmreader->sample_rate;
-    config.flags = 0;
-    /*FIXME - update flags based on encoding parameters*/
+    config.flags = CONFIG_MD5_CHECKSUM | CONFIG_OPTIMIZE_MONO;
 
-    /*FIXME - support sample count, if possible*/
-    if (!WavpackSetConfiguration(context, &config, -1)) {
+    switch (compression) {
+    default:
+        break;
+    case COMPRESSION_FAST:
+        config.flags |= CONFIG_FAST_FLAG;
+        break;
+    case COMPRESSION_HIGH:
+        config.flags |= CONFIG_HIGH_FLAG;
+        break;
+    case COMPRESSION_VERYHIGH:
+        config.flags |= CONFIG_VERY_HIGH_FLAG;
+        break;
+    }
+
+    if (!WavpackSetConfiguration(context,
+                                 &config,
+                                 total_pcm_frames ? total_pcm_frames : -1)) {
         goto error;
     }
 
     /*write RIFF header, if given*/
-    /*FIXME*/
+    if (header_size) {
+        if (!WavpackAddWrapper(context, header_data, header_size)) {
+            goto error;
+        }
+    }
 
     /*allocate buffers and prepare for packing*/
     if (!WavpackPackInit(context)) {
@@ -103,11 +109,13 @@ encode_wavpack(BitstreamWriter *output,
                       pcmreader->channels,
                       pcmreader->bits_per_sample,
                       pcm_frames_read);
-        total_samples_written += pcm_frames_read;
+        total_frames_written += pcm_frames_read;
     }
 
     /*check for read error*/
-    /*FIXME*/
+    if (pcmreader->status != PCM_OK) {
+        goto error;
+    }
 
     /*flush final samples*/
     if (!WavpackFlushSamples(context)) {
@@ -121,22 +129,31 @@ encode_wavpack(BitstreamWriter *output,
     }
 
     /*write RIFF trailer, if given*/
-    /*FIXME*/
+    if (footer_size) {
+        if (!WavpackAddWrapper(context, footer_data, footer_size)) {
+            goto error;
+        }
+    }
 
     if (!WavpackFlushSamples(context)) {
         goto error;
     }
 
-    /*close Wavpack*/
+    /*close Wavpack and deallocate temporary space*/
     WavpackCloseFile(context);
+    free(samples);
 
     /*update total sample count, if necessary*/
-    /*FIXME*/
-    output->seek(output, 12, BS_SEEK_SET);
-    output->write(output, 32, total_samples_written);
+    if (total_pcm_frames) {
+        if (total_pcm_frames != total_frames_written) {
+            return 1;
+        }
+    } else {
+        output->seek(output, 12, BS_SEEK_SET);
+        output->write(output, 32, total_frames_written);
+    }
 
     /*deallocate temporary space and return success*/
-    free(samples);
     return 0;
 
 error:
@@ -159,7 +176,7 @@ update_md5sum(audiotools__MD5Context *md5sum,
     unsigned char buffer[buffer_size];
     unsigned char *output_buffer = buffer;
     void (*converter)(int, unsigned char *) =
-        int_to_pcm_converter(bits_per_sample, 0, 1);
+        int_to_pcm_converter(bits_per_sample, 0, (bits_per_sample > 8) ? 1 : 0);
 
     for (; total_samples; total_samples--) {
         converter(*pcm_data, output_buffer);
@@ -173,10 +190,67 @@ update_md5sum(audiotools__MD5Context *md5sum,
 static int
 block_out(BitstreamWriter *output, uint8_t *data, int32_t byte_count)
 {
-    /*FIXME - implement this*/
-    fprintf(stderr, "wrote %d bytes\n", byte_count);
     output->write_bytes(output, data, (unsigned int)byte_count);
     return 1;
+}
+
+static int
+read_file(const char *filename,
+          uint32_t *size,
+          uint8_t **data)
+{
+    FILE *file = fopen(filename, "rb");
+    const size_t block_size = 4096;
+    size_t bytes_read;
+
+    if (!file) {
+        return 1;
+    }
+
+    *size = 0;
+    *data = malloc(block_size);
+    while ((bytes_read = fread(*data + *size,
+                               sizeof(uint8_t),
+                               block_size,
+                               file)) > 0) {
+        *size += bytes_read;
+        *data = realloc(*data, *size + block_size);
+    }
+
+    return 0;
+}
+
+static wavpack_compression_t
+str_to_compression(const char *compression)
+{
+    if (!strcmp(compression, "fast")) {
+        return COMPRESSION_FAST;
+    } else if (!strcmp(compression, "normal")) {
+        return COMPRESSION_NORMAL;
+    } else if (!strcmp(compression, "high")) {
+        return COMPRESSION_HIGH;
+    } else if (!strcmp(compression, "veryhigh")) {
+        return COMPRESSION_VERYHIGH;
+    } else {
+        return COMPRESSION_UNKNOWN;
+    }
+}
+
+static const char*
+compression_to_str(wavpack_compression_t compression)
+{
+    switch (compression) {
+    case COMPRESSION_UNKNOWN:
+        return "unknown";
+    case COMPRESSION_FAST:
+        return "fast";
+    case COMPRESSION_NORMAL:
+        return "normal";
+    case COMPRESSION_HIGH:
+        return "high";
+    case COMPRESSION_VERYHIGH:
+        return "veryhigh";
+    }
 }
 
 #ifdef STANDALONE
@@ -205,11 +279,15 @@ int main(int argc, char *argv[]) {
     unsigned sample_rate = 44100;
     unsigned bits_per_sample = 16;
 
+    uint32_t total_pcm_frames = 0;
+
     unsigned block_size = 22050;
-    unsigned correlation_passes = 5;
-    int false_stereo = 0;
-    int wasted_bits = 0;
-    int joint_stereo = 0;
+    wavpack_compression_t compression = COMPRESSION_NORMAL;
+
+    uint32_t header_size = 0;
+    uint8_t *header_data = NULL;
+    uint32_t footer_size = 0;
+    uint8_t *footer_data = NULL;
 
     char c;
     const static struct option long_opts[] = {
@@ -218,12 +296,12 @@ int main(int argc, char *argv[]) {
         {"channel-mask",            required_argument, NULL, 'm'},
         {"sample-rate",             required_argument, NULL, 'r'},
         {"bits-per-sample",         required_argument, NULL, 'b'},
+        {"total-pcm-frames",        required_argument, NULL, 'T'},
         {"block-size",              required_argument, NULL, 'B'},
-        {"correlation-passes",      required_argument, NULL, 'p'},
-        {"false-stereo",            no_argument,       NULL, 'f'},
-        {"wasted-bits",             no_argument,       NULL, 'w'},
-        {"joint-stereo",            no_argument,       NULL, 'j'}};
-    const static char* short_opts = "-hc:m:r:b:B:p:fwj";
+        {"compression",             required_argument, NULL, 'C'},
+        {"header",                  required_argument, NULL, 'H'},
+        {"footer",                  required_argument, NULL, 'F'}};
+    const static char* short_opts = "-hc:m:r:b:T:C:H:F:";
 
     while ((c = getopt_long(argc,
                             argv,
@@ -263,27 +341,41 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
             break;
+        case 'T':
+            if (((total_pcm_frames = strtoul(optarg, NULL, 10)) == 0) &&
+                errno) {
+                printf("invalid --total-pcm-frames \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
         case 'B':
             if (((block_size = strtoul(optarg, NULL, 10)) == 0) && errno) {
                 printf("invalid --block-size \"%s\"\n", optarg);
                 return 1;
             }
             break;
-        case 'p':
-            if (((correlation_passes =
-                  strtoul(optarg, NULL, 10)) == 0) && errno) {
-                printf("invalid --correlation_passes \"%s\"\n", optarg);
+        case 'C':
+            if ((compression = str_to_compression(optarg))
+                == COMPRESSION_UNKNOWN) {
+                fprintf(stderr, "unknown compression: %s\n", optarg);
+                fprintf(stderr,
+                        "choose from 'fast', 'normal', 'high', 'veryhigh'\n");
                 return 1;
             }
             break;
-        case 'f':
-            false_stereo = 1;
+        case 'H':
+            errno = 0;
+            if (read_file(optarg, &header_size, &header_data)) {
+                fprintf(stderr, "%s: %s\n", optarg, strerror(errno));
+                return 1;
+            }
             break;
-        case 'w':
-            wasted_bits = 1;
-            break;
-        case 'j':
-            joint_stereo = 1;
+        case 'F':
+            errno = 0;
+            if (read_file(optarg, &footer_size, &footer_data)) {
+                fprintf(stderr, "%s: %s\n", optarg, strerror(errno));
+                return 1;
+            }
             break;
         case 'h': /*fallthrough*/
         case ':':
@@ -293,13 +385,12 @@ int main(int argc, char *argv[]) {
             printf("-m, --channel-mask=#      channel mask as hex value\n");
             printf("-r, --sample_rate=#       input sample rate in Hz\n");
             printf("-b, --bits-per-sample=#   bits per input sample\n");
+            printf("-T, --total-pcm-frames=#  total PCM frames of input\n");
             printf("\n");
             printf("-B, --block-size=#              block size\n");
-            printf("-p, --correlation_passes=#      "
-                   "number of correlation passes\n");
-            printf("-f, --false-stereo              check for false stereo\n");
-            printf("-w, --wasted-bits               check for wasted bits\n");
-            printf("-j, --joint-stereo              use joint stereo\n");
+            printf("-C, --compression=level         compression level\n");
+            printf("-H, --header                    RIFF header\n");
+            printf("-F, --footer                    RIFF footer\n");
             return 0;
         default:
             break;
@@ -320,12 +411,6 @@ int main(int argc, char *argv[]) {
            (bits_per_sample == 16) ||
            (bits_per_sample == 24));
     assert(sample_rate > 0);
-    assert((correlation_passes == 0) ||
-           (correlation_passes == 1) ||
-           (correlation_passes == 2) ||
-           (correlation_passes == 5) ||
-           (correlation_passes == 10) ||
-           (correlation_passes == 16));
     assert(count_bits(channel_mask) == channels);
 
     pcmreader = pcmreader_open_raw(stdin,
@@ -338,37 +423,24 @@ int main(int argc, char *argv[]) {
 
     pcmreader_display(pcmreader, stderr);
     fputs("\n", stderr);
-    fprintf(stderr ,"block size         %u\n", block_size);
-    fprintf(stderr, "correlation_passes %u\n", correlation_passes);
-    fprintf(stderr, "false stereo       %d\n", false_stereo);
-    fprintf(stderr, "wasted bits        %d\n", wasted_bits);
-    fprintf(stderr, "joint stereo       %d\n", joint_stereo);
+    fprintf(stderr, "block size   %u\n", block_size);
+    fprintf(stderr, "compression  %s\n", compression_to_str(compression));
 
     encode_wavpack(output,
                    pcmreader,
+                   total_pcm_frames,
                    block_size,
-                   correlation_passes,
-                   false_stereo,
-                   wasted_bits,
-                   joint_stereo);
-
-    //encoders_encode_wavpack(output_file,
-    //                        open_pcmreader(stdin,
-    //                                       sample_rate,
-    //                                       channels,
-    //                                       channel_mask,
-    //                                       bits_per_sample,
-    //                                       0,
-    //                                       1),
-    //                        block_size,
-    //                        false_stereo,
-    //                        wasted_bits,
-    //                        joint_stereo,
-    //                        correlation_passes);
+                   compression,
+                   header_size,
+                   header_data,
+                   footer_size,
+                   footer_data);
 
     output->close(output);
     pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
+    free(header_data);
+    free(footer_data);
 
     return 0;
 }
