@@ -47,7 +47,7 @@ encoders_encode_wavpack(PyObject *dummy, PyObject *args, PyObject *keywds)
     struct PCMReader *pcmreader = NULL;
     long long total_pcm_frames = 0;
     int block_size = 22050;
-    char *compression_str = "normal";
+    char *compression_str = "standard";
     wavpack_compression_t compression;
 #ifdef PY_SSIZE_T_CLEAN
     Py_ssize_t header_len = 0;
@@ -183,7 +183,15 @@ encode_wavpack(BitstreamWriter *output,
     memset(&config, 0, sizeof(WavpackConfig));
     config.bytes_per_sample = pcmreader->bits_per_sample / 8;
     config.bits_per_sample = pcmreader->bits_per_sample;
-    config.channel_mask = pcmreader->channel_mask;
+    if (pcmreader->channel_mask) {
+        config.channel_mask = pcmreader->channel_mask;
+    } else if (pcmreader->channels == 1) {
+        config.channel_mask = 0x4;
+    } else if (pcmreader->channels == 2) {
+        config.channel_mask = 0x3;
+    } else {
+        config.channel_mask = 0;
+    }
     config.num_channels = pcmreader->channels;
     config.sample_rate = pcmreader->sample_rate;
     config.flags = CONFIG_MD5_CHECKSUM | CONFIG_OPTIMIZE_MONO;
@@ -321,7 +329,7 @@ str_to_compression(const char *compression)
 {
     if (!strcmp(compression, "fast")) {
         return COMPRESSION_FAST;
-    } else if (!strcmp(compression, "normal")) {
+    } else if (!strcmp(compression, "standard")) {
         return COMPRESSION_NORMAL;
     } else if (!strcmp(compression, "high")) {
         return COMPRESSION_HIGH;
@@ -373,7 +381,7 @@ compression_to_str(wavpack_compression_t compression)
     case COMPRESSION_FAST:
         return "fast";
     case COMPRESSION_NORMAL:
-        return "normal";
+        return "standard";
     case COMPRESSION_HIGH:
         return "high";
     case COMPRESSION_VERYHIGH:
@@ -483,7 +491,7 @@ int main(int argc, char *argv[]) {
                 == COMPRESSION_UNKNOWN) {
                 fprintf(stderr, "unknown compression: %s\n", optarg);
                 fprintf(stderr,
-                        "choose from 'fast', 'normal', 'high', 'veryhigh'\n");
+                        "choose from 'fast', 'standard', 'high', 'veryhigh'\n");
                 return 1;
             }
             break;

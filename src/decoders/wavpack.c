@@ -218,6 +218,7 @@ WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
+        return NULL;
     }
 
     if (!PyArg_ParseTuple(args, "L", &seeked_offset)) {
@@ -232,7 +233,13 @@ WavPackDecoder_seek(decoders_WavPackDecoder* self, PyObject *args)
         audiotools__MD5Init(&(self->md5));
         self->verifying_md5_sum = 1;
     } else {
-        /*seeked partway through file, so cease MD5 sum validation*/
+        /*restrict seeked location to limit of file*/
+        const uint32_t total_samples = WavpackGetNumSamples(self->context);
+        if (seeked_offset >= total_samples) {
+            seeked_offset = total_samples - 1;
+        }
+
+        /*seeking partway through file, so cease MD5 sum validation*/
         self->verifying_md5_sum = 0;
     }
 
@@ -257,7 +264,7 @@ update_md5sum(audiotools__MD5Context *md5sum,
     unsigned char buffer[buffer_size];
     unsigned char *output_buffer = buffer;
     void (*converter)(int, unsigned char *) =
-        int_to_pcm_converter(bits_per_sample, 0, 1);
+        int_to_pcm_converter(bits_per_sample, 0, (bits_per_sample > 8) ? 1 : 0);
 
     for (; total_samples; total_samples--) {
         converter(*pcm_data, output_buffer);

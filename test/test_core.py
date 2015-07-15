@@ -5516,7 +5516,7 @@ class TestMultiChannel(unittest.TestCase):
             self.__test_undefined_mask_blank__(audiotools.WavPackAudio,
                                                channels,
                                                False)
-        for channels in range(3, 21):
+        for channels in range(3, 9):
             self.__test_undefined_mask_blank__(audiotools.WavPackAudio,
                                                channels,
                                                True)

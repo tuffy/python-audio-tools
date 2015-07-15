@@ -5803,41 +5803,10 @@ class WavPackFileTest(TestForeignWaveChunks,
 
         self.decoder = WavPackDecoder
         self.encode = encode_wavpack
-        self.encode_opts = [{"block_size": 44100,
-                             "false_stereo": True,
-                             "wasted_bits": True,
-                             "joint_stereo": False,
-                             "correlation_passes": 0},
-                            {"block_size": 44100,
-                             "false_stereo": True,
-                             "wasted_bits": True,
-                             "joint_stereo": True,
-                             "correlation_passes": 0},
-                            {"block_size": 44100,
-                             "false_stereo": True,
-                             "wasted_bits": True,
-                             "joint_stereo": True,
-                             "correlation_passes": 1},
-                            {"block_size": 44100,
-                             "false_stereo": True,
-                             "wasted_bits": True,
-                             "joint_stereo": True,
-                             "correlation_passes": 2},
-                            {"block_size": 44100,
-                             "false_stereo": True,
-                             "wasted_bits": True,
-                             "joint_stereo": True,
-                             "correlation_passes": 5},
-                            {"block_size": 44100,
-                             "false_stereo": True,
-                             "wasted_bits": True,
-                             "joint_stereo": True,
-                             "correlation_passes": 10},
-                            {"block_size": 44100,
-                             "false_stereo": True,
-                             "wasted_bits": True,
-                             "joint_stereo": True,
-                             "correlation_passes": 16}]
+        self.encode_opts = [{"compression": "fast"},
+                            {"compression": "standard"},
+                            {"compression": "high"},
+                            {"compression": "veryhigh"}]
 
     @FORMAT_WAVPACK
     def test_init(self):
@@ -5860,9 +5829,7 @@ class WavPackFileTest(TestForeignWaveChunks,
         # mostly to ensure a failed init doesn't make Python explode
         self.assertRaises(TypeError, self.decoder)
 
-        self.assertRaises(IOError, self.decoder, None)
-
-        self.assertRaises(IOError, self.decoder, "filename")
+        self.assertRaises(TypeError, self.decoder, None)
 
     @FORMAT_WAVPACK
     def test_verify(self):
@@ -5898,25 +5865,6 @@ class WavPackFileTest(TestForeignWaveChunks,
 
         with open("silence.wv", "rb") as f:
             wavpack_data = bytes_to_ints(f.read())
-
-        with tempfile.NamedTemporaryFile(suffix=".wv") as temp:
-            for i in range(0, len(wavpack_data)):
-                temp.seek(0, 0)
-                temp.write(ints_to_bytes(wavpack_data[0:i]))
-                temp.flush()
-                self.assertEqual(os.path.getsize(temp.name), i)
-                f = open(temp.name, "rb")
-                try:
-                    decoder = WavPackDecoder(f)
-                except IOError:
-                    # chopping off the first few bytes might trigger
-                    # an IOError at init-time, which is ok
-                    f.close()
-                    continue
-                self.assertIsNotNone(decoder)
-                self.assertRaises(IOError,
-                                  audiotools.transfer_framelist_data,
-                                  decoder, lambda f: f)
 
         # test a truncated WavPack file's convert() method
         # generates EncodingErrors
@@ -6099,20 +6047,19 @@ class WavPackFileTest(TestForeignWaveChunks,
                          (repr(pcmreader),
                           repr(encode_options)))
 
-        for wavpack in [self.decoder(open(temp_file.name, "rb")),
-                        self.decoder(Filewrapper(open(temp_file.name, "rb")))]:
-            self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
-            self.assertEqual(wavpack.bits_per_sample, pcmreader.bits_per_sample)
-            self.assertEqual(wavpack.channels, pcmreader.channels)
-            self.assertEqual(wavpack.channel_mask, pcmreader.channel_mask)
+        wavpack = self.decoder(temp_file.name)
+        self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
+        self.assertEqual(wavpack.bits_per_sample, pcmreader.bits_per_sample)
+        self.assertEqual(wavpack.channels, pcmreader.channels)
+        self.assertEqual(wavpack.channel_mask, pcmreader.channel_mask)
 
-            md5sum = md5()
+        md5sum = md5()
+        f = wavpack.read(audiotools.FRAMELIST_SIZE)
+        while len(f) > 0:
+            md5sum.update(f.to_bytes(False, True))
             f = wavpack.read(audiotools.FRAMELIST_SIZE)
-            while len(f) > 0:
-                md5sum.update(f.to_bytes(False, True))
-                f = wavpack.read(audiotools.FRAMELIST_SIZE)
-            wavpack.close()
-            self.assertEqual(md5sum.digest(), pcmreader.digest())
+        wavpack.close()
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
 
         # perform test again with total_pcm_frames indicated
         pcmreader.reset()
@@ -6134,20 +6081,19 @@ class WavPackFileTest(TestForeignWaveChunks,
                          (repr(pcmreader),
                           repr(encode_options)))
 
-        for wavpack in [self.decoder(open(temp_file.name, "rb")),
-                        self.decoder(Filewrapper(open(temp_file.name, "rb")))]:
-            self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
-            self.assertEqual(wavpack.bits_per_sample, pcmreader.bits_per_sample)
-            self.assertEqual(wavpack.channels, pcmreader.channels)
-            self.assertEqual(wavpack.channel_mask, pcmreader.channel_mask)
+        wavpack = self.decoder(temp_file.name)
+        self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
+        self.assertEqual(wavpack.bits_per_sample, pcmreader.bits_per_sample)
+        self.assertEqual(wavpack.channels, pcmreader.channels)
+        self.assertEqual(wavpack.channel_mask, pcmreader.channel_mask)
 
-            md5sum = md5()
+        md5sum = md5()
+        f = wavpack.read(audiotools.FRAMELIST_SIZE)
+        while len(f) > 0:
+            md5sum.update(f.to_bytes(False, True))
             f = wavpack.read(audiotools.FRAMELIST_SIZE)
-            while len(f) > 0:
-                md5sum.update(f.to_bytes(False, True))
-                f = wavpack.read(audiotools.FRAMELIST_SIZE)
-            wavpack.close()
-            self.assertEqual(md5sum.digest(), pcmreader.digest())
+        wavpack.close()
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
 
         temp_file.close()
 
@@ -6187,26 +6133,6 @@ class WavPackFileTest(TestForeignWaveChunks,
                                  **opts)
 
     @FORMAT_WAVPACK
-    def test_blocksizes(self):
-        noise = struct.unpack(">32h", os.urandom(64))
-
-        opts = {"false_stereo": False,
-                "wasted_bits": False,
-                "joint_stereo": False}
-        for block_size in [16, 17, 18, 19, 20, 21, 22, 23,
-                           24, 25, 26, 27, 28, 29, 30, 31, 32, 33]:
-            for decorrelation_passes in [0, 1, 5]:
-                opts_copy = opts.copy()
-                opts_copy["block_size"] = block_size
-                opts_copy["correlation_passes"] = decorrelation_passes
-                self.__test_reader__(
-                    test_streams.MD5Reader(
-                        test_streams.FrameListReader(noise,
-                                                     44100, 1, 16)),
-                    len(noise),
-                    **opts_copy)
-
-    @FORMAT_WAVPACK
     def test_silence(self):
         for opts in self.encode_opts:
             for (channels, mask) in [
@@ -6218,21 +6144,16 @@ class WavPackFileTest(TestForeignWaveChunks,
                                                        back_right=True)),
                 (8, audiotools.ChannelMask(0))]:
                 for bps in [8, 16, 24]:
-                    opts_copy = opts.copy()
-                    for block_size in [44100, 32, 32768, 65535,
-                                       16777215]:
-                        opts_copy['block_size'] = block_size
-
-                        self.__test_reader__(
-                            MD5_Reader(
-                                EXACT_SILENCE_PCM_Reader(
-                                    pcm_frames=65536,
-                                    sample_rate=44100,
-                                    channels=channels,
-                                    channel_mask=mask,
-                                    bits_per_sample=bps)),
-                            65536,
-                            **opts_copy)
+                    self.__test_reader__(
+                        MD5_Reader(
+                            EXACT_SILENCE_PCM_Reader(
+                                pcm_frames=65536,
+                                sample_rate=44100,
+                                channels=channels,
+                                channel_mask=mask,
+                                bits_per_sample=bps)),
+                        65536,
+                        **opts)
 
     @FORMAT_WAVPACK
     def test_noise(self):
@@ -6246,61 +6167,16 @@ class WavPackFileTest(TestForeignWaveChunks,
                                                        back_right=True)),
                 (8, audiotools.ChannelMask(0))]:
                 for bps in [8, 16, 24]:
-                    opts_copy = opts.copy()
-                    for block_size in [44100, 32, 32768, 65535,
-                                       16777215]:
-                        opts_copy['block_size'] = block_size
-
-                        self.__test_reader__(
-                            MD5_Reader(
-                                EXACT_RANDOM_PCM_Reader(
-                                    pcm_frames=65536,
-                                    sample_rate=44100,
-                                    channels=channels,
-                                    channel_mask=mask,
-                                    bits_per_sample=bps)),
-                            65536,
-                            **opts_copy)
-
-    @FORMAT_WAVPACK
-    def test_fractional(self):
-        def __perform_test__(block_size, pcm_frames):
-            self.__test_reader__(
-                MD5_Reader(
-                    EXACT_RANDOM_PCM_Reader(
-                        pcm_frames=pcm_frames,
-                        sample_rate=44100,
-                        channels=2,
-                        bits_per_sample=16)),
-                pcm_frames,
-                block_size=block_size,
-                correlation_passes=5,
-                false_stereo=False,
-                wasted_bits=False,
-                joint_stereo=False)
-
-        for pcm_frames in [31, 32, 33, 34, 35, 2046, 2047, 2048, 2049, 2050]:
-            __perform_test__(33, pcm_frames)
-
-        for pcm_frames in [254, 255, 256, 257, 258, 510, 511, 512, 513,
-                           514, 1022, 1023, 1024, 1025, 1026, 2046, 2047,
-                           2048, 2049, 2050, 4094, 4095, 4096, 4097, 4098]:
-            __perform_test__(256, pcm_frames)
-
-        for pcm_frames in [1022, 1023, 1024, 1025, 1026, 2046, 2047,
-                           2048, 2049, 2050, 4094, 4095, 4096, 4097, 4098]:
-            __perform_test__(2048, pcm_frames)
-
-        for pcm_frames in [1022, 1023, 1024, 1025, 1026, 2046, 2047,
-                           2048, 2049, 2050, 4094, 4095, 4096, 4097,
-                           4098, 4606, 4607, 4608, 4609, 4610, 8190,
-                           8191, 8192, 8193, 8194, 16382, 16383, 16384,
-                           16385, 16386]:
-            __perform_test__(4608, pcm_frames)
-
-        for pcm_frames in [44098, 44099, 44100, 44101, 44102, 44103,
-                           88198, 88199, 88200, 88201, 88202, 88203]:
-            __perform_test__(44100, pcm_frames)
+                    self.__test_reader__(
+                        MD5_Reader(
+                            EXACT_RANDOM_PCM_Reader(
+                                pcm_frames=65536,
+                                sample_rate=44100,
+                                channels=channels,
+                                channel_mask=mask,
+                                bits_per_sample=bps)),
+                        65536,
+                        **opts)
 
     @FORMAT_WAVPACK
     def test_multichannel(self):
@@ -6318,38 +6194,28 @@ class WavPackFileTest(TestForeignWaveChunks,
         # test a mix of identical and non-identical channels
         # using different decorrelation, joint stereo and false stereo options
         combos = 0
-        for (false_stereo, joint_stereo) in [(False, False),
-                                             (False, True),
-                                             (True, False),
-                                             (True, True)]:
-            for (channels, mask) in [(2, 0x3), (3, 0x7), (4, 0x33),
-                                     (5, 0x3B), (6, 0x3F)]:
-                for readers in __permutations__(
-                    [EXACT_BLANK_PCM_Reader,
-                     EXACT_RANDOM_PCM_Reader,
-                     test_streams.Sine16_Mono],
-                    [{"pcm_frames": 100,
-                      "sample_rate": 44100,
-                      "channels": 1,
-                      "bits_per_sample": 16},
-                     {"pcm_frames": 100,
-                      "sample_rate": 44100,
-                      "channels": 1,
-                      "bits_per_sample": 16},
-                     {"pcm_frames": 100,
-                      "sample_rate": 44100,
-                      "f1": 441.0,
-                      "a1": 0.61,
-                      "f2": 661.5,
-                      "a2": 0.37}], channels):
-                    joined = MD5_Reader(Join_Reader(readers, mask))
-                    self.__test_reader__(joined,
-                                         100,
-                                         block_size=44100,
-                                         false_stereo=false_stereo,
-                                         joint_stereo=joint_stereo,
-                                         correlation_passes=1,
-                                         wasted_bits=False)
+        for (channels, mask) in [(2, 0x3), (3, 0x7), (4, 0x33),
+                                 (5, 0x3B), (6, 0x3F)]:
+            for readers in __permutations__(
+                [EXACT_BLANK_PCM_Reader,
+                 EXACT_RANDOM_PCM_Reader,
+                 test_streams.Sine16_Mono],
+                [{"pcm_frames": 100,
+                  "sample_rate": 44100,
+                  "channels": 1,
+                  "bits_per_sample": 16},
+                 {"pcm_frames": 100,
+                  "sample_rate": 44100,
+                  "channels": 1,
+                  "bits_per_sample": 16},
+                 {"pcm_frames": 100,
+                  "sample_rate": 44100,
+                  "f1": 441.0,
+                  "a1": 0.61,
+                  "f2": 661.5,
+                  "a2": 0.37}], channels):
+                joined = MD5_Reader(Join_Reader(readers, mask))
+                self.__test_reader__(joined, 100)
 
     @FORMAT_WAVPACK
     def test_sines(self):
@@ -6357,261 +6223,240 @@ class WavPackFileTest(TestForeignWaveChunks,
             for g in self.__stream_variations__():
                 self.__test_reader__(g, 200000, **opts)
 
-    @FORMAT_WAVPACK
-    def test_option_variations(self):
-        for block_size in [11025, 22050, 44100, 88200, 176400]:
-            for false_stereo in [False, True]:
-                for wasted_bits in [False, True]:
-                    for joint_stereo in [False, True]:
-                        for decorrelation_passes in [0, 1, 2, 5, 10, 16]:
-                            self.__test_reader__(
-                                test_streams.Sine16_Stereo(200000,
-                                                           48000,
-                                                           441.0,
-                                                           0.50,
-                                                           441.0,
-                                                           0.49,
-                                                           1.0),
-                                200000,
-                                block_size=block_size,
-                                false_stereo=false_stereo,
-                                wasted_bits=wasted_bits,
-                                joint_stereo=joint_stereo,
-                                correlation_passes=decorrelation_passes)
 
-    @FORMAT_WAVPACK
-    def test_python_codec(self):
-        def test_python_reader(pcmreader, total_pcm_frames, **encode_options):
-            from audiotools.py_encoders import encode_wavpack
+    #@FORMAT_WAVPACK
+    #def test_python_codec(self):
+    #    def test_python_reader(pcmreader, total_pcm_frames, **encode_options):
+    #        from audiotools.py_encoders import encode_wavpack
 
-            # encode file using Python-based encoder
-            temp_file = tempfile.NamedTemporaryFile(suffix=".wv")
+    #        # encode file using Python-based encoder
+    #        temp_file = tempfile.NamedTemporaryFile(suffix=".wv")
 
-            encode_wavpack(temp_file.name,
-                           audiotools.BufferedPCMReader(pcmreader),
-                           **encode_options)
+    #        encode_wavpack(temp_file.name,
+    #                       audiotools.BufferedPCMReader(pcmreader),
+    #                       **encode_options)
 
-            # verify contents of file decoded by
-            # Python-based decoder against contents decoded by
-            # C-based decoder
-            from audiotools.py_decoders import WavPackDecoder as WavPackDecoder1
-            from audiotools.decoders import WavPackDecoder as WavPackDecoder2
+    #        # verify contents of file decoded by
+    #        # Python-based decoder against contents decoded by
+    #        # C-based decoder
+    #        from audiotools.py_decoders import WavPackDecoder as WavPackDecoder1
+    #        from audiotools.decoders import WavPackDecoder as WavPackDecoder2
 
-            self.assertTrue(
-                audiotools.pcm_cmp(
-                    WavPackDecoder1(temp_file.name),
-                    WavPackDecoder2(open(temp_file.name, "rb"))))
+    #        self.assertTrue(
+    #            audiotools.pcm_cmp(
+    #                WavPackDecoder1(temp_file.name),
+    #                WavPackDecoder2(open(temp_file.name, "rb"))))
 
-            # redo test with total_pcm_frames indicated
-            pcmreader.reset()
+    #        # redo test with total_pcm_frames indicated
+    #        pcmreader.reset()
 
-            encode_wavpack(temp_file.name,
-                           audiotools.BufferedPCMReader(pcmreader),
-                           total_pcm_frames=total_pcm_frames,
-                           **encode_options)
+    #        encode_wavpack(temp_file.name,
+    #                       audiotools.BufferedPCMReader(pcmreader),
+    #                       total_pcm_frames=total_pcm_frames,
+    #                       **encode_options)
 
-            # verify contents of file decoded by
-            # Python-based decoder against contents decoded by
-            # C-based decoder
-            from audiotools.py_decoders import WavPackDecoder as WavPackDecoder1
-            from audiotools.decoders import WavPackDecoder as WavPackDecoder2
+    #        # verify contents of file decoded by
+    #        # Python-based decoder against contents decoded by
+    #        # C-based decoder
+    #        from audiotools.py_decoders import WavPackDecoder as WavPackDecoder1
+    #        from audiotools.decoders import WavPackDecoder as WavPackDecoder2
 
-            self.assertTrue(
-                audiotools.pcm_cmp(
-                    WavPackDecoder1(temp_file.name),
-                    WavPackDecoder2(open(temp_file.name, "rb"))))
+    #        self.assertTrue(
+    #            audiotools.pcm_cmp(
+    #                WavPackDecoder1(temp_file.name),
+    #                WavPackDecoder2(open(temp_file.name, "rb"))))
 
-            temp_file.close()
+    #        temp_file.close()
 
-        # test small files
-        for opts in self.encode_opts:
-            for g in [test_streams.Generate01,
-                      test_streams.Generate02]:
-                test_python_reader(g(44100), 1, **opts)
-            for g in [test_streams.Generate03,
-                      test_streams.Generate04]:
-                test_python_reader(g(44100), 5, **opts)
+    #    # test small files
+    #    for opts in self.encode_opts:
+    #        for g in [test_streams.Generate01,
+    #                  test_streams.Generate02]:
+    #            test_python_reader(g(44100), 1, **opts)
+    #        for g in [test_streams.Generate03,
+    #                  test_streams.Generate04]:
+    #            test_python_reader(g(44100), 5, **opts)
 
-        # test full scale deflection
-        for opts in self.encode_opts:
-            for (bps, fsd) in [(8, test_streams.fsd8),
-                               (16, test_streams.fsd16),
-                               (24, test_streams.fsd24)]:
-                for pattern in [test_streams.PATTERN01,
-                                test_streams.PATTERN02,
-                                test_streams.PATTERN03,
-                                test_streams.PATTERN04,
-                                test_streams.PATTERN05,
-                                test_streams.PATTERN06,
-                                test_streams.PATTERN07]:
-                    test_python_reader(fsd(pattern, 100),
-                                       len(pattern) * 100,
-                                       **opts)
+    #    # test full scale deflection
+    #    for opts in self.encode_opts:
+    #        for (bps, fsd) in [(8, test_streams.fsd8),
+    #                           (16, test_streams.fsd16),
+    #                           (24, test_streams.fsd24)]:
+    #            for pattern in [test_streams.PATTERN01,
+    #                            test_streams.PATTERN02,
+    #                            test_streams.PATTERN03,
+    #                            test_streams.PATTERN04,
+    #                            test_streams.PATTERN05,
+    #                            test_streams.PATTERN06,
+    #                            test_streams.PATTERN07]:
+    #                test_python_reader(fsd(pattern, 100),
+    #                                   len(pattern) * 100,
+    #                                   **opts)
 
-        # test wasted BPS
-        for opts in self.encode_opts:
-            test_python_reader(test_streams.WastedBPS16(1000),
-                               1000,
-                               **opts)
+    #    # test wasted BPS
+    #    for opts in self.encode_opts:
+    #        test_python_reader(test_streams.WastedBPS16(1000),
+    #                           1000,
+    #                           **opts)
 
-        # test block sizes
-        noise = struct.unpack(">32h", os.urandom(64))
+    #    # test block sizes
+    #    noise = struct.unpack(">32h", os.urandom(64))
 
-        opts = {"false_stereo": False,
-                "wasted_bits": False,
-                "joint_stereo": False}
-        for block_size in [16, 17, 18, 19, 20, 21, 22, 23,
-                           24, 25, 26, 27, 28, 29, 30, 31, 32, 33]:
-            for decorrelation_passes in [0, 1, 5]:
-                opts_copy = opts.copy()
-                opts_copy["block_size"] = block_size
-                opts_copy["correlation_passes"] = decorrelation_passes
-                test_python_reader(
-                    test_streams.FrameListReader(noise,
-                                                 44100, 1, 16),
-                    len(noise),
-                    **opts_copy)
+    #    opts = {"false_stereo": False,
+    #            "wasted_bits": False,
+    #            "joint_stereo": False}
+    #    for block_size in [16, 17, 18, 19, 20, 21, 22, 23,
+    #                       24, 25, 26, 27, 28, 29, 30, 31, 32, 33]:
+    #        for decorrelation_passes in [0, 1, 5]:
+    #            opts_copy = opts.copy()
+    #            opts_copy["block_size"] = block_size
+    #            opts_copy["correlation_passes"] = decorrelation_passes
+    #            test_python_reader(
+    #                test_streams.FrameListReader(noise,
+    #                                             44100, 1, 16),
+    #                len(noise),
+    #                **opts_copy)
 
-        # test silence
-        for opts in self.encode_opts:
-            for (channels, mask) in [
-                (1, audiotools.ChannelMask.from_channels(1)),
-                (2, audiotools.ChannelMask.from_channels(2))]:
-                opts_copy = opts.copy()
-                opts_copy['block_size'] = 4095
-                test_python_reader(
-                    EXACT_SILENCE_PCM_Reader(
-                        pcm_frames=4096,
-                        sample_rate=44100,
-                        channels=channels,
-                        channel_mask=mask,
-                        bits_per_sample=16),
-                    4096,
-                    **opts_copy)
+    #    # test silence
+    #    for opts in self.encode_opts:
+    #        for (channels, mask) in [
+    #            (1, audiotools.ChannelMask.from_channels(1)),
+    #            (2, audiotools.ChannelMask.from_channels(2))]:
+    #            opts_copy = opts.copy()
+    #            opts_copy['block_size'] = 4095
+    #            test_python_reader(
+    #                EXACT_SILENCE_PCM_Reader(
+    #                    pcm_frames=4096,
+    #                    sample_rate=44100,
+    #                    channels=channels,
+    #                    channel_mask=mask,
+    #                    bits_per_sample=16),
+    #                4096,
+    #                **opts_copy)
 
-        # test noise
-        for opts in self.encode_opts:
-            for (channels, mask) in [
-                (1, audiotools.ChannelMask.from_channels(1)),
-                (2, audiotools.ChannelMask.from_channels(2))]:
-                opts_copy = opts.copy()
-                opts_copy['block_size'] = 4095
-                test_python_reader(
-                    EXACT_RANDOM_PCM_Reader(
-                        pcm_frames=4096,
-                        sample_rate=44100,
-                        channels=channels,
-                        channel_mask=mask,
-                        bits_per_sample=16),
-                    4096,
-                    **opts_copy)
+    #    # test noise
+    #    for opts in self.encode_opts:
+    #        for (channels, mask) in [
+    #            (1, audiotools.ChannelMask.from_channels(1)),
+    #            (2, audiotools.ChannelMask.from_channels(2))]:
+    #            opts_copy = opts.copy()
+    #            opts_copy['block_size'] = 4095
+    #            test_python_reader(
+    #                EXACT_RANDOM_PCM_Reader(
+    #                    pcm_frames=4096,
+    #                    sample_rate=44100,
+    #                    channels=channels,
+    #                    channel_mask=mask,
+    #                    bits_per_sample=16),
+    #                4096,
+    #                **opts_copy)
 
-        # test fractional
-        for (block_size,
-             pcm_frames_list) in [(33, [31, 32, 33, 34, 35, 2046,
-                                        2047, 2048, 2049, 2050]),
-                                  (256, [254, 255, 256, 257, 258, 510,
-                                         511, 512, 513, 514, 1022, 1023,
-                                         1024, 1025, 1026, 2046, 2047, 2048,
-                                         2049, 2050, 4094, 4095, 4096, 4097,
-                                         4098])]:
-            for pcm_frames in pcm_frames_list:
-                test_python_reader(
-                    EXACT_RANDOM_PCM_Reader(
-                        pcm_frames=pcm_frames,
-                        sample_rate=44100,
-                        channels=2,
-                        bits_per_sample=16),
-                    pcm_frames,
-                    block_size=block_size,
-                    correlation_passes=5,
-                    false_stereo=False,
-                    wasted_bits=False,
-                    joint_stereo=False)
+    #    # test fractional
+    #    for (block_size,
+    #         pcm_frames_list) in [(33, [31, 32, 33, 34, 35, 2046,
+    #                                    2047, 2048, 2049, 2050]),
+    #                              (256, [254, 255, 256, 257, 258, 510,
+    #                                     511, 512, 513, 514, 1022, 1023,
+    #                                     1024, 1025, 1026, 2046, 2047, 2048,
+    #                                     2049, 2050, 4094, 4095, 4096, 4097,
+    #                                     4098])]:
+    #        for pcm_frames in pcm_frames_list:
+    #            test_python_reader(
+    #                EXACT_RANDOM_PCM_Reader(
+    #                    pcm_frames=pcm_frames,
+    #                    sample_rate=44100,
+    #                    channels=2,
+    #                    bits_per_sample=16),
+    #                pcm_frames,
+    #                block_size=block_size,
+    #                correlation_passes=5,
+    #                false_stereo=False,
+    #                wasted_bits=False,
+    #                joint_stereo=False)
 
-        # test sines
-        for opts in self.encode_opts:
-            for g in [test_streams.Sine8_Mono(5000, 48000,
-                                              441.0, 0.50, 441.0, 0.49),
-                      test_streams.Sine8_Stereo(5000, 48000,
-                                                441.0, 0.50, 441.0, 0.49, 1.0),
-                      test_streams.Sine16_Mono(5000, 48000,
-                                               441.0, 0.50, 441.0, 0.49),
-                      test_streams.Sine16_Stereo(5000, 48000,
-                                                 441.0, 0.50, 441.0, 0.49, 1.0),
-                      test_streams.Sine24_Mono(5000, 48000,
-                                               441.0, 0.50, 441.0, 0.49),
-                      test_streams.Sine24_Stereo(5000, 48000,
-                                                 441.0, 0.50, 441.0, 0.49, 1.0),
-                      test_streams.Simple_Sine(5000, 44100, 0x7, 8,
-                                               (25, 10000),
-                                               (50, 20000),
-                                               (120, 30000)),
-                      test_streams.Simple_Sine(5000, 44100, 0x33, 8,
-                                               (25, 10000),
-                                               (50, 20000),
-                                               (75, 30000),
-                                               (65, 40000)),
-                      test_streams.Simple_Sine(5000, 44100, 0x37, 8,
-                                               (25, 10000),
-                                               (35, 15000),
-                                               (45, 20000),
-                                               (50, 25000),
-                                               (55, 30000)),
-                      test_streams.Simple_Sine(5000, 44100, 0x3F, 8,
-                                               (25, 10000),
-                                               (45, 15000),
-                                               (65, 20000),
-                                               (85, 25000),
-                                               (105, 30000),
-                                               (120, 35000)),
+    #    # test sines
+    #    for opts in self.encode_opts:
+    #        for g in [test_streams.Sine8_Mono(5000, 48000,
+    #                                          441.0, 0.50, 441.0, 0.49),
+    #                  test_streams.Sine8_Stereo(5000, 48000,
+    #                                            441.0, 0.50, 441.0, 0.49, 1.0),
+    #                  test_streams.Sine16_Mono(5000, 48000,
+    #                                           441.0, 0.50, 441.0, 0.49),
+    #                  test_streams.Sine16_Stereo(5000, 48000,
+    #                                             441.0, 0.50, 441.0, 0.49, 1.0),
+    #                  test_streams.Sine24_Mono(5000, 48000,
+    #                                           441.0, 0.50, 441.0, 0.49),
+    #                  test_streams.Sine24_Stereo(5000, 48000,
+    #                                             441.0, 0.50, 441.0, 0.49, 1.0),
+    #                  test_streams.Simple_Sine(5000, 44100, 0x7, 8,
+    #                                           (25, 10000),
+    #                                           (50, 20000),
+    #                                           (120, 30000)),
+    #                  test_streams.Simple_Sine(5000, 44100, 0x33, 8,
+    #                                           (25, 10000),
+    #                                           (50, 20000),
+    #                                           (75, 30000),
+    #                                           (65, 40000)),
+    #                  test_streams.Simple_Sine(5000, 44100, 0x37, 8,
+    #                                           (25, 10000),
+    #                                           (35, 15000),
+    #                                           (45, 20000),
+    #                                           (50, 25000),
+    #                                           (55, 30000)),
+    #                  test_streams.Simple_Sine(5000, 44100, 0x3F, 8,
+    #                                           (25, 10000),
+    #                                           (45, 15000),
+    #                                           (65, 20000),
+    #                                           (85, 25000),
+    #                                           (105, 30000),
+    #                                           (120, 35000)),
 
-                      test_streams.Simple_Sine(5000, 44100, 0x7, 16,
-                                               (6400, 10000),
-                                               (12800, 20000),
-                                               (30720, 30000)),
-                      test_streams.Simple_Sine(5000, 44100, 0x33, 16,
-                                               (6400, 10000),
-                                               (12800, 20000),
-                                               (19200, 30000),
-                                               (16640, 40000)),
-                      test_streams.Simple_Sine(5000, 44100, 0x37, 16,
-                                               (6400, 10000),
-                                               (8960, 15000),
-                                               (11520, 20000),
-                                               (12800, 25000),
-                                               (14080, 30000)),
-                      test_streams.Simple_Sine(5000, 44100, 0x3F, 16,
-                                               (6400, 10000),
-                                               (11520, 15000),
-                                               (16640, 20000),
-                                               (21760, 25000),
-                                               (26880, 30000),
-                                               (30720, 35000)),
+    #                  test_streams.Simple_Sine(5000, 44100, 0x7, 16,
+    #                                           (6400, 10000),
+    #                                           (12800, 20000),
+    #                                           (30720, 30000)),
+    #                  test_streams.Simple_Sine(5000, 44100, 0x33, 16,
+    #                                           (6400, 10000),
+    #                                           (12800, 20000),
+    #                                           (19200, 30000),
+    #                                           (16640, 40000)),
+    #                  test_streams.Simple_Sine(5000, 44100, 0x37, 16,
+    #                                           (6400, 10000),
+    #                                           (8960, 15000),
+    #                                           (11520, 20000),
+    #                                           (12800, 25000),
+    #                                           (14080, 30000)),
+    #                  test_streams.Simple_Sine(5000, 44100, 0x3F, 16,
+    #                                           (6400, 10000),
+    #                                           (11520, 15000),
+    #                                           (16640, 20000),
+    #                                           (21760, 25000),
+    #                                           (26880, 30000),
+    #                                           (30720, 35000)),
 
-                      test_streams.Simple_Sine(5000, 44100, 0x7, 24,
-                                               (1638400, 10000),
-                                               (3276800, 20000),
-                                               (7864320, 30000)),
-                      test_streams.Simple_Sine(5000, 44100, 0x33, 24,
-                                               (1638400, 10000),
-                                               (3276800, 20000),
-                                               (4915200, 30000),
-                                               (4259840, 40000)),
-                      test_streams.Simple_Sine(5000, 44100, 0x37, 24,
-                                               (1638400, 10000),
-                                               (2293760, 15000),
-                                               (2949120, 20000),
-                                               (3276800, 25000),
-                                               (3604480, 30000)),
-                      test_streams.Simple_Sine(5000, 44100, 0x3F, 24,
-                                               (1638400, 10000),
-                                               (2949120, 15000),
-                                               (4259840, 20000),
-                                               (5570560, 25000),
-                                               (6881280, 30000),
-                                               (7864320, 35000))]:
-                test_python_reader(g, 5000, **opts)
+    #                  test_streams.Simple_Sine(5000, 44100, 0x7, 24,
+    #                                           (1638400, 10000),
+    #                                           (3276800, 20000),
+    #                                           (7864320, 30000)),
+    #                  test_streams.Simple_Sine(5000, 44100, 0x33, 24,
+    #                                           (1638400, 10000),
+    #                                           (3276800, 20000),
+    #                                           (4915200, 30000),
+    #                                           (4259840, 40000)),
+    #                  test_streams.Simple_Sine(5000, 44100, 0x37, 24,
+    #                                           (1638400, 10000),
+    #                                           (2293760, 15000),
+    #                                           (2949120, 20000),
+    #                                           (3276800, 25000),
+    #                                           (3604480, 30000)),
+    #                  test_streams.Simple_Sine(5000, 44100, 0x3F, 24,
+    #                                           (1638400, 10000),
+    #                                           (2949120, 15000),
+    #                                           (4259840, 20000),
+    #                                           (5570560, 25000),
+    #                                           (6881280, 30000),
+    #                                           (7864320, 35000))]:
+    #            test_python_reader(g, 5000, **opts)
 
 
 class TTAFileTest(LosslessFileTest):
