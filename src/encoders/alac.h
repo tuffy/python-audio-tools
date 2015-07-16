@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <setjmp.h>
+#include "../pcmreader.h"
 #include "../bitstream.h"
 #include "../array.h"
 
@@ -27,6 +28,12 @@
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
+
+struct alac_frame_size {
+    unsigned byte_size;
+    unsigned pcm_frames_size;
+    struct alac_frame_size *next;  /*NULL at end of list*/
+};
 
 struct alac_encoding_options {
     unsigned block_size;

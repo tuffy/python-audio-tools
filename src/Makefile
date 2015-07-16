@@ -30,13 +30,13 @@ wvdec: $(OBJS) decoders/wavpack.c decoders/wavpack.h md5.o pcm_conv.o
 	$(CC) $(FLAGS) -o wvdec decoders/wavpack.c $(OBJS) md5.o pcm_conv.o -DSTANDALONE
 
 alacenc: encoders/alac.c encoders/alac.h bitstream.a array.o pcmreader.o pcm_conv.o
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c bitstream.a array.o pcmreader.o pcm_conv.o -DSTANDALONE -lm
+	$(CC) $(FLAGS) -o alacenc encoders/alac.c bitstream.a array.o pcmreader.o pcm_conv.o -DSTANDALONE -lm
 
 flacenc: encoders/flac.c encoders/flac.h bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o
 	$(CC) $(FLAGS) -pg -o $@ encoders/flac.c bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
 
 shnenc: encoders/shn.c encoders/shn.h bitstream.a array.o pcmreader.o pcm_conv.o
-	$(CC) $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c bitstream.a array.o pcmreader.o pcm_conv.o -DSTANDALONE -lm
+	$(CC) $(FLAGS) -o shnenc encoders/shn.c bitstream.a array.o pcmreader.o pcm_conv.o -DSTANDALONE -lm
 
 wvenc: $(OBJS) encoders/wavpack.c pcmreader.o pcm_conv.o bitstream.a md5.o
 	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c pcmreader.o pcm_conv.o bitstream.a md5.o -DSTANDALONE `pkg-config --cflags --libs wavpack`
