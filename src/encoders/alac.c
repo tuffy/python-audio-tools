@@ -1,4 +1,5 @@
 #include "alac.h"
+#include <string.h>
 #include <assert.h>
 #include <math.h>
 
@@ -35,208 +36,105 @@ reverse_frame_sizes(struct alac_frame_size **head);
 static void
 free_alac_frame_sizes(struct alac_frame_size *frame_sizes);
 
-//#ifndef STANDALONE
-//
-//#if PY_MAJOR_VERSION >= 3
-//#ifndef PyInt_FromLong
-//#define PyInt_FromLong PyLong_FromLong
-//#endif
-//#endif
-//
-//PyObject*
-//encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
-//{
-//
-//    static char *kwlist[] = {"file",
-//                             "pcmreader",
-//                             "block_size",
-//                             "initial_history",
-//                             "history_multiplier",
-//                             "maximum_k",
-//                             "minimum_interlacing_leftweight",
-//                             "maximum_interlacing_leftweight",
-//                             NULL};
-//
-//    PyObject *file_obj;
-//    BitstreamWriter *output = NULL;
-//    pcmreader* pcmreader;
-//    struct alac_context encoder;
-//    aa_int* channels = aa_int_new();
-//    unsigned frame_byte_size = 0;
-//    bw_pos_t* mdat_header = NULL;
-//
-//    PyObject *log_output;
-//
-//    init_encoder(&encoder);
-//
-//    encoder.options.minimum_interlacing_leftweight = 0;
-//    encoder.options.maximum_interlacing_leftweight = 4;
-//
-//    /*extract a file object, PCMReader-compatible object and encoding options*/
-//    if (!PyArg_ParseTupleAndKeywords(
-//                    args, keywds, "OO&iiii|ii",
-//                    kwlist,
-//                    &file_obj,
-//                    pcmreader_converter,
-//                    &pcmreader,
-//                    &(encoder.options.block_size),
-//                    &(encoder.options.initial_history),
-//                    &(encoder.options.history_multiplier),
-//                    &(encoder.options.maximum_k),
-//                    &(encoder.options.minimum_interlacing_leftweight),
-//                    &(encoder.options.maximum_interlacing_leftweight)))
-//        return NULL;
-//
-//    encoder.bits_per_sample = pcmreader->bits_per_sample;
-//
-//    /*determine if the PCMReader is compatible with ALAC*/
-//    if ((pcmreader->bits_per_sample != 16) &&
-//        (pcmreader->bits_per_sample != 24)) {
-//        PyErr_SetString(PyExc_ValueError, "bits per sample must be 16 or 24");
-//        goto error;
-//    }
-//
-//    /*convert file object to bitstream writer*/
-//    output = bw_open_external(file_obj,
-//                              BS_BIG_ENDIAN,
-//                              4096,
-//                              (ext_write_f)bw_write_python,
-//                              (ext_setpos_f)bs_setpos_python,
-//                              (ext_getpos_f)bs_getpos_python,
-//                              (ext_free_pos_f)bs_free_pos_python,
-//                              (ext_seek_f)bs_fseek_python,
-//                              (ext_flush_f)bw_flush_python,
-//                              (ext_close_f)bs_close_python,
-//                              (ext_free_f)bs_free_python_nodecref);
-//
-//#else
-//
-//int
-//ALACEncoder_encode_alac(char *filename,
-//                        pcmreader* pcmreader,
-//                        int block_size,
-//                        int initial_history,
-//                        int history_multiplier,
-//                        int maximum_k)
-//{
-//    FILE *output_file;
-//    BitstreamWriter *output = NULL;
-//    struct alac_context encoder;
-//    aa_int* channels = aa_int_new();
-//    unsigned frame_byte_size = 0;
-//    bw_pos_t* mdat_header = NULL;
-//
-//    init_encoder(&encoder);
-//
-//    encoder.options.block_size = block_size;
-//    encoder.options.initial_history = initial_history;
-//    encoder.options.history_multiplier = history_multiplier;
-//    encoder.options.maximum_k = maximum_k;
-//    encoder.options.minimum_interlacing_leftweight = 0;
-//    encoder.options.maximum_interlacing_leftweight = 4;
-//
-//    /*FIXME - make sure this opens correctly*/
-//    output_file = fopen(filename, "wb");
-//    encoder.bits_per_sample = pcmreader->bits_per_sample;
-//
-//    /*convert file object to bitstream writer*/
-//    output = bw_open(output_file, BS_BIG_ENDIAN);
-//#endif
-//    /*FIXME - check marks/rewinds for I/O errors*/
-//    mdat_header = output->getpos(output);
-//
-//    output->add_callback(output,
-//                         (bs_callback_f)byte_counter,
-//                         &frame_byte_size);
-//
-//    /*write placeholder mdat header*/
-//    output->write(output, 32, 0);
-//    output->write_bytes(output, (uint8_t*)"mdat", 4);
-//
-//    /*write frames from pcm_reader until empty*/
-//    if (pcmreader->read(pcmreader, encoder.options.block_size, channels))
-//        goto error;
-//    while (channels->_[0]->len > 0) {
-//        /*update the total number of PCM frames read thus far*/
-//        encoder.total_pcm_frames += channels->_[0]->len;
-//        frame_byte_size = 0;
-//
-//        write_frameset(output, &encoder, channels);
-//
-//        /*log each frameset's total size in bytes*/
-//        encoder.frame_sizes->append(encoder.frame_sizes,
-//                                    frame_byte_size);
-//
-//        if (pcmreader->read(pcmreader, encoder.options.block_size, channels))
-//            goto error;
-//    }
-//
-//    /*return to header and rewrite it with the actual value*/
-//    output->pop_callback(output, NULL);
-//    output->setpos(output, mdat_header);
-//    output->write(output, 32,
-//                  encoder.frame_sizes->sum(encoder.frame_sizes) + 8);
-//    mdat_header->del(mdat_header);
-//
-//    /*close and free allocated files/buffers,
-//      which varies depending on whether we're running standlone or not*/
-//
-//#ifndef STANDALONE
-//
-//    log_output = alac_log_output(&encoder);
-//
-//    pcmreader->del(pcmreader);
-//    output->flush(output);
-//    output->free(output);
-//    free_encoder(&encoder);
-//    channels->del(channels);
-//
-//    return log_output;
-//
-// error:
-//
-//    pcmreader->del(pcmreader);
-//    if (mdat_header != NULL) {
-//        mdat_header->del(mdat_header);
-//    }
-//    output->free(output);
-//    free_encoder(&encoder);
-//    channels->del(channels);
-//
-//    return NULL;
-//}
-//#else
-//
-//    pcmreader->del(pcmreader);
-//    output->close(output);
-//    free_encoder(&encoder);
-//    channels->del(channels);
-//
-//    return 0;
-// error:
-//    pcmreader->del(pcmreader);
-//    if (mdat_header != NULL) {
-//        mdat_header->del(mdat_header);
-//    }
-//    output->close(output);
-//    free_encoder(&encoder);
-//    channels->del(channels);
-//
-//    return 1;
-//}
-//#endif
+#ifndef STANDALONE
+
+PyObject*
+encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
+{
+    static char *kwlist[] = {"file",
+                             "pcmreader",
+                             "block_size",
+                             "initial_history",
+                             "history_multiplier",
+                             "maximum_k",
+                             NULL};
+    PyObject *file_obj;
+    BitstreamWriter *output = NULL;
+    struct PCMReader *pcmreader;
+    int block_size;
+    int initial_history;
+    int history_multiplier;
+    int maximum_k;
+    struct alac_frame_size *frame_sizes;
+
+    /*extract a file object, PCMReader-compatible object and encoding options*/
+    if (!PyArg_ParseTupleAndKeywords(args, keywds, "OO&iiii",
+                                     kwlist,
+                                     &file_obj,
+                                     py_obj_to_pcmreader,
+                                     &pcmreader,
+                                     &block_size,
+                                     &initial_history,
+                                     &history_multiplier,
+                                     &maximum_k)) {
+        return NULL;
+     }
+
+    /*determine if the PCMReader is compatible with ALAC*/
+    if ((pcmreader->bits_per_sample != 16) &&
+        (pcmreader->bits_per_sample != 24)) {
+        PyErr_SetString(PyExc_ValueError, "bits per sample must be 16 or 24");
+        return NULL;
+    }
+
+    output = bw_open_external(file_obj,
+                              BS_BIG_ENDIAN,
+                              4096,
+                              (ext_write_f)bw_write_python,
+                              (ext_setpos_f)bs_setpos_python,
+                              (ext_getpos_f)bs_getpos_python,
+                              (ext_free_pos_f)bs_free_pos_python,
+                              (ext_seek_f)bs_fseek_python,
+                              (ext_flush_f)bw_flush_python,
+                              (ext_close_f)bs_close_python,
+                              (ext_free_f)bs_free_python_nodecref);
+
+    frame_sizes = encode_alac(output,
+                              pcmreader,
+                              block_size,
+                              initial_history,
+                              history_multiplier,
+                              maximum_k);
+
+
+
+    if (frame_sizes) {
+        /*convert frame sizes to Python tuple*/
+        /*FIXME - should check these calls for errors*/
+        PyObject *frame_byte_sizes = PyList_New(0);
+        unsigned total_pcm_frames = 0;
+        struct alac_frame_size *sizes;
+
+        for (sizes = frame_sizes; sizes; sizes = sizes->next) {
+            PyObject *frame_byte_size = Py_BuildValue("I", sizes->byte_size);
+            PyList_Append(frame_byte_sizes, frame_byte_size);
+            Py_DECREF(frame_byte_size);
+            total_pcm_frames += sizes->pcm_frames_size;
+        }
+
+        output->flush(output);
+        output->free(output);
+
+        free_alac_frame_sizes(frame_sizes);
+        return Py_BuildValue("(O,I)", frame_byte_sizes, total_pcm_frames);
+    } else {
+        /*indicate read error has occurred*/
+        output->free(output);
+
+        return NULL;
+    }
+}
+
+#endif
 
 static struct alac_frame_size*
-encode_alac(const char *filename,
+encode_alac(BitstreamWriter *output,
             struct PCMReader *pcmreader,
             int block_size,
             int initial_history,
             int history_multiplier,
             int maximum_k)
 {
-
-    FILE *output_file;
-    BitstreamWriter *output = NULL;
     struct alac_context encoder;
     int *samples = malloc(pcmreader->channels *
                           block_size *
@@ -256,12 +154,7 @@ encode_alac(const char *filename,
     encoder.options.minimum_interlacing_leftweight = 0;
     encoder.options.maximum_interlacing_leftweight = 4;
 
-    /*FIXME - make sure this opens correctly*/
-    output_file = fopen(filename, "wb");
     encoder.bits_per_sample = pcmreader->bits_per_sample;
-
-    /*convert file object to bitstream writer*/
-    output = bw_open(output_file, BS_BIG_ENDIAN);
 
     /*FIXME - check marks/rewinds for I/O errors*/
     mdat_header = output->getpos(output);
@@ -281,8 +174,6 @@ encode_alac(const char *filename,
         const unsigned channel_count = pcmreader->channels;
         unsigned c;
 
-        fprintf(stderr, "got %u PCM frames\n", pcm_frames_read);
-
         channels->reset(channels);
         frame_byte_size = 0;
 
@@ -300,8 +191,6 @@ encode_alac(const char *filename,
         /*perform encoding*/
         write_frameset(output, &encoder, channels);
 
-        fprintf(stderr, "encoded frameset in %u bytes\n", frame_byte_size);
-
         /*log each frameset's size in bytes and size in samples*/
         frame_sizes = push_frame_size(frame_sizes,
                                       frame_byte_size,
@@ -314,16 +203,23 @@ encode_alac(const char *filename,
 
     if (pcmreader->status == PCM_OK) {
         /*return to header and rewrite it with the actual value*/
+        unsigned total_mdat_size = 8;
+        struct alac_frame_size *frame_size;
+
+        for (frame_size = frame_sizes;
+             frame_size;
+             frame_size = frame_size->next) {
+            total_mdat_size += frame_size->byte_size;
+        }
+
         output->setpos(output, mdat_header);
-        output->write(output, 32,
-                      encoder.frame_sizes->sum(encoder.frame_sizes) + 8);
+        output->write(output, 32, total_mdat_size);
         mdat_header->del(mdat_header);
 
         /*close and free allocated files/buffers,
           which varies depending on whether we're running standlone or not*/
 
         free_encoder(&encoder);
-        output->close(output);
 
         reverse_frame_sizes(&frame_sizes);
         return frame_sizes;
@@ -333,7 +229,6 @@ encode_alac(const char *filename,
         }
 
         free_encoder(&encoder);
-        output->close(output);
 
         free_alac_frame_sizes(frame_sizes);
         return NULL;
@@ -1290,162 +1185,7 @@ write_subframe_header(BitstreamWriter *bs,
     }
 }
 
-#ifndef STANDALONE
-static PyObject*
-ALACEncoder_new(PyTypeObject *type,
-                PyObject *args, PyObject *kwds)
-{
-    encoders_ALACEncoder *self;
-
-    self = (encoders_ALACEncoder *)type->tp_alloc(type, 0);
-
-    return (PyObject *)self;
-}
-
-int
-ALACEncoder_init(encoders_ALACEncoder *self,
-                 PyObject *args, PyObject *kwds)
-{
-    static char *kwlist[] = {"bits_per_sample",
-                             "block_size",
-                             "initial_history",
-                             "history_multiplier",
-                             "maximum_k",
-                             "minimum_interlacing_leftweight",
-                             "maximum_interlacing_leftweight",
-                             NULL};
-
-    int bits_per_sample = 0;
-    PyObject *audiotools_pcm;
-
-    init_encoder(&(self->encoder));
-    self->encoder.options.minimum_interlacing_leftweight = 0;
-    self->encoder.options.maximum_interlacing_leftweight = 4;
-    self->framelist_type = NULL;
-    self->channels = aa_int_new();
-    self->output_buffer = bw_open_bytes_recorder(BS_BIG_ENDIAN);
-
-    if (!PyArg_ParseTupleAndKeywords(
-        args, kwds, "iiiii|ii", kwlist,
-        &bits_per_sample,
-        &(self->encoder.options.block_size),
-        &(self->encoder.options.initial_history),
-        &(self->encoder.options.history_multiplier),
-        &(self->encoder.options.maximum_k),
-        &(self->encoder.options.minimum_interlacing_leftweight),
-        &(self->encoder.options.maximum_interlacing_leftweight)))
-        return -1;
-
-    switch (bits_per_sample) {
-    case 16:
-        self->encoder.bits_per_sample = 16;
-        break;
-    case 24:
-        self->encoder.bits_per_sample = 24;
-        break;
-    default:
-        PyErr_SetString(PyExc_ValueError, "unsupported bits_per_sample");
-        return -1;
-    }
-
-    if ((audiotools_pcm = PyImport_ImportModule("audiotools.pcm")) == NULL) {
-        return -1;
-    } else {
-        self->framelist_type = PyObject_GetAttrString(audiotools_pcm,
-                                                      "FrameList");
-        Py_DECREF(audiotools_pcm);
-    }
-
-    return 0;
-}
-
-void
-ALACEncoder_dealloc(encoders_ALACEncoder *self)
-{
-    free_encoder(&(self->encoder));
-    Py_XDECREF(self->framelist_type);
-    self->channels->del(self->channels);
-    self->output_buffer->close(self->output_buffer);
-
-    Py_TYPE(self)->tp_free((PyObject*)self);
-}
-
-/*the ALAC.encode() method*/
-static PyObject*
-ALACEncoder_encode(encoders_ALACEncoder *self, PyObject *args)
-{
-    pcm_FrameList* framelist;
-    unsigned channel;
-    aa_int* channels = self->channels;
-
-    if (!PyArg_ParseTuple(args, "O!", self->framelist_type, &framelist))
-        return NULL;
-
-    /*convert FrameList object to multidimensional int array*/
-    channels->reset(channels);
-    for (channel = 0; channel < framelist->channels; channel++) {
-        unsigned frame;
-        a_int* channel_a = channels->append(channels);
-
-        channel_a->resize(channel_a, framelist->frames);
-        for (frame = 0; frame < framelist->frames; frame++) {
-            a_append(channel_a,
-                     framelist->samples[(frame * framelist->channels) +
-                                        channel]);
-        }
-    }
-
-    /*clear output buffer*/
-    self->output_buffer->reset(self->output_buffer);
-
-    /*write frameset to output buffer*/
-    write_frameset((BitstreamWriter*)(self->output_buffer),
-                   &(self->encoder), channels);
-
-    /*convert output buffer to Python string and return it*/
-    return PyBytes_FromStringAndSize(
-        (char *)self->output_buffer->data(self->output_buffer),
-        (Py_ssize_t)self->output_buffer->bytes_written(self->output_buffer));
-}
-
-
-PyObject
-*alac_log_output(struct alac_context *encoder)
-{
-    PyObject *frame_byte_sizes = NULL;
-    PyObject *to_return;
-    int i;
-
-    /*convert internal list of byte sizes to Python list of integer objects*/
-    if ((frame_byte_sizes = PyList_New(0)) == NULL)
-        return NULL;
-
-    for (i = 0; i < encoder->frame_sizes->len; i++) {
-        PyObject *frame_byte_size =
-            PyInt_FromLong((long)encoder->frame_sizes->_[i]);
-        if (frame_byte_size != NULL) {
-            if (PyList_Append(frame_byte_sizes, frame_byte_size) == 0) {
-                Py_DECREF(frame_byte_size);
-            } else {
-                Py_DECREF(frame_byte_size);
-                Py_DECREF(frame_byte_sizes);
-                return NULL;
-            }
-        } else {
-            Py_DECREF(frame_byte_sizes);
-            return NULL;
-        }
-    }
-
-    to_return = Py_BuildValue("(O,I)",
-                              frame_byte_sizes,
-                              encoder->total_pcm_frames);
-
-    Py_DECREF(frame_byte_sizes);
-
-    return to_return;
-}
-#else
+#ifdef STANDALONE
 #include <getopt.h>
 #include <errno.h>
 
@@ -1462,7 +1202,9 @@ count_bits(unsigned value)
 
 int main(int argc, char *argv[]) {
     struct PCMReader *pcmreader = NULL;
-    char *output_file = NULL;
+    char *output_filename = NULL;
+    FILE *output_file = NULL;
+    BitstreamWriter *output = NULL;
     unsigned channels = 2;
     unsigned channel_mask = 0x3;
     unsigned sample_rate = 44100;
@@ -1495,8 +1237,8 @@ int main(int argc, char *argv[]) {
                             NULL)) != -1) {
         switch (c) {
         case 1:
-            if (output_file == NULL) {
-                output_file = optarg;
+            if (output_filename == NULL) {
+                output_filename = optarg;
             } else {
                 printf("only one output file allowed\n");
                 return 1;
@@ -1568,8 +1310,16 @@ int main(int argc, char *argv[]) {
             break;
         }
     }
-    if (output_file == NULL) {
-        printf("exactly 1 output file required\n");
+    if (output_filename) {
+        errno = 0;
+        if ((output_file = fopen(output_filename, "wb")) == NULL) {
+            fprintf(stderr, "%s: %s", output_filename, strerror(errno));
+            return 1;
+        } else {
+            output = bw_open(output_file, BS_BIG_ENDIAN);
+        }
+    } else {
+        fputs("exactly 1 output file required\n", stderr);
         return 1;
     }
 
@@ -1594,13 +1344,14 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "history multiplier %d\n", history_multiplier);
     fprintf(stderr, "maximum K          %d\n", maximum_k);
 
-    frame_sizes = encode_alac(output_file,
+    frame_sizes = encode_alac(output,
                               pcmreader,
                               block_size,
                               initial_history,
                               history_multiplier,
                               maximum_k);
 
+    output->close(output);
     pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
 

@@ -30,13 +30,5 @@ MOD_INIT(encoders)
 
     MOD_DEF(m, "encoders", "low-level audio format encoders",  module_methods)
 
-    encoders_ALACEncoderType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&encoders_ALACEncoderType) < 0)
-        return MOD_ERROR_VAL;
-
-    Py_INCREF(&encoders_ALACEncoderType);
-    PyModule_AddObject(m, "ALACEncoder",
-                       (PyObject *)&encoders_ALACEncoderType);
-
     return MOD_SUCCESS_VAL(m);
 }
