@@ -29,6 +29,8 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#define MAX_QLP_COEFFS 8
+
 struct alac_frame_size {
     unsigned byte_size;
     unsigned pcm_frames_size;
@@ -62,7 +64,7 @@ struct alac_context {
     BitstreamRecorder *residual0;
     BitstreamRecorder *residual1;
 
-    a_double* tukey_window;
+    double *tukey_window;
     a_double* windowed_signal;
     a_double* autocorrelation_values;
     aa_double* lp_coefficients;
@@ -88,7 +90,7 @@ enum {LOG_SAMPLE_SIZE, LOG_BYTE_SIZE, LOG_FILE_OFFSET};
 
 /*initializes all the temporary buffers in encoder*/
 static void
-init_encoder(struct alac_context* encoder);
+init_encoder(struct alac_context* encoder, unsigned block_size);
 
 /*deallocates all the temporary buffers in encoder*/
 static void
@@ -151,54 +153,69 @@ write_interlaced_frame(BitstreamWriter *bs,
 
 static void
 compute_coefficients(struct alac_context* encoder,
-                     const a_int* samples,
+                     unsigned sample_count,
+                     const int samples[],
                      unsigned sample_size,
-                     a_int* qlp_coefficients,
+                     unsigned *order,
+                     int qlp_coefficients[],
                      BitstreamWriter *residual);
+
+static void
+tukey_window(double alpha, unsigned block_size, double *window);
 
 /*given a set of integer samples,
   returns a windowed set of floating point samples*/
 static void
-window_signal(struct alac_context* encoder,
-              const a_int* samples,
-              a_double* windowed_signal);
+window_signal(unsigned sample_count,
+              const int samples[],
+              const double window[],
+              double windowed_signal[]);
 
 /*given a set of windowed samples and a maximum LPC order,
-  returns a set of autocorrelation values whose length is 9*/
+  returns a set of autocorrelation values whose length is max_lpc_order + 1*/
 static void
-autocorrelate(const a_double* windowed_signal,
-              a_double* autocorrelation_values);
+autocorrelate(unsigned sample_count,
+              const double windowed_signal[],
+              unsigned max_lpc_order,
+              double autocorrelated[]);
 
 /*given a maximum LPC order of 8
   and set of autocorrelation values whose length is 9
   returns list of LP coefficient lists whose length is max_lpc_order*/
 static void
-compute_lp_coefficients(const a_double* autocorrelation_values,
-                        aa_double* lp_coefficients);
+compute_lp_coefficients(unsigned max_lpc_order,
+                        const double autocorrelated[],
+                        double lp_coeff[MAX_QLP_COEFFS][MAX_QLP_COEFFS]);
 
 static void
-quantize_coefficients(const aa_double* lp_coefficients,
-                      unsigned order,
-                      a_int* qlp_coefficients);
+quantize_coefficients(unsigned order,
+                      double lp_coeff[MAX_QLP_COEFFS][MAX_QLP_COEFFS],
+                      int qlp_coefficients[]);
 
 static void
 write_subframe_header(BitstreamWriter *bs,
-                      const a_int* qlp_coefficients);
+                      unsigned order,
+                      const int qlp_coefficients[]);
 
 static void
-calculate_residuals(const a_int* samples,
-                    unsigned sample_size,
-                    const a_int* qlp_coefficients,
-                    a_int* residuals);
+calculate_residuals(unsigned sample_size,
+                    unsigned sample_count,
+                    const int samples[],
+                    unsigned order,
+                    const int qlp_coefficients[],
+                    int residuals[]);
 
 static void
 encode_residuals(struct alac_context* encoder,
+                 BitstreamWriter *residual_block,
                  unsigned sample_size,
-                 const a_int* residuals,
-                 BitstreamWriter *residual_block);
+                 unsigned residual_count,
+                 const int residuals[]);
 
 static void
-write_residual(unsigned value, unsigned k, unsigned sample_size,
-               BitstreamWriter* residual);
+write_residual(BitstreamWriter* residual_block,
+               unsigned value,
+               unsigned k,
+               unsigned sample_size);
 
 #endif

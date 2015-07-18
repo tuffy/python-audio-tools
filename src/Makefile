@@ -33,7 +33,7 @@ alacenc: encoders/alac.c encoders/alac.h bitstream.a array.o pcmreader.o pcm_con
 	$(CC) $(FLAGS) -o alacenc encoders/alac.c bitstream.a array.o pcmreader.o pcm_conv.o -DSTANDALONE -lm
 
 flacenc: encoders/flac.c encoders/flac.h bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o
-	$(CC) $(FLAGS) -pg -o $@ encoders/flac.c bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
+	$(CC) $(FLAGS) -o $@ encoders/flac.c bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
 
 shnenc: encoders/shn.c encoders/shn.h bitstream.a array.o pcmreader.o pcm_conv.o
 	$(CC) $(FLAGS) -o shnenc encoders/shn.c bitstream.a array.o pcmreader.o pcm_conv.o -DSTANDALONE -lm

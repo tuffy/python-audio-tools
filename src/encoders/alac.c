@@ -145,7 +145,7 @@ encode_alac(BitstreamWriter *output,
     unsigned pcm_frames_read;
     struct alac_frame_size *frame_sizes = NULL;
 
-    init_encoder(&encoder);
+    init_encoder(&encoder, block_size);
 
     encoder.options.block_size = block_size;
     encoder.options.initial_history = initial_history;
@@ -272,7 +272,7 @@ free_alac_frame_sizes(struct alac_frame_size *frame_sizes)
 }
 
 static void
-init_encoder(struct alac_context* encoder)
+init_encoder(struct alac_context* encoder, unsigned block_size)
 {
     encoder->frame_sizes = a_unsigned_new();
     encoder->total_pcm_frames = 0;
@@ -286,7 +286,8 @@ init_encoder(struct alac_context* encoder)
     encoder->residual0 = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->residual1 = bw_open_recorder(BS_BIG_ENDIAN);
 
-    encoder->tukey_window = a_double_new();
+    encoder->tukey_window = malloc(sizeof(double) * block_size);
+    tukey_window(0.5, block_size, encoder->tukey_window);
     encoder->windowed_signal = a_double_new();
     encoder->autocorrelation_values = a_double_new();
     encoder->lp_coefficients = aa_double_new();
@@ -316,7 +317,7 @@ free_encoder(struct alac_context* encoder)
     encoder->residual0->close(encoder->residual0);
     encoder->residual1->close(encoder->residual1);
 
-    encoder->tukey_window->del(encoder->tukey_window);
+    free(encoder->tukey_window);
     encoder->windowed_signal->del(encoder->windowed_signal);
     encoder->autocorrelation_values->del(encoder->autocorrelation_values);
     encoder->lp_coefficients->del(encoder->lp_coefficients);
@@ -613,7 +614,8 @@ write_non_interlaced_frame(BitstreamWriter *bs,
                            const aa_int* channels)
 {
     unsigned i;
-    a_int* qlp_coefficients = encoder->qlp_coefficients0;
+    unsigned order;
+    int qlp_coefficients[MAX_QLP_COEFFS];
     BitstreamRecorder* residual = encoder->residual0;
 
     assert(channels->len == 1);
@@ -636,13 +638,15 @@ write_non_interlaced_frame(BitstreamWriter *bs,
     bs->write(bs, 8, 0);   /*no interlacing leftweight*/
 
     compute_coefficients(encoder,
-                         channels->_[0],
+                         channels->_[0]->len,
+                         channels->_[0]->_,
                          (encoder->bits_per_sample -
                           (uncompressed_LSBs * 8)),
+                         &order,
                          qlp_coefficients,
                          (BitstreamWriter*)residual);
 
-    write_subframe_header(bs, qlp_coefficients);
+    write_subframe_header(bs, order, qlp_coefficients);
 
     if (uncompressed_LSBs > 0) {
         for (i = 0; i < LSBs->len; i++) {
@@ -663,9 +667,11 @@ write_interlaced_frame(BitstreamWriter *bs,
                        const aa_int* channels)
 {
     unsigned i;
-    a_int* qlp_coefficients0 = encoder->qlp_coefficients0;
+    unsigned order0;
+    int qlp_coefficients0[MAX_LPC_ORDER];
+    unsigned order1;
+    int qlp_coefficients1[MAX_LPC_ORDER];
     BitstreamRecorder* residual0 = encoder->residual0;
-    a_int* qlp_coefficients1 = encoder->qlp_coefficients1;
     BitstreamRecorder* residual1 = encoder->residual1;
     aa_int* correlated_channels = encoder->correlated_channels;
 
@@ -695,21 +701,25 @@ write_interlaced_frame(BitstreamWriter *bs,
                        correlated_channels);
 
     compute_coefficients(encoder,
-                         correlated_channels->_[0],
+                         correlated_channels->_[0]->len,
+                         correlated_channels->_[0]->_,
                          (encoder->bits_per_sample -
                           (uncompressed_LSBs * 8) + 1),
+                         &order0,
                          qlp_coefficients0,
                          (BitstreamWriter*)residual0);
 
     compute_coefficients(encoder,
-                         correlated_channels->_[1],
+                         correlated_channels->_[1]->len,
+                         correlated_channels->_[1]->_,
                          (encoder->bits_per_sample -
                           (uncompressed_LSBs * 8) + 1),
+                         &order1,
                          qlp_coefficients1,
                          (BitstreamWriter*)residual1);
 
-    write_subframe_header(bs, qlp_coefficients0);
-    write_subframe_header(bs, qlp_coefficients1);
+    write_subframe_header(bs, order0, qlp_coefficients0);
+    write_subframe_header(bs, order1, qlp_coefficients1);
 
     if (uncompressed_LSBs > 0) {
         for (i = 0; i < LSBs->len; i++) {
@@ -764,213 +774,213 @@ correlate_channels(const aa_int* channels,
 
 static void
 compute_coefficients(struct alac_context* encoder,
-                     const a_int* samples,
+                     unsigned sample_count,
+                     const int samples[],
                      unsigned sample_size,
-                     a_int* qlp_coefficients,
+                     unsigned *order,
+                     int qlp_coefficients[],
                      BitstreamWriter *residual)
 {
-    a_double* windowed_signal = encoder->windowed_signal;
-    a_double* autocorrelation_values = encoder->autocorrelation_values;
-    aa_double* lp_coefficients = encoder->lp_coefficients;
-    a_int* qlp_coefficients4 = encoder->qlp_coefficients4;
-    a_int* qlp_coefficients8 = encoder->qlp_coefficients8;
-    a_int* residual_values4 = encoder->residual_values4;
-    a_int* residual_values8 = encoder->residual_values8;
-    BitstreamRecorder *residual_block4 = encoder->residual_block4;
-    BitstreamRecorder *residual_block8 = encoder->residual_block8;
+    double windowed_signal[sample_count];
+    double autocorrelated[MAX_QLP_COEFFS + 1];
 
     /*window the input samples*/
-    window_signal(encoder,
+    window_signal(sample_count,
                   samples,
+                  encoder->tukey_window,
                   windowed_signal);
 
     /*compute autocorrelation values for samples*/
-    autocorrelate(windowed_signal, autocorrelation_values);
+    autocorrelate(sample_count,
+                  windowed_signal,
+                  MAX_QLP_COEFFS,
+                  autocorrelated);
 
-    assert(autocorrelation_values->len == 9);
+    if (autocorrelated[0] != 0.0) {
+        int qlp_coefficients4[4];
+        int qlp_coefficients8[8];
+        double lp_coeff[MAX_QLP_COEFFS][MAX_QLP_COEFFS];
+        int residual_values4[sample_count];
+        int residual_values8[sample_count];
+        BitstreamRecorder *residual_block4 = encoder->residual_block4;
+        BitstreamRecorder *residual_block8 = encoder->residual_block8;
 
-    if (autocorrelation_values->_[0] != 0.0) {
         /*transform autocorrelation values to lists of LP coefficients*/
-        compute_lp_coefficients(autocorrelation_values,
-                                lp_coefficients);
+        compute_lp_coefficients(MAX_QLP_COEFFS,
+                                autocorrelated,
+                                lp_coeff);
 
         /*quantize LP coefficients at order 4*/
-        quantize_coefficients(lp_coefficients, 4, qlp_coefficients4);
+        quantize_coefficients(4, lp_coeff, qlp_coefficients4);
 
         /*quantize LP coefficients at order 8*/
-        quantize_coefficients(lp_coefficients, 8, qlp_coefficients8);
+        quantize_coefficients(8, lp_coeff, qlp_coefficients8);
 
         /*calculate residuals for QLP coefficients at order 4*/
-        calculate_residuals(samples, sample_size,
-                            qlp_coefficients4, residual_values4);
+        calculate_residuals(sample_size,
+                            sample_count,
+                            samples,
+                            4,
+                            qlp_coefficients4,
+                            residual_values4);
 
         /*calculate residuals for QLP coefficients at order 8*/
-        calculate_residuals(samples, sample_size,
-                            qlp_coefficients8, residual_values8);
+        calculate_residuals(sample_size,
+                            sample_count,
+                            samples,
+                            8,
+                            qlp_coefficients8,
+                            residual_values8);
 
         /*encode residual block for QLP coefficients at order 4*/
         residual_block4->reset(residual_block4);
-        encode_residuals(encoder, sample_size,
-                         residual_values4,
-                         (BitstreamWriter*)residual_block4);
+        encode_residuals(encoder,
+                         (BitstreamWriter*)residual_block4,
+                         sample_size,
+                         sample_count,
+                         residual_values4);
 
         /*encode residual block for QLP coefficients at order 8*/
         residual_block8->reset(residual_block8);
-        encode_residuals(encoder, sample_size,
-                         residual_values8,
-                         (BitstreamWriter*)residual_block8);
+        encode_residuals(encoder,
+                         (BitstreamWriter*)residual_block8,
+                         sample_size,
+                         sample_count,
+                         residual_values8);
 
         /*return the LPC coefficients/residual which is the smallest*/
         if (residual_block4->bits_written(residual_block4) <
             (residual_block8->bits_written(residual_block8) + 64)) {
             /*use QLP coefficients with order 4*/
-            qlp_coefficients4->copy(qlp_coefficients4,
-                                    qlp_coefficients);
+            *order = 4;
+            memcpy(qlp_coefficients, qlp_coefficients4, 4 * sizeof(int));
             residual_block4->copy(residual_block4, residual);
         } else {
             /*use QLP coefficients with order 8*/
-            qlp_coefficients8->copy(qlp_coefficients8,
-                                    qlp_coefficients);
+            *order = 8;
+            memcpy(qlp_coefficients, qlp_coefficients8, 8 * sizeof(int));
             residual_block8->copy(residual_block8, residual);
         }
     } else {
         /*all samples are 0, so use a special case*/
-        qlp_coefficients->mset(qlp_coefficients, 4, 0);
+        int residual_values4[sample_count];
 
-        calculate_residuals(samples, sample_size,
-                            qlp_coefficients, residual_values4);
+        *order = 4;
+        qlp_coefficients[0] =
+        qlp_coefficients[1] =
+        qlp_coefficients[2] =
+        qlp_coefficients[3] = 0;
 
-        encode_residuals(encoder, sample_size,
-                         residual_values4, residual);
+        calculate_residuals(sample_size,
+                            sample_count,
+                            samples,
+                            *order,
+                            qlp_coefficients,
+                            residual_values4);
+
+        encode_residuals(encoder,
+                         residual,
+                         sample_size,
+                         sample_count,
+                         residual_values4);
     }
 }
 
 static void
-window_signal(struct alac_context* encoder,
-              const a_int* samples,
-              a_double* windowed_signal)
+tukey_window(double alpha, unsigned block_size, double *window)
 {
-    a_double* tukey_window = encoder->tukey_window;
-    const unsigned N = samples->len;
-    unsigned n;
-
-    if (tukey_window->len != samples->len) {
-        const double alpha = 0.5;
-        unsigned window1 = (unsigned)(alpha * (N - 1)) / 2;
-        unsigned window2 = (unsigned)((N - 1) * (1.0 - (alpha / 2.0)));
-
-        tukey_window->reset_for(tukey_window, samples->len);
-
-        for (n = 0; n < N; n++) {
-            if (n <= window1) {
-                a_append(tukey_window,
-                         0.5 *
-                         (1.0 +
-                          cos(M_PI * (((2 * n) / (alpha * (N - 1))) - 1.0))));
-            } else if (n <= window2) {
-                a_append(tukey_window, 1.0);
-            } else {
-                a_append(tukey_window,
-                         0.5 *
-                         (1.0 +
-                          cos(M_PI * (((2.0 * n) / (alpha * (N - 1))) -
-                                      (2.0 / alpha) + 1.0))));
-            }
+    unsigned Np = alpha / 2 * block_size - 1;
+    unsigned i;
+    for (i = 0; i < block_size; i++) {
+        if (i <= Np) {
+            window[i] = (1 - cos(M_PI * i / Np)) / 2;
+        } else if (i >= (block_size - Np - 1)) {
+            window[i] = (1 - cos(M_PI * (block_size - i - 1) / Np)) / 2;
+        } else {
+            window[i] = 1.0;
         }
     }
-
-    windowed_signal->reset_for(windowed_signal, samples->len);
-    for (n = 0; n < N; n++) {
-        a_append(windowed_signal, samples->_[n] * tukey_window->_[n]);
-    }
 }
 
 static void
-autocorrelate(const a_double* windowed_signal,
-              a_double* autocorrelation_values)
-{
-    unsigned lag;
-
-    autocorrelation_values->reset(autocorrelation_values);
-
-    for (lag = 0; lag <= MAX_LPC_ORDER; lag++) {
-        double accumulator = 0.0;
-        unsigned i;
-
-        assert((windowed_signal->len - lag) > 0);
-        for (i = 0; i < windowed_signal->len - lag; i++)
-            accumulator += (windowed_signal->_[i] *
-                            windowed_signal->_[i + lag]);
-        autocorrelation_values->append(autocorrelation_values, accumulator);
-    }
-}
-
-static void
-compute_lp_coefficients(const a_double* autocorrelation_values,
-                        aa_double* lp_coefficients)
+window_signal(unsigned sample_count,
+              const int samples[],
+              const double window[],
+              double windowed_signal[])
 {
     unsigned i;
-    a_double* lp_coeff;
+    for (i = 0; i < sample_count; i++) {
+        windowed_signal[i] = samples[i] * window[i];
+    }
+}
+
+static void
+autocorrelate(unsigned sample_count,
+              const double windowed_signal[],
+              unsigned max_lpc_order,
+              double autocorrelated[])
+{
+    unsigned i;
+
+    for (i = 0; i <= max_lpc_order; i++) {
+        register double a = 0.0;
+        register unsigned j;
+        for (j = 0; j < sample_count - i; j++) {
+            a += windowed_signal[j] * windowed_signal[j + i];
+        }
+        autocorrelated[i] = a;
+    }
+}
+
+static void
+compute_lp_coefficients(unsigned max_lpc_order,
+                        const double autocorrelated[],
+                        double lp_coeff[MAX_QLP_COEFFS][MAX_QLP_COEFFS])
+{
     double k;
-    /*no exceptions occur here, so it's okay to allocate temp space*/
-    a_double* lp_error = a_double_new();
+    double q;
+    unsigned i;
+    double error[max_lpc_order];
 
-    assert(autocorrelation_values->len == (MAX_LPC_ORDER + 1));
-
-    lp_coefficients->reset(lp_coefficients);
-    lp_error->reset(lp_error);
-
-    k = autocorrelation_values->_[1] / autocorrelation_values->_[0];
-    lp_coeff = lp_coefficients->append(lp_coefficients);
-    lp_coeff->append(lp_coeff, k);
-    lp_error->append(lp_error,
-                     autocorrelation_values->_[0] * (1.0 - (k * k)));
-
-    for (i = 1; i < MAX_LPC_ORDER; i++) {
-        double q = autocorrelation_values->_[i + 1];
+    k = autocorrelated[1] / autocorrelated[0];
+    lp_coeff[0][0] = k;
+    error[0] = autocorrelated[0] * (1.0 - pow(k, 2));
+    for (i = 1; i < max_lpc_order; i++) {
+        double sum = 0.0;
         unsigned j;
-
-        for (j = 0; j < i; j++)
-            q -= (lp_coefficients->_[i - 1]->_[j] *
-                  autocorrelation_values->_[i - j]);
-
-        k = q / lp_error->_[i - 1];
-
-        lp_coeff = lp_coefficients->append(lp_coefficients);
         for (j = 0; j < i; j++) {
-            lp_coeff->append(lp_coeff,
-                             lp_coefficients->_[i - 1]->_[j] -
-                             (k * lp_coefficients->_[i - 1]->_[i - j - 1]));
+            sum += lp_coeff[i - 1][j] * autocorrelated[i - j];
         }
-        lp_coeff->append(lp_coeff, k);
-
-        lp_error->append(lp_error, lp_error->_[i - 1] * (1.0 - (k * k)));
+        q = autocorrelated[i + 1] - sum;
+        k = q / error[i - 1];
+        for (j = 0; j < i; j++) {
+            lp_coeff[i][j] =
+                lp_coeff[i - 1][j] - (k * lp_coeff[i - 1][i - j - 1]);
+        }
+        lp_coeff[i][i] = k;
+        error[i] = error[i - 1] * (1.0 - pow(k, 2));
     }
-
-    lp_error->del(lp_error);
 }
 
 static void
-quantize_coefficients(const aa_double* lp_coefficients,
-                      unsigned order,
-                      a_int* qlp_coefficients)
+quantize_coefficients(unsigned order,
+                      double lp_coeff[MAX_QLP_COEFFS][MAX_QLP_COEFFS],
+                      int qlp_coefficients[])
 {
-    a_double* lp_coeffs = lp_coefficients->_[order - 1];
-    const int qlp_max = (1 << 15) - 1;
-    const int qlp_min = -(1 << 15);
-    double error = 0.0;
+    const unsigned precision = 16;
+    const int max_coeff = (1 << (precision - 1)) - 1;
+    const int min_coeff = -(1 << (precision - 1));
+    const int shift = 9;
+    unsigned error = 0.0;
     unsigned i;
-
-    assert(lp_coeffs->len == order);
-
-    qlp_coefficients->reset(qlp_coefficients);
 
     for (i = 0; i < order; i++) {
-        error += (lp_coeffs->_[i] * (1 << 9));
-        const int error_i = (int)round(error);
-        qlp_coefficients->append(qlp_coefficients,
-                                 MIN(MAX(error_i, qlp_min), qlp_max));
-        error -= (double)error_i;
+        const double sum = error + lp_coeff[order - 1][i] * (1 << shift);
+        const long round_sum = lround(sum);
+        qlp_coefficients[i] = (int)(MIN(MAX(round_sum, min_coeff), max_coeff));
+        assert(qlp_coefficients[i] <= (1 << (precision - 1)) - 1);
+        assert(qlp_coefficients[i] >= -(1 << (precision - 1)));
+        error = sum - qlp_coefficients[i];
     }
 }
 
@@ -1000,63 +1010,60 @@ TRUNCATE_BITS(int value, unsigned bits)
 }
 
 static void
-calculate_residuals(const a_int* samples,
-                    unsigned sample_size,
-                    const a_int* qlp_coefficients,
-                    a_int* residuals)
+calculate_residuals(unsigned sample_size,
+                    unsigned sample_count,
+                    const int samples[],
+                    unsigned order,
+                    const int qlp_coefficients[],
+                    int residuals[])
 {
     unsigned i = 0;
+    int coefficients[order];
 
-    /*no exceptions occur here either, so temporary array is safe*/
-    a_int* coefficients = a_int_new();
-    const unsigned coeff_count = qlp_coefficients->len;
-
-    qlp_coefficients->copy(qlp_coefficients, coefficients);
-    residuals->reset_for(residuals, samples->len);
+    memcpy(coefficients, qlp_coefficients, order * sizeof(int));
 
     /*first sample always copied verbatim*/
-    a_append(residuals, samples->_[i++]);
+    residuals[0] = samples[i++];
 
-    if (coeff_count < 31) {
+    if (order < 31) {
         unsigned j;
 
-        for (; i < (coeff_count + 1); i++)
-            a_append(residuals,
-                     TRUNCATE_BITS(samples->_[i] - samples->_[i - 1],
-                                   sample_size));
+        for (; i < (order + 1); i++) {
+            residuals[i] = TRUNCATE_BITS(samples[i] - samples[i - 1],
+                                         sample_size);
+        }
 
-        for (; i < samples->len; i++) {
-            const int base_sample = samples->_[i - coeff_count - 1];
+        for (; i < sample_count; i++) {
+            const int base_sample = samples[i - order - 1];
             int64_t lpc_sum = 1 << 8;
             int error;
 
-            for (j = 0; j < coeff_count; j++) {
-                lpc_sum += ((int64_t)coefficients->_[j] *
-                            (int64_t)(samples->_[i - j - 1] - base_sample));
+            for (j = 0; j < order; j++) {
+                lpc_sum += ((int64_t)coefficients[j] *
+                            (int64_t)(samples[i - j - 1] - base_sample));
             }
 
             lpc_sum >>= 9;
 
-            error = TRUNCATE_BITS(samples->_[i] - base_sample - (int)lpc_sum,
+            error = TRUNCATE_BITS(samples[i] - base_sample - (int)lpc_sum,
                                   sample_size);
-            a_append(residuals, error);
+            residuals[i] = error;
 
             if (error > 0) {
-                for (j = 0; j < coeff_count; j++) {
+                for (j = 0; j < order; j++) {
                     const int diff = (base_sample -
-                                      samples->_[i - coeff_count + j]);
+                                      samples[i - order + j]);
                     const int sign = SIGN_ONLY(diff);
-                    coefficients->_[coeff_count - j - 1] -= sign;
+                    coefficients[order - j - 1] -= sign;
                     error -= ((diff * sign) >> 9) * (j + 1);
                     if (error <= 0)
                         break;
                 }
             } else if (error < 0) {
-                for (j = 0; j < coeff_count; j++) {
-                    const int diff = (base_sample -
-                                      samples->_[i - coeff_count + j]);
+                for (j = 0; j < order; j++) {
+                    const int diff = (base_sample - samples[i - order + j]);
                     const int sign = SIGN_ONLY(diff);
-                    coefficients->_[coeff_count - j - 1] += sign;
+                    coefficients[order - j - 1] += sign;
                     error -= ((diff * -sign) >> 9) * (j + 1);
                     if (error >= 0)
                         break;
@@ -1064,14 +1071,12 @@ calculate_residuals(const a_int* samples,
             }
         }
     } else {
-        for (; i < samples->len; i++) {
-            a_append(residuals,
-                     TRUNCATE_BITS(samples->_[i] - samples->_[i - 1],
-                                   sample_size));
+        /*not sure if this ever happens*/
+        for (; i < sample_count; i++) {
+            residuals[i] = TRUNCATE_BITS(samples[i] - samples[i - 1],
+                                         sample_size);
         }
     }
-
-    coefficients->del(coefficients);
 }
 
 static inline unsigned
@@ -1089,9 +1094,10 @@ LOG2(unsigned value)
 
 static void
 encode_residuals(struct alac_context* encoder,
+                 BitstreamWriter *residual_block,
                  unsigned sample_size,
-                 const a_int* residuals,
-                 BitstreamWriter *residual_block)
+                 unsigned residual_count,
+                 const int residuals[])
 {
     int history = (int)encoder->options.initial_history;
     unsigned sign_modifier = 0;
@@ -1103,11 +1109,11 @@ encode_residuals(struct alac_context* encoder,
     unsigned k;
     unsigned zeroes;
 
-    while (i < residuals->len) {
-        if (residuals->_[i] >= 0) {
-            unsigned_i = (unsigned)(residuals->_[i] << 1);
+    while (i < residual_count) {
+        if (residuals[i] >= 0) {
+            unsigned_i = (unsigned)(residuals[i] << 1);
         } else {
-            unsigned_i = (unsigned)(-residuals->_[i] << 1) - 1;
+            unsigned_i = (unsigned)(-residuals[i] << 1) - 1;
         }
 
         if (unsigned_i >= max_unsigned) {
@@ -1118,8 +1124,10 @@ encode_residuals(struct alac_context* encoder,
 
         k = LOG2((history >> 9) + 3);
         k = MIN(k, maximum_k);
-        write_residual(unsigned_i - sign_modifier, k, sample_size,
-                       residual_block);
+        write_residual(residual_block,
+                       unsigned_i - sign_modifier,
+                       k,
+                       sample_size);
         sign_modifier = 0;
 
         if (unsigned_i <= 0xFFFF) {
@@ -1127,16 +1135,16 @@ encode_residuals(struct alac_context* encoder,
                         ((history * (int)history_multiplier) >> 9));
             i++;
 
-            if ((history < 128) && (i < residuals->len)) {
+            if ((history < 128) && (i < residual_count)) {
                 /*handle potential block of 0 residuals*/
                 k = 7 - LOG2(history) + ((history + 16) >> 6);
                 k = MIN(k, maximum_k);
                 zeroes = 0;
-                while ((i < residuals->len) && (residuals->_[i] == 0)) {
+                while ((i < residual_count) && (residuals[i] == 0)) {
                     zeroes++;
                     i++;
                 }
-                write_residual(zeroes, k, 16, residual_block);
+                write_residual(residual_block, zeroes, k, 16);
                 if (zeroes < 0xFFFF)
                     sign_modifier = 1;
                 history = 0;
@@ -1149,21 +1157,23 @@ encode_residuals(struct alac_context* encoder,
 }
 
 static void
-write_residual(unsigned value, unsigned k, unsigned sample_size,
-                    BitstreamWriter* residual)
+write_residual(BitstreamWriter* residual_block,
+               unsigned value,
+               unsigned k,
+               unsigned sample_size)
 {
     const unsigned MSB = value / ((1 << k) - 1);
     const unsigned LSB = value % ((1 << k) - 1);
     if (MSB > 8) {
-        residual->write(residual, 9, 0x1FF);
-        residual->write(residual, sample_size, value);
+        residual_block->write(residual_block, 9, 0x1FF);
+        residual_block->write(residual_block, sample_size, value);
     } else {
-        residual->write_unary(residual, 0, MSB);
+        residual_block->write_unary(residual_block, 0, MSB);
         if (k > 1) {
             if (LSB > 0) {
-                residual->write(residual, k, LSB + 1);
+                residual_block->write(residual_block, k, LSB + 1);
             } else {
-                residual->write(residual, k - 1, 0);
+                residual_block->write(residual_block, k - 1, 0);
             }
         }
     }
@@ -1172,16 +1182,17 @@ write_residual(unsigned value, unsigned k, unsigned sample_size,
 
 static void
 write_subframe_header(BitstreamWriter *bs,
-                      const a_int* qlp_coefficients)
+                      unsigned order,
+                      const int qlp_coefficients[])
 {
     unsigned i;
 
     bs->write(bs, 4, 0); /*prediction type*/
     bs->write(bs, 4, 9); /*QLP shift needed*/
     bs->write(bs, 3, 4); /*Rice modifier*/
-    bs->write(bs, 5, qlp_coefficients->len);
-    for (i = 0; i < qlp_coefficients->len; i++) {
-        bs->write_signed(bs, 16, qlp_coefficients->_[i]);
+    bs->write(bs, 5, order);
+    for (i = 0; i < order; i++) {
+        bs->write_signed(bs, 16, qlp_coefficients[i]);
     }
 }
 
