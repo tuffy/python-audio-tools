@@ -139,7 +139,6 @@ encode_alac(BitstreamWriter *output,
     int *samples = malloc(pcmreader->channels *
                           block_size *
                           sizeof(int));
-    aa_int* channels = aa_int_new();
     unsigned frame_byte_size = 0;
     bw_pos_t* mdat_header = NULL;
     unsigned pcm_frames_read;
@@ -171,25 +170,14 @@ encode_alac(BitstreamWriter *output,
     while ((pcm_frames_read = pcmreader->read(pcmreader,
                                               encoder.options.block_size,
                                               samples)) > 0) {
-        const unsigned channel_count = pcmreader->channels;
-        unsigned c;
-
-        channels->reset(channels);
         frame_byte_size = 0;
 
-        /*convert flattened channels into lists of samples*/
-        for (c = 0; c < channel_count; c++) {
-            a_int *channel = channels->append(channels);
-            unsigned i;
-
-            channel->resize_for(channel, pcm_frames_read);
-            for (i = 0; i < pcm_frames_read; i++) {
-                a_append(channel, get_sample(samples, c, channel_count, i));
-            }
-        }
-
         /*perform encoding*/
-        write_frameset(output, &encoder, channels);
+        write_frameset(output,
+                       &encoder,
+                       pcm_frames_read,
+                       pcmreader->channels,
+                       samples);
 
         /*log each frameset's size in bytes and size in samples*/
         frame_sizes = push_frame_size(frame_sizes,
@@ -199,7 +187,6 @@ encode_alac(BitstreamWriter *output,
 
     output->pop_callback(output, NULL);
     free(samples);
-    channels->del(channels);
 
     if (pcmreader->status == PCM_OK) {
         /*return to header and rewrite it with the actual value*/
@@ -274,27 +261,12 @@ free_alac_frame_sizes(struct alac_frame_size *frame_sizes)
 static void
 init_encoder(struct alac_context* encoder, unsigned block_size)
 {
-    encoder->frame_sizes = a_unsigned_new();
-    encoder->total_pcm_frames = 0;
+    encoder->tukey_window = malloc(sizeof(double) * block_size);
+    tukey_window(0.5, block_size, encoder->tukey_window);
 
-    encoder->LSBs = a_int_new();
-    encoder->channels_MSB = aa_int_new();
-
-    encoder->correlated_channels = aa_int_new();
-    encoder->qlp_coefficients0 = a_int_new();
-    encoder->qlp_coefficients1 = a_int_new();
     encoder->residual0 = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->residual1 = bw_open_recorder(BS_BIG_ENDIAN);
 
-    encoder->tukey_window = malloc(sizeof(double) * block_size);
-    tukey_window(0.5, block_size, encoder->tukey_window);
-    encoder->windowed_signal = a_double_new();
-    encoder->autocorrelation_values = a_double_new();
-    encoder->lp_coefficients = aa_double_new();
-    encoder->qlp_coefficients4 = a_int_new();
-    encoder->qlp_coefficients8 = a_int_new();
-    encoder->residual_values4 = a_int_new();
-    encoder->residual_values8 = a_int_new();
     encoder->residual_block4 = bw_open_recorder(BS_BIG_ENDIAN);
     encoder->residual_block8 = bw_open_recorder(BS_BIG_ENDIAN);
 
@@ -306,25 +278,11 @@ init_encoder(struct alac_context* encoder, unsigned block_size)
 static void
 free_encoder(struct alac_context* encoder)
 {
-    encoder->frame_sizes->del(encoder->frame_sizes);
+    free(encoder->tukey_window);
 
-    encoder->LSBs->del(encoder->LSBs);
-    encoder->channels_MSB->del(encoder->channels_MSB);
-
-    encoder->correlated_channels->del(encoder->correlated_channels);
-    encoder->qlp_coefficients0->del(encoder->qlp_coefficients0);
-    encoder->qlp_coefficients1->del(encoder->qlp_coefficients1);
     encoder->residual0->close(encoder->residual0);
     encoder->residual1->close(encoder->residual1);
 
-    free(encoder->tukey_window);
-    encoder->windowed_signal->del(encoder->windowed_signal);
-    encoder->autocorrelation_values->del(encoder->autocorrelation_values);
-    encoder->lp_coefficients->del(encoder->lp_coefficients);
-    encoder->qlp_coefficients4->del(encoder->qlp_coefficients4);
-    encoder->qlp_coefficients8->del(encoder->qlp_coefficients8);
-    encoder->residual_values4->del(encoder->residual_values4);
-    encoder->residual_values8->del(encoder->residual_values8);
     encoder->residual_block4->close(encoder->residual_block4);
     encoder->residual_block8->close(encoder->residual_block8);
 
@@ -333,165 +291,183 @@ free_encoder(struct alac_context* encoder)
     encoder->best_interlaced_frame->close(encoder->best_interlaced_frame);
 }
 
-static inline aa_int*
-extract_1ch(aa_int* frameset, unsigned channel, aa_int* pair)
-{
-    pair->reset(pair);
-    frameset->_[channel]->swap(frameset->_[channel],
-                               pair->append(pair));
-    return pair;
-}
-
-static inline aa_int*
-extract_2ch(aa_int* frameset, unsigned channel0, unsigned channel1,
-            aa_int* pair)
-{
-    pair->reset(pair);
-    frameset->_[channel0]->swap(frameset->_[channel0],
-                                pair->append(pair));
-    frameset->_[channel1]->swap(frameset->_[channel1],
-                                pair->append(pair));
-    return pair;
-}
-
-
 static void
 write_frameset(BitstreamWriter *bs,
                struct alac_context* encoder,
-               aa_int* channels)
+               unsigned pcm_frames,
+               unsigned channel_count,
+               const int channels[])
 {
-    aa_int* channel_pair = aa_int_new();
+    int channel0[pcm_frames];
+    int channel1[pcm_frames];
     unsigned i;
 
-    switch (channels->len) {
+    switch (channel_count) {
     case 1:
+        write_frame(bs, encoder, pcm_frames, 1, channels, NULL);
+        break;
     case 2:
-        write_frame(bs, encoder, channels);
+        get_channel_data(channels, 0, 2, pcm_frames, channel0);
+        get_channel_data(channels, 1, 2, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
         break;
     case 3:
-        write_frame(bs, encoder,
-                    extract_1ch(channels, 2, channel_pair));
-        write_frame(bs, encoder,
-                    extract_2ch(channels, 0, 1, channel_pair));
+        get_channel_data(channels, 2, 3, pcm_frames, channel0);
+        write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
+        get_channel_data(channels, 0, 3, pcm_frames, channel0);
+        get_channel_data(channels, 1, 3, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
         break;
     case 4:
-        write_frame(bs, encoder,
-                    extract_1ch(channels, 2, channel_pair));
-        write_frame(bs, encoder,
-                    extract_2ch(channels, 0, 1, channel_pair));
-        write_frame(bs, encoder,
-                    extract_1ch(channels, 3, channel_pair));
+        get_channel_data(channels, 2, 4, pcm_frames, channel0);
+        write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
+        get_channel_data(channels, 0, 4, pcm_frames, channel0);
+        get_channel_data(channels, 1, 4, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
+        get_channel_data(channels, 3, 4, pcm_frames, channel0);
+        write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
         break;
     case 5:
-        write_frame(bs, encoder,
-                    extract_1ch(channels, 2, channel_pair));
-        write_frame(bs, encoder,
-                    extract_2ch(channels, 0, 1, channel_pair));
-        write_frame(bs, encoder,
-                    extract_2ch(channels, 3, 4, channel_pair));
+        get_channel_data(channels, 2, 5, pcm_frames, channel0);
+        write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
+        get_channel_data(channels, 0, 5, pcm_frames, channel0);
+        get_channel_data(channels, 1, 5, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
+        get_channel_data(channels, 3, 5, pcm_frames, channel0);
+        get_channel_data(channels, 4, 5, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
         break;
     case 6:
-        write_frame(bs, encoder,
-                    extract_1ch(channels, 2, channel_pair));
-        write_frame(bs, encoder,
-                    extract_2ch(channels, 0, 1, channel_pair));
-        write_frame(bs, encoder,
-                    extract_2ch(channels, 4, 5, channel_pair));
-        write_frame(bs, encoder,
-                    extract_1ch(channels, 3, channel_pair));
+        get_channel_data(channels, 2, 6, pcm_frames, channel0);
+        write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
+        get_channel_data(channels, 0, 6, pcm_frames, channel0);
+        get_channel_data(channels, 1, 6, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
+        get_channel_data(channels, 4, 6, pcm_frames, channel0);
+        get_channel_data(channels, 5, 6, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
+        get_channel_data(channels, 3, 6, pcm_frames, channel0);
+        write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
         break;
     case 7:
-        write_frame(bs, encoder,
-                    extract_1ch(channels, 2, channel_pair));
-        write_frame(bs, encoder,
-                    extract_2ch(channels, 0, 1, channel_pair));
-        write_frame(bs, encoder,
-                    extract_2ch(channels, 4, 5, channel_pair));
-        write_frame(bs, encoder,
-                    extract_1ch(channels, 6, channel_pair));
-        write_frame(bs, encoder,
-                    extract_1ch(channels, 3, channel_pair));
+        get_channel_data(channels, 2, 7, pcm_frames, channel0);
+        write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
+        get_channel_data(channels, 0, 7, pcm_frames, channel0);
+        get_channel_data(channels, 1, 7, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
+        get_channel_data(channels, 4, 7, pcm_frames, channel0);
+        get_channel_data(channels, 5, 7, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
+        get_channel_data(channels, 6, 7, pcm_frames, channel0);
+        write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
+        get_channel_data(channels, 3, 7, pcm_frames, channel0);
+        write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
         break;
     case 8:
-        write_frame(bs, encoder,
-                    extract_1ch(channels, 2, channel_pair));
-        write_frame(bs, encoder,
-                    extract_2ch(channels, 6, 7, channel_pair));
-        write_frame(bs, encoder,
-                    extract_2ch(channels, 0, 1, channel_pair));
-        write_frame(bs, encoder,
-                    extract_2ch(channels, 4, 5, channel_pair));
-        write_frame(bs, encoder,
-                    extract_1ch(channels, 3, channel_pair));
+        get_channel_data(channels, 2, 8, pcm_frames, channel0);
+        write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
+        get_channel_data(channels, 6, 8, pcm_frames, channel0);
+        get_channel_data(channels, 7, 8, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
+        get_channel_data(channels, 0, 8, pcm_frames, channel0);
+        get_channel_data(channels, 1, 8, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
+        get_channel_data(channels, 4, 8, pcm_frames, channel0);
+        get_channel_data(channels, 5, 8, pcm_frames, channel1);
+        write_frame(bs, encoder, pcm_frames, 2, channel0, channel1);
+        get_channel_data(channels, 3, 8, pcm_frames, channel0);
+        write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
         break;
     default:
-        for (i = 0; i < channels->len; i++) {
-            write_frame(bs, encoder,
-                        extract_1ch(channels, i, channel_pair));
+        for (i = 0; i < channel_count; i++) {
+            get_channel_data(channels, i, channel_count, pcm_frames, channel0);
+            write_frame(bs, encoder, pcm_frames, 1, channel0, NULL);
         }
         break;
     }
 
     bs->write(bs, 3, 7);  /*write the trailing '111' bits*/
     bs->byte_align(bs);   /*and byte-align frameset*/
-    channel_pair->del(channel_pair);
 }
 
 static void
 write_frame(BitstreamWriter *bs,
             struct alac_context* encoder,
-            const aa_int* channels)
+            unsigned pcm_frames,
+            unsigned channel_count,
+            const int channel0[],
+            const int channel1[])
 {
-    BitstreamRecorder *compressed_frame;
+    BitstreamRecorder *compressed_frame = encoder->compressed_frame;
 
-    assert((channels->len == 1) || (channels->len == 2));
+    assert((channel_count == 1) || (channel_count == 2));
 
-    bs->write(bs, 3, channels->len - 1);
+    bs->write(bs, 3, channel_count - 1);
 
-    if ((channels->_[0]->len >= 10)) {
-        compressed_frame = encoder->compressed_frame;
+    if (pcm_frames >= 10) {
         compressed_frame->reset(compressed_frame);
         if (!setjmp(encoder->residual_overflow)) {
-            write_compressed_frame((BitstreamWriter*)compressed_frame,
+            write_compressed_frame(bs,
                                    encoder,
-                                   channels);
+                                   pcm_frames,
+                                   channel_count,
+                                   channel0, channel1);
+
             compressed_frame->copy(compressed_frame, bs);
         } else {
             /*a residual overflow exception occurred,
               so write an uncompressed frame instead*/
-            write_uncompressed_frame(bs, encoder, channels);
+            write_uncompressed_frame(bs,
+                                     encoder,
+                                     pcm_frames,
+                                     channel_count,
+                                     channel0, channel1);
         }
     } else {
-        return write_uncompressed_frame(bs, encoder, channels);
+        write_uncompressed_frame(bs,
+                                 encoder,
+                                 pcm_frames,
+                                 channel_count,
+                                 channel0, channel1);
     }
 }
 
 static void
 write_uncompressed_frame(BitstreamWriter *bs,
                          struct alac_context* encoder,
-                         const aa_int* channels)
+                         unsigned pcm_frames,
+                         unsigned channel_count,
+                         const int channel0[],
+                         const int channel1[])
 {
     unsigned i;
-    unsigned c;
+    const unsigned bits_per_sample = encoder->bits_per_sample;
+
+    assert((channel_count == 1) || (channel_count == 2));
 
     bs->write(bs, 16, 0);  /*unused*/
 
-    if (channels->_[0]->len == encoder->options.block_size)
+    if (pcm_frames == encoder->options.block_size) {
         bs->write(bs, 1, 0);
-    else
+    } else {
         bs->write(bs, 1, 1);
+    }
 
     bs->write(bs, 2, 0);  /*no uncompressed LSBs*/
     bs->write(bs, 1, 1);  /*not compressed*/
 
-    if (channels->_[0]->len != encoder->options.block_size)
-        bs->write(bs, 32, channels->_[0]->len);
+    if (pcm_frames != encoder->options.block_size) {
+        bs->write(bs, 32, pcm_frames);
+    }
 
-    for (i = 0; i < channels->_[0]->len; i++) {
-        for (c = 0; c < channels->len; c++) {
-            bs->write_signed(bs,
-                             encoder->bits_per_sample,
-                             channels->_[c]->_[i]);
+    if (channel_count == 2) {
+        for (i = 0; i < pcm_frames; i++) {
+            bs->write_signed(bs, bits_per_sample, channel0[i]);
+            bs->write_signed(bs, bits_per_sample, channel1[i]);
+        }
+    } else {
+        for (i = 0; i < pcm_frames; i++) {
+            bs->write_signed(bs, bits_per_sample, channel0[i]);
         }
     }
 }
@@ -499,42 +475,46 @@ write_uncompressed_frame(BitstreamWriter *bs,
 static void
 write_compressed_frame(BitstreamWriter *bs,
                        struct alac_context* encoder,
-                       const aa_int* channels)
+                       unsigned pcm_frames,
+                       unsigned channel_count,
+                       const int channel0[],
+                       const int channel1[])
 {
-    unsigned uncompressed_LSBs;
-    a_int* LSBs;
-    aa_int* channels_MSB;
-    unsigned i;
-    unsigned c;
-    unsigned leftweight;
-    BitstreamRecorder *interlaced_frame = encoder->interlaced_frame;
-    BitstreamRecorder *best_interlaced_frame = encoder->best_interlaced_frame;
-    unsigned best_interlaced_frame_bits = UINT_MAX;
+    assert((channel_count == 1) || (channel_count == 2));
 
     if (encoder->bits_per_sample <= 16) {
         /*no uncompressed least-significant bits*/
-        uncompressed_LSBs = 0;
-        LSBs = NULL;
 
-        if (channels->len == 1) {
+        if (channel_count == 1) {
             write_non_interlaced_frame(bs,
                                        encoder,
-                                       uncompressed_LSBs,
-                                       LSBs,
-                                       channels);
+                                       pcm_frames,
+                                       0, NULL,
+                                       channel0);
         } else {
+            unsigned leftweight;
+            BitstreamRecorder *interlaced_frame =
+                encoder->interlaced_frame;
+            BitstreamRecorder *best_interlaced_frame =
+                encoder->best_interlaced_frame;
+            unsigned best_interlaced_frame_bits =
+                UINT_MAX;
+
             /*attempt all the interlacing leftweight combinations*/
             for (leftweight = encoder->options.minimum_interlacing_leftweight;
                  leftweight <= encoder->options.maximum_interlacing_leftweight;
                  leftweight++) {
+
                 interlaced_frame->reset(interlaced_frame);
+
                 write_interlaced_frame((BitstreamWriter*)interlaced_frame,
                                        encoder,
-                                       0,
-                                       LSBs,
+                                       pcm_frames,
+                                       0, NULL,
                                        INTERLACING_SHIFT,
                                        leftweight,
-                                       channels);
+                                       channel0, channel1);
+
                 if (interlaced_frame->bits_written(interlaced_frame) <
                     best_interlaced_frame_bits) {
                     best_interlaced_frame_bits =
@@ -548,49 +528,46 @@ write_compressed_frame(BitstreamWriter *bs,
             best_interlaced_frame->copy(best_interlaced_frame, bs);
         }
     } else {
-        /*extract uncompressed least-significant bits*/
-        uncompressed_LSBs = (encoder->bits_per_sample - 16) / 8;
-        LSBs = encoder->LSBs;
-        channels_MSB = encoder->channels_MSB;
+        unsigned uncompressed_LSBs = (encoder->bits_per_sample - 16) / 8;
+        int LSBs[pcm_frames * channel_count];
+        int MSBs0[pcm_frames];
+        int MSBs1[pcm_frames];
+        unsigned i;
+        const unsigned lsb_mask = (1 << (encoder->bits_per_sample - 16)) - 1;
+        const unsigned msb_shift = encoder->bits_per_sample - 16;
 
-        LSBs->reset(LSBs);
-        channels_MSB->reset(channels_MSB);
+        if (channel_count == 2) {
+            unsigned leftweight;
+            BitstreamRecorder *interlaced_frame =
+                encoder->interlaced_frame;
+            BitstreamRecorder *best_interlaced_frame =
+                encoder->best_interlaced_frame;
+            unsigned best_interlaced_frame_bits =
+                UINT_MAX;
 
-        for (c = 0; c < channels->len; c++) {
-            channels_MSB->append(channels_MSB);
-        }
-
-        for (i = 0; i < channels->_[0]->len; i++) {
-            for (c = 0; c < channels->len; c++) {
-                LSBs->append(LSBs,
-                             channels->_[c]->_[i] &
-                             ((1 << (encoder->bits_per_sample - 16)) - 1));
-                channels_MSB->_[c]->append(channels_MSB->_[c],
-                                              channels->_[c]->_[i] >>
-                                              (encoder->bits_per_sample - 16));
+            /*extract uncompressed least-significant bits*/
+            for (i = 0; i < pcm_frames; i++) {
+                LSBs[i * 2] = channel0[i] & lsb_mask;
+                LSBs[i * 2 + 1] = channel1[i] & lsb_mask;
+                MSBs0[i] = channel0[i] >> msb_shift;
+                MSBs1[i] = channel1[i] >> msb_shift;
             }
-        }
 
-        if (channels->len == 1) {
-            write_non_interlaced_frame(bs,
-                                       encoder,
-                                       uncompressed_LSBs,
-                                       LSBs,
-                                       channels_MSB);
-        } else {
             /*attempt all the interlacing leftweight combinations*/
-
             for (leftweight = encoder->options.minimum_interlacing_leftweight;
                  leftweight <= encoder->options.maximum_interlacing_leftweight;
                  leftweight++) {
+
                 interlaced_frame->reset(interlaced_frame);
+
                 write_interlaced_frame((BitstreamWriter*)interlaced_frame,
                                        encoder,
-                                       uncompressed_LSBs,
-                                       LSBs,
+                                       pcm_frames,
+                                       uncompressed_LSBs, LSBs,
                                        INTERLACING_SHIFT,
                                        leftweight,
-                                       channels_MSB);
+                                       MSBs0, MSBs1);
+
                 if (interlaced_frame->bits_written(interlaced_frame) <
                     best_interlaced_frame_bits) {
                     best_interlaced_frame_bits =
@@ -602,6 +579,18 @@ write_compressed_frame(BitstreamWriter *bs,
 
             /*write the smallest leftweight to disk*/
             best_interlaced_frame->copy(best_interlaced_frame, bs);
+        } else {
+            /*extract uncompressed least-significant bits*/
+            for (i = 0; i < pcm_frames; i++) {
+                LSBs[i] = channel0[i] & lsb_mask;
+                MSBs0[i] = channel0[i] >> msb_shift;
+            }
+
+            write_non_interlaced_frame(bs,
+                                       encoder,
+                                       pcm_frames,
+                                       uncompressed_LSBs, LSBs,
+                                       MSBs0);
         }
     }
 }
@@ -609,21 +598,21 @@ write_compressed_frame(BitstreamWriter *bs,
 static void
 write_non_interlaced_frame(BitstreamWriter *bs,
                            struct alac_context* encoder,
+                           unsigned pcm_frames,
                            unsigned uncompressed_LSBs,
-                           const a_int* LSBs,
-                           const aa_int* channels)
+                           const int LSBs[],
+                           const int channel0[])
 {
     unsigned i;
     unsigned order;
     int qlp_coefficients[MAX_QLP_COEFFS];
     BitstreamRecorder* residual = encoder->residual0;
 
-    assert(channels->len == 1);
     residual->reset(residual);
 
     bs->write(bs, 16, 0);  /*unused*/
 
-    if (channels->_[0]->len == encoder->options.block_size)
+    if (pcm_frames == encoder->options.block_size)
         bs->write(bs, 1, 0);
     else
         bs->write(bs, 1, 1);
@@ -631,17 +620,16 @@ write_non_interlaced_frame(BitstreamWriter *bs,
     bs->write(bs, 2, uncompressed_LSBs);
     bs->write(bs, 1, 0);   /*is compressed*/
 
-    if (channels->_[0]->len != encoder->options.block_size)
-        bs->write(bs, 32, channels->_[0]->len);
+    if (pcm_frames != encoder->options.block_size)
+        bs->write(bs, 32, pcm_frames);
 
     bs->write(bs, 8, 0);   /*no interlacing shift*/
     bs->write(bs, 8, 0);   /*no interlacing leftweight*/
 
     compute_coefficients(encoder,
-                         channels->_[0]->len,
-                         channels->_[0]->_,
-                         (encoder->bits_per_sample -
-                          (uncompressed_LSBs * 8)),
+                         pcm_frames,
+                         channel0,
+                         (encoder->bits_per_sample - (uncompressed_LSBs * 8)),
                          &order,
                          qlp_coefficients,
                          (BitstreamWriter*)residual);
@@ -649,8 +637,8 @@ write_non_interlaced_frame(BitstreamWriter *bs,
     write_subframe_header(bs, order, qlp_coefficients);
 
     if (uncompressed_LSBs > 0) {
-        for (i = 0; i < LSBs->len; i++) {
-            bs->write(bs, uncompressed_LSBs * 8, LSBs->_[i]);
+        for (i = 0; i < pcm_frames; i++) {
+            bs->write(bs, uncompressed_LSBs * 8, LSBs[i]);
         }
     }
 
@@ -660,11 +648,13 @@ write_non_interlaced_frame(BitstreamWriter *bs,
 static void
 write_interlaced_frame(BitstreamWriter *bs,
                        struct alac_context* encoder,
+                       unsigned pcm_frames,
                        unsigned uncompressed_LSBs,
-                       const a_int* LSBs,
+                       const int LSBs[],
                        unsigned interlacing_shift,
                        unsigned interlacing_leftweight,
-                       const aa_int* channels)
+                       const int channel0[],
+                       const int channel1[])
 {
     unsigned i;
     unsigned order0;
@@ -673,15 +663,15 @@ write_interlaced_frame(BitstreamWriter *bs,
     int qlp_coefficients1[MAX_LPC_ORDER];
     BitstreamRecorder* residual0 = encoder->residual0;
     BitstreamRecorder* residual1 = encoder->residual1;
-    aa_int* correlated_channels = encoder->correlated_channels;
+    int correlated0[pcm_frames];
+    int correlated1[pcm_frames];
 
-    assert(channels->len == 2);
     residual0->reset(residual0);
     residual1->reset(residual1);
 
     bs->write(bs, 16, 0);  /*unused*/
 
-    if (channels->_[0]->len == encoder->options.block_size)
+    if (pcm_frames == encoder->options.block_size)
         bs->write(bs, 1, 0);
     else
         bs->write(bs, 1, 1);
@@ -689,20 +679,23 @@ write_interlaced_frame(BitstreamWriter *bs,
     bs->write(bs, 2, uncompressed_LSBs);
     bs->write(bs, 1, 0);   /*is compressed*/
 
-    if (channels->_[0]->len != encoder->options.block_size)
-        bs->write(bs, 32, channels->_[0]->len);
+    if (pcm_frames != encoder->options.block_size)
+        bs->write(bs, 32, pcm_frames);
 
     bs->write(bs, 8, interlacing_shift);
     bs->write(bs, 8, interlacing_leftweight);
 
-    correlate_channels(channels,
+    correlate_channels(pcm_frames,
+                       channel0,
+                       channel1,
                        interlacing_shift,
                        interlacing_leftweight,
-                       correlated_channels);
+                       correlated0,
+                       correlated1);
 
     compute_coefficients(encoder,
-                         correlated_channels->_[0]->len,
-                         correlated_channels->_[0]->_,
+                         pcm_frames,
+                         correlated0,
                          (encoder->bits_per_sample -
                           (uncompressed_LSBs * 8) + 1),
                          &order0,
@@ -710,8 +703,8 @@ write_interlaced_frame(BitstreamWriter *bs,
                          (BitstreamWriter*)residual0);
 
     compute_coefficients(encoder,
-                         correlated_channels->_[1]->len,
-                         correlated_channels->_[1]->_,
+                         pcm_frames,
+                         correlated1,
                          (encoder->bits_per_sample -
                           (uncompressed_LSBs * 8) + 1),
                          &order1,
@@ -722,8 +715,8 @@ write_interlaced_frame(BitstreamWriter *bs,
     write_subframe_header(bs, order1, qlp_coefficients1);
 
     if (uncompressed_LSBs > 0) {
-        for (i = 0; i < LSBs->len; i++) {
-            bs->write(bs, uncompressed_LSBs * 8, LSBs->_[i]);
+        for (i = 0; i < pcm_frames * 2; i++) {
+            bs->write(bs, uncompressed_LSBs * 8, LSBs[i]);
         }
     }
 
@@ -732,43 +725,27 @@ write_interlaced_frame(BitstreamWriter *bs,
 }
 
 static void
-correlate_channels(const aa_int* channels,
+correlate_channels(unsigned pcm_frames,
+                   const int channel0[],
+                   const int channel1[],
                    unsigned interlacing_shift,
                    unsigned interlacing_leftweight,
-                   aa_int* correlated_channels)
+                   int correlated0[],
+                   int correlated1[])
 {
-    a_int* channel0;
-    a_int* channel1;
-    a_int* correlated0;
-    a_int* correlated1;
-    unsigned frame_count;
-
-    assert(channels->len == 2);
-    assert(channels->_[0]->len == channels->_[1]->len);
-
-    frame_count = channels->_[0]->len;
-    channel0 = channels->_[0];
-    channel1 = channels->_[1];
-
-    correlated_channels->reset(correlated_channels);
-    correlated0 = correlated_channels->append(correlated_channels);
-    correlated1 = correlated_channels->append(correlated_channels);
-    correlated0->resize(correlated0, frame_count);
-    correlated1->resize(correlated1, frame_count);
-
     if (interlacing_leftweight > 0) {
         unsigned i;
 
-        for (i = 0; i < frame_count; i++) {
-            int64_t leftweight = channel0->_[i] - channel1->_[i];
+        for (i = 0; i < pcm_frames; i++) {
+            int64_t leftweight = channel0[i] - channel1[i];
             leftweight *= interlacing_leftweight;
             leftweight >>= interlacing_shift;
-            a_append(correlated0, channel1->_[i] + (int)leftweight);
-            a_append(correlated1, channel0->_[i] - channel1->_[i]);
+            correlated0[i] = channel1[i] + (int)leftweight;
+            correlated1[i] = channel0[i] - channel1[i];
         }
     } else {
-        channel0->copy(channel0, correlated0);
-        channel1->copy(channel1, correlated1);
+        memcpy(correlated0, channel0, pcm_frames * sizeof(int));
+        memcpy(correlated1, channel1, pcm_frames * sizeof(int));
     }
 }
 

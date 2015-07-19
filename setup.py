@@ -749,9 +749,7 @@ class audiotools_encoders(Extension):
     def __init__(self, system_libraries):
         self.__library_manifest__ = []
         defines = [("VERSION", VERSION), ("HAS_PYTHON", None)]
-        sources = ["src/array.c",
-                   "src/pcmconv.c",
-                   "src/pcmreader.c",
+        sources = ["src/pcmreader.c",
                    "src/framelist.c",
                    "src/pcm_conv.c",
                    "src/bitstream.c",

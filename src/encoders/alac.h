@@ -8,7 +8,6 @@
 #include <setjmp.h>
 #include "../pcmreader.h"
 #include "../bitstream.h"
-#include "../array.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -52,26 +51,11 @@ struct alac_context {
 
     unsigned bits_per_sample;
 
-    a_unsigned* frame_sizes;
-    unsigned total_pcm_frames;
+    double *tukey_window;
 
-    a_int* LSBs;
-    aa_int* channels_MSB;
-
-    aa_int* correlated_channels;
-    a_int* qlp_coefficients0;
-    a_int* qlp_coefficients1;
     BitstreamRecorder *residual0;
     BitstreamRecorder *residual1;
 
-    double *tukey_window;
-    a_double* windowed_signal;
-    a_double* autocorrelation_values;
-    aa_double* lp_coefficients;
-    a_int* qlp_coefficients4;
-    a_int* qlp_coefficients8;
-    a_int* residual_values4;
-    a_int* residual_values8;
     BitstreamRecorder *residual_block4;
     BitstreamRecorder *residual_block8;
 
@@ -110,46 +94,63 @@ encode_alac(BitstreamWriter *output,
 static void
 write_frameset(BitstreamWriter *bs,
                struct alac_context* encoder,
-               aa_int* channels);
+               unsigned pcm_frames,
+               unsigned channel_count,
+               const int channels[]);
 
 /*write a single ALAC frame, compressed or uncompressed as necessary*/
 static void
 write_frame(BitstreamWriter *bs,
             struct alac_context* encoder,
-            const aa_int* channels);
+            unsigned pcm_frames,
+            unsigned channel_count,
+            const int channel0[],
+            const int channel1[]);
 
 /*writes a single uncompressed ALAC frame, not including the channel count*/
 static void
 write_uncompressed_frame(BitstreamWriter *bs,
                          struct alac_context* encoder,
-                         const aa_int* channels);
+                         unsigned pcm_frames,
+                         unsigned channel_count,
+                         const int channel0[],
+                         const int channel1[]);
 
 static void
 write_compressed_frame(BitstreamWriter *bs,
                        struct alac_context* encoder,
-                       const aa_int* channels);
+                       unsigned pcm_frames,
+                       unsigned channel_count,
+                       const int channel0[],
+                       const int channel1[]);
 
 static void
 write_non_interlaced_frame(BitstreamWriter *bs,
                            struct alac_context* encoder,
+                           unsigned pcm_frames,
                            unsigned uncompressed_LSBs,
-                           const a_int* LSBs,
-                           const aa_int* channels);
-
-static void
-correlate_channels(const aa_int* channels,
-                   unsigned interlacing_shift,
-                   unsigned interlacing_leftweight,
-                   aa_int* correlated_channels);
+                           const int LSBs[],
+                           const int channel0[]);
 
 static void
 write_interlaced_frame(BitstreamWriter *bs,
                        struct alac_context* encoder,
+                       unsigned pcm_frames,
                        unsigned uncompressed_LSBs,
-                       const a_int* LSBs,
+                       const int LSBs[],
                        unsigned interlacing_shift,
                        unsigned interlacing_leftweight,
-                       const aa_int* channels);
+                       const int channel0[],
+                       const int channel1[]);
+
+static void
+correlate_channels(unsigned pcm_frames,
+                   const int channel0[],
+                   const int channel1[],
+                   unsigned interlacing_shift,
+                   unsigned interlacing_leftweight,
+                   int correlated0[],
+                   int correlated1[]);
 
 static void
 compute_coefficients(struct alac_context* encoder,
