@@ -118,3 +118,6 @@ parson.o: parson.c parson.h
 
 bitstream-table: bitstream-table.c
 	$(CC) $(FLAGS) -o $@ bitstream-table.c
+
+m4a-atoms: common/m4a_atoms.c common/m4a_atoms.h bitstream.a
+	$(CC) $(FLAGS) -o $@ common/m4a_atoms.c bitstream.a -DSTANDALONE

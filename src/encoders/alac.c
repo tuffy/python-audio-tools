@@ -96,8 +96,6 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
                               history_multiplier,
                               maximum_k);
 
-
-
     if (frame_sizes) {
         /*convert frame sizes to Python tuple*/
         /*FIXME - should check these calls for errors*/
