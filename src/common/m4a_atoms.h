@@ -1,11 +1,18 @@
 #include <stdint.h>
 #include <stdarg.h>
+#include <time.h>
 #include "../bitstream.h"
 
 typedef enum {
   QT_LEAF,
   QT_TREE,
   QT_FTYP,
+  QT_MVHD,
+  QT_TKHD,
+  QT_MDHD,
+  QT_HDLR,
+  QT_SMHD,
+  QT_DREF,
   QT_FREE
 } qt_atom_type_t;
 
@@ -30,6 +37,33 @@ struct qt_atom {
             unsigned compatible_brand_count;
             uint8_t **compatible_brands;
         } ftyp;
+
+        struct {
+            int version;
+            time_t timestamp;
+            unsigned sample_rate;
+            unsigned total_pcm_frames;
+        } mvhd;
+
+        struct {
+            int version;
+            time_t timestamp;
+            unsigned total_pcm_frames;
+        } tkhd;
+
+        struct {
+            int version;
+            time_t timestamp;
+            unsigned sample_rate;
+            unsigned total_pcm_frames;
+        } mdhd;
+
+        struct {
+            unsigned component_name_length;
+            uint8_t *component_name;
+        } hdlr;
+
+        struct qt_atom_list *dref;
 
         unsigned free;
     } _;
@@ -73,6 +107,34 @@ struct qt_atom*
 qt_ftyp_new(const uint8_t major_brand[4],
             unsigned major_brand_version,
             unsigned compatible_brand_count,
+            ...);
+
+struct qt_atom*
+qt_mvhd_new(int version,
+            time_t timestamp,
+            unsigned sample_rate,
+            unsigned total_pcm_frames);
+
+struct qt_atom*
+qt_tkhd_new(int version,
+            time_t timestamp,
+            unsigned total_pcm_frames);
+
+struct qt_atom*
+qt_mdhd_new(int version,
+            time_t timestamp,
+            unsigned sample_rate,
+            unsigned total_pcm_frames);
+
+struct qt_atom*
+qt_hdlr_new(unsigned component_name_length,
+            const uint8_t component_name[]);
+
+struct qt_atom*
+qt_smhd_new(void);
+
+struct qt_atom*
+qt_dref_new(unsigned reference_atom_count,
             ...);
 
 struct qt_atom*
