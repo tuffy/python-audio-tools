@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <time.h>
 #include "../bitstream.h"
@@ -23,6 +23,8 @@ typedef enum {
   QT_DATA,
   QT_FREE
 } qt_atom_type_t;
+
+typedef uint64_t qt_time_t;
 
 struct qt_atom_list;
 struct stts_time;
@@ -50,22 +52,44 @@ struct qt_atom {
 
         struct {
             int version;
-            time_t timestamp;
-            unsigned sample_rate;
-            unsigned total_pcm_frames;
+            qt_time_t created_date;
+            qt_time_t modified_date;
+            unsigned time_scale;
+            qt_time_t duration;
+            unsigned playback_speed;
+            unsigned user_volume;
+            unsigned geometry[9];
+            uint64_t preview;
+            unsigned poster;
+            uint64_t qt_selection_time;
+            unsigned qt_current_time;
+            unsigned next_track_id;
         } mvhd;
 
         struct {
             int version;
-            time_t timestamp;
-            unsigned total_pcm_frames;
+            unsigned flags;
+            qt_time_t created_date;
+            qt_time_t modified_date;
+            unsigned track_id;
+            qt_time_t duration;
+            unsigned layer;
+            unsigned qt_alternate;
+            unsigned volume;
+            unsigned geometry[9];
+            unsigned video_width;
+            unsigned video_height;
         } tkhd;
 
         struct {
             int version;
-            time_t timestamp;
-            unsigned sample_rate;
-            unsigned total_pcm_frames;
+            unsigned flags;
+            qt_time_t created_date;
+            qt_time_t modified_date;
+            unsigned time_scale;
+            unsigned duration;
+            char language[3];
+            unsigned quality;
         } mdhd;
 
         struct {
@@ -177,20 +201,42 @@ qt_ftyp_new(const uint8_t major_brand[4],
 
 struct qt_atom*
 qt_mvhd_new(int version,
-            time_t timestamp,
-            unsigned sample_rate,
-            unsigned total_pcm_frames);
+            qt_time_t created_date,
+            qt_time_t modified_date,
+            unsigned time_scale,
+            qt_time_t duration,
+            unsigned playback_speed,
+            unsigned user_volume,
+            const unsigned geometry[9],
+            uint64_t preview,
+            unsigned poster,
+            uint64_t qt_selection_time,
+            unsigned qt_current_time,
+            unsigned next_track_id);
 
 struct qt_atom*
 qt_tkhd_new(int version,
-            time_t timestamp,
-            unsigned total_pcm_frames);
+            unsigned flags,
+            qt_time_t created_date,
+            qt_time_t modified_date,
+            unsigned track_id,
+            qt_time_t duration,
+            unsigned layer,
+            unsigned qt_alternate,
+            unsigned volume,
+            const unsigned geometry[9],
+            unsigned video_width,
+            unsigned video_height);
 
 struct qt_atom*
 qt_mdhd_new(int version,
-            time_t timestamp,
-            unsigned sample_rate,
-            unsigned total_pcm_frames);
+            unsigned flags,
+            qt_time_t created_date,
+            qt_time_t modified_date,
+            unsigned time_scale,
+            qt_time_t duration,
+            const char language[3],
+            unsigned quality);
 
 struct qt_atom*
 qt_hdlr_new(const char qt_type[4],
@@ -249,3 +295,6 @@ qt_data_new(int type, unsigned data_size, const uint8_t data[]);
 
 struct qt_atom*
 qt_free_new(unsigned padding_bytes);
+
+struct qt_atom*
+qt_atom_parse(BitstreamReader *reader);

@@ -1,6 +1,14 @@
 #include "m4a_atoms.h"
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
+
+/*stream is a big-endian BitstreamReader
+  atom_size is the size of the atom, *not including its 8 byte header!*
+  atom_name is the atom's name*/
+typedef struct qt_atom* (*atom_parser_f)(BitstreamReader *stream,
+                                         unsigned atom_size,
+                                         const char atom_name[4]);
 
 /******************************/
 /*private function definitions*/
@@ -16,7 +24,12 @@
                                                            \
   static unsigned size_##NAME(const struct qt_atom *self); \
                                                            \
-  static void free_##NAME(struct qt_atom *self);
+  static void free_##NAME(struct qt_atom *self);           \
+                                                           \
+  static struct qt_atom*                                   \
+  parse_##NAME(BitstreamReader *stream,                    \
+               unsigned atom_size,                         \
+               const char atom_name[4]);
 ATOM_DEF(leaf)
 ATOM_DEF(tree)
 ATOM_DEF(ftyp)
@@ -68,6 +81,43 @@ time_to_mac_utc(time_t time);
 
 static uint64_t
 time_to_mac_utc64(time_t time);
+
+static atom_parser_f
+atom_parser(const char *atom_name);
+
+static inline int
+matches(const char x[4], const char y[4])
+{
+    return (memcmp(x, y, 4) == 0);
+}
+
+static void
+add_ftyp_brand(struct qt_atom *atom, const uint8_t compatible_brand[4]);
+
+typedef enum {
+    A_INT,
+    A_UNSIGNED,
+    A_UINT64,
+    A_ARRAY_UNSIGNED,
+    A_ARRAY_CHAR
+} field_type_t;
+
+/*for each "field_count" there are 3 arguments:
+  char* field_label
+  field_type_t type
+  and some value
+
+  unless "type" is one of the arrays, in which case there are 4 arguments:
+  char* field_label
+  field_type_t type
+  unsigned length
+  and an array of values of that length*/
+static void
+display_fields(unsigned indent,
+               FILE *output,
+               const uint8_t atom_name[4],
+               unsigned field_count,
+               ...);
 
 /*********************************/
 /*public function implementations*/
@@ -125,20 +175,17 @@ qt_ftyp_new(const uint8_t major_brand[4],
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     va_list ap;
-    unsigned i;
 
     set_atom_name(atom, "ftyp");
     atom->type = QT_FTYP;
     memcpy(atom->_.ftyp.major_brand, major_brand, 4);
     atom->_.ftyp.major_brand_version = major_brand_version;
-    atom->_.ftyp.compatible_brand_count = compatible_brand_count;
-    atom->_.ftyp.compatible_brands =
-        malloc(sizeof(uint8_t*) * compatible_brand_count);
+    atom->_.ftyp.compatible_brand_count = 0;
+    atom->_.ftyp.compatible_brands = NULL;
     va_start(ap, compatible_brand_count);
-    for (i = 0; i < compatible_brand_count; i++) {
+    for (; compatible_brand_count; compatible_brand_count--) {
         uint8_t *brand = va_arg(ap, uint8_t*);
-        atom->_.ftyp.compatible_brands[i] = malloc(4);
-        memcpy(atom->_.ftyp.compatible_brands[i], brand, 4);
+        add_ftyp_brand(atom, brand);
     }
     va_end(ap);
     atom->display = display_ftyp;
@@ -165,21 +212,35 @@ qt_free_new(unsigned padding_bytes)
 
 struct qt_atom*
 qt_mvhd_new(int version,
-            time_t timestamp,
-            unsigned sample_rate,
-            unsigned total_pcm_frames)
+            qt_time_t created_date,
+            qt_time_t modified_date,
+            unsigned time_scale,
+            qt_time_t duration,
+            unsigned playback_speed,
+            unsigned user_volume,
+            const unsigned geometry[9],
+            uint64_t preview,
+            unsigned poster,
+            uint64_t qt_selection_time,
+            unsigned qt_current_time,
+            unsigned next_track_id)
 {
-    /*the mvhd atom has a lot of crap nobody really cares about
-      so I'll punt on storing it internally until a parsing routine
-      requires it*/
-
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "mvhd");
     atom->type = QT_MVHD;
     atom->_.mvhd.version = version;
-    atom->_.mvhd.timestamp = timestamp;
-    atom->_.mvhd.sample_rate = sample_rate;
-    atom->_.mvhd.total_pcm_frames = total_pcm_frames;
+    atom->_.mvhd.created_date = created_date;
+    atom->_.mvhd.modified_date = modified_date;
+    atom->_.mvhd.time_scale = time_scale;
+    atom->_.mvhd.duration = duration;
+    atom->_.mvhd.playback_speed = playback_speed;
+    atom->_.mvhd.user_volume = user_volume;
+    memcpy(atom->_.mvhd.geometry, geometry, 9 * sizeof(unsigned));
+    atom->_.mvhd.preview = preview;
+    atom->_.mvhd.poster = poster;
+    atom->_.mvhd.qt_selection_time = qt_selection_time;
+    atom->_.mvhd.qt_current_time = qt_current_time;
+    atom->_.mvhd.next_track_id = next_track_id;
     atom->display = display_mvhd;
     atom->build = build_mvhd;
     atom->size = size_mvhd;
@@ -189,17 +250,33 @@ qt_mvhd_new(int version,
 
 struct qt_atom*
 qt_tkhd_new(int version,
-            time_t timestamp,
-            unsigned total_pcm_frames)
+            unsigned flags,
+            qt_time_t created_date,
+            qt_time_t modified_date,
+            unsigned track_id,
+            qt_time_t duration,
+            unsigned layer,
+            unsigned qt_alternate,
+            unsigned volume,
+            const unsigned geometry[9],
+            unsigned video_width,
+            unsigned video_height)
 {
-    /*the tkhd atom also has a lot of crap nobody really cares about*/
-
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "tkhd");
     atom->type = QT_TKHD;
     atom->_.tkhd.version = version;
-    atom->_.tkhd.timestamp = timestamp;
-    atom->_.tkhd.total_pcm_frames = total_pcm_frames;
+    atom->_.tkhd.flags = flags;
+    atom->_.tkhd.created_date = created_date;
+    atom->_.tkhd.modified_date = modified_date;
+    atom->_.tkhd.track_id = track_id;
+    atom->_.tkhd.duration = duration;
+    atom->_.tkhd.layer = layer;
+    atom->_.tkhd.qt_alternate = qt_alternate;
+    atom->_.tkhd.volume = volume;
+    memcpy(atom->_.tkhd.geometry, geometry, 9 * sizeof(unsigned));
+    atom->_.tkhd.video_width = video_width;
+    atom->_.tkhd.video_height = video_height;
     atom->display = display_tkhd;
     atom->build = build_tkhd;
     atom->size = size_tkhd;
@@ -209,19 +286,25 @@ qt_tkhd_new(int version,
 
 struct qt_atom*
 qt_mdhd_new(int version,
-            time_t timestamp,
-            unsigned sample_rate,
-            unsigned total_pcm_frames)
+            unsigned flags,
+            qt_time_t created_date,
+            qt_time_t modified_date,
+            unsigned time_scale,
+            qt_time_t duration,
+            const char language[3],
+            unsigned quality)
 {
-    /*the mdhd atom has slightly less crap nobody really cares about*/
-
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "mdhd");
     atom->type = QT_MDHD;
     atom->_.mdhd.version = version;
-    atom->_.mdhd.timestamp = timestamp;
-    atom->_.mdhd.sample_rate = sample_rate;
-    atom->_.mdhd.total_pcm_frames = total_pcm_frames;
+    atom->_.mdhd.flags = flags;
+    atom->_.mdhd.created_date = created_date;
+    atom->_.mdhd.modified_date = modified_date;
+    atom->_.mdhd.time_scale = time_scale;
+    atom->_.mdhd.duration = duration;
+    memcpy(atom->_.mdhd.language, language, 3 * sizeof(char));
+    atom->_.mdhd.quality = quality;
     atom->display = display_mdhd;
     atom->build = build_mdhd;
     atom->size = size_mdhd;
@@ -471,6 +554,29 @@ qt_data_new(int type, unsigned data_size, const uint8_t data[])
     return atom;
 }
 
+struct qt_atom*
+qt_atom_parse(BitstreamReader *reader)
+{
+    unsigned atom_size;
+    uint8_t atom_name[4];
+    struct qt_atom *atom;
+
+    /*grab the 8 byte atom header*/
+    atom_size = reader->read(reader, 32);
+    reader->read_bytes(reader, atom_name, 4);
+
+    assert(atom_size >= 8);
+
+    /*use appropriate parser for atom based on its name*/
+    atom = atom_parser((char*)atom_name)(reader,
+                                         atom_size - 8,
+                                         (char*)atom_name);
+
+    assert(atom->size(atom) == atom_size);
+
+    return atom;
+}
+
 /**********************************/
 /*private function implementations*/
 /**********************************/
@@ -575,6 +681,20 @@ display_leaf(const struct qt_atom *self,
     fprintf(output, " - %u bytes\n", self->_.leaf.data_size);
 }
 
+static struct qt_atom*
+parse_leaf(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    struct qt_atom *atom;
+    /*FIXME - avoid allocating the whole world*/
+    uint8_t *data = malloc(atom_size);
+    stream->read_bytes(stream, data, atom_size);
+    atom = qt_leaf_new(atom_name, atom_size, data);
+    free(data);
+    return atom;
+}
+
 static void
 build_leaf(const struct qt_atom *self,
            BitstreamWriter *stream)
@@ -610,6 +730,22 @@ display_tree(const struct qt_atom *self,
     for (list = self->_.tree; list; list = list->next) {
         list->atom->display(list->atom, indent + 1, output);
     }
+}
+
+static struct qt_atom*
+parse_tree(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    struct qt_atom *atom = qt_tree_new(atom_name, 0);
+
+    while (atom_size) {
+        struct qt_atom *sub_atom = qt_atom_parse(stream);
+        atom->_.tree = atom_list_append(atom->_.tree, sub_atom);
+        atom_size -= sub_atom->size(sub_atom);
+    }
+
+    return atom;
 }
 
 static void
@@ -668,6 +804,29 @@ display_ftyp(const struct qt_atom *self,
     }
 }
 
+static struct qt_atom*
+parse_ftyp(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    struct qt_atom *atom;
+    uint8_t major_brand[4];
+    unsigned major_brand_version;
+    uint8_t compatible_brand[4];
+    uint8_t terminator[4] = {0, 0, 0, 0};
+
+    stream->read_bytes(stream, major_brand, 4);
+    major_brand_version = stream->read(stream, 32);
+    atom = qt_ftyp_new(major_brand, major_brand_version, 0);
+
+    do {
+        stream->read_bytes(stream, compatible_brand, 4);
+        add_ftyp_brand(atom, compatible_brand);
+    } while (memcmp(compatible_brand, terminator, 4));
+
+    return atom;
+}
+
 static void
 build_ftyp(const struct qt_atom *self,
            BitstreamWriter *stream)
@@ -706,19 +865,88 @@ display_mvhd(const struct qt_atom *self,
              unsigned indent,
              FILE *output)
 {
-    char time[] = "XXXX-XX-XX XX:XX:XX";
+    display_fields(
+        indent, output, self->name, 13,
+        "version",           A_INT,      self->_.mvhd.version,
+        "created date",      A_UINT64,   self->_.mvhd.created_date,
+        "modified date",     A_UINT64,   self->_.mvhd.modified_date,
+        "time scale",        A_UNSIGNED, self->_.mvhd.time_scale,
+        "duration",          A_UINT64,   self->_.mvhd.duration,
+        "playback speed",    A_UNSIGNED, self->_.mvhd.playback_speed,
+        "user volume",       A_UNSIGNED, self->_.mvhd.user_volume,
+        "geometry",          A_ARRAY_UNSIGNED, 9, self->_.mvhd.geometry,
+        "preview",           A_UINT64,   self->_.mvhd.preview,
+        "poster",            A_UNSIGNED, self->_.mvhd.poster,
+        "qt selection time", A_UINT64,   self->_.mvhd.qt_selection_time,
+        "qt current time",   A_UNSIGNED, self->_.mvhd.qt_current_time,
+        "next track ID",     A_UNSIGNED, self->_.mvhd.next_track_id);
 
-    strftime(time, sizeof(time),
-             "%Y-%m-%d %H:%M:%S",
-             localtime(&self->_.mvhd.timestamp));
+}
 
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fprintf(output, " - %d [%s] %u %u\n",
-            self->_.mvhd.version,
-            time,
-            self->_.mvhd.sample_rate,
-            self->_.mvhd.total_pcm_frames);
+static struct qt_atom*
+parse_mvhd(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    int version;
+    qt_time_t created_date;
+    qt_time_t modified_date;
+    unsigned time_scale;
+    qt_time_t duration;
+    unsigned playback_speed;
+    unsigned user_volume;
+    unsigned geometry[9];
+    uint64_t preview;
+    unsigned poster;
+    uint64_t qt_selection_time;
+    unsigned qt_current_time;
+    unsigned next_track_id;
+
+    version = stream->read(stream, 8);
+    stream->skip(stream, 24);  /*flags*/
+    if (version) {
+        created_date = stream->read_64(stream, 64);
+        modified_date = stream->read_64(stream, 64);
+        time_scale = stream->read(stream, 32);
+        duration = stream->read_64(stream, 64);
+    } else {
+        created_date = stream->read(stream, 32);
+        modified_date = stream->read(stream, 32);
+        time_scale = stream->read(stream, 32);
+        duration = stream->read(stream, 32);
+    }
+
+    stream->parse(stream, "32u 16u 10P 9*32u 64U 32u 64U 32u 32u",
+                  &playback_speed,
+                  &user_volume,
+                  &geometry[0],
+                  &geometry[1],
+                  &geometry[2],
+                  &geometry[3],
+                  &geometry[4],
+                  &geometry[5],
+                  &geometry[6],
+                  &geometry[7],
+                  &geometry[8],
+                  &preview,
+                  &poster,
+                  &qt_selection_time,
+                  &qt_current_time,
+                  &next_track_id);
+
+    return qt_mvhd_new(version,
+                       created_date,
+                       modified_date,
+                       time_scale,
+                       duration,
+                       playback_speed,
+                       user_volume,
+                       geometry,
+                       preview,
+                       poster,
+                       qt_selection_time,
+                       qt_current_time,
+                       next_track_id);
 }
 
 static void
@@ -729,53 +957,34 @@ build_mvhd(const struct qt_atom *self,
     stream->write(stream, 8, self->_.mvhd.version ? 1 : 0); /*version*/
     stream->write(stream, 24, 0);                           /*flags*/
     if (self->_.mvhd.version) {
-        /*created date*/
-        stream->write(stream, 64,
-                      time_to_mac_utc64(self->_.mvhd.timestamp));
-
-        /*modified date*/
-        stream->write(stream, 64,
-                      time_to_mac_utc64(self->_.mvhd.timestamp));
-
-        /*sample rate*/
-        stream->write(stream, 32, self->_.mvhd.sample_rate);
-
-        /*total PCM frames*/
-        stream->write(stream, 64, self->_.mvhd.total_pcm_frames);
+        stream->write_64(stream, 64, self->_.mvhd.created_date);
+        stream->write_64(stream, 64, self->_.mvhd.modified_date);
+        stream->write(stream, 32, self->_.mvhd.time_scale);
+        stream->write_64(stream, 64, self->_.mvhd.duration);
     } else {
-        /*created date*/
-        stream->write(stream, 32,
-                      time_to_mac_utc(self->_.mvhd.timestamp));
-
-        /*modified date*/
-        stream->write(stream, 32,
-                      time_to_mac_utc(self->_.mvhd.timestamp));
-
-        /*sample rate*/
-        stream->write(stream, 32, self->_.mvhd.sample_rate);
-
-        /*total PCM frames*/
-        stream->write(stream, 32, self->_.mvhd.total_pcm_frames);
+        stream->write(stream, 32, (unsigned)self->_.mvhd.created_date);
+        stream->write(stream, 32, (unsigned)self->_.mvhd.modified_date);
+        stream->write(stream, 32, self->_.mvhd.time_scale);
+        stream->write(stream, 32, (unsigned)self->_.mvhd.duration);
     }
 
-    stream->write(stream, 32, 0x10000); /*playback speed*/
-    stream->write(stream, 16, 0x100);   /*user volume*/
-    stream->write(stream, 80, 0);       /*padding*/
-    stream->build(stream, "9*32u",      /*window geometry matrixes*/
-                  0x10000,
-                  0,
-                  0,
-                  0,
-                  0x10000,
-                  0,
-                  0,
-                  0,
-                  0x40000000);
-   stream->write_64(stream, 64, 0);     /*QuickTime preview*/
-   stream->write(stream, 32, 0);        /*QuickTime still poster*/
-   stream->write_64(stream, 64, 0);     /*QuickTime selection time*/
-   stream->write(stream, 32, 0);        /*QuickTime current time*/
-   stream->write(stream, 32, 2);        /*next track ID*/
+    stream->build(stream, "32u 16u 10P 9*32u 64U 32u 64U 32u 32u",
+                  self->_.mvhd.playback_speed,
+                  self->_.mvhd.user_volume,
+                  self->_.mvhd.geometry[0],
+                  self->_.mvhd.geometry[1],
+                  self->_.mvhd.geometry[2],
+                  self->_.mvhd.geometry[3],
+                  self->_.mvhd.geometry[4],
+                  self->_.mvhd.geometry[5],
+                  self->_.mvhd.geometry[6],
+                  self->_.mvhd.geometry[7],
+                  self->_.mvhd.geometry[8],
+                  self->_.mvhd.preview,
+                  self->_.mvhd.poster,
+                  self->_.mvhd.qt_selection_time,
+                  self->_.mvhd.qt_current_time,
+                  self->_.mvhd.next_track_id);
 }
 
 static unsigned
@@ -801,18 +1010,83 @@ display_tkhd(const struct qt_atom *self,
              unsigned indent,
              FILE *output)
 {
-    char time[] = "XXXX-XX-XX XX:XX:XX";
+    display_fields(
+        indent, output, self->name, 11,
+        "version",       A_INT,      self->_.tkhd.version,
+        "flags",         A_UNSIGNED, self->_.tkhd.flags,
+        "created date",  A_UINT64,   self->_.tkhd.created_date,
+        "modified date", A_UINT64,   self->_.tkhd.modified_date,
+        "track ID",      A_UNSIGNED, self->_.tkhd.track_id,
+        "duration",      A_UINT64,   self->_.tkhd.duration,
+        "layer",         A_UNSIGNED, self->_.tkhd.layer,
+        "QT alternate",  A_UNSIGNED, self->_.tkhd.qt_alternate,
+        "geometry",      A_ARRAY_UNSIGNED, 9, self->_.tkhd.geometry,
+        "video width",   A_UNSIGNED, self->_.tkhd.video_width,
+        "video height",  A_UNSIGNED, self->_.tkhd.video_height);
+}
 
-    strftime(time, sizeof(time),
-             "%Y-%m-%d %H:%M:%S",
-             localtime(&self->_.tkhd.timestamp));
+static struct qt_atom*
+parse_tkhd(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    int version;
+    unsigned flags;
+    qt_time_t created_date;
+    qt_time_t modified_date;
+    unsigned track_id;
+    qt_time_t duration;
+    unsigned layer;
+    unsigned qt_alternate;
+    unsigned volume;
+    unsigned geometry[9];
+    unsigned video_width;
+    unsigned video_height;
 
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fprintf(output, " - %d [%s] %u\n",
-            self->_.tkhd.version,
-            time,
-            self->_.tkhd.total_pcm_frames);
+    version = stream->read(stream, 8);
+    flags = stream->read(stream, 24);
+    if (version) {
+        created_date = stream->read_64(stream, 64);
+        modified_date = stream->read_64(stream, 64);
+        track_id = stream->read(stream, 32);
+        stream->skip(stream, 32);
+        duration = stream->read_64(stream, 64);
+    } else {
+        created_date = stream->read(stream, 32);
+        modified_date = stream->read(stream, 32);
+        track_id = stream->read(stream, 32);
+        stream->skip(stream, 32);
+        duration = stream->read(stream, 32);
+    }
+
+    stream->parse(stream, "8P 16u 16u 16u 16p 9*32u 32u 32u",
+                  &layer,
+                  &qt_alternate,
+                  &volume,
+                  &geometry[0],
+                  &geometry[1],
+                  &geometry[2],
+                  &geometry[3],
+                  &geometry[4],
+                  &geometry[5],
+                  &geometry[6],
+                  &geometry[7],
+                  &geometry[8],
+                  &video_width,
+                  &video_height);
+
+    return qt_tkhd_new(version,
+                       flags,
+                       created_date,
+                       modified_date,
+                       track_id,
+                       duration,
+                       layer,
+                       qt_alternate,
+                       volume,
+                       geometry,
+                       video_width,
+                       video_height);
 }
 
 static void
@@ -821,63 +1095,37 @@ build_tkhd(const struct qt_atom *self,
 {
     build_header(self, stream);
     stream->write(stream, 8, self->_.tkhd.version ? 1 : 0); /*version*/
-    stream->build(stream, "20u 4*1u", 0, 1, 1, 1, 1);       /*flags*/
+    stream->build(stream, "24u", self->_.tkhd.flags);
 
     if (self->_.tkhd.version) {
-        /*created date*/
-        stream->write_64(stream, 64,
-                         time_to_mac_utc64(self->_.tkhd.timestamp));
-
-        /*modified date*/
-        stream->write_64(stream, 64,
-                         time_to_mac_utc64(self->_.tkhd.timestamp));
-
-        /*track ID*/
-        stream->write(stream, 32, 1);
-
-        /*padding*/
+        stream->write_64(stream, 64, self->_.tkhd.created_date);
+        stream->write_64(stream, 64, self->_.tkhd.modified_date);
+        stream->write(stream, 32, self->_.tkhd.track_id);
         stream->write(stream, 32, 0);
-
-        /*total PCM frames*/
-        stream->write_64(stream, 64, self->_.tkhd.total_pcm_frames);
+        stream->write_64(stream, 64, self->_.tkhd.duration);
     } else {
-        /*created date*/
-        stream->write(stream, 32,
-                      time_to_mac_utc(self->_.tkhd.timestamp));
-
-        /*modified date*/
-        stream->write(stream, 32,
-                      time_to_mac_utc(self->_.tkhd.timestamp));
-
-        /*track ID*/
-        stream->write(stream, 32, 1);
-
-        /*padding*/
+        stream->write(stream, 32, (unsigned)self->_.tkhd.created_date);
+        stream->write(stream, 32, (unsigned)self->_.tkhd.modified_date);
+        stream->write(stream, 32, self->_.tkhd.track_id);
         stream->write(stream, 32, 0);
-
-        /*total PCM frames*/
-        stream->write(stream, 32, self->_.tkhd.total_pcm_frames);
+        stream->write(stream, 32, (unsigned)self->_.tkhd.duration);
     }
 
-    stream->write(stream, 64, 0);      /*padding*/
-    stream->write(stream, 16, 0);      /*video layer*/
-    stream->write(stream, 16, 0);      /*QuickTime alternate*/
-    stream->write(stream, 16, 0x1000); /*volume*/
-    stream->write(stream, 16, 0);      /*padding*/
-
-    stream->build(stream, "9*32u",     /*video geometry matrixes*/
-                  0x10000,
-                  0,
-                  0,
-                  0,
-                  0x10000,
-                  0,
-                  0,
-                  0,
-                  0x40000000);
-
-    stream->write(stream, 32, 0);     /*video width*/
-    stream->write(stream, 32, 0);     /*video height*/
+    stream->build(stream, "8P 16u 16u 16u 16p 9*32u 32u 32u",
+                  self->_.tkhd.layer,
+                  self->_.tkhd.qt_alternate,
+                  self->_.tkhd.volume,
+                  self->_.tkhd.geometry[0],
+                  self->_.tkhd.geometry[1],
+                  self->_.tkhd.geometry[2],
+                  self->_.tkhd.geometry[3],
+                  self->_.tkhd.geometry[4],
+                  self->_.tkhd.geometry[5],
+                  self->_.tkhd.geometry[6],
+                  self->_.tkhd.geometry[7],
+                  self->_.tkhd.geometry[8],
+                  self->_.tkhd.video_width,
+                  self->_.tkhd.video_height);
 }
 
 static unsigned
@@ -903,63 +1151,87 @@ display_mdhd(const struct qt_atom *self,
              unsigned indent,
              FILE *output)
 {
-    char time[] = "XXXX-XX-XX XX:XX:XX";
+    display_fields(
+        indent, output, self->name, 8,
+        "version", A_INT, self->_.mdhd.version,
+        "flags", A_UNSIGNED, self->_.mdhd.flags,
+        "created date", A_UINT64, self->_.mdhd.created_date,
+        "modified date", A_UINT64, self->_.mdhd.modified_date,
+        "time scale", A_UNSIGNED, self->_.mdhd.time_scale,
+        "duration", A_UINT64, self->_.mdhd.duration,
+        "language", A_ARRAY_CHAR, 3, self->_.mdhd.language,
+        "quality", A_UNSIGNED, self->_.mdhd.quality);
+}
 
-    strftime(time, sizeof(time),
-             "%Y-%m-%d %H:%M:%S",
-             localtime(&self->_.tkhd.timestamp));
+static struct qt_atom*
+parse_mdhd(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    int version;
+    int flags;
+    qt_time_t created_date;
+    qt_time_t modified_date;
+    unsigned time_scale;
+    qt_time_t duration;
+    char language[3];
+    unsigned quality;
+    unsigned i;
 
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fprintf(output, " - %d [%s] %u %u\n",
-            self->_.mdhd.version,
-            time,
-            self->_.mdhd.sample_rate,
-            self->_.mdhd.total_pcm_frames);
+    version = stream->read(stream, 8);
+    flags = stream->read(stream, 24);
+    if (version) {
+        created_date = stream->read_64(stream, 64);
+        modified_date = stream->read_64(stream, 64);
+        time_scale = stream->read(stream, 32);
+        duration = stream->read_64(stream, 64);
+    } else {
+        created_date = stream->read(stream, 32);
+        modified_date = stream->read(stream, 32);
+        time_scale = stream->read(stream, 32);
+        duration = stream->read(stream, 32);
+    }
+    stream->skip(stream, 1);
+    for (i = 0; i < 3; i++) {
+        language[i] = stream->read(stream, 5) + 0x60;
+    }
+    quality = stream->read(stream, 16);
+
+    return qt_mdhd_new(version,
+                       flags,
+                       created_date,
+                       modified_date,
+                       time_scale,
+                       duration,
+                       language,
+                       quality);
 }
 
 static void
 build_mdhd(const struct qt_atom *self,
            BitstreamWriter *stream)
 {
-    const char language[3] = {'u', 'n', 'd'};
     unsigned i;
 
     build_header(self, stream);
-    stream->write(stream, 8, self->_.mdhd.version ? 1 : 0); /*version*/
-    stream->write(stream, 24, 0);                           /*flags*/
+    stream->write(stream, 8, self->_.mdhd.version ? 1 : 0);
+    stream->write(stream, 24, self->_.mdhd.flags);
 
     if (self->_.mdhd.version) {
-        /*created date*/
-        stream->write_64(stream, 64,
-                         time_to_mac_utc64(self->_.mdhd.timestamp));
-
-        /*modified date*/
-        stream->write_64(stream, 64,
-                         time_to_mac_utc64(self->_.mdhd.timestamp));
-
-        /*time scale*/
-        stream->write(stream, 32, self->_.mdhd.sample_rate);
-
-        /*duration*/
-        stream->write_64(stream, 64, self->_.mdhd.total_pcm_frames);
+        stream->write_64(stream, 64, self->_.mdhd.created_date);
+        stream->write_64(stream, 64, self->_.mdhd.modified_date);
+        stream->write(stream, 32, self->_.mdhd.time_scale);
+        stream->write_64(stream, 64, self->_.mdhd.duration);
     } else {
-        /*created date*/
-        stream->write(stream, 32, time_to_mac_utc(self->_.mdhd.timestamp));
-
-        /*modified date*/
-        stream->write(stream, 32, time_to_mac_utc(self->_.mdhd.timestamp));
-
-        /*time scale*/
-        stream->write(stream, 32, self->_.mdhd.sample_rate);
-
-        /*duration*/
-        stream->write(stream, 32, self->_.mdhd.total_pcm_frames);
+        stream->write(stream, 32, (unsigned)self->_.mdhd.created_date);
+        stream->write(stream, 32, (unsigned)self->_.mdhd.modified_date);
+        stream->write(stream, 32, self->_.mdhd.time_scale);
+        stream->write(stream, 32, (unsigned)self->_.mdhd.duration);
     }
 
     stream->write(stream, 1, 0); /*padding*/
     for (i = 0; i < 3; i++) {
-        stream->write(stream, 5, language[i] - 0x60);
+        stream->write(stream, 5, self->_.mdhd.language[i] - 0x60);
     }
 
     stream->write(stream, 16, 0); /*QuickTime quality*/
@@ -1575,6 +1847,15 @@ display_free(const struct qt_atom *self,
     fprintf(output, " - %u bytes\n", self->_.free);
 }
 
+static struct qt_atom*
+parse_free(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    stream->skip_bytes(stream, atom_size);
+    return qt_free_new(atom_size);
+}
+
 static void
 build_free(const struct qt_atom *self,
            BitstreamWriter *stream)
@@ -1598,29 +1879,210 @@ free_free(struct qt_atom *self)
     free(self);
 }
 
+static atom_parser_f
+atom_parser(const char *atom_name)
+{
+    if (matches(atom_name, "ftyp")) {return parse_ftyp;}
+    if (matches(atom_name, "moov")) {return parse_tree;}
+    if (matches(atom_name, "mvhd")) {return parse_mvhd;}
+    if (matches(atom_name, "tkhd")) {return parse_tkhd;}
+    if (matches(atom_name, "mdhd")) {return parse_mdhd;}
+    if (matches(atom_name, "trak")) {return parse_tree;}
+    if (matches(atom_name, "mdia")) {return parse_tree;}
+    if (matches(atom_name, "minf")) {return parse_tree;}
+    if (matches(atom_name, "stbl")) {return parse_tree;}
+    if (matches(atom_name, "udta")) {return parse_tree;}
+    if (matches(atom_name, "free")) {return parse_free;}
+
+    /*catchall for any atoms we don't know*/
+    return parse_leaf;
+}
+
+static void
+add_ftyp_brand(struct qt_atom *atom, const uint8_t compatible_brand[4])
+{
+    assert(atom->type == QT_FTYP);
+    atom->_.ftyp.compatible_brands =
+        realloc(atom->_.ftyp.compatible_brands,
+                (atom->_.ftyp.compatible_brand_count + 1) * sizeof(uint8_t*));
+    atom->_.ftyp.compatible_brands[atom->_.ftyp.compatible_brand_count] =
+        malloc(4);
+    memcpy(atom->_.ftyp.compatible_brands[atom->_.ftyp.compatible_brand_count],
+           compatible_brand,
+           4);
+    atom->_.ftyp.compatible_brand_count += 1;
+}
+
+static void
+display_fields(unsigned indent,
+               FILE *output,
+               const uint8_t atom_name[4],
+               unsigned field_count,
+               ...)
+{
+    unsigned i;
+    va_list ap;
+
+    va_start(ap, field_count);
+    for (i = 0; i < field_count; i++) {
+        char *field_label = va_arg(ap, char*);
+        field_type_t type = va_arg(ap, field_type_t);
+
+        display_indent(indent, output);
+        if (i == 0) {
+            display_name(atom_name, output);
+        } else {
+            fputs("    ", output);
+        }
+        fprintf(output, " - %s: ", field_label);
+
+        switch (type) {
+        case A_INT:
+            fprintf(output, "%d", va_arg(ap, int));
+            break;
+        case A_UNSIGNED:
+            fprintf(output, "%u", va_arg(ap, unsigned));
+            break;
+        case A_UINT64:
+            fprintf(output, "%" PRIu64, va_arg(ap, uint64_t));
+            break;
+        case A_ARRAY_UNSIGNED:
+            {
+                unsigned length = va_arg(ap, unsigned);
+                unsigned *array = va_arg(ap, unsigned*);
+                unsigned j;
+                fputs("[", output);
+                for (j = 0; j < length; j++) {
+                    fprintf(output, "%u", array[j]);
+                    if ((j + 1) < length) {
+                        fputs(", ", output);
+                    }
+                }
+                fputs("]", output);
+            }
+            break;
+        case A_ARRAY_CHAR:
+            {
+                unsigned length = va_arg(ap, unsigned);
+                char *array = va_arg(ap, char*);
+                unsigned j;
+                fputs("[", output);
+                for (j = 0; j < length; j++) {
+                    fprintf(output, "%c", array[j]);
+                    if ((j + 1) < length) {
+                        fputs(", ", output);
+                    }
+                }
+                fputs("]", output);
+            }
+            break;
+        default:
+            fputs("???", output);
+            break;
+        }
+
+        fputs("\n", output);
+    }
+    va_end(ap);
+}
+
 #ifdef STANDALONE
+
+#include <getopt.h>
+#include <errno.h>
+#include <sys/stat.h>
+
 int
 main(int argc, char *argv[])
 {
-    //struct qt_atom *atom = qt_stts_new(2, 645, 4096, 1, 4080);
-    //struct qt_atom *atom = qt_stsc_new(2, 1, 5, 130, 1);
-    //struct qt_atom *atom = qt_stco_new(5);
+    /*get input arguments*/
+    char *filename = NULL;
+    static int binary = 0;
+    char c;
+    const static struct option long_opts[] = {
+        {"help",   no_argument, NULL,    'h'},
+        {"binary", no_argument, &binary, 1},
+        {NULL,     no_argument, NULL,    0}
+    };
+    const static char* short_opts = "-hb";
+    FILE *file;
+    BitstreamReader *reader;
+    BitstreamWriter *writer;
+    off_t total_size;
 
-    struct qt_atom *atom = qt_meta_new(
-       3,
-       qt_hdlr_new("\x00\x00\x00\x00", "mdir", "appl", 0, NULL),
-       qt_tree_new(
-         "ilst",
-         2,
-         qt_tree_new(" nam", 1, qt_data_new(1, 3, (uint8_t*)"foo")),
-         qt_tree_new(" alb", 1, qt_data_new(1, 3, (uint8_t*)"bar"))),
-       qt_free_new(20));
+    while ((c = getopt_long(argc,
+                            argv,
+                            short_opts,
+                            long_opts,
+                            NULL)) != -1) {
+        switch (c) {
+        case 1:
+            if (filename) {
+                fprintf(stderr, "only one input file allowed\n");
+                return 1;
+            } else {
+                filename = optarg;
+            }
+            break;
+        case 'b':
+            binary = 1;
+            break;
+        case 'h': /*fallthrough*/
+        case ':':
+        case '?':
+            fprintf(stdout, "*** Usage m4a-atoms [options] <input.m4a>\n");
+            fprintf(stdout, "-b, --binary   output atom data as binary\n");
+            return 0;
+        default:
+            break;
+        }
+    }
 
-    BitstreamWriter *w = bw_open(stdout, BS_BIG_ENDIAN);
-    atom->display(atom, 0, stderr);
-    fprintf(stderr, "atom size : %u bytes\n", atom->size(atom));
-    atom->build(atom, w);
-    atom->free(atom);
+    if (!filename) {
+        fprintf(stderr, "an input file is required\n");
+        return 1;
+    }
+
+    if (binary) {
+        writer = bw_open(stdout, BS_BIG_ENDIAN);
+    }
+
+    /*get input file's size and open it*/
+    errno = 0;
+    if ((file = fopen(filename, "rb")) != NULL) {
+        struct stat stat;
+
+        reader = br_open(file, BS_BIG_ENDIAN);
+        if (fstat(fileno(file), &stat) == 0) {
+            total_size = stat.st_size;
+        } else {
+            fprintf(stderr, "*** Error %s: %s\n", filename, strerror(errno));
+            return 1;
+        }
+    } else {
+        fprintf(stderr, "*** Error %s: %s\n", filename, strerror(errno));
+        return 1;
+    }
+
+    /*while file still has data, read and output atoms*/
+    while (total_size) {
+        struct qt_atom *atom = qt_atom_parse(reader);
+        if (binary) {
+            atom->build(atom, writer);
+            atom->display(atom, 0, stderr);
+        } else {
+            atom->display(atom, 0, stdout);
+        }
+        total_size -= atom->size(atom);
+        atom->free(atom);
+    }
+
+    /*close input file*/
+    reader->close(reader);
+
+    if (binary) {
+        writer->close(writer);
+    }
 
     return 0;
 }
