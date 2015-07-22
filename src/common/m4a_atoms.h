@@ -19,6 +19,8 @@ typedef enum {
   QT_STSC,
   QT_STSZ,
   QT_STCO,
+  QT_META,
+  QT_DATA,
   QT_FREE
 } qt_atom_type_t;
 
@@ -67,6 +69,9 @@ struct qt_atom {
         } mdhd;
 
         struct {
+            uint8_t qt_type[4];
+            uint8_t qt_subtype[4];
+            uint8_t qt_manufacturer[4];
             unsigned component_name_length;
             uint8_t *component_name;
         } hdlr;
@@ -106,6 +111,14 @@ struct qt_atom {
             unsigned offsets_count;
             unsigned *chunk_offset;
         } stco;
+
+        struct qt_atom_list *meta;
+
+        struct {
+            int type;
+            unsigned data_size;
+            uint8_t *data;
+        } data;
 
         unsigned free;
     } _;
@@ -180,7 +193,10 @@ qt_mdhd_new(int version,
             unsigned total_pcm_frames);
 
 struct qt_atom*
-qt_hdlr_new(unsigned component_name_length,
+qt_hdlr_new(const char qt_type[4],
+            const char qt_subtype[4],
+            const char qt_manufacturer[4],
+            unsigned component_name_length,
             const uint8_t component_name[]);
 
 struct qt_atom*
@@ -224,6 +240,12 @@ qt_stsz_new(unsigned frames_count);
   encoding is finished*/
 struct qt_atom*
 qt_stco_new(unsigned chunk_offsets);
+
+struct qt_atom*
+qt_meta_new(unsigned sub_atoms, ...);
+
+struct qt_atom*
+qt_data_new(int type, unsigned data_size, const uint8_t data[]);
 
 struct qt_atom*
 qt_free_new(unsigned padding_bytes);

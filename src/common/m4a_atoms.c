@@ -32,6 +32,8 @@ ATOM_DEF(stts)
 ATOM_DEF(stsc)
 ATOM_DEF(stsz)
 ATOM_DEF(stco)
+ATOM_DEF(meta)
+ATOM_DEF(data)
 ATOM_DEF(free)
 
 static void
@@ -228,12 +230,18 @@ qt_mdhd_new(int version,
 }
 
 struct qt_atom*
-qt_hdlr_new(unsigned component_name_length,
+qt_hdlr_new(const char qt_type[4],
+            const char qt_subtype[4],
+            const char qt_manufacturer[4],
+            unsigned component_name_length,
             const uint8_t component_name[])
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "hdlr");
     atom->type = QT_HDLR;
+    memcpy(atom->_.hdlr.qt_type, qt_type, 4);
+    memcpy(atom->_.hdlr.qt_subtype, qt_subtype, 4);
+    memcpy(atom->_.hdlr.qt_manufacturer, qt_manufacturer, 4);
     atom->_.hdlr.component_name_length = component_name_length;
     atom->_.hdlr.component_name = malloc(component_name_length);
     memcpy(atom->_.hdlr.component_name,
@@ -419,6 +427,47 @@ qt_stco_new(unsigned chunk_offsets)
     atom->build = build_stco;
     atom->size = size_stco;
     atom->free = free_stco;
+    return atom;
+}
+
+struct qt_atom*
+qt_meta_new(unsigned sub_atoms, ...)
+{
+    struct qt_atom *atom = malloc(sizeof(struct qt_atom));
+    va_list ap;
+
+    set_atom_name(atom, "meta");
+    atom->type = QT_META;
+    atom->_.meta = NULL;
+
+    va_start(ap, sub_atoms);
+    for (; sub_atoms; sub_atoms--) {
+        struct qt_atom *sub_atom = va_arg(ap, struct qt_atom*);
+        atom->_.meta = atom_list_append(atom->_.meta, sub_atom);
+    }
+    va_end(ap);
+
+    atom->display = display_meta;
+    atom->build = build_meta;
+    atom->size = size_meta;
+    atom->free = free_meta;
+    return atom;
+}
+
+struct qt_atom*
+qt_data_new(int type, unsigned data_size, const uint8_t data[])
+{
+    struct qt_atom *atom = malloc(sizeof(struct qt_atom));
+    set_atom_name(atom, "data");
+    atom->type = QT_DATA;
+    atom->_.data.type = type;
+    atom->_.data.data_size = data_size;
+    atom->_.data.data = malloc(data_size);
+    memcpy(atom->_.data.data, data, data_size);
+    atom->display = display_data;
+    atom->build = build_data;
+    atom->size = size_data;
+    atom->free = free_data;
     return atom;
 }
 
@@ -943,7 +992,22 @@ display_hdlr(const struct qt_atom *self,
 
     display_indent(indent, output);
     display_name(self->name, output);
-    fputs(" - \"", output);
+    fputs(" - qt type : \"", output);
+    display_name(self->_.hdlr.qt_type, output);
+    fputs("\"\n", output);
+
+    display_indent(indent, output);
+    fputs("     - qt subtype : \"", output);
+    display_name(self->_.hdlr.qt_subtype, output);
+    fputs("\"\n", output);
+
+    display_indent(indent, output);
+    fputs("     - qt manufacturer : \"", output);
+    display_name(self->_.hdlr.qt_manufacturer, output);
+    fputs("\"\n", output);
+
+    display_indent(indent, output);
+    fputs("     - component name \"", output);
     for (i = 0; i < self->_.hdlr.component_name_length; i++) {
         fputc(self->_.hdlr.component_name[i], output);
     }
@@ -1407,6 +1471,98 @@ free_stco(struct qt_atom *self)
     free(self);
 }
 
+/*** meta ***/
+
+static void
+display_meta(const struct qt_atom *self,
+             unsigned indent,
+             FILE *output)
+{
+    struct qt_atom_list *list;
+    display_indent(indent, output);
+    display_name(self->name, output);
+    fputs("\n", output);
+    for (list = self->_.meta; list; list = list->next) {
+        list->atom->display(list->atom, indent + 1, output);
+    }
+}
+
+static void
+build_meta(const struct qt_atom *self,
+           BitstreamWriter *stream)
+{
+    struct qt_atom_list *list;
+    build_header(self, stream);
+    stream->write(stream, 8, 0);  /*version*/
+    stream->write(stream, 24, 0); /*flags*/
+    for (list = self->_.meta; list; list = list->next) {
+        list->atom->build(list->atom, stream);
+    }
+}
+
+static unsigned
+size_meta(const struct qt_atom *self)
+{
+    unsigned size = 8 + 4; /*header + version + flags*/
+    struct qt_atom_list *list;
+    for (list = self->_.tree; list; list = list->next) {
+        size += list->atom->size(list->atom);
+    }
+    return size;
+}
+
+static void
+free_meta(struct qt_atom *self)
+{
+    atom_list_free(self->_.meta);
+    free(self);
+}
+
+/*** data ***/
+
+static void
+display_data(const struct qt_atom *self,
+             unsigned indent,
+             FILE *output)
+{
+    unsigned i;
+
+    display_indent(indent, output);
+    display_name(self->name, output);
+    fprintf(output, " - (%d) \"", self->_.data.type);
+    for (i = 0; i < self->_.data.data_size; i++) {
+        if (isprint(self->_.data.data[i])) {
+            fputc(self->_.data.data[i], output);
+        } else {
+            fprintf(output, "\\x%2.2X", self->_.data.data[i]);
+        }
+    }
+    fputs("\"\n", output);
+}
+
+static void
+build_data(const struct qt_atom *self,
+           BitstreamWriter *stream)
+{
+    build_header(self, stream);
+    stream->write(stream, 32, self->_.data.type ? 1 : 0);
+    stream->write(stream, 32, 0); /*reserved*/
+    stream->write_bytes(stream, self->_.data.data, self->_.data.data_size);
+}
+
+static unsigned
+size_data(const struct qt_atom *self)
+{
+    return 8 + 8 + self->_.data.data_size;
+}
+
+static void
+free_data(struct qt_atom *self)
+{
+    free(self->_.data.data);
+    free(self);
+}
+
 /*** free ***/
 
 static void
@@ -1448,7 +1604,17 @@ main(int argc, char *argv[])
 {
     //struct qt_atom *atom = qt_stts_new(2, 645, 4096, 1, 4080);
     //struct qt_atom *atom = qt_stsc_new(2, 1, 5, 130, 1);
-    struct qt_atom *atom = qt_stco_new(5);
+    //struct qt_atom *atom = qt_stco_new(5);
+
+    struct qt_atom *atom = qt_meta_new(
+       3,
+       qt_hdlr_new("\x00\x00\x00\x00", "mdir", "appl", 0, NULL),
+       qt_tree_new(
+         "ilst",
+         2,
+         qt_tree_new(" nam", 1, qt_data_new(1, 3, (uint8_t*)"foo")),
+         qt_tree_new(" alb", 1, qt_data_new(1, 3, (uint8_t*)"bar"))),
+       qt_free_new(20));
 
     BitstreamWriter *w = bw_open(stdout, BS_BIG_ENDIAN);
     atom->display(atom, 0, stderr);
