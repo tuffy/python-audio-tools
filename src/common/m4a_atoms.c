@@ -41,6 +41,7 @@ ATOM_DEF(smhd)
 ATOM_DEF(dref)
 ATOM_DEF(stsd)
 ATOM_DEF(alac)
+ATOM_DEF(sub_alac)
 ATOM_DEF(stts)
 ATOM_DEF(stsc)
 ATOM_DEF(stsz)
@@ -99,7 +100,8 @@ typedef enum {
     A_UNSIGNED,
     A_UINT64,
     A_ARRAY_UNSIGNED,
-    A_ARRAY_CHAR
+    A_ARRAY_CHAR,
+    A_STRING
 } field_type_t;
 
 /*for each "field_count" there are 3 arguments:
@@ -211,7 +213,8 @@ qt_free_new(unsigned padding_bytes)
 }
 
 struct qt_atom*
-qt_mvhd_new(int version,
+qt_mvhd_new(unsigned version,
+            unsigned flags,
             qt_time_t created_date,
             qt_time_t modified_date,
             unsigned time_scale,
@@ -229,6 +232,7 @@ qt_mvhd_new(int version,
     set_atom_name(atom, "mvhd");
     atom->type = QT_MVHD;
     atom->_.mvhd.version = version;
+    atom->_.mvhd.flags = flags;
     atom->_.mvhd.created_date = created_date;
     atom->_.mvhd.modified_date = modified_date;
     atom->_.mvhd.time_scale = time_scale;
@@ -249,7 +253,7 @@ qt_mvhd_new(int version,
 }
 
 struct qt_atom*
-qt_tkhd_new(int version,
+qt_tkhd_new(unsigned version,
             unsigned flags,
             qt_time_t created_date,
             qt_time_t modified_date,
@@ -285,7 +289,7 @@ qt_tkhd_new(int version,
 }
 
 struct qt_atom*
-qt_mdhd_new(int version,
+qt_mdhd_new(unsigned version,
             unsigned flags,
             qt_time_t created_date,
             qt_time_t modified_date,
@@ -313,23 +317,33 @@ qt_mdhd_new(int version,
 }
 
 struct qt_atom*
-qt_hdlr_new(const char qt_type[4],
+qt_hdlr_new(unsigned version,
+            unsigned flags,
+            const char qt_type[4],
             const char qt_subtype[4],
             const char qt_manufacturer[4],
+            unsigned qt_flags,
+            unsigned qt_flags_mask,
             unsigned component_name_length,
-            const uint8_t component_name[])
+            const char component_name[],
+            unsigned padding)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "hdlr");
     atom->type = QT_HDLR;
+    atom->_.hdlr.version = version;
+    atom->_.hdlr.flags = flags;
     memcpy(atom->_.hdlr.qt_type, qt_type, 4);
     memcpy(atom->_.hdlr.qt_subtype, qt_subtype, 4);
     memcpy(atom->_.hdlr.qt_manufacturer, qt_manufacturer, 4);
+    atom->_.hdlr.qt_flags = qt_flags;
+    atom->_.hdlr.qt_flags_mask = qt_flags_mask;
     atom->_.hdlr.component_name_length = component_name_length;
     atom->_.hdlr.component_name = malloc(component_name_length);
     memcpy(atom->_.hdlr.component_name,
            component_name,
            component_name_length);
+    atom->_.hdlr.padding = padding;
     atom->display = display_hdlr;
     atom->build = build_hdlr;
     atom->size = size_hdlr;
@@ -338,11 +352,16 @@ qt_hdlr_new(const char qt_type[4],
 }
 
 struct qt_atom*
-qt_smhd_new(void)
+qt_smhd_new(unsigned version,
+            unsigned flags,
+            unsigned balance)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "smhd");
     atom->type = QT_SMHD;
+    atom->_.smhd.version = version;
+    atom->_.smhd.flags = flags;
+    atom->_.smhd.balance = balance;
     atom->display = display_smhd;
     atom->build = build_smhd;
     atom->size = size_smhd;
@@ -351,19 +370,25 @@ qt_smhd_new(void)
 }
 
 struct qt_atom*
-qt_dref_new(unsigned reference_atom_count, ...)
+qt_dref_new(unsigned version,
+            unsigned flags,
+            unsigned reference_atom_count,
+            ...)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     va_list ap;
 
     set_atom_name(atom, "dref");
     atom->type = QT_DREF;
-    atom->_.dref = NULL;
+    atom->_.dref.version = version;
+    atom->_.dref.flags = flags;
+    atom->_.dref.references = NULL;
 
     va_start(ap, reference_atom_count);
     for (; reference_atom_count; reference_atom_count--) {
         struct qt_atom *reference_atom = va_arg(ap, struct qt_atom*);
-        atom->_.dref = atom_list_append(atom->_.dref, reference_atom);
+        atom->_.dref.references =
+            atom_list_append(atom->_.dref.references, reference_atom);
     }
     va_end(ap);
 
@@ -376,19 +401,25 @@ qt_dref_new(unsigned reference_atom_count, ...)
 }
 
 struct qt_atom*
-qt_stsd_new(unsigned description_atom_count, ...)
+qt_stsd_new(unsigned version,
+            unsigned flags,
+            unsigned description_atom_count,
+            ...)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     va_list ap;
 
     set_atom_name(atom, "stsd");
     atom->type = QT_STSD;
-    atom->_.stsd = NULL;
+    atom->_.stsd.version = version;
+    atom->_.stsd.flags = flags;
+    atom->_.stsd.descriptions = NULL;
 
     va_start(ap, description_atom_count);
     for (; description_atom_count; description_atom_count--) {
         struct qt_atom *description_atom = va_arg(ap, struct qt_atom*);
-        atom->_.stsd = atom_list_append(atom->_.stsd, description_atom);
+        atom->_.stsd.descriptions =
+            atom_list_append(atom->_.stsd.descriptions, description_atom);
     }
     va_end(ap);
 
@@ -401,28 +432,30 @@ qt_stsd_new(unsigned description_atom_count, ...)
 }
 
 struct qt_atom*
-qt_alac_new(unsigned max_samples_per_frame,
-            unsigned bits_per_sample,
-            unsigned history_multiplier,
-            unsigned initial_history,
-            unsigned maximum_K,
+qt_alac_new(unsigned reference_index,
+            unsigned version,
+            unsigned revision_level,
+            uint8_t vendor[4],
             unsigned channels,
-            unsigned max_coded_frame_size,
-            unsigned bitrate,
-            unsigned sample_rate)
+            unsigned bits_per_sample,
+            unsigned compression_id,
+            unsigned audio_packet_size,
+            unsigned sample_rate,
+            struct qt_atom *sub_alac)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "alac");
     atom->type = QT_ALAC;
-    atom->_.alac.max_samples_per_frame = max_samples_per_frame;
-    atom->_.alac.bits_per_sample = bits_per_sample;
-    atom->_.alac.history_multiplier = history_multiplier;
-    atom->_.alac.initial_history = initial_history;
-    atom->_.alac.maximum_K = maximum_K;
+    atom->_.alac.reference_index = reference_index;
+    atom->_.alac.version = version;
+    atom->_.alac.revision_level = revision_level;
+    memcpy(atom->_.alac.vendor, vendor, 4);
     atom->_.alac.channels = channels;
-    atom->_.alac.max_coded_frame_size = max_coded_frame_size;
-    atom->_.alac.bitrate = bitrate;
+    atom->_.alac.bits_per_sample = bits_per_sample;
+    atom->_.alac.compression_id = compression_id;
+    atom->_.alac.audio_packet_size = audio_packet_size;
     atom->_.alac.sample_rate = sample_rate;
+    atom->_.alac.sub_alac = sub_alac;
     atom->display = display_alac;
     atom->build = build_alac;
     atom->size = size_alac;
@@ -431,7 +464,42 @@ qt_alac_new(unsigned max_samples_per_frame,
 }
 
 struct qt_atom*
-qt_stts_new(unsigned times_count, ...)
+qt_sub_alac_new(unsigned max_samples_per_frame,
+                unsigned bits_per_sample,
+                unsigned history_multiplier,
+                unsigned initial_history,
+                unsigned maximum_K,
+                unsigned channels,
+                unsigned unknown,
+                unsigned max_coded_frame_size,
+                unsigned bitrate,
+                unsigned sample_rate)
+{
+    struct qt_atom *atom = malloc(sizeof(struct qt_atom));
+    set_atom_name(atom, "alac");
+    atom->type = QT_SUB_ALAC;
+    atom->_.sub_alac.max_samples_per_frame = max_samples_per_frame;
+    atom->_.sub_alac.bits_per_sample = bits_per_sample;
+    atom->_.sub_alac.history_multiplier = history_multiplier;
+    atom->_.sub_alac.initial_history = initial_history;
+    atom->_.sub_alac.maximum_K = maximum_K;
+    atom->_.sub_alac.channels = channels;
+    atom->_.sub_alac.unknown = unknown;
+    atom->_.sub_alac.max_coded_frame_size = max_coded_frame_size;
+    atom->_.sub_alac.bitrate = bitrate;
+    atom->_.sub_alac.sample_rate = sample_rate;
+    atom->display = display_sub_alac;
+    atom->build = build_sub_alac;
+    atom->size = size_sub_alac;
+    atom->free = free_sub_alac;
+    return atom;
+}
+
+struct qt_atom*
+qt_stts_new(unsigned version,
+            unsigned flags,
+            unsigned times_count,
+            ...)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     unsigned i;
@@ -439,6 +507,8 @@ qt_stts_new(unsigned times_count, ...)
 
     set_atom_name(atom, "stts");
     atom->type = QT_STTS;
+    atom->_.stts.version = version;
+    atom->_.stts.flags = flags;
     atom->_.stts.times_count = times_count;
     atom->_.stts.times = malloc(times_count * sizeof(struct stts_time));
 
@@ -457,7 +527,10 @@ qt_stts_new(unsigned times_count, ...)
 }
 
 struct qt_atom*
-qt_stsc_new(unsigned entries_count, ...)
+qt_stsc_new(unsigned version,
+            unsigned flags,
+            unsigned entries_count,
+            ...)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     unsigned i;
@@ -465,6 +538,8 @@ qt_stsc_new(unsigned entries_count, ...)
 
     set_atom_name(atom, "stsc");
     atom->type = QT_STSC;
+    atom->_.stsc.version = version;
+    atom->_.stsc.flags = flags;
     atom->_.stsc.entries_count = entries_count;
     atom->_.stsc.entries = malloc(entries_count * sizeof(struct stsc_entry));
 
@@ -484,11 +559,17 @@ qt_stsc_new(unsigned entries_count, ...)
 }
 
 struct qt_atom*
-qt_stsz_new(unsigned frames_count)
+qt_stsz_new(unsigned version,
+            unsigned flags,
+            unsigned frame_byte_size,
+            unsigned frames_count)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "stsz");
     atom->type = QT_STSZ;
+    atom->_.stsz.version = version;
+    atom->_.stsz.flags = flags;
+    atom->_.stsz.frame_byte_size = frame_byte_size;
     atom->_.stsz.frames_count = frames_count;
     atom->_.stsz.frame_size = calloc(frames_count, sizeof(unsigned));
     atom->display = display_stsz;
@@ -499,11 +580,15 @@ qt_stsz_new(unsigned frames_count)
 }
 
 struct qt_atom*
-qt_stco_new(unsigned chunk_offsets)
+qt_stco_new(unsigned version,
+            unsigned flags,
+            unsigned chunk_offsets)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "stco");
     atom->type = QT_STCO;
+    atom->_.stco.version = version;
+    atom->_.stco.flags = flags;
     atom->_.stco.offsets_count = chunk_offsets;
     atom->_.stco.chunk_offset = calloc(chunk_offsets, sizeof(unsigned));
     atom->display = display_stco;
@@ -514,19 +599,25 @@ qt_stco_new(unsigned chunk_offsets)
 }
 
 struct qt_atom*
-qt_meta_new(unsigned sub_atoms, ...)
+qt_meta_new(unsigned version,
+            unsigned flags,
+            unsigned sub_atom_count,
+            ...)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     va_list ap;
 
     set_atom_name(atom, "meta");
     atom->type = QT_META;
-    atom->_.meta = NULL;
+    atom->_.meta.version = version;
+    atom->_.meta.flags = flags;
+    atom->_.meta.sub_atoms = NULL;
 
-    va_start(ap, sub_atoms);
-    for (; sub_atoms; sub_atoms--) {
+    va_start(ap, sub_atom_count);
+    for (; sub_atom_count; sub_atom_count--) {
         struct qt_atom *sub_atom = va_arg(ap, struct qt_atom*);
-        atom->_.meta = atom_list_append(atom->_.meta, sub_atom);
+        atom->_.meta.sub_atoms =
+            atom_list_append(atom->_.meta.sub_atoms, sub_atom);
     }
     va_end(ap);
 
@@ -538,7 +629,7 @@ qt_meta_new(unsigned sub_atoms, ...)
 }
 
 struct qt_atom*
-qt_data_new(int type, unsigned data_size, const uint8_t data[])
+qt_data_new(unsigned type, unsigned data_size, const uint8_t data[])
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "data");
@@ -867,7 +958,8 @@ display_mvhd(const struct qt_atom *self,
 {
     display_fields(
         indent, output, self->name, 13,
-        "version",           A_INT,      self->_.mvhd.version,
+        "version",           A_UNSIGNED, self->_.mvhd.version,
+        "flags",             A_UNSIGNED, self->_.mvhd.flags,
         "created date",      A_UINT64,   self->_.mvhd.created_date,
         "modified date",     A_UINT64,   self->_.mvhd.modified_date,
         "time scale",        A_UNSIGNED, self->_.mvhd.time_scale,
@@ -888,7 +980,8 @@ parse_mvhd(BitstreamReader *stream,
            unsigned atom_size,
            const char atom_name[4])
 {
-    int version;
+    unsigned version;
+    unsigned flags;
     qt_time_t created_date;
     qt_time_t modified_date;
     unsigned time_scale;
@@ -903,7 +996,7 @@ parse_mvhd(BitstreamReader *stream,
     unsigned next_track_id;
 
     version = stream->read(stream, 8);
-    stream->skip(stream, 24);  /*flags*/
+    flags = stream->read(stream, 24);
     if (version) {
         created_date = stream->read_64(stream, 64);
         modified_date = stream->read_64(stream, 64);
@@ -935,6 +1028,7 @@ parse_mvhd(BitstreamReader *stream,
                   &next_track_id);
 
     return qt_mvhd_new(version,
+                       flags,
                        created_date,
                        modified_date,
                        time_scale,
@@ -954,8 +1048,8 @@ build_mvhd(const struct qt_atom *self,
            BitstreamWriter *stream)
 {
     build_header(self, stream);
-    stream->write(stream, 8, self->_.mvhd.version ? 1 : 0); /*version*/
-    stream->write(stream, 24, 0);                           /*flags*/
+    stream->write(stream, 8, self->_.mvhd.version);
+    stream->write(stream, 24, self->_.mvhd.flags);
     if (self->_.mvhd.version) {
         stream->write_64(stream, 64, self->_.mvhd.created_date);
         stream->write_64(stream, 64, self->_.mvhd.modified_date);
@@ -1260,57 +1354,88 @@ display_hdlr(const struct qt_atom *self,
              unsigned indent,
              FILE *output)
 {
-    unsigned i;
+    display_fields(
+        indent, output, self->name, 8,
+        "version",         A_UNSIGNED,  self->_.hdlr.version,
+        "flags",           A_UNSIGNED,  self->_.hdlr.flags,
+        "QT type",         A_STRING, 4, self->_.hdlr.qt_type,
+        "QT subtype",      A_STRING, 4, self->_.hdlr.qt_subtype,
+        "QT manufacturer", A_STRING, 4, self->_.hdlr.qt_manufacturer,
+        "QT flags",        A_UNSIGNED,  self->_.hdlr.qt_flags,
+        "QT flags mask",   A_UNSIGNED,  self->_.hdlr.qt_flags_mask,
+        "padding",         A_UNSIGNED,  self->_.hdlr.padding);
+}
 
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fputs(" - qt type : \"", output);
-    display_name(self->_.hdlr.qt_type, output);
-    fputs("\"\n", output);
+static struct qt_atom*
+parse_hdlr(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    unsigned version;
+    unsigned flags;
+    char qt_type[4];
+    char qt_subtype[4];
+    char qt_manufacturer[4];
+    unsigned qt_flags;
+    unsigned qt_flags_mask;
+    unsigned component_name_length;
+    char *component_name;
+    unsigned padding;
+    struct qt_atom *atom;
 
-    display_indent(indent, output);
-    fputs("     - qt subtype : \"", output);
-    display_name(self->_.hdlr.qt_subtype, output);
-    fputs("\"\n", output);
+    version = stream->read(stream, 8);
+    flags = stream->read(stream, 24);
+    stream->read_bytes(stream, (uint8_t*)qt_type, 4);
+    stream->read_bytes(stream, (uint8_t*)qt_subtype, 4);
+    stream->read_bytes(stream, (uint8_t*)qt_manufacturer, 4);
+    qt_flags = stream->read(stream, 32);
+    qt_flags_mask = stream->read(stream, 32);
+    component_name_length = stream->read(stream, 8);
+    component_name = malloc(component_name_length);
+    stream->read_bytes(stream,
+                       (uint8_t*)component_name,
+                       component_name_length);
+    padding = atom_size - (25 + component_name_length);
+    stream->skip_bytes(stream, padding);
 
-    display_indent(indent, output);
-    fputs("     - qt manufacturer : \"", output);
-    display_name(self->_.hdlr.qt_manufacturer, output);
-    fputs("\"\n", output);
+    atom = qt_hdlr_new(version,
+                       flags,
+                       qt_type,
+                       qt_subtype,
+                       qt_manufacturer,
+                       qt_flags,
+                       qt_flags_mask,
+                       component_name_length,
+                       component_name,
+                       padding);
 
-    display_indent(indent, output);
-    fputs("     - component name \"", output);
-    for (i = 0; i < self->_.hdlr.component_name_length; i++) {
-        fputc(self->_.hdlr.component_name[i], output);
-    }
-    fputs("\"\n", output);
+    free(component_name);
+    return atom;
 }
 
 static void
 build_hdlr(const struct qt_atom *self,
            BitstreamWriter *stream)
 {
-    const uint8_t null[4] = {0, 0, 0, 0};
-    const uint8_t soun[4] = {0x73, 0x6F, 0x75, 0x6E};
-
     build_header(self, stream);
-    stream->write(stream, 8, 0);          /*version*/
-    stream->write(stream, 24, 0);         /*flags*/
-    stream->write_bytes(stream, null, 4); /*QuickTime type*/
-    stream->write_bytes(stream, soun, 4); /*QuickTime subtype*/
-    stream->write_bytes(stream, null, 4); /*QuickTime manufacturer*/
-    stream->write_bytes(stream, null, 4); /*QuickTime reserved flags*/
-    stream->write_bytes(stream, null, 4); /*QuickTime reserved flags mask*/
+    stream->write(stream, 8, self->_.hdlr.version);
+    stream->write(stream, 24, self->_.hdlr.flags);
+    stream->write_bytes(stream, self->_.hdlr.qt_type, 4);
+    stream->write_bytes(stream, self->_.hdlr.qt_subtype, 4);
+    stream->write_bytes(stream, self->_.hdlr.qt_manufacturer, 4);
+    stream->write(stream, 32, self->_.hdlr.qt_flags);
+    stream->write(stream, 32, self->_.hdlr.qt_flags_mask);
     stream->write(stream, 8, self->_.hdlr.component_name_length);
     stream->write_bytes(stream,
                         self->_.hdlr.component_name,
                         self->_.hdlr.component_name_length);
+    stream->write(stream, 8 * self->_.hdlr.padding, 0);
 }
 
 static unsigned
 size_hdlr(const struct qt_atom *self)
 {
-    return 33 + self->_.hdlr.component_name_length;
+    return 33 + self->_.hdlr.component_name_length + self->_.hdlr.padding;
 }
 
 static void
@@ -1327,9 +1452,23 @@ display_smhd(const struct qt_atom *self,
              unsigned indent,
              FILE *output)
 {
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fputs("\n", output);
+    display_fields(
+        indent, output, self->name, 3,
+        "version", A_UNSIGNED, self->_.smhd.version,
+        "flags",   A_UNSIGNED, self->_.smhd.flags,
+        "balance", A_UNSIGNED, self->_.smhd.balance);
+}
+
+static struct qt_atom*
+parse_smhd(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    unsigned version = stream->read(stream, 8);
+    unsigned flags = stream->read(stream, 24);
+    unsigned balance = stream->read(stream, 16);
+    stream->skip(stream, 16);
+    return qt_smhd_new(version, flags, balance);
 }
 
 static void
@@ -1337,9 +1476,9 @@ build_smhd(const struct qt_atom *self,
            BitstreamWriter *stream)
 {
     build_header(self, stream);
-    stream->write(stream, 8, 0);  /*version*/
-    stream->write(stream, 24, 0); /*flags*/
-    stream->write(stream, 16, 0); /*audio balance*/
+    stream->write(stream, 8, self->_.smhd.version);
+    stream->write(stream, 24, self->_.smhd.flags);
+    stream->write(stream, 16, self->_.smhd.balance);
     stream->write(stream, 16, 0); /*padding*/
 }
 
@@ -1363,12 +1502,33 @@ display_dref(const struct qt_atom *self,
              FILE *output)
 {
     struct qt_atom_list *list;
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fputs("\n", output);
-    for (list = self->_.dref; list; list = list->next) {
+
+    display_fields(
+        indent, output, self->name, 3,
+        "version",         A_UNSIGNED, self->_.dref.version,
+        "flags",           A_UNSIGNED, self->_.dref.flags,
+        "reference atoms", A_UNSIGNED, atom_list_len(self->_.dref.references));
+
+    for (list = self->_.dref.references; list; list = list->next) {
         list->atom->display(list->atom, indent + 1, output);
     }
+}
+
+static struct qt_atom*
+parse_dref(BitstreamReader *stream,
+           unsigned atom_size,
+           const char *atom_name)
+{
+    unsigned version = stream->read(stream, 8);
+    unsigned flags = stream->read(stream, 24);
+    unsigned reference_atom_count = stream->read(stream, 32);
+    struct qt_atom *dref = qt_dref_new(version, flags, 0);
+    for (; reference_atom_count; reference_atom_count--) {
+        struct qt_atom *reference = qt_atom_parse(stream);
+        dref->_.dref.references =
+            atom_list_append(dref->_.dref.references, reference);
+    }
+    return dref;
 }
 
 static void
@@ -1378,11 +1538,13 @@ build_dref(const struct qt_atom *self,
     struct qt_atom_list *reference;
 
     build_header(self, stream);
-    stream->write(stream, 8, 0);  /*version*/
-    stream->write(stream, 24, 0); /*flags*/
+    stream->write(stream, 8, self->_.dref.version);
+    stream->write(stream, 24, self->_.dref.flags);
     /*number of references*/
-    stream->write(stream, 32, atom_list_len(self->_.dref));
-    for (reference = self->_.dref; reference; reference = reference->next) {
+    stream->write(stream, 32, atom_list_len(self->_.dref.references));
+    for (reference = self->_.dref.references;
+         reference;
+         reference = reference->next) {
         reference->atom->build(reference->atom, stream);
     }
 }
@@ -1392,7 +1554,7 @@ size_dref(const struct qt_atom *self)
 {
     unsigned size = 8 + 8;
     struct qt_atom_list *reference;
-    for (reference = self->_.dref;
+    for (reference = self->_.dref.references;
          reference;
          reference = reference->next) {
         size += reference->atom->size(reference->atom);
@@ -1403,11 +1565,11 @@ size_dref(const struct qt_atom *self)
 static void
 free_dref(struct qt_atom *self)
 {
-    atom_list_free(self->_.dref);
+    atom_list_free(self->_.dref.references);
     free(self);
 }
 
-/*** stst ***/
+/*** stsd ***/
 
 static void
 display_stsd(const struct qt_atom *self,
@@ -1415,27 +1577,51 @@ display_stsd(const struct qt_atom *self,
              FILE *output)
 {
     struct qt_atom_list *list;
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fputs("\n", output);
-    for (list = self->_.stsd; list; list = list->next) {
+
+    display_fields(
+        indent, output, self->name, 3,
+        "version",           A_UNSIGNED, self->_.stsd.version,
+        "flags",             A_UNSIGNED, self->_.stsd.flags,
+        "description atoms", A_UNSIGNED,
+        atom_list_len(self->_.stsd.descriptions));
+
+    for (list = self->_.stsd.descriptions; list; list = list->next) {
         list->atom->display(list->atom, indent + 1, output);
     }
+}
+
+static struct qt_atom*
+parse_stsd(BitstreamReader *stream,
+           unsigned atom_size,
+           const char *atom_name)
+{
+    unsigned version = stream->read(stream, 8);
+    unsigned flags = stream->read(stream, 24);
+    unsigned description_atom_count = stream->read(stream, 32);
+    struct qt_atom *stsd = qt_stsd_new(version, flags, 0);
+    for (; description_atom_count; description_atom_count--) {
+        struct qt_atom *description = qt_atom_parse(stream);
+        stsd->_.stsd.descriptions =
+            atom_list_append(stsd->_.stsd.descriptions, description);
+    }
+    return stsd;
 }
 
 static void
 build_stsd(const struct qt_atom *self,
            BitstreamWriter *stream)
 {
-    struct qt_atom_list *reference;
+    struct qt_atom_list *descriptions;
 
     build_header(self, stream);
-    stream->write(stream, 8, 0);  /*version*/
-    stream->write(stream, 24, 0); /*flags*/
-    /*number of references*/
-    stream->write(stream, 32, atom_list_len(self->_.stsd));
-    for (reference = self->_.stsd; reference; reference = reference->next) {
-        reference->atom->build(reference->atom, stream);
+    stream->write(stream, 8, self->_.stsd.version);
+    stream->write(stream, 24, self->_.stsd.flags);
+    /*number of descriptions*/
+    stream->write(stream, 32, atom_list_len(self->_.stsd.descriptions));
+    for (descriptions = self->_.stsd.descriptions;
+         descriptions;
+         descriptions = descriptions->next) {
+        descriptions->atom->build(descriptions->atom, stream);
     }
 }
 
@@ -1443,11 +1629,11 @@ static unsigned
 size_stsd(const struct qt_atom *self)
 {
     unsigned size = 8 + 8;
-    struct qt_atom_list *reference;
-    for (reference = self->_.stsd;
-         reference;
-         reference = reference->next) {
-        size += reference->atom->size(reference->atom);
+    struct qt_atom_list *descriptions;
+    for (descriptions = self->_.stsd.descriptions;
+         descriptions;
+         descriptions = descriptions->next) {
+        size += descriptions->atom->size(descriptions->atom);
     }
     return size;
 }
@@ -1455,7 +1641,7 @@ size_stsd(const struct qt_atom *self)
 static void
 free_stsd(struct qt_atom *self)
 {
-    atom_list_free(self->_.stsd);
+    atom_list_free(self->_.stsd.descriptions);
     free(self);
 }
 
@@ -1466,88 +1652,188 @@ display_alac(const struct qt_atom *self,
              unsigned indent,
              FILE *output)
 {
-    const char format[] = "     - %21s : %u\n";
+    display_fields(
+        indent, output, self->name, 9,
+        "reference index",   A_UNSIGNED, self->_.alac.reference_index,
+        "version",           A_UNSIGNED, self->_.alac.version,
+        "revision level",    A_UNSIGNED, self->_.alac.revision_level,
+        "vendor",            A_STRING, 4, self->_.alac.vendor,
+        "channels",          A_UNSIGNED, self->_.alac.channels,
+        "bits per sample",   A_UNSIGNED, self->_.alac.bits_per_sample,
+        "compression ID",    A_UNSIGNED, self->_.alac.compression_id,
+        "audio packet size", A_UNSIGNED, self->_.alac.audio_packet_size,
+        "sample rate",       A_UNSIGNED, self->_.alac.sample_rate);
+    self->_.alac.sub_alac->display(self->_.alac.sub_alac, indent + 1, output);
+}
 
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fprintf(output, format + 4, "max samples per frame",
-            self->_.alac.max_samples_per_frame);
+static struct qt_atom*
+parse_alac(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    unsigned reference_index;
+    unsigned version;
+    unsigned revision_level;
+    uint8_t vendor[4];
+    unsigned channels;
+    unsigned bits_per_sample;
+    unsigned compression_id;
+    unsigned audio_packet_size;
+    unsigned sample_rate;
+    struct qt_atom *sub_alac;
 
-    display_indent(indent, output);
-    fprintf(output, format, "bits-per-sample",
-            self->_.alac.bits_per_sample);
+    unsigned sub_alac_size;
+    char sub_alac_name[4];
 
-    display_indent(indent, output);
-    fprintf(output, format, "history multiplier",
-            self->_.alac.history_multiplier);
+    stream->parse(stream, "48p 3*16u 4b 4*16u 32u",
+                  &reference_index,
+                  &version,
+                  &revision_level,
+                  vendor,
+                  &channels,
+                  &bits_per_sample,
+                  &compression_id,
+                  &audio_packet_size,
+                  &sample_rate);
 
-    display_indent(indent, output);
-    fprintf(output, format, "initial history",
-            self->_.alac.initial_history);
+    sub_alac_size = stream->read(stream, 32);
+    stream->read_bytes(stream, (uint8_t*)sub_alac_name, 4);
+    sub_alac = parse_sub_alac(stream, sub_alac_size - 8, sub_alac_name);
+    assert(sub_alac_size == sub_alac->size(sub_alac));
 
-    display_indent(indent, output);
-    fprintf(output, format, "maximum K",
-            self->_.alac.maximum_K);
-
-    display_indent(indent, output);
-    fprintf(output, format, "channels",
-            self->_.alac.channels);
-
-    display_indent(indent, output);
-    fprintf(output, format, "max coded frame size",
-            self->_.alac.max_coded_frame_size);
-
-    display_indent(indent, output);
-    fprintf(output, format, "bitrate",
-            self->_.alac.bitrate);
-
-    display_indent(indent, output);
-    fprintf(output, format, "sample rate",
-            self->_.alac.sample_rate);
+    return qt_alac_new(reference_index,
+                       version,
+                       revision_level,
+                       vendor,
+                       channels,
+                       bits_per_sample,
+                       compression_id,
+                       audio_packet_size,
+                       sample_rate,
+                       sub_alac);
 }
 
 static void
 build_alac(const struct qt_atom *self,
            BitstreamWriter *stream)
 {
-    const uint8_t alac_id[4] = {0x61, 0x6C, 0x61, 0x63};
-
     build_header(self, stream);
-    stream->write(stream, 48, 0);     /*reserved*/
-    stream->write(stream, 16, 1);     /*reference index*/
-    stream->write(stream, 16, 0);     /*version*/
-    stream->write(stream, 16, 0);     /*revision level*/
-    stream->write(stream, 32, 0);     /*vendor*/
-    stream->write(stream, 16, self->_.alac.channels);
-    stream->write(stream, 16, self->_.alac.bits_per_sample);
-    stream->write(stream, 16, 0);     /*compression ID*/
-    stream->write(stream, 16, 0);     /*audio packet size*/
-    stream->write(stream, 32, 44100); /*fake sample rate*/
-
-    stream->write(stream, 32, 36);    /*sub ALAC size*/
-    stream->write_bytes(stream, alac_id, 4);
-    stream->write(stream, 32, 0);     /*padding*/
-    stream->write(stream, 32, self->_.alac.max_samples_per_frame);
-    stream->write(stream, 8, 0);      /*padding*/
-    stream->write(stream, 8, self->_.alac.bits_per_sample);
-    stream->write(stream, 8, self->_.alac.history_multiplier);
-    stream->write(stream, 8, self->_.alac.initial_history);
-    stream->write(stream, 8, self->_.alac.maximum_K);
-    stream->write(stream, 8, self->_.alac.channels);
-    stream->write(stream, 16, 0x00FF); /*unknown*/
-    stream->write(stream, 32, self->_.alac.max_coded_frame_size);
-    stream->write(stream, 32, self->_.alac.bitrate);
-    stream->write(stream, 32, self->_.alac.sample_rate);
+    stream->build(stream, "48p 3*16u 4b 4*16u 32u",
+                  self->_.alac.reference_index,
+                  self->_.alac.version,
+                  self->_.alac.revision_level,
+                  self->_.alac.vendor,
+                  self->_.alac.channels,
+                  self->_.alac.bits_per_sample,
+                  self->_.alac.compression_id,
+                  self->_.alac.audio_packet_size,
+                  self->_.alac.sample_rate);
+    self->_.alac.sub_alac->build(self->_.alac.sub_alac, stream);
 }
 
 static unsigned
 size_alac(const struct qt_atom *self)
 {
-    return 72;
+    return 36 + self->_.alac.sub_alac->size(self->_.alac.sub_alac);
 }
 
 static void
 free_alac(struct qt_atom *self)
+{
+    self->_.alac.sub_alac->free(self->_.alac.sub_alac);
+    free(self);
+}
+
+/*** sub alac ***/
+
+static void
+display_sub_alac(const struct qt_atom *self,
+                 unsigned indent,
+                 FILE *output)
+{
+    display_fields(
+        indent, output, self->name, 10,
+        "max samples per frame", A_UNSIGNED,
+        self->_.sub_alac.max_samples_per_frame,
+        "bits per sample",       A_UNSIGNED, self->_.sub_alac.bits_per_sample,
+        "history multiplier",    A_UNSIGNED,
+        self->_.sub_alac.history_multiplier,
+        "initial history",       A_UNSIGNED, self->_.sub_alac.initial_history,
+        "maximum K",             A_UNSIGNED, self->_.sub_alac.maximum_K,
+        "channels",              A_UNSIGNED, self->_.sub_alac.channels,
+        "unknown",               A_UNSIGNED, self->_.sub_alac.unknown,
+        "max coded frame size",  A_UNSIGNED,
+        self->_.sub_alac.max_coded_frame_size,
+        "bitrate",               A_UNSIGNED, self->_.sub_alac.bitrate,
+        "sample rate",           A_UNSIGNED, self->_.sub_alac.sample_rate);
+}
+
+static struct qt_atom*
+parse_sub_alac(BitstreamReader *stream,
+               unsigned atom_size,
+               const char atom_name[4])
+{
+    unsigned max_samples_per_frame;
+    unsigned bits_per_sample;
+    unsigned history_multiplier;
+    unsigned initial_history;
+    unsigned maximum_K;
+    unsigned channels;
+    unsigned unknown;
+    unsigned max_coded_frame_size;
+    unsigned bitrate;
+    unsigned sample_rate;
+
+    stream->parse(stream, "32p 32u 8p 5*8u 16u 3*32u",
+                  &max_samples_per_frame,
+                  &bits_per_sample,
+                  &history_multiplier,
+                  &initial_history,
+                  &maximum_K,
+                  &channels,
+                  &unknown,
+                  &max_coded_frame_size,
+                  &bitrate,
+                  &sample_rate);
+
+   return qt_sub_alac_new(max_samples_per_frame,
+                          bits_per_sample,
+                          history_multiplier,
+                          initial_history,
+                          maximum_K,
+                          channels,
+                          unknown,
+                          max_coded_frame_size,
+                          bitrate,
+                          sample_rate);
+}
+
+static void
+build_sub_alac(const struct qt_atom *self,
+               BitstreamWriter *stream)
+{
+    build_header(self, stream);
+    stream->build(stream, "32p 32u 8p 5*8u 16u 3*32u",
+                  self->_.sub_alac.max_samples_per_frame,
+                  self->_.sub_alac.bits_per_sample,
+                  self->_.sub_alac.history_multiplier,
+                  self->_.sub_alac.initial_history,
+                  self->_.sub_alac.maximum_K,
+                  self->_.sub_alac.channels,
+                  self->_.sub_alac.unknown,
+                  self->_.sub_alac.max_coded_frame_size,
+                  self->_.sub_alac.bitrate,
+                  self->_.sub_alac.sample_rate);
+}
+
+static unsigned
+size_sub_alac(const struct qt_atom *self)
+{
+    return 36;
+}
+
+static void
+free_sub_alac(struct qt_atom *self)
 {
     free(self);
 }
@@ -1560,15 +1846,41 @@ display_stts(const struct qt_atom *self,
              FILE *output)
 {
     unsigned i;
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fprintf(output, " - %u entries\n", self->_.stts.times_count);
+    display_fields(
+        indent, output, self->name, 3,
+        "version",     A_UNSIGNED, self->_.stts.version,
+        "flags",       A_UNSIGNED, self->_.stts.flags,
+        "times count", A_UNSIGNED, self->_.stts.times_count);
     for (i = 0; i < self->_.stts.times_count; i++) {
         display_indent(indent, output);
-        fprintf(output, "     - %u occurences, %u PCM frames\n",
+        fprintf(output, "     - %d) %u occurences, %u PCM frames\n",
+                i,
                 self->_.stts.times[i].occurences,
                 self->_.stts.times[i].pcm_frame_count);
     }
+}
+
+static struct qt_atom*
+parse_stts(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    unsigned i;
+    unsigned version = stream->read(stream, 8);
+    unsigned flags = stream->read(stream, 24);
+    unsigned times_count = stream->read(stream, 32);
+    struct qt_atom *stts = qt_stts_new(version, flags, 0);
+
+    stts->_.stts.times_count = times_count;
+    stts->_.stts.times = realloc(stts->_.stts.times,
+                                 times_count * sizeof(struct stts_time));
+
+    for (i = 0; i < times_count; i++) {
+        stts->_.stts.times[i].occurences = stream->read(stream, 32);
+        stts->_.stts.times[i].pcm_frame_count = stream->read(stream, 32);
+    }
+
+    return stts;
 }
 
 static void
@@ -1578,8 +1890,8 @@ build_stts(const struct qt_atom *self,
     unsigned i;
 
     build_header(self, stream);
-    stream->write(stream, 8, 0);  /*version*/
-    stream->write(stream, 24, 0); /*flags*/
+    stream->write(stream, 8, self->_.stts.version);
+    stream->write(stream, 24, self->_.stts.flags);
     stream->write(stream, 32, self->_.stts.times_count);
     for (i = 0; i < self->_.stts.times_count; i++) {
         stream->write(stream, 32, self->_.stts.times[i].occurences);
@@ -1608,9 +1920,11 @@ display_stsc(const struct qt_atom *self,
              FILE *output)
 {
     unsigned i;
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fprintf(output, " - %u entries\n", self->_.stts.times_count);
+    display_fields(
+        indent, output, self->name, 3,
+        "version", A_UNSIGNED, self->_.stsc.version,
+        "flags",   A_UNSIGNED, self->_.stsc.flags,
+        "chunks",  A_UNSIGNED, self->_.stsc.entries_count);
     for (i = 0; i < self->_.stsc.entries_count; i++) {
         display_indent(indent, output);
         fprintf(output, "     - %u first chunk, %u frames per chunk\n",
@@ -1620,6 +1934,30 @@ display_stsc(const struct qt_atom *self,
 
 }
 
+static struct qt_atom*
+parse_stsc(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    unsigned i;
+    unsigned version = stream->read(stream, 8);
+    unsigned flags = stream->read(stream, 24);
+    unsigned entries_count = stream->read(stream, 32);
+    struct qt_atom *stsc = qt_stsc_new(version, flags, 0);
+
+    stsc->_.stsc.entries_count = entries_count;
+    stsc->_.stsc.entries = realloc(stsc->_.stsc.entries,
+                                   entries_count * sizeof(struct stsc_entry));
+
+    for (i = 0; i < entries_count; i++) {
+        stsc->_.stsc.entries[i].first_chunk = stream->read(stream, 32);
+        stsc->_.stsc.entries[i].frames_per_chunk = stream->read(stream, 32);
+        stsc->_.stsc.entries[i].description_index = stream->read(stream, 32);
+    }
+
+    return stsc;
+}
+
 static void
 build_stsc(const struct qt_atom *self,
            BitstreamWriter *stream)
@@ -1627,8 +1965,8 @@ build_stsc(const struct qt_atom *self,
     unsigned i;
 
     build_header(self, stream);
-    stream->write(stream, 8, 0);  /*version*/
-    stream->write(stream, 24, 0); /*flags*/
+    stream->write(stream, 8, self->_.stsc.version);
+    stream->write(stream, 24, self->_.stsc.flags);
     stream->write(stream, 32, self->_.stsc.entries_count);
     for (i = 0; i < self->_.stsc.entries_count; i++) {
         stream->write(stream, 32, self->_.stsc.entries[i].first_chunk);
@@ -1659,13 +1997,36 @@ display_stsz(const struct qt_atom *self,
 {
     unsigned i;
 
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fprintf(output, " - %u sizes\n", self->_.stsz.frames_count);
+    display_fields(
+        indent, output, self->name, 4,
+        "version",         A_UNSIGNED, self->_.stsz.version,
+        "flags",           A_UNSIGNED, self->_.stsz.flags,
+        "frame byte size", A_UNSIGNED, self->_.stsz.frame_byte_size,
+        "frames count",    A_UNSIGNED, self->_.stsz.frames_count);
     for (i = 0; i < self->_.stsz.frames_count; i++) {
         display_indent(indent, output);
         fprintf(output, "     - %u) %u bytes\n", i, self->_.stsz.frame_size[i]);
     }
+}
+
+static struct qt_atom*
+parse_stsz(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    unsigned i;
+    unsigned version = stream->read(stream, 8);
+    unsigned flags = stream->read(stream, 24);
+    unsigned frame_byte_size = stream->read(stream, 32);
+    unsigned frame_sizes = stream->read(stream, 32);
+    struct qt_atom *stsz = qt_stsz_new(version,
+                                       flags,
+                                       frame_byte_size,
+                                       frame_sizes);
+    for (i = 0; i < frame_sizes; i++) {
+        stsz->_.stsz.frame_size[i] = stream->read(stream, 32);
+    }
+    return stsz;
 }
 
 static void
@@ -1675,9 +2036,9 @@ build_stsz(const struct qt_atom *self,
     unsigned i;
 
     build_header(self, stream);
-    stream->write(stream, 8, 0);  /*version*/
-    stream->write(stream, 24, 0); /*flags*/
-    stream->write(stream, 32, 0); /*block byte size*/
+    stream->write(stream, 8, self->_.stsz.version);
+    stream->write(stream, 24, self->_.stsz.flags);
+    stream->write(stream, 32, self->_.stsz.frame_byte_size);
     stream->write(stream, 32, self->_.stsz.frames_count);
     for (i = 0; i < self->_.stsz.frames_count; i++) {
         stream->write(stream, 32, self->_.stsz.frame_size[i]);
@@ -1706,13 +2067,31 @@ display_stco(const struct qt_atom *self,
 {
     unsigned i;
 
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fprintf(output, " - %u offsets\n", self->_.stco.offsets_count);
+    display_fields(
+        indent, output, self->name, 3,
+        "version", A_UNSIGNED, self->_.stco.version,
+        "flags",   A_UNSIGNED, self->_.stco.flags,
+        "offsets", A_UNSIGNED, self->_.stco.offsets_count);
     for (i = 0; i < self->_.stco.offsets_count; i++) {
         display_indent(indent, output);
         fprintf(output, "     - %u) 0x%X\n", i, self->_.stco.chunk_offset[i]);
     }
+}
+
+static struct qt_atom*
+parse_stco(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    unsigned i;
+    unsigned version = stream->read(stream, 8);
+    unsigned flags = stream->read(stream, 24);
+    unsigned chunk_offsets = stream->read(stream, 32);
+    struct qt_atom *stco = qt_stco_new(version, flags, chunk_offsets);
+    for (i = 0; i < chunk_offsets; i++) {
+        stco->_.stco.chunk_offset[i] = stream->read(stream, 32);
+    }
+    return stco;
 }
 
 static void
@@ -1722,8 +2101,8 @@ build_stco(const struct qt_atom *self,
     unsigned i;
 
     build_header(self, stream);
-    stream->write(stream, 8, 0);  /*version*/
-    stream->write(stream, 24, 0); /*flags*/
+    stream->write(stream, 8, self->_.stco.version);
+    stream->write(stream, 24, self->_.stco.flags);
     stream->write(stream, 32, self->_.stco.offsets_count);
     for (i = 0; i < self->_.stco.offsets_count; i++) {
         stream->write(stream, 32, self->_.stco.chunk_offset[i]);
@@ -1751,12 +2130,31 @@ display_meta(const struct qt_atom *self,
              FILE *output)
 {
     struct qt_atom_list *list;
-    display_indent(indent, output);
-    display_name(self->name, output);
-    fputs("\n", output);
-    for (list = self->_.meta; list; list = list->next) {
+    display_fields(
+        indent, output, self->name, 2,
+        "version", A_UNSIGNED, self->_.meta.version,
+        "flags",   A_UNSIGNED, self->_.meta.flags);
+    for (list = self->_.meta.sub_atoms; list; list = list->next) {
         list->atom->display(list->atom, indent + 1, output);
     }
+}
+
+static struct qt_atom*
+parse_meta(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    unsigned version = stream->read(stream, 8);
+    unsigned flags = stream->read(stream, 24);
+    struct qt_atom *meta = qt_meta_new(version, flags, 0);
+    atom_size -= 4; /*remove header*/
+    while (atom_size) {
+        struct qt_atom *sub_atom = qt_atom_parse(stream);
+        atom_size -= sub_atom->size(sub_atom);
+        meta->_.meta.sub_atoms = atom_list_append(meta->_.meta.sub_atoms,
+                                                  sub_atom);
+    }
+    return meta;
 }
 
 static void
@@ -1765,9 +2163,9 @@ build_meta(const struct qt_atom *self,
 {
     struct qt_atom_list *list;
     build_header(self, stream);
-    stream->write(stream, 8, 0);  /*version*/
-    stream->write(stream, 24, 0); /*flags*/
-    for (list = self->_.meta; list; list = list->next) {
+    stream->write(stream, 8, self->_.meta.version);
+    stream->write(stream, 24, self->_.meta.flags);
+    for (list = self->_.meta.sub_atoms; list; list = list->next) {
         list->atom->build(list->atom, stream);
     }
 }
@@ -1777,7 +2175,7 @@ size_meta(const struct qt_atom *self)
 {
     unsigned size = 8 + 4; /*header + version + flags*/
     struct qt_atom_list *list;
-    for (list = self->_.tree; list; list = list->next) {
+    for (list = self->_.meta.sub_atoms; list; list = list->next) {
         size += list->atom->size(list->atom);
     }
     return size;
@@ -1786,7 +2184,7 @@ size_meta(const struct qt_atom *self)
 static void
 free_meta(struct qt_atom *self)
 {
-    atom_list_free(self->_.meta);
+    atom_list_free(self->_.meta.sub_atoms);
     free(self);
 }
 
@@ -1801,15 +2199,44 @@ display_data(const struct qt_atom *self,
 
     display_indent(indent, output);
     display_name(self->name, output);
-    fprintf(output, " - (%d) \"", self->_.data.type);
-    for (i = 0; i < self->_.data.data_size; i++) {
-        if (isprint(self->_.data.data[i])) {
-            fputc(self->_.data.data[i], output);
-        } else {
-            fprintf(output, "\\x%2.2X", self->_.data.data[i]);
+    fprintf(output, " - (%u) ", self->_.data.type);
+    if (self->_.data.type == 1) {
+        /*textual data*/
+        fputs("\"", output);
+        for (i = 0; i < self->_.data.data_size; i++) {
+            if (isprint(self->_.data.data[i])) {
+                fputc(self->_.data.data[i], output);
+            } else {
+                fprintf(output, "\\x%2.2X", self->_.data.data[i]);
+            }
         }
+        fputs("\"", output);
+    } else {
+        /*binary data*/
+        fprintf(output, "%u bytes", self->_.data.data_size);
     }
-    fputs("\"\n", output);
+    fputs("\n", output);
+}
+
+static struct qt_atom*
+parse_data(BitstreamReader *stream,
+           unsigned atom_size,
+           const char atom_name[4])
+{
+    unsigned type;
+    unsigned data_size;
+    uint8_t *data;
+    struct qt_atom *atom;
+
+    assert(atom_size > 8);
+    type = stream->read(stream, 32);
+    stream->skip(stream, 32);
+    data_size = atom_size - 8;
+    data = malloc(data_size);
+    stream->read_bytes(stream, data, data_size);
+    atom = qt_data_new(type, data_size, data);
+    free(data);
+    return atom;
 }
 
 static void
@@ -1817,7 +2244,7 @@ build_data(const struct qt_atom *self,
            BitstreamWriter *stream)
 {
     build_header(self, stream);
-    stream->write(stream, 32, self->_.data.type ? 1 : 0);
+    stream->write(stream, 32, self->_.data.type);
     stream->write(stream, 32, 0); /*reserved*/
     stream->write_bytes(stream, self->_.data.data, self->_.data.data_size);
 }
@@ -1887,12 +2314,26 @@ atom_parser(const char *atom_name)
     if (matches(atom_name, "mvhd")) {return parse_mvhd;}
     if (matches(atom_name, "tkhd")) {return parse_tkhd;}
     if (matches(atom_name, "mdhd")) {return parse_mdhd;}
+    if (matches(atom_name, "hdlr")) {return parse_hdlr;}
+    if (matches(atom_name, "smhd")) {return parse_smhd;}
+    if (matches(atom_name, "dinf")) {return parse_tree;}
+    if (matches(atom_name, "dref")) {return parse_dref;}
     if (matches(atom_name, "trak")) {return parse_tree;}
     if (matches(atom_name, "mdia")) {return parse_tree;}
     if (matches(atom_name, "minf")) {return parse_tree;}
     if (matches(atom_name, "stbl")) {return parse_tree;}
+    if (matches(atom_name, "stsd")) {return parse_stsd;}
+    if (matches(atom_name, "stts")) {return parse_stts;}
+    if (matches(atom_name, "stsc")) {return parse_stsc;}
+    if (matches(atom_name, "stsz")) {return parse_stsz;}
+    if (matches(atom_name, "stco")) {return parse_stco;}
     if (matches(atom_name, "udta")) {return parse_tree;}
+    if (matches(atom_name, "alac")) {return parse_alac;}
+    if (matches(atom_name, "meta")) {return parse_meta;}
+    if (matches(atom_name, "ilst")) {return parse_tree;}
     if (matches(atom_name, "free")) {return parse_free;}
+    if (matches(atom_name, "\xa9""nam")) {return parse_tree;}
+    if (matches(atom_name, "data")) {return parse_data;}
 
     /*catchall for any atoms we don't know*/
     return parse_leaf;
@@ -1968,12 +2409,28 @@ display_fields(unsigned indent,
                 unsigned j;
                 fputs("[", output);
                 for (j = 0; j < length; j++) {
-                    fprintf(output, "%c", array[j]);
+                    fputc(array[j], output);
                     if ((j + 1) < length) {
                         fputs(", ", output);
                     }
                 }
                 fputs("]", output);
+            }
+            break;
+        case A_STRING:
+            {
+                unsigned length = va_arg(ap, unsigned);
+                uint8_t *array = va_arg(ap, uint8_t*);
+                unsigned j;
+                fputs("\"", output);
+                for (j = 0; j < length; j++) {
+                    if (isprint(array[j])) {
+                        fputc(array[j], output);
+                    } else {
+                        fprintf(output, "\\x%2.2X", array[j]);
+                    }
+                }
+                fputs("\"", output);
             }
             break;
         default:

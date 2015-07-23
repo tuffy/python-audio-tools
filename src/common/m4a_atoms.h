@@ -15,6 +15,7 @@ typedef enum {
   QT_DREF,
   QT_STSD,
   QT_ALAC,
+  QT_SUB_ALAC,
   QT_STTS,
   QT_STSC,
   QT_STSZ,
@@ -51,7 +52,8 @@ struct qt_atom {
         } ftyp;
 
         struct {
-            int version;
+            unsigned version;
+            unsigned flags;
             qt_time_t created_date;
             qt_time_t modified_date;
             unsigned time_scale;
@@ -67,7 +69,7 @@ struct qt_atom {
         } mvhd;
 
         struct {
-            int version;
+            unsigned version;
             unsigned flags;
             qt_time_t created_date;
             qt_time_t modified_date;
@@ -82,7 +84,7 @@ struct qt_atom {
         } tkhd;
 
         struct {
-            int version;
+            unsigned version;
             unsigned flags;
             qt_time_t created_date;
             qt_time_t modified_date;
@@ -93,16 +95,48 @@ struct qt_atom {
         } mdhd;
 
         struct {
+            unsigned version;
+            unsigned flags;
             uint8_t qt_type[4];
             uint8_t qt_subtype[4];
             uint8_t qt_manufacturer[4];
+            unsigned qt_flags;
+            unsigned qt_flags_mask;
             unsigned component_name_length;
             uint8_t *component_name;
+            unsigned padding;
         } hdlr;
 
-        struct qt_atom_list *dref;
+        struct {
+            unsigned version;
+            unsigned flags;
+            unsigned balance;
+        } smhd;
 
-        struct qt_atom_list *stsd;
+        struct {
+            unsigned version;
+            unsigned flags;
+            struct qt_atom_list *references;
+        } dref;
+
+        struct {
+            unsigned version;
+            unsigned flags;
+            struct qt_atom_list *descriptions;
+        } stsd;
+
+        struct {
+            unsigned reference_index;
+            unsigned version;
+            unsigned revision_level;
+            uint8_t vendor[4];
+            unsigned channels;
+            unsigned bits_per_sample;
+            unsigned compression_id;
+            unsigned audio_packet_size;
+            unsigned sample_rate;
+            struct qt_atom *sub_alac;
+        } alac;
 
         struct {
             unsigned max_samples_per_frame;
@@ -111,35 +145,49 @@ struct qt_atom {
             unsigned initial_history;
             unsigned maximum_K;
             unsigned channels;
+            unsigned unknown;
             unsigned max_coded_frame_size;
             unsigned bitrate;
             unsigned sample_rate;
-        } alac;
+        } sub_alac;
 
         struct {
+            unsigned version;
+            unsigned flags;
             unsigned times_count;
             struct stts_time *times;
         } stts;
 
         struct {
+            unsigned version;
+            unsigned flags;
             unsigned entries_count;
             struct stsc_entry *entries;
         } stsc;
 
         struct {
+            unsigned version;
+            unsigned flags;
+            unsigned frame_byte_size;
             unsigned frames_count;
             unsigned *frame_size;
         } stsz;
 
         struct {
+            unsigned version;
+            unsigned flags;
             unsigned offsets_count;
             unsigned *chunk_offset;
         } stco;
 
-        struct qt_atom_list *meta;
+        struct {
+            unsigned version;
+            unsigned flags;
+            struct qt_atom_list *sub_atoms;
+        } meta;
 
         struct {
-            int type;
+            unsigned type;
             unsigned data_size;
             uint8_t *data;
         } data;
@@ -200,7 +248,8 @@ qt_ftyp_new(const uint8_t major_brand[4],
             ...);
 
 struct qt_atom*
-qt_mvhd_new(int version,
+qt_mvhd_new(unsigned version,
+            unsigned flags,
             qt_time_t created_date,
             qt_time_t modified_date,
             unsigned time_scale,
@@ -215,7 +264,7 @@ qt_mvhd_new(int version,
             unsigned next_track_id);
 
 struct qt_atom*
-qt_tkhd_new(int version,
+qt_tkhd_new(unsigned version,
             unsigned flags,
             qt_time_t created_date,
             qt_time_t modified_date,
@@ -229,7 +278,7 @@ qt_tkhd_new(int version,
             unsigned video_height);
 
 struct qt_atom*
-qt_mdhd_new(int version,
+qt_mdhd_new(unsigned version,
             unsigned flags,
             qt_time_t created_date,
             qt_time_t modified_date,
@@ -239,59 +288,99 @@ qt_mdhd_new(int version,
             unsigned quality);
 
 struct qt_atom*
-qt_hdlr_new(const char qt_type[4],
+qt_hdlr_new(unsigned version,
+            unsigned flags,
+            const char qt_type[4],
             const char qt_subtype[4],
             const char qt_manufacturer[4],
+            unsigned qt_flags,
+            unsigned qt_flags_mask,
             unsigned component_name_length,
-            const uint8_t component_name[]);
+            const char component_name[],
+            unsigned padding);
 
 struct qt_atom*
-qt_smhd_new(void);
+qt_smhd_new(unsigned version,
+            unsigned flags,
+            unsigned balance);
 
 struct qt_atom*
-qt_dref_new(unsigned reference_atom_count, ...);
+qt_dref_new(unsigned version,
+            unsigned flags,
+            unsigned reference_atom_count,
+            ...);
 
 struct qt_atom*
-qt_stsd_new(unsigned description_atom_count, ...);
+qt_stsd_new(unsigned version,
+            unsigned flags,
+            unsigned description_atom_count,
+            ...);
 
 struct qt_atom*
-qt_alac_new(unsigned max_samples_per_frame,
-            unsigned bits_per_sample,
-            unsigned history_multiplier,
-            unsigned initial_history,
-            unsigned maximum_K,
+qt_alac_new(unsigned reference_index,
+            unsigned version,
+            unsigned revision_level,
+            uint8_t vendor[4],
             unsigned channels,
-            unsigned max_coded_frame_size,
-            unsigned bitrate,
-            unsigned sample_rate);
+            unsigned bits_per_sample,
+            unsigned compression_id,
+            unsigned audio_packet_size,
+            unsigned sample_rate,
+            struct qt_atom *sub_alac);
+
+struct qt_atom*
+qt_sub_alac_new(unsigned max_samples_per_frame,
+                unsigned bits_per_sample,
+                unsigned history_multiplier,
+                unsigned initial_history,
+                unsigned maximum_K,
+                unsigned channels,
+                unsigned unknown,
+                unsigned max_coded_frame_size,
+                unsigned bitrate,
+                unsigned sample_rate);
 
 /*for each "times_count", there is both a frame_count and frame_duration
   unsigned value which populates the atom*/
 struct qt_atom*
-qt_stts_new(unsigned times_count, ...);
+qt_stts_new(unsigned version,
+            unsigned flags,
+            unsigned times_count,
+            ...);
 
 /*for each "entries_count" there is both a first_chunk and frames_per_chunk
   unsigned value which populates the atom*/
 struct qt_atom*
-qt_stsc_new(unsigned entries_count, ...);
+qt_stsc_new(unsigned version,
+            unsigned flags,
+            unsigned entries_count,
+            ...);
 
 /*generates a stsz atom whose frame sizes are all initialized at 0
   one is expected to update them with actual values once
   encoding is finished*/
 struct qt_atom*
-qt_stsz_new(unsigned frames_count);
+qt_stsz_new(unsigned version,
+            unsigned flags,
+            unsigned frame_byte_size,
+            unsigned frames_count);
 
 /*generates a stco atom whose chunk offsets are all initialized at 0
   one is expected to update them with actual values once
   encoding is finished*/
 struct qt_atom*
-qt_stco_new(unsigned chunk_offsets);
+qt_stco_new(unsigned version,
+            unsigned flags,
+            unsigned chunk_offsets);
 
 struct qt_atom*
-qt_meta_new(unsigned sub_atoms, ...);
+qt_meta_new(unsigned version,
+            unsigned flags,
+            unsigned sub_atom_count,
+            ...);
 
 struct qt_atom*
-qt_data_new(int type, unsigned data_size, const uint8_t data[]);
+qt_data_new(unsigned type, unsigned data_size, const uint8_t data[]);
 
 struct qt_atom*
 qt_free_new(unsigned padding_bytes);
