@@ -86,12 +86,6 @@ time_to_mac_utc64(time_t time);
 static atom_parser_f
 atom_parser(const char *atom_name);
 
-static inline int
-matches(const char x[4], const char y[4])
-{
-    return (memcmp(x, y, 4) == 0);
-}
-
 static void
 add_ftyp_brand(struct qt_atom *atom, const uint8_t compatible_brand[4]);
 
@@ -663,6 +657,16 @@ qt_atom_parse(BitstreamReader *reader)
                                          atom_size - 8,
                                          (char*)atom_name);
 
+#ifndef NDEBUG
+    if (atom->size(atom) != atom_size) {
+        fputs("size mismatch for atom \"", stderr);
+        display_name(atom_name, stderr);
+        fprintf(stderr, "\" : %u bytes in header, %u bytes calculated size\n",
+                atom_size, atom->size(atom));
+        assert(0);
+    }
+#endif
+
     assert(atom->size(atom) == atom_size);
 
     return atom;
@@ -903,17 +907,18 @@ parse_ftyp(BitstreamReader *stream,
     struct qt_atom *atom;
     uint8_t major_brand[4];
     unsigned major_brand_version;
-    uint8_t compatible_brand[4];
-    uint8_t terminator[4] = {0, 0, 0, 0};
 
     stream->read_bytes(stream, major_brand, 4);
     major_brand_version = stream->read(stream, 32);
     atom = qt_ftyp_new(major_brand, major_brand_version, 0);
+    atom_size -= 8;
 
-    do {
+    while (atom_size) {
+        uint8_t compatible_brand[4];
         stream->read_bytes(stream, compatible_brand, 4);
+        atom_size -= 4;
         add_ftyp_brand(atom, compatible_brand);
-    } while (memcmp(compatible_brand, terminator, 4));
+    }
 
     return atom;
 }
@@ -2306,37 +2311,84 @@ free_free(struct qt_atom *self)
     free(self);
 }
 
+struct parser_s {
+    char name[4];
+    atom_parser_f parser;
+};
+
+static int
+parser_cmp(const struct parser_s *e1, const struct parser_s *e2)
+{
+    return strncmp(e1->name, e2->name, 4);
+}
+
+typedef int (*cmp_f)(const void *e1, const void *e2);
+
+#define A9 "\xa9"
+
 static atom_parser_f
 atom_parser(const char *atom_name)
 {
-    if (matches(atom_name, "ftyp")) {return parse_ftyp;}
-    if (matches(atom_name, "moov")) {return parse_tree;}
-    if (matches(atom_name, "mvhd")) {return parse_mvhd;}
-    if (matches(atom_name, "tkhd")) {return parse_tkhd;}
-    if (matches(atom_name, "mdhd")) {return parse_mdhd;}
-    if (matches(atom_name, "hdlr")) {return parse_hdlr;}
-    if (matches(atom_name, "smhd")) {return parse_smhd;}
-    if (matches(atom_name, "dinf")) {return parse_tree;}
-    if (matches(atom_name, "dref")) {return parse_dref;}
-    if (matches(atom_name, "trak")) {return parse_tree;}
-    if (matches(atom_name, "mdia")) {return parse_tree;}
-    if (matches(atom_name, "minf")) {return parse_tree;}
-    if (matches(atom_name, "stbl")) {return parse_tree;}
-    if (matches(atom_name, "stsd")) {return parse_stsd;}
-    if (matches(atom_name, "stts")) {return parse_stts;}
-    if (matches(atom_name, "stsc")) {return parse_stsc;}
-    if (matches(atom_name, "stsz")) {return parse_stsz;}
-    if (matches(atom_name, "stco")) {return parse_stco;}
-    if (matches(atom_name, "udta")) {return parse_tree;}
-    if (matches(atom_name, "alac")) {return parse_alac;}
-    if (matches(atom_name, "meta")) {return parse_meta;}
-    if (matches(atom_name, "ilst")) {return parse_tree;}
-    if (matches(atom_name, "free")) {return parse_free;}
-    if (matches(atom_name, "\xa9""nam")) {return parse_tree;}
-    if (matches(atom_name, "data")) {return parse_data;}
+    /*remember to keep this elements sorted ASCIIbetically
+      as new parsers are added*/
+    const static struct parser_s parsers[] = {{"----", parse_tree},
+                                              {"alac", parse_alac},
+                                              {"covr", parse_tree},
+                                              {"cpil", parse_tree},
+                                              {"cprt", parse_tree},
+                                              {"data", parse_data},
+                                              {"dinf", parse_tree},
+                                              {"disk", parse_tree},
+                                              {"dref", parse_dref},
+                                              {"free", parse_free},
+                                              {"ftyp", parse_ftyp},
+                                              {"gnre", parse_tree},
+                                              {"hdlr", parse_hdlr},
+                                              {"ilst", parse_tree},
+                                              {"mdhd", parse_mdhd},
+                                              {"mdia", parse_tree},
+                                              {"meta", parse_meta},
+                                              {"minf", parse_tree},
+                                              {"moov", parse_tree},
+                                              {"mvhd", parse_mvhd},
+                                              {"pgap", parse_tree},
+                                              {"rtng", parse_tree},
+                                              {"smhd", parse_smhd},
+                                              {"stbl", parse_tree},
+                                              {"stco", parse_stco},
+                                              {"stsc", parse_stsc},
+                                              {"stsd", parse_stsd},
+                                              {"stsz", parse_stsz},
+                                              {"stts", parse_stts},
+                                              {"tkhd", parse_tkhd},
+                                              {"tmpo", parse_tree},
+                                              {"trak", parse_tree},
+                                              {"trkn", parse_tree},
+                                              {"udta", parse_tree},
+                                              {A9"ART", parse_tree},
+                                              {A9"alb", parse_tree},
+                                              {A9"cmt", parse_tree},
+                                              {A9"day", parse_tree},
+                                              {A9"grp", parse_tree},
+                                              {A9"nam", parse_tree},
+                                              {A9"too", parse_tree},
+                                              {A9"wrt", parse_tree}};
+    struct parser_s key;
+    struct parser_s *result;
 
-    /*catchall for any atoms we don't know*/
-    return parse_leaf;
+    memcpy(key.name, atom_name, 4);
+    result = bsearch(&key,
+                     parsers,
+                     sizeof(parsers) / sizeof(struct parser_s),
+                     sizeof(struct parser_s),
+                     (cmp_f)parser_cmp);
+
+    if (result) {
+        return result->parser;
+    } else {
+        /*catchall for any atoms we don't know*/
+        return parse_leaf;
+    }
 }
 
 static void
