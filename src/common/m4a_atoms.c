@@ -77,12 +77,6 @@ atom_list_len(struct qt_atom_list *head);
 static void
 atom_list_free(struct qt_atom_list *head);
 
-static unsigned
-time_to_mac_utc(time_t time);
-
-static uint64_t
-time_to_mac_utc64(time_t time);
-
 static atom_parser_f
 atom_parser(const char *atom_name);
 
@@ -318,9 +312,8 @@ qt_hdlr_new(unsigned version,
             const char qt_manufacturer[4],
             unsigned qt_flags,
             unsigned qt_flags_mask,
-            unsigned component_name_length,
-            const char component_name[],
-            unsigned padding)
+            unsigned padding_length,
+            uint8_t *padding)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "hdlr");
@@ -332,12 +325,9 @@ qt_hdlr_new(unsigned version,
     memcpy(atom->_.hdlr.qt_manufacturer, qt_manufacturer, 4);
     atom->_.hdlr.qt_flags = qt_flags;
     atom->_.hdlr.qt_flags_mask = qt_flags_mask;
-    atom->_.hdlr.component_name_length = component_name_length;
-    atom->_.hdlr.component_name = malloc(component_name_length);
-    memcpy(atom->_.hdlr.component_name,
-           component_name,
-           component_name_length);
-    atom->_.hdlr.padding = padding;
+    atom->_.hdlr.padding_length = padding_length;
+    atom->_.hdlr.padding = malloc(padding_length);
+    memcpy(atom->_.hdlr.padding, padding, padding_length);
     atom->display = display_hdlr;
     atom->build = build_hdlr;
     atom->size = size_hdlr;
@@ -643,33 +633,34 @@ struct qt_atom*
 qt_atom_parse(BitstreamReader *reader)
 {
     unsigned atom_size;
-    uint8_t atom_name[4];
+    char atom_name[4];
     struct qt_atom *atom;
 
     /*grab the 8 byte atom header*/
     atom_size = reader->read(reader, 32);
-    reader->read_bytes(reader, atom_name, 4);
+    reader->read_bytes(reader, (uint8_t*)atom_name, 4);
 
     assert(atom_size >= 8);
 
     /*use appropriate parser for atom based on its name*/
-    atom = atom_parser((char*)atom_name)(reader,
-                                         atom_size - 8,
-                                         (char*)atom_name);
-
-#ifndef NDEBUG
-    if (atom->size(atom) != atom_size) {
-        fputs("size mismatch for atom \"", stderr);
-        display_name(atom_name, stderr);
-        fprintf(stderr, "\" : %u bytes in header, %u bytes calculated size\n",
-                atom_size, atom->size(atom));
-        assert(0);
-    }
-#endif
+    atom = atom_parser(atom_name)(reader, atom_size - 8, atom_name);
 
     assert(atom->size(atom) == atom_size);
 
     return atom;
+}
+
+qt_time_t
+time_to_mac_utc(time_t time)
+{
+    /*seconds since the Mac epoch, which is Jan 1st, 1904, 00:00:00*/
+    struct tm epoch = {0};
+
+    epoch.tm_year = 4;
+    epoch.tm_mon = 0;
+    epoch.tm_mday = 1;
+
+    return (qt_time_t)difftime(time, timegm(&epoch));
 }
 
 /**********************************/
@@ -736,32 +727,6 @@ atom_list_free(struct qt_atom_list *head)
         head->atom->free(head->atom);
         free(head);
     }
-}
-
-static unsigned
-time_to_mac_utc(time_t time)
-{
-    /*seconds since the Mac epoch, which is Jan 1st, 1904, 00:00:00*/
-    struct tm epoch = {0};
-
-    epoch.tm_year = 4;
-    epoch.tm_mon = 0;
-    epoch.tm_mday = 1;
-
-    return (unsigned)difftime(time, timegm(&epoch));
-}
-
-static uint64_t
-time_to_mac_utc64(time_t time)
-{
-    /*seconds since the Mac epoch, which is Jan 1st, 1904, 00:00:00*/
-    struct tm epoch = {0};
-
-    epoch.tm_year = 4;
-    epoch.tm_mon = 0;
-    epoch.tm_mday = 1;
-
-    return (uint64_t)difftime(time, timegm(&epoch));
 }
 
 /*** leaf ***/
@@ -1368,7 +1333,8 @@ display_hdlr(const struct qt_atom *self,
         "QT manufacturer", A_STRING, 4, self->_.hdlr.qt_manufacturer,
         "QT flags",        A_UNSIGNED,  self->_.hdlr.qt_flags,
         "QT flags mask",   A_UNSIGNED,  self->_.hdlr.qt_flags_mask,
-        "padding",         A_UNSIGNED,  self->_.hdlr.padding);
+        "padding",         A_STRING,    self->_.hdlr.padding_length,
+                                        self->_.hdlr.padding);
 }
 
 static struct qt_atom*
@@ -1383,9 +1349,8 @@ parse_hdlr(BitstreamReader *stream,
     char qt_manufacturer[4];
     unsigned qt_flags;
     unsigned qt_flags_mask;
-    unsigned component_name_length;
-    char *component_name;
-    unsigned padding;
+    unsigned padding_length;
+    uint8_t *padding;
     struct qt_atom *atom;
 
     version = stream->read(stream, 8);
@@ -1395,13 +1360,9 @@ parse_hdlr(BitstreamReader *stream,
     stream->read_bytes(stream, (uint8_t*)qt_manufacturer, 4);
     qt_flags = stream->read(stream, 32);
     qt_flags_mask = stream->read(stream, 32);
-    component_name_length = stream->read(stream, 8);
-    component_name = malloc(component_name_length);
-    stream->read_bytes(stream,
-                       (uint8_t*)component_name,
-                       component_name_length);
-    padding = atom_size - (25 + component_name_length);
-    stream->skip_bytes(stream, padding);
+    padding_length = atom_size - (1 + 3 + 4 + 4 + 4 + 4 + 4);
+    padding = malloc(padding_length);
+    stream->read_bytes(stream, padding, padding_length);
 
     atom = qt_hdlr_new(version,
                        flags,
@@ -1410,11 +1371,10 @@ parse_hdlr(BitstreamReader *stream,
                        qt_manufacturer,
                        qt_flags,
                        qt_flags_mask,
-                       component_name_length,
-                       component_name,
+                       padding_length,
                        padding);
 
-    free(component_name);
+    free(padding);
     return atom;
 }
 
@@ -1430,23 +1390,21 @@ build_hdlr(const struct qt_atom *self,
     stream->write_bytes(stream, self->_.hdlr.qt_manufacturer, 4);
     stream->write(stream, 32, self->_.hdlr.qt_flags);
     stream->write(stream, 32, self->_.hdlr.qt_flags_mask);
-    stream->write(stream, 8, self->_.hdlr.component_name_length);
     stream->write_bytes(stream,
-                        self->_.hdlr.component_name,
-                        self->_.hdlr.component_name_length);
-    stream->write(stream, 8 * self->_.hdlr.padding, 0);
+                        self->_.hdlr.padding,
+                        self->_.hdlr.padding_length);
 }
 
 static unsigned
 size_hdlr(const struct qt_atom *self)
 {
-    return 33 + self->_.hdlr.component_name_length + self->_.hdlr.padding;
+    return 8 + (1 + 3 + 4 + 4 + 4 + 4 + 4) + self->_.hdlr.padding_length;
 }
 
 static void
 free_hdlr(struct qt_atom *self)
 {
-    free(self->_.hdlr.component_name);
+    free(self->_.hdlr.padding);
     free(self);
 }
 
@@ -2329,8 +2287,9 @@ typedef int (*cmp_f)(const void *e1, const void *e2);
 static atom_parser_f
 atom_parser(const char *atom_name)
 {
-    /*remember to keep this elements sorted ASCIIbetically
-      as new parsers are added*/
+    /*remember to keep elements sorted ASCIIbetically
+      as new parsers are added so that the binary search
+      works correctly*/
     const static struct parser_s parsers[] = {{"----", parse_tree},
                                               {"alac", parse_alac},
                                               {"covr", parse_tree},

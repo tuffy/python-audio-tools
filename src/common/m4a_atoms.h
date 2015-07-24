@@ -102,9 +102,8 @@ struct qt_atom {
             uint8_t qt_manufacturer[4];
             unsigned qt_flags;
             unsigned qt_flags_mask;
-            unsigned component_name_length;
-            uint8_t *component_name;
-            unsigned padding;
+            unsigned padding_length;
+            uint8_t *padding;
         } hdlr;
 
         struct {
@@ -295,9 +294,8 @@ qt_hdlr_new(unsigned version,
             const char qt_manufacturer[4],
             unsigned qt_flags,
             unsigned qt_flags_mask,
-            unsigned component_name_length,
-            const char component_name[],
-            unsigned padding);
+            unsigned padding_length,
+            uint8_t padding[]);
 
 struct qt_atom*
 qt_smhd_new(unsigned version,
@@ -387,3 +385,7 @@ qt_free_new(unsigned padding_bytes);
 
 struct qt_atom*
 qt_atom_parse(BitstreamReader *reader);
+
+/*transforms a standard timestamp into a Mac UTC-compatible one*/
+qt_time_t
+time_to_mac_utc(time_t time);
