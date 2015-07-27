@@ -29,8 +29,8 @@ shndec: $(OBJS) decoders/shn.c decoders/shn.h buffer.o pcm_conv.o
 wvdec: $(OBJS) decoders/wavpack.c decoders/wavpack.h md5.o pcm_conv.o
 	$(CC) $(FLAGS) -o wvdec decoders/wavpack.c $(OBJS) md5.o pcm_conv.o -DSTANDALONE
 
-alacenc: encoders/alac.c encoders/alac.h bitstream.a array.o pcmreader.o pcm_conv.o
-	$(CC) $(FLAGS) -o alacenc encoders/alac.c bitstream.a array.o pcmreader.o pcm_conv.o -DSTANDALONE -lm
+alacenc: encoders/alac.c encoders/alac.h bitstream.a array.o pcmreader.o pcm_conv.o m4a_atoms.o
+	$(CC) $(FLAGS) -o alacenc encoders/alac.c bitstream.a array.o pcmreader.o pcm_conv.o m4a_atoms.o -DSTANDALONE -lm
 
 flacenc: encoders/flac.c encoders/flac.h bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o
 	$(CC) $(FLAGS) -o $@ encoders/flac.c bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
@@ -103,6 +103,9 @@ func_io.o: func_io.c func_io.h
 
 mini-gmp.o: mini-gmp.c mini-gmp.h
 	$(CC) $(FLAGS) -c mini-gmp.c
+
+m4a_atoms.o: common/m4a_atoms.c common/m4a_atoms.h
+	$(CC) $(FLAGS) -c common/m4a_atoms.c
 
 bitstream.a: bitstream.o huffman.o func_io.o mini-gmp.o
 	$(AR) -r $@ bitstream.o huffman.o func_io.o mini-gmp.o

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <assert.h>
 #include <math.h>
+#include "../common/m4a_atoms.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -33,6 +34,14 @@ push_frame_size(struct alac_frame_size *head,
 static void
 reverse_frame_sizes(struct alac_frame_size **head);
 
+#ifdef STANDALONE
+static unsigned
+total_frame_sizes(const struct alac_frame_size *head);
+#endif
+
+static unsigned
+total_encoded_pcm_frames(const struct alac_frame_size *head);
+
 static void
 free_alac_frame_sizes(struct alac_frame_size *frame_sizes);
 
@@ -43,37 +52,66 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
     static char *kwlist[] = {"file",
                              "pcmreader",
+                             "total_pcm_frames",
                              "block_size",
                              "initial_history",
                              "history_multiplier",
                              "maximum_k",
+                             "version",
                              NULL};
     PyObject *file_obj;
     BitstreamWriter *output = NULL;
     struct PCMReader *pcmreader;
+    long long total_pcm_frames;
     int block_size;
     int initial_history;
     int history_multiplier;
     int maximum_k;
+    const char *version;
     struct alac_frame_size *frame_sizes;
 
     /*extract a file object, PCMReader-compatible object and encoding options*/
-    if (!PyArg_ParseTupleAndKeywords(args, keywds, "OO&iiii",
+    if (!PyArg_ParseTupleAndKeywords(args, keywds, "OO&Liiiis",
                                      kwlist,
                                      &file_obj,
                                      py_obj_to_pcmreader,
                                      &pcmreader,
+                                     &total_pcm_frames,
                                      &block_size,
                                      &initial_history,
                                      &history_multiplier,
-                                     &maximum_k)) {
+                                     &maximum_k,
+                                     &version)) {
         return NULL;
-     }
+    }
 
     /*determine if the PCMReader is compatible with ALAC*/
     if ((pcmreader->bits_per_sample != 16) &&
         (pcmreader->bits_per_sample != 24)) {
         PyErr_SetString(PyExc_ValueError, "bits per sample must be 16 or 24");
+        return NULL;
+    }
+
+    /*sanity-check arguments*/
+    if (total_pcm_frames < 0) {
+        PyErr_SetString(PyExc_ValueError,
+                        "total_pcm_frames must be >= 0");
+        return NULL;
+    } else if (total_pcm_frames > 2147483647) {
+        PyErr_SetString(PyExc_ValueError,
+                        "total_pcm_frames must be < 2 ** 31 - 1");
+        return NULL;
+    } else if (block_size < 1) {
+        PyErr_SetString(PyExc_ValueError, "block_size must be > 0");
+        return NULL;
+    } else if (initial_history < 0) {
+        PyErr_SetString(PyExc_ValueError, "initial_history must be >= 0");
+        return NULL;
+    } else if (history_multiplier < 0) {
+        PyErr_SetString(PyExc_ValueError, "history_multiplier must be >= 0");
+        return NULL;
+    } else if (maximum_k < 1) {
+        PyErr_SetString(PyExc_ValueError, "maximum_k must be > 0");
         return NULL;
     }
 
@@ -91,30 +129,18 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     frame_sizes = encode_alac(output,
                               pcmreader,
+                              (unsigned)total_pcm_frames,
                               block_size,
                               initial_history,
                               history_multiplier,
-                              maximum_k);
+                              maximum_k,
+                              version);
 
     if (frame_sizes) {
-        /*convert frame sizes to Python tuple*/
-        /*FIXME - should check these calls for errors*/
-        PyObject *frame_byte_sizes = PyList_New(0);
-        unsigned total_pcm_frames = 0;
-        struct alac_frame_size *sizes;
-
-        for (sizes = frame_sizes; sizes; sizes = sizes->next) {
-            PyObject *frame_byte_size = Py_BuildValue("I", sizes->byte_size);
-            PyList_Append(frame_byte_sizes, frame_byte_size);
-            Py_DECREF(frame_byte_size);
-            total_pcm_frames += sizes->pcm_frames_size;
-        }
-
-        output->flush(output);
-        output->free(output);
-
         free_alac_frame_sizes(frame_sizes);
-        return Py_BuildValue("(O,I)", frame_byte_sizes, total_pcm_frames);
+
+        Py_INCREF(Py_None);
+        return Py_None;
     } else {
         /*indicate read error has occurred*/
         output->free(output);
@@ -125,8 +151,176 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
 #endif
 
+#define BUFFER_SIZE 4096
+
 static struct alac_frame_size*
 encode_alac(BitstreamWriter *output,
+            struct PCMReader *pcmreader,
+            unsigned total_pcm_frames,
+            int block_size,
+            int initial_history,
+            int history_multiplier,
+            int maximum_k,
+            const char encoder_version[])
+{
+    time_t timestamp = time(NULL);
+
+    if (total_pcm_frames) {
+        /*output temporary metadata atoms based on dummy frame sizes list*/
+        bw_pos_t *start = output->getpos(output);
+
+        struct alac_frame_size *dummy_sizes =
+            dummy_frame_sizes(block_size, total_pcm_frames);
+
+        const unsigned metadata_size = write_metadata(
+            output,
+            timestamp,
+            pcmreader->sample_rate,
+            pcmreader->channels,
+            pcmreader->bits_per_sample,
+            total_pcm_frames,
+            block_size,
+            history_multiplier,
+            initial_history,
+            maximum_k,
+            dummy_sizes,
+            0,
+            encoder_version);
+
+        unsigned rewritten_size;
+
+        /*write mdat atom to output*/
+        struct alac_frame_size *actual_sizes =
+            encode_mdat(output,
+                        pcmreader,
+                        block_size,
+                        initial_history,
+                        history_multiplier,
+                        maximum_k);
+
+
+        assert(total_frame_sizes(actual_sizes) ==
+               total_frame_sizes(dummy_sizes));
+        free_alac_frame_sizes(dummy_sizes);
+
+#ifndef STANDALONE
+        if (total_encoded_pcm_frames(actual_sizes) != total_pcm_frames) {
+            /*total PCM frames mismatch after encoding*/
+            fprintf(stderr, "%u != %u\n",
+                    total_encoded_pcm_frames(actual_sizes), total_pcm_frames);
+            free_alac_frame_sizes(actual_sizes);
+            start->del(start);
+            PyErr_SetString(PyExc_IOError, "total PCM frames mismatch");
+            return NULL;
+        }
+#endif
+
+        /*rewrite start of file based on actual frame sizes list*/
+        output->setpos(output, start);
+        start->del(start);
+
+        rewritten_size = write_metadata(output,
+                                        timestamp,
+                                        pcmreader->sample_rate,
+                                        pcmreader->channels,
+                                        pcmreader->bits_per_sample,
+                                        total_pcm_frames,
+                                        block_size,
+                                        history_multiplier,
+                                        initial_history,
+                                        maximum_k,
+                                        actual_sizes,
+                                        metadata_size + 8,
+                                        encoder_version);
+
+        assert(rewritten_size == metadata_size);
+
+        /*return actual frame sizes list*/
+        return actual_sizes;
+    } else {
+        FILE *tempfile = tmpfile();
+        BitstreamWriter *temp_output = bw_open(tempfile, BS_BIG_ENDIAN);
+        BitstreamAccumulator *metadata_size_writer =
+            bw_open_accumulator(BS_BIG_ENDIAN);
+        unsigned metadata_size;
+        struct alac_frame_size *size;
+        unsigned total_pcm_frames = 0;
+        uint8_t buffer[BUFFER_SIZE];
+        size_t bytes_read;
+
+        /*write mdat atom to temporary file*/
+        struct alac_frame_size *actual_sizes =
+            encode_mdat(temp_output,
+                        pcmreader,
+                        block_size,
+                        initial_history,
+                        history_multiplier,
+                        maximum_k);
+
+        temp_output->flush(temp_output);
+        temp_output->free(temp_output);
+
+        /*determine total PCM frames written from frame sizes list*/
+        for (size = actual_sizes; size; size = size->next) {
+            total_pcm_frames += size->pcm_frames_size;
+        }
+
+        /*get metadata size in order to determine chunk offsets*/
+        metadata_size = write_metadata(
+            (BitstreamWriter*)metadata_size_writer,
+            timestamp,
+            pcmreader->sample_rate,
+            pcmreader->channels,
+            pcmreader->bits_per_sample,
+            total_pcm_frames,
+            block_size,
+            history_multiplier,
+            initial_history,
+            maximum_k,
+            actual_sizes,
+            0,
+            encoder_version);
+
+        assert(metadata_size ==
+               metadata_size_writer->bytes_written(metadata_size_writer));
+
+        /*output metadata atoms*/
+        metadata_size = write_metadata(
+            output,
+            timestamp,
+            pcmreader->sample_rate,
+            pcmreader->channels,
+            pcmreader->bits_per_sample,
+            total_pcm_frames,
+            block_size,
+            history_multiplier,
+            initial_history,
+            maximum_k,
+            actual_sizes,
+            metadata_size + 8,
+            encoder_version);
+
+        assert(metadata_size ==
+              metadata_size_writer->bytes_written(metadata_size_writer));
+        metadata_size_writer->close(metadata_size_writer);
+
+        /*copy mdat atom from temporary file to output*/
+        rewind(tempfile);
+        while ((bytes_read = fread(buffer,
+                                   sizeof(uint8_t),
+                                   BUFFER_SIZE,
+                                   tempfile)) > 0) {
+            output->write_bytes(output, buffer, (unsigned)bytes_read);
+        }
+
+        /*close temporary file and return frame sizes list*/
+        fclose(tempfile);
+        return actual_sizes;
+    }
+}
+
+static struct alac_frame_size*
+encode_mdat(BitstreamWriter *output,
             struct PCMReader *pcmreader,
             int block_size,
             int initial_history,
@@ -201,8 +395,7 @@ encode_alac(BitstreamWriter *output,
         output->write(output, 32, total_mdat_size);
         mdat_header->del(mdat_header);
 
-        /*close and free allocated files/buffers,
-          which varies depending on whether we're running standlone or not*/
+        /*close and free allocated files/buffers*/
 
         free_encoder(&encoder);
 
@@ -244,6 +437,28 @@ reverse_frame_sizes(struct alac_frame_size **head)
         top = *head;
     }
     *head = reversed;
+}
+
+#ifdef STANDALONE
+static unsigned
+total_frame_sizes(const struct alac_frame_size *head)
+{
+    unsigned total = 0;
+    for (; head; head = head->next) {
+        total += 1;
+    }
+    return total;
+}
+#endif
+
+static unsigned
+total_encoded_pcm_frames(const struct alac_frame_size *head)
+{
+    unsigned total = 0;
+    for (; head; head = head->next) {
+        total += head->pcm_frames_size;
+    }
+    return total;
 }
 
 static void
@@ -1171,6 +1386,209 @@ write_subframe_header(BitstreamWriter *bs,
     }
 }
 
+static struct alac_frame_size*
+dummy_frame_sizes(unsigned block_size, unsigned total_pcm_frames)
+{
+    struct alac_frame_size *sizes = NULL;
+
+    while (total_pcm_frames) {
+        if (total_pcm_frames > block_size) {
+            sizes = push_frame_size(sizes, 0, block_size);
+            total_pcm_frames -= block_size;
+        } else {
+            sizes = push_frame_size(sizes, 0, total_pcm_frames);
+            total_pcm_frames -= total_pcm_frames;
+        }
+    }
+
+    reverse_frame_sizes(&sizes);
+    return sizes;
+}
+
+static unsigned
+write_metadata(BitstreamWriter* bw,
+               time_t timestamp,
+               unsigned sample_rate,
+               unsigned channels,
+               unsigned bits_per_sample,
+               unsigned total_pcm_frames,
+               unsigned block_size,
+               unsigned history_multiplier,
+               unsigned initial_history,
+               unsigned maximum_K,
+               const struct alac_frame_size *frame_sizes,
+               unsigned frames_offset,
+               const char encoder_version[])
+{
+    const qt_time_t qt_timestamp = time_to_mac_utc(timestamp);
+    const unsigned geometry[9] = {0x10000, 0x0, 0x0, 0x0, 0x10000,
+                                  0x0, 0x0, 0x0, 0x40000000};
+
+    /*total size of all metadata atoms*/
+    unsigned total_size = 0;
+
+    /*the largest ALAC frame size, in bytes*/
+    unsigned max_coded_frame_size = 0;
+
+    /*bitrate in bits-per-second*/
+    unsigned long long bitrate = 0;
+
+    /*number of ALAC frames per chunk*/
+    const unsigned alac_frames_per_chunk = 5;
+
+    /*current chunk number*/
+    unsigned current_chunk = 0;
+
+    /*size of the current chunk, in ALAC frames*/
+    unsigned chunk_size = 0;
+
+    /*some atoms to generate*/
+    struct qt_atom *ftyp;
+    struct qt_atom *stts = qt_stts_new(0, 0);
+    struct qt_atom *stsc = qt_stsc_new(0, 0);
+    struct qt_atom *stsz = qt_stsz_new(0, 0, 0);
+    struct qt_atom *stco = qt_stco_new(0, 0);
+    struct qt_atom *stbl;
+    struct qt_atom *moov;
+    struct qt_atom *meta;
+    struct qt_atom *free;
+
+    const struct alac_frame_size *size;
+    struct stsc_entry *latest_entry;
+
+    /*walk through frames to determine max coded frame size, bitrate
+      and other stbl sub-atom parameters*/
+    for (size = frame_sizes; size; size = size->next) {
+        bitrate += (size->byte_size * 8);
+
+        if (size->byte_size > max_coded_frame_size) {
+            max_coded_frame_size = size->byte_size;
+        }
+        qt_stts_add_time(stts, size->pcm_frames_size);
+
+        if (chunk_size == 0) {
+            /*add a new offset at the start of a chunk*/
+            qt_stco_add_offset(stco, frames_offset);
+        }
+
+        if ((chunk_size += 1) == alac_frames_per_chunk) {
+            /*add a new stsc entry*/
+            latest_entry = qt_stsc_latest_entry(stsc);
+            current_chunk += 1;
+            if ((!latest_entry) ||
+                (latest_entry->frames_per_chunk != chunk_size)) {
+                /*add a new entry*/
+                qt_stsc_add_chunk_size(stsc,
+                                       current_chunk,
+                                       chunk_size,
+                                       1);
+            }
+            chunk_size = 0;
+        }
+        qt_stsz_add_size(stsz, size->byte_size);
+        frames_offset += size->byte_size;
+    }
+    latest_entry = qt_stsc_latest_entry(stsc);
+    if ((chunk_size > 0) &&
+        ((!latest_entry) || (latest_entry->frames_per_chunk != chunk_size))) {
+        /*add a new stsc entry*/
+        current_chunk += 1;
+        qt_stsc_add_chunk_size(stsc, current_chunk, chunk_size, 1);
+    }
+
+    /*determine bitrate based on size of mdat contents,
+      total PCM frames and sample rate*/
+    bitrate *= sample_rate;
+    bitrate /= total_pcm_frames;
+
+    /*ftyp atom*/
+    ftyp = qt_ftyp_new((uint8_t*)"M4A ", 0, 4,
+                       (uint8_t*)"M4A ",
+                       (uint8_t*)"mp42",
+                       (uint8_t*)"isom",
+                       (uint8_t*)"\x00\x00\x00\x00");
+    ftyp->build(ftyp, bw);
+    total_size += ftyp->size(ftyp);
+    ftyp->free(ftyp);
+
+    /*stbl atom*/
+    stbl = qt_tree_new("stbl", 5,
+      qt_stsd_new(0, 0, 1,
+        qt_alac_new(1,
+                    0,
+                    0,
+                    (uint8_t*)"\x00\x00\x00\x00",
+                    channels,
+                    bits_per_sample,
+                    0,
+                    0,
+                    0xAC440000,
+                    qt_sub_alac_new(block_size,
+                                    bits_per_sample,
+                                    history_multiplier,
+                                    initial_history,
+                                    maximum_K,
+                                    channels,
+                                    0xFF,
+                                    max_coded_frame_size,
+                                    (unsigned)bitrate,
+                                    sample_rate))),
+      stts,
+      stsc,
+      stsz,
+      stco);
+
+    /*meta atom*/
+    meta = qt_meta_new(0, 0, 3,
+      qt_hdlr_new(0, 0,
+                  "\x00\x00\x00\x00",
+                  "mdir",
+                  "appl",
+                  0, 0, 2, (uint8_t*)"\x00\xFF"),
+      qt_tree_new("ilst", 1,
+        qt_tree_new("\xA9""too", 1,
+          qt_data_new(1,
+                      (unsigned)strlen(encoder_version),
+                      (uint8_t*)encoder_version))),
+      qt_free_new(4096));
+
+    /*moov atom*/
+    moov = qt_tree_new("moov", 3,
+      qt_mvhd_new(0, 0, qt_timestamp, qt_timestamp, sample_rate,
+                  total_pcm_frames, 0x10000, 0x100, geometry,
+                  0, 0, 0, 0, 2),
+      qt_tree_new("trak", 2,
+        qt_tkhd_new(0, 7, qt_timestamp, qt_timestamp, 1,
+                    total_pcm_frames, 0, 0, 0x100, geometry, 0, 0),
+        qt_tree_new("mdia", 3,
+          qt_mdhd_new(0, 0, qt_timestamp, qt_timestamp,
+                      sample_rate, total_pcm_frames, "und", 0),
+          qt_hdlr_new(0, 0,
+                      "\x00\x00\x00\x00",
+                      "soun",
+                      "\x00\x00\x00\x00",
+                      0, 0, 2, (uint8_t*)"\x00\x00"),
+          qt_tree_new("minf", 3,
+            qt_smhd_new(0, 0, 0),
+            qt_tree_new("dinf", 1,
+              qt_dref_new(0, 0, 1,
+                qt_leaf_new("url ", 4, (uint8_t*)"\x00\x00\x00\x01"))),
+            stbl))),
+      qt_tree_new("udta", 1,
+        meta));
+    moov->build(moov, bw);
+    total_size += moov->size(moov);
+    moov->free(moov);
+
+    /*free atom*/
+    free = qt_free_new(4096);
+    free->build(free, bw);
+    total_size += free->size(free);
+    free->free(free);
+
+    return total_size;
+}
+
 #ifdef STANDALONE
 #include <getopt.h>
 #include <errno.h>
@@ -1187,10 +1605,12 @@ count_bits(unsigned value)
 }
 
 int main(int argc, char *argv[]) {
+    const char encoder_version[] = "Python Audio Tools";
     struct PCMReader *pcmreader = NULL;
     char *output_filename = NULL;
     FILE *output_file = NULL;
     BitstreamWriter *output = NULL;
+    unsigned total_pcm_frames = 0;
     unsigned channels = 2;
     unsigned channel_mask = 0x3;
     unsigned sample_rate = 44100;
@@ -1209,12 +1629,13 @@ int main(int argc, char *argv[]) {
         {"channels",                required_argument, NULL, 'c'},
         {"sample-rate",             required_argument, NULL, 'r'},
         {"bits-per-sample",         required_argument, NULL, 'b'},
+        {"total-pcm-frames",        required_argument, NULL, 'T'},
         {"block-size",              required_argument, NULL, 'B'},
         {"initial-history",         required_argument, NULL, 'I'},
         {"history-multiplier",      required_argument, NULL, 'M'},
         {"maximum-K",               required_argument, NULL, 'K'},
         {NULL,                      no_argument, NULL, 0}};
-    const static char* short_opts = "-hc:r:b:B:M:K:";
+    const static char* short_opts = "-hc:r:b:T:B:M:K:";
 
     while ((c = getopt_long(argc,
                             argv,
@@ -1254,6 +1675,12 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
             break;
+        case 'T':
+            if (((total_pcm_frames = strtoul(optarg, NULL, 10)) == 0) && errno) {
+                printf("invalid --total-pcm-frames \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
         case 'B':
             if (((block_size = strtol(optarg, NULL, 10)) == 0) && errno) {
                 printf("invalid --block-size \"%s\"\n", optarg);
@@ -1287,6 +1714,7 @@ int main(int argc, char *argv[]) {
             printf("-r, --sample_rate=#       input sample rate in Hz\n");
             printf("-b, --bits-per-sample=#   bits per input sample\n");
             printf("\n");
+            printf("-T, --total-pcm-frames=#    total PCM frames of input\n");
             printf("-B, --block-size=#          block size\n");
             printf("-I, --initial-history=#     initial history\n");
             printf("-M, --history-multiplier=#  history multiplier\n");
@@ -1325,6 +1753,7 @@ int main(int argc, char *argv[]) {
 
     pcmreader_display(pcmreader, stderr);
     fputs("\n", stderr);
+    fprintf(stderr, "total PCM frames   %u\n", total_pcm_frames);
     fprintf(stderr, "block size         %d\n", block_size);
     fprintf(stderr, "initial history    %d\n", initial_history);
     fprintf(stderr, "history multiplier %d\n", history_multiplier);
@@ -1332,10 +1761,12 @@ int main(int argc, char *argv[]) {
 
     frame_sizes = encode_alac(output,
                               pcmreader,
+                              total_pcm_frames,
                               block_size,
                               initial_history,
                               history_multiplier,
-                              maximum_k);
+                              maximum_k,
+                              encoder_version);
 
     output->close(output);
     pcmreader->close(pcmreader);

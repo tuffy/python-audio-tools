@@ -86,8 +86,10 @@ add_ftyp_brand(struct qt_atom *atom, const uint8_t compatible_brand[4]);
 typedef enum {
     A_INT,
     A_UNSIGNED,
+    A_HEX,
     A_UINT64,
     A_ARRAY_UNSIGNED,
+    A_ARRAY_HEX,
     A_ARRAY_CHAR,
     A_STRING
 } field_type_t;
@@ -294,7 +296,7 @@ qt_mdhd_new(unsigned version,
     atom->_.mdhd.created_date = created_date;
     atom->_.mdhd.modified_date = modified_date;
     atom->_.mdhd.time_scale = time_scale;
-    atom->_.mdhd.duration = duration;
+    atom->_.mdhd.duration = (unsigned)duration;
     memcpy(atom->_.mdhd.language, language, 3 * sizeof(char));
     atom->_.mdhd.quality = quality;
     atom->display = display_mdhd;
@@ -480,29 +482,15 @@ qt_sub_alac_new(unsigned max_samples_per_frame,
 }
 
 struct qt_atom*
-qt_stts_new(unsigned version,
-            unsigned flags,
-            unsigned times_count,
-            ...)
+qt_stts_new(unsigned version, unsigned flags)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
-    unsigned i;
-    va_list ap;
-
     set_atom_name(atom, "stts");
     atom->type = QT_STTS;
     atom->_.stts.version = version;
     atom->_.stts.flags = flags;
-    atom->_.stts.times_count = times_count;
-    atom->_.stts.times = malloc(times_count * sizeof(struct stts_time));
-
-    va_start(ap, times_count);
-    for (i = 0; i < times_count; i++) {
-        atom->_.stts.times[i].occurences = va_arg(ap, unsigned);
-        atom->_.stts.times[i].pcm_frame_count = va_arg(ap, unsigned);
-    }
-    va_end(ap);
-
+    atom->_.stts.times_count = 0;
+    atom->_.stts.times = NULL;
     atom->display = display_stts;
     atom->build = build_stts;
     atom->size = size_stts;
@@ -510,31 +498,42 @@ qt_stts_new(unsigned version,
     return atom;
 }
 
+void
+qt_stts_add_time(struct qt_atom *atom, unsigned pcm_frame_count)
+{
+    unsigned i;
+
+    assert(atom->type == QT_STTS);
+
+    /*look for a matching number of PCM frames*/
+    for (i = 0; i < atom->_.stts.times_count; i++) {
+        if (atom->_.stts.times[i].pcm_frame_count == pcm_frame_count) {
+            /*and update the counter if found*/
+            atom->_.stts.times[i].occurences += 1;
+            return;
+        }
+    }
+
+    /*otherwise, add a new entry with a count of 1
+      note that i == atom->_.stts.times_count here*/
+    atom->_.stts.times = realloc(atom->_.stts.times,
+                                 (i + 1) * sizeof(struct stts_time));
+    atom->_.stts.times[i].occurences = 1;
+    atom->_.stts.times[i].pcm_frame_count = pcm_frame_count;
+    atom->_.stts.times_count += 1;
+}
+
+
 struct qt_atom*
-qt_stsc_new(unsigned version,
-            unsigned flags,
-            unsigned entries_count,
-            ...)
+qt_stsc_new(unsigned version, unsigned flags)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
-    unsigned i;
-    va_list ap;
-
     set_atom_name(atom, "stsc");
     atom->type = QT_STSC;
     atom->_.stsc.version = version;
     atom->_.stsc.flags = flags;
-    atom->_.stsc.entries_count = entries_count;
-    atom->_.stsc.entries = malloc(entries_count * sizeof(struct stsc_entry));
-
-    va_start(ap, entries_count);
-    for (i = 0; i < entries_count; i++) {
-        atom->_.stsc.entries[i].first_chunk = va_arg(ap, unsigned);
-        atom->_.stsc.entries[i].frames_per_chunk = va_arg(ap, unsigned);
-        atom->_.stsc.entries[i].description_index = 1;
-    }
-    va_end(ap);
-
+    atom->_.stsc.entries_count = 0;
+    atom->_.stsc.entries = NULL;
     atom->display = display_stsc;
     atom->build = build_stsc;
     atom->size = size_stsc;
@@ -542,11 +541,27 @@ qt_stsc_new(unsigned version,
     return atom;
 }
 
+void
+qt_stsc_add_chunk_size(struct qt_atom *atom,
+                       unsigned first_chunk,
+                       unsigned frames_per_chunk,
+                       unsigned description_index)
+{
+    unsigned count;
+    assert(atom->type = QT_STSC);
+    count = atom->_.stsc.entries_count;
+    atom->_.stsc.entries = realloc(atom->_.stsc.entries,
+                                   (count + 1) * sizeof(struct stsc_entry));
+    atom->_.stsc.entries[count].first_chunk = first_chunk;
+    atom->_.stsc.entries[count].frames_per_chunk = frames_per_chunk;
+    atom->_.stsc.entries[count].description_index = description_index;
+    atom->_.stsc.entries_count += 1;
+}
+
 struct qt_atom*
 qt_stsz_new(unsigned version,
             unsigned flags,
-            unsigned frame_byte_size,
-            unsigned frames_count)
+            unsigned frame_byte_size)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "stsz");
@@ -554,8 +569,8 @@ qt_stsz_new(unsigned version,
     atom->_.stsz.version = version;
     atom->_.stsz.flags = flags;
     atom->_.stsz.frame_byte_size = frame_byte_size;
-    atom->_.stsz.frames_count = frames_count;
-    atom->_.stsz.frame_size = calloc(frames_count, sizeof(unsigned));
+    atom->_.stsz.frames_count = 0;
+    atom->_.stsz.frame_size = NULL;
     atom->display = display_stsz;
     atom->build = build_stsz;
     atom->size = size_stsz;
@@ -563,23 +578,48 @@ qt_stsz_new(unsigned version,
     return atom;
 }
 
+void
+qt_stsz_add_size(struct qt_atom *atom, unsigned byte_size)
+{
+    unsigned count;
+
+    assert(atom->type = QT_STSZ);
+
+    count = atom->_.stsz.frames_count;
+    atom->_.stsz.frame_size = realloc(atom->_.stsz.frame_size,
+                                      (count + 1) * sizeof(unsigned));
+    atom->_.stsz.frame_size[count] = byte_size;
+    atom->_.stsz.frames_count += 1;
+}
+
 struct qt_atom*
 qt_stco_new(unsigned version,
-            unsigned flags,
-            unsigned chunk_offsets)
+            unsigned flags)
 {
     struct qt_atom *atom = malloc(sizeof(struct qt_atom));
     set_atom_name(atom, "stco");
     atom->type = QT_STCO;
     atom->_.stco.version = version;
     atom->_.stco.flags = flags;
-    atom->_.stco.offsets_count = chunk_offsets;
-    atom->_.stco.chunk_offset = calloc(chunk_offsets, sizeof(unsigned));
+    atom->_.stco.offsets_count = 0;
+    atom->_.stco.chunk_offset = NULL;
     atom->display = display_stco;
     atom->build = build_stco;
     atom->size = size_stco;
     atom->free = free_stco;
     return atom;
+}
+
+void
+qt_stco_add_offset(struct qt_atom *atom, unsigned offset)
+{
+    unsigned count;
+    assert(atom->type = QT_STCO);
+    count = atom->_.stco.offsets_count;
+    atom->_.stco.chunk_offset = realloc(atom->_.stco.chunk_offset,
+                                        (count + 1) * sizeof(unsigned));
+    atom->_.stco.chunk_offset[count] = offset;
+    atom->_.stco.offsets_count += 1;
 }
 
 struct qt_atom*
@@ -927,16 +967,16 @@ display_mvhd(const struct qt_atom *self,
              FILE *output)
 {
     display_fields(
-        indent, output, self->name, 13,
+        indent, output, self->name, 14,
         "version",           A_UNSIGNED, self->_.mvhd.version,
         "flags",             A_UNSIGNED, self->_.mvhd.flags,
         "created date",      A_UINT64,   self->_.mvhd.created_date,
         "modified date",     A_UINT64,   self->_.mvhd.modified_date,
         "time scale",        A_UNSIGNED, self->_.mvhd.time_scale,
         "duration",          A_UINT64,   self->_.mvhd.duration,
-        "playback speed",    A_UNSIGNED, self->_.mvhd.playback_speed,
-        "user volume",       A_UNSIGNED, self->_.mvhd.user_volume,
-        "geometry",          A_ARRAY_UNSIGNED, 9, self->_.mvhd.geometry,
+        "playback speed",    A_HEX,      self->_.mvhd.playback_speed,
+        "user volume",       A_HEX,      self->_.mvhd.user_volume,
+        "geometry",          A_ARRAY_HEX, 9, self->_.mvhd.geometry,
         "preview",           A_UINT64,   self->_.mvhd.preview,
         "poster",            A_UNSIGNED, self->_.mvhd.poster,
         "qt selection time", A_UINT64,   self->_.mvhd.qt_selection_time,
@@ -1075,7 +1115,7 @@ display_tkhd(const struct qt_atom *self,
              FILE *output)
 {
     display_fields(
-        indent, output, self->name, 11,
+        indent, output, self->name, 12,
         "version",       A_INT,      self->_.tkhd.version,
         "flags",         A_UNSIGNED, self->_.tkhd.flags,
         "created date",  A_UINT64,   self->_.tkhd.created_date,
@@ -1084,7 +1124,8 @@ display_tkhd(const struct qt_atom *self,
         "duration",      A_UINT64,   self->_.tkhd.duration,
         "layer",         A_UNSIGNED, self->_.tkhd.layer,
         "QT alternate",  A_UNSIGNED, self->_.tkhd.qt_alternate,
-        "geometry",      A_ARRAY_UNSIGNED, 9, self->_.tkhd.geometry,
+        "volume",        A_HEX,      self->_.tkhd.volume,
+        "geometry",      A_ARRAY_HEX, 9, self->_.tkhd.geometry,
         "video width",   A_UNSIGNED, self->_.tkhd.video_width,
         "video height",  A_UNSIGNED, self->_.tkhd.video_height);
 }
@@ -1217,14 +1258,14 @@ display_mdhd(const struct qt_atom *self,
 {
     display_fields(
         indent, output, self->name, 8,
-        "version", A_INT, self->_.mdhd.version,
-        "flags", A_UNSIGNED, self->_.mdhd.flags,
-        "created date", A_UINT64, self->_.mdhd.created_date,
-        "modified date", A_UINT64, self->_.mdhd.modified_date,
-        "time scale", A_UNSIGNED, self->_.mdhd.time_scale,
-        "duration", A_UINT64, self->_.mdhd.duration,
-        "language", A_ARRAY_CHAR, 3, self->_.mdhd.language,
-        "quality", A_UNSIGNED, self->_.mdhd.quality);
+        "version",       A_INT,      self->_.mdhd.version,
+        "flags",         A_UNSIGNED, self->_.mdhd.flags,
+        "created date",  A_UINT64,   self->_.mdhd.created_date,
+        "modified date", A_UINT64,   self->_.mdhd.modified_date,
+        "time scale",    A_UNSIGNED, self->_.mdhd.time_scale,
+        "duration",      A_UINT64,   self->_.mdhd.duration,
+        "language",      A_ARRAY_CHAR, 3, self->_.mdhd.language,
+        "quality",       A_UNSIGNED, self->_.mdhd.quality);
 }
 
 static struct qt_atom*
@@ -1832,7 +1873,7 @@ parse_stts(BitstreamReader *stream,
     unsigned version = stream->read(stream, 8);
     unsigned flags = stream->read(stream, 24);
     unsigned times_count = stream->read(stream, 32);
-    struct qt_atom *stts = qt_stts_new(version, flags, 0);
+    struct qt_atom *stts = qt_stts_new(version, flags);
 
     stts->_.stts.times_count = times_count;
     stts->_.stts.times = realloc(stts->_.stts.times,
@@ -1906,16 +1947,16 @@ parse_stsc(BitstreamReader *stream,
     unsigned version = stream->read(stream, 8);
     unsigned flags = stream->read(stream, 24);
     unsigned entries_count = stream->read(stream, 32);
-    struct qt_atom *stsc = qt_stsc_new(version, flags, 0);
-
-    stsc->_.stsc.entries_count = entries_count;
-    stsc->_.stsc.entries = realloc(stsc->_.stsc.entries,
-                                   entries_count * sizeof(struct stsc_entry));
+    struct qt_atom *stsc = qt_stsc_new(version, flags);
 
     for (i = 0; i < entries_count; i++) {
-        stsc->_.stsc.entries[i].first_chunk = stream->read(stream, 32);
-        stsc->_.stsc.entries[i].frames_per_chunk = stream->read(stream, 32);
-        stsc->_.stsc.entries[i].description_index = stream->read(stream, 32);
+        unsigned first_chunk = stream->read(stream, 32);
+        unsigned frames_per_chunk = stream->read(stream, 32);
+        unsigned description_index = stream->read(stream, 32);
+        qt_stsc_add_chunk_size(stsc,
+                               first_chunk,
+                               frames_per_chunk,
+                               description_index);
     }
 
     return stsc;
@@ -1984,10 +2025,9 @@ parse_stsz(BitstreamReader *stream,
     unsigned frame_sizes = stream->read(stream, 32);
     struct qt_atom *stsz = qt_stsz_new(version,
                                        flags,
-                                       frame_byte_size,
-                                       frame_sizes);
+                                       frame_byte_size);
     for (i = 0; i < frame_sizes; i++) {
-        stsz->_.stsz.frame_size[i] = stream->read(stream, 32);
+        qt_stsz_add_size(stsz, stream->read(stream, 32));
     }
     return stsz;
 }
@@ -2050,9 +2090,9 @@ parse_stco(BitstreamReader *stream,
     unsigned version = stream->read(stream, 8);
     unsigned flags = stream->read(stream, 24);
     unsigned chunk_offsets = stream->read(stream, 32);
-    struct qt_atom *stco = qt_stco_new(version, flags, chunk_offsets);
+    struct qt_atom *stco = qt_stco_new(version, flags);
     for (i = 0; i < chunk_offsets; i++) {
-        stco->_.stco.chunk_offset[i] = stream->read(stream, 32);
+        qt_stco_add_offset(stco, stream->read(stream, 32));
     }
     return stco;
 }
@@ -2395,6 +2435,9 @@ display_fields(unsigned indent,
         case A_UNSIGNED:
             fprintf(output, "%u", va_arg(ap, unsigned));
             break;
+        case A_HEX:
+            fprintf(output, "0x%X", va_arg(ap, unsigned));
+            break;
         case A_UINT64:
             fprintf(output, "%" PRIu64, va_arg(ap, uint64_t));
             break;
@@ -2406,6 +2449,21 @@ display_fields(unsigned indent,
                 fputs("[", output);
                 for (j = 0; j < length; j++) {
                     fprintf(output, "%u", array[j]);
+                    if ((j + 1) < length) {
+                        fputs(", ", output);
+                    }
+                }
+                fputs("]", output);
+            }
+            break;
+        case A_ARRAY_HEX:
+            {
+                unsigned length = va_arg(ap, unsigned);
+                unsigned *array = va_arg(ap, unsigned*);
+                unsigned j;
+                fputs("[", output);
+                for (j = 0; j < length; j++) {
+                    fprintf(output, "0x%X", array[j]);
                     if ((j + 1) < length) {
                         fputs(", ", output);
                     }

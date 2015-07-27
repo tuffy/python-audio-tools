@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 #include <setjmp.h>
+#include <time.h>
 #include "../pcmreader.h"
 #include "../bitstream.h"
 
@@ -80,9 +81,24 @@ init_encoder(struct alac_context* encoder, unsigned block_size);
 static void
 free_encoder(struct alac_context* encoder);
 
-/*encodes the mdat atom and returns a linked-list of frame sizes*/
+/*encodes the mdat atom and returns a linked list of frame sizes
+
+  if "total_pcm_frames" is 0, assume the total size of the input
+  stream is unknown and write to a temporary file before
+  encoding to output*/
 static struct alac_frame_size*
 encode_alac(BitstreamWriter *output,
+            struct PCMReader *pcmreader,
+            unsigned total_pcm_frames,
+            int block_size,
+            int initial_history,
+            int history_multiplier,
+            int maximum_k,
+            const char encoder_version[]);
+
+/*encodes the entire mdat atom and returns a linked list of frame sizes*/
+static struct alac_frame_size*
+encode_mdat(BitstreamWriter *output,
             struct PCMReader *pcmreader,
             int block_size,
             int initial_history,
@@ -218,5 +234,25 @@ write_residual(BitstreamWriter* residual_block,
                unsigned value,
                unsigned k,
                unsigned sample_size);
+
+static struct alac_frame_size*
+dummy_frame_sizes(unsigned block_size, unsigned total_pcm_frames);
+
+/*writes the metadata atoms which precede the file's "mdat" atom
+  and returns the total size of those atoms in bytes*/
+static unsigned
+write_metadata(BitstreamWriter* bw,
+               time_t timestamp,
+               unsigned sample_rate,
+               unsigned channels,
+               unsigned bits_per_sample,
+               unsigned total_pcm_frames,
+               unsigned block_size,
+               unsigned history_multiplier,
+               unsigned initial_history,
+               unsigned maximum_K,
+               const struct alac_frame_size *frame_sizes,
+               unsigned frames_offset,
+               const char version[]);
 
 #endif

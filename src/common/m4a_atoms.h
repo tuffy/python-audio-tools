@@ -338,38 +338,55 @@ qt_sub_alac_new(unsigned max_samples_per_frame,
                 unsigned bitrate,
                 unsigned sample_rate);
 
-/*for each "times_count", there is both a frame_count and frame_duration
-  unsigned value which populates the atom*/
+/*returns an empty stts atom which should be populated
+  with the qt_stts_add_time() function*/
 struct qt_atom*
-qt_stts_new(unsigned version,
-            unsigned flags,
-            unsigned times_count,
-            ...);
+qt_stts_new(unsigned version, unsigned flags);
 
-/*for each "entries_count" there is both a first_chunk and frames_per_chunk
-  unsigned value which populates the atom*/
+/*adds another time entry to the stts atom*/
+void
+qt_stts_add_time(struct qt_atom *atom, unsigned pcm_frame_count);
+
+/*returns an empty stsc atom which should be populated
+  with the qt_stsc_add_chunk_size() function*/
 struct qt_atom*
-qt_stsc_new(unsigned version,
-            unsigned flags,
-            unsigned entries_count,
-            ...);
+qt_stsc_new(unsigned version, unsigned flags);
 
-/*generates a stsz atom whose frame sizes are all initialized at 0
-  one is expected to update them with actual values once
-  encoding is finished*/
+/*adds another chunk size entry to the stsc atom*/
+void
+qt_stsc_add_chunk_size(struct qt_atom *atom,
+                       unsigned first_chunk,
+                       unsigned frames_per_chunk,
+                       unsigned description_index);
+
+static inline struct stsc_entry*
+qt_stsc_latest_entry(struct qt_atom *atom)
+{
+    assert(atom->type = QT_STSC);
+    if (atom->_.stsc.entries_count) {
+        return &(atom->_.stsc.entries[atom->_.stsc.entries_count - 1]);
+    } else {
+        return NULL;
+    }
+}
+
+/*creates an empty stsz atom which should be populated with the
+  qt_stsz_add_size() function*/
 struct qt_atom*
 qt_stsz_new(unsigned version,
             unsigned flags,
-            unsigned frame_byte_size,
-            unsigned frames_count);
+            unsigned frame_byte_size);
 
-/*generates a stco atom whose chunk offsets are all initialized at 0
-  one is expected to update them with actual values once
-  encoding is finished*/
+void
+qt_stsz_add_size(struct qt_atom *atom, unsigned byte_size);
+
+/*creates an empty stco atom which should be populated with the
+  qt_stco_add_offset() function*/
 struct qt_atom*
-qt_stco_new(unsigned version,
-            unsigned flags,
-            unsigned chunk_offsets);
+qt_stco_new(unsigned version, unsigned flags);
+
+void
+qt_stco_add_offset(struct qt_atom *atom, unsigned offset);
 
 struct qt_atom*
 qt_meta_new(unsigned version,

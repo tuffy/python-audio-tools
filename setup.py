@@ -762,6 +762,7 @@ class audiotools_encoders(Extension):
                    "src/common/tta_crc.c",
                    "src/encoders/shn.c",
                    "src/encoders/alac.c",
+                   "src/common/m4a_atoms.c",
                    "src/encoders/tta.c",
                    "src/encoders.c"]
         libraries = set()
