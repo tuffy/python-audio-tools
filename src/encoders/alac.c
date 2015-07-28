@@ -238,7 +238,15 @@ encode_alac(BitstreamWriter *output,
                                         metadata_size + 8,
                                         encoder_version);
 
+#ifndef NDEBUG
         assert(rewritten_size == metadata_size);
+#else
+        if (rewritten_size != metadata_size) {
+            fprintf(stderr,
+                    "*** Warning: metadata size %u != %u\n",
+                    rewritten_size, metadata_size);
+        }
+#endif
 
         /*return actual frame sizes list*/
         return actual_sizes;

@@ -1000,7 +1000,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 initial_history=cls.INITIAL_HISTORY,
                 history_multiplier=cls.HISTORY_MULTIPLIER,
                 maximum_k=cls.MAXIMUM_K,
-                version=VERSION)
+                version="Python Audio Tools " + VERSION)
         except (ValueError,IOError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))
