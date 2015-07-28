@@ -37,10 +37,10 @@ reverse_frame_sizes(struct alac_frame_size **head);
 #ifdef STANDALONE
 static unsigned
 total_frame_sizes(const struct alac_frame_size *head);
-#endif
-
+#else
 static unsigned
 total_encoded_pcm_frames(const struct alac_frame_size *head);
+#endif
 
 static void
 free_alac_frame_sizes(struct alac_frame_size *frame_sizes);
@@ -137,6 +137,8 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
                               version);
 
     if (frame_sizes) {
+        output->flush(output);
+        output->free(output);
         free_alac_frame_sizes(frame_sizes);
 
         Py_INCREF(Py_None);
@@ -198,6 +200,11 @@ encode_alac(BitstreamWriter *output,
                         history_multiplier,
                         maximum_k);
 
+        if (!actual_sizes) {
+            free_alac_frame_sizes(dummy_sizes);
+            start->del(start);
+            return NULL;
+        }
 
         assert(total_frame_sizes(actual_sizes) ==
                total_frame_sizes(dummy_sizes));
@@ -206,8 +213,6 @@ encode_alac(BitstreamWriter *output,
 #ifndef STANDALONE
         if (total_encoded_pcm_frames(actual_sizes) != total_pcm_frames) {
             /*total PCM frames mismatch after encoding*/
-            fprintf(stderr, "%u != %u\n",
-                    total_encoded_pcm_frames(actual_sizes), total_pcm_frames);
             free_alac_frame_sizes(actual_sizes);
             start->del(start);
             PyErr_SetString(PyExc_IOError, "total PCM frames mismatch");
@@ -256,6 +261,13 @@ encode_alac(BitstreamWriter *output,
                         initial_history,
                         history_multiplier,
                         maximum_k);
+
+        if (!actual_sizes) {
+            metadata_size_writer->close(metadata_size_writer);
+            temp_output->free(temp_output);
+            fclose(tempfile);
+            return NULL;
+        }
 
         temp_output->flush(temp_output);
         temp_output->free(temp_output);
@@ -449,8 +461,7 @@ total_frame_sizes(const struct alac_frame_size *head)
     }
     return total;
 }
-#endif
-
+#else
 static unsigned
 total_encoded_pcm_frames(const struct alac_frame_size *head)
 {
@@ -460,6 +471,7 @@ total_encoded_pcm_frames(const struct alac_frame_size *head)
     }
     return total;
 }
+#endif
 
 static void
 free_alac_frame_sizes(struct alac_frame_size *frame_sizes)
@@ -1593,17 +1605,6 @@ write_metadata(BitstreamWriter* bw,
 #include <getopt.h>
 #include <errno.h>
 
-static unsigned
-count_bits(unsigned value)
-{
-    unsigned bits = 0;
-    while (value) {
-        bits += value & 0x1;
-        value >>= 1;
-    }
-    return bits;
-}
-
 int main(int argc, char *argv[]) {
     const char encoder_version[] = "Python Audio Tools";
     struct PCMReader *pcmreader = NULL;
@@ -1612,7 +1613,6 @@ int main(int argc, char *argv[]) {
     BitstreamWriter *output = NULL;
     unsigned total_pcm_frames = 0;
     unsigned channels = 2;
-    unsigned channel_mask = 0x3;
     unsigned sample_rate = 44100;
     unsigned bits_per_sample = 16;
 
@@ -1654,12 +1654,6 @@ int main(int argc, char *argv[]) {
         case 'c':
             if (((channels = strtoul(optarg, NULL, 10)) == 0) && errno) {
                 printf("invalid --channel \"%s\"\n", optarg);
-                return 1;
-            }
-            break;
-        case 'm':
-            if (((channel_mask = strtoul(optarg, NULL, 16)) == 0) && errno) {
-                printf("invalid --channel-mask \"%s\"\n", optarg);
                 return 1;
             }
             break;
@@ -1742,7 +1736,6 @@ int main(int argc, char *argv[]) {
            (bits_per_sample == 16) ||
            (bits_per_sample == 24));
     assert(sample_rate > 0);
-    assert(count_bits(channel_mask) == channels);
 
     pcmreader = pcmreader_open_raw(stdin,
                                    sample_rate,

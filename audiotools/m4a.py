@@ -960,7 +960,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         and returns a new ALACAudio object"""
 
         from audiotools.encoders import encode_alac
-        from audiotools import VERSION
+        from audiotools import VERSION,EncodingError
 
         if pcmreader.bits_per_sample not in {16, 24}:
             from audiotools import UnsupportedBitsPerSample
@@ -1001,7 +1001,14 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
                 history_multiplier=cls.HISTORY_MULTIPLIER,
                 maximum_k=cls.MAXIMUM_K,
                 version=VERSION)
+        except (ValueError,IOError) as err:
+            cls.__unlink__(filename)
+            raise EncodingError(str(err))
+        except Exception:
+            cls.__unlink__(filename)
+            raise
         finally:
+            pcmreader.close()
             file.close()
 
         return cls(filename)
