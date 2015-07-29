@@ -789,10 +789,19 @@ parse_leaf(BitstreamReader *stream,
     struct qt_atom *atom;
     /*FIXME - avoid allocating the whole world*/
     uint8_t *data = malloc(atom_size);
-    stream->read_bytes(stream, data, atom_size);
-    atom = qt_leaf_new(atom_name, atom_size, data);
-    free(data);
-    return atom;
+
+    if (!setjmp(*br_try(stream))) {
+        stream->read_bytes(stream, data, atom_size);
+        br_etry(stream);
+        atom = qt_leaf_new(atom_name, atom_size, data);
+        free(data);
+        return atom;
+    } else {
+        br_etry(stream);
+        free(data);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
+    }
 }
 
 static void
@@ -839,13 +848,21 @@ parse_tree(BitstreamReader *stream,
 {
     struct qt_atom *atom = qt_tree_new(atom_name, 0);
 
-    while (atom_size) {
-        struct qt_atom *sub_atom = qt_atom_parse(stream);
-        atom->_.tree = atom_list_append(atom->_.tree, sub_atom);
-        atom_size -= sub_atom->size(sub_atom);
-    }
+    if (!setjmp(*br_try(stream))) {
+        while (atom_size) {
+            struct qt_atom *sub_atom = qt_atom_parse(stream);
+            atom->_.tree = atom_list_append(atom->_.tree, sub_atom);
+            atom_size -= sub_atom->size(sub_atom);
+        }
 
-    return atom;
+        br_etry(stream);
+        return atom;
+    } else {
+        br_etry(stream);
+        atom->free(atom);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
+    }
 }
 
 static void
@@ -918,14 +935,22 @@ parse_ftyp(BitstreamReader *stream,
     atom = qt_ftyp_new(major_brand, major_brand_version, 0);
     atom_size -= 8;
 
-    while (atom_size) {
-        uint8_t compatible_brand[4];
-        stream->read_bytes(stream, compatible_brand, 4);
-        atom_size -= 4;
-        add_ftyp_brand(atom, compatible_brand);
-    }
+    if (!setjmp(*br_try(stream))) {
+        while (atom_size) {
+            uint8_t compatible_brand[4];
+            stream->read_bytes(stream, compatible_brand, 4);
+            atom_size -= 4;
+            add_ftyp_brand(atom, compatible_brand);
+        }
 
-    return atom;
+        br_etry(stream);
+        return atom;
+    } else {
+        atom->free(atom);
+        br_etry(stream);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
+    }
 }
 
 static void
@@ -1403,7 +1428,15 @@ parse_hdlr(BitstreamReader *stream,
     qt_flags_mask = stream->read(stream, 32);
     padding_length = atom_size - (1 + 3 + 4 + 4 + 4 + 4 + 4);
     padding = malloc(padding_length);
-    stream->read_bytes(stream, padding, padding_length);
+    if (!setjmp(*br_try(stream))) {
+        stream->read_bytes(stream, padding, padding_length);
+        br_etry(stream);
+    } else {
+        br_etry(stream);
+        free(padding);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
+    }
 
     atom = qt_hdlr_new(version,
                        flags,
@@ -1527,12 +1560,20 @@ parse_dref(BitstreamReader *stream,
     unsigned flags = stream->read(stream, 24);
     unsigned reference_atom_count = stream->read(stream, 32);
     struct qt_atom *dref = qt_dref_new(version, flags, 0);
-    for (; reference_atom_count; reference_atom_count--) {
-        struct qt_atom *reference = qt_atom_parse(stream);
-        dref->_.dref.references =
-            atom_list_append(dref->_.dref.references, reference);
+    if (!setjmp(*br_try(stream))) {
+        for (; reference_atom_count; reference_atom_count--) {
+            struct qt_atom *reference = qt_atom_parse(stream);
+            dref->_.dref.references =
+                atom_list_append(dref->_.dref.references, reference);
+        }
+        br_etry(stream);
+        return dref;
+    } else {
+        br_etry(stream);
+        dref->free(dref);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
     }
-    return dref;
 }
 
 static void
@@ -1603,12 +1644,20 @@ parse_stsd(BitstreamReader *stream,
     unsigned flags = stream->read(stream, 24);
     unsigned description_atom_count = stream->read(stream, 32);
     struct qt_atom *stsd = qt_stsd_new(version, flags, 0);
-    for (; description_atom_count; description_atom_count--) {
-        struct qt_atom *description = qt_atom_parse(stream);
-        stsd->_.stsd.descriptions =
-            atom_list_append(stsd->_.stsd.descriptions, description);
+    if (!setjmp(*br_try(stream))) {
+        for (; description_atom_count; description_atom_count--) {
+            struct qt_atom *description = qt_atom_parse(stream);
+            stsd->_.stsd.descriptions =
+                atom_list_append(stsd->_.stsd.descriptions, description);
+        }
+        br_etry(stream);
+        return stsd;
+    } else {
+        br_etry(stream);
+        stsd->free(stsd);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
     }
-    return stsd;
 }
 
 static void
@@ -1879,12 +1928,20 @@ parse_stts(BitstreamReader *stream,
     stts->_.stts.times = realloc(stts->_.stts.times,
                                  times_count * sizeof(struct stts_time));
 
-    for (i = 0; i < times_count; i++) {
-        stts->_.stts.times[i].occurences = stream->read(stream, 32);
-        stts->_.stts.times[i].pcm_frame_count = stream->read(stream, 32);
-    }
+    if (!setjmp(*br_try(stream))) {
+        for (i = 0; i < times_count; i++) {
+            stts->_.stts.times[i].occurences = stream->read(stream, 32);
+            stts->_.stts.times[i].pcm_frame_count = stream->read(stream, 32);
+        }
 
-    return stts;
+        br_etry(stream);
+        return stts;
+    } else {
+        br_etry(stream);
+        stts->free(stts);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
+    }
 }
 
 static void
@@ -1949,17 +2006,25 @@ parse_stsc(BitstreamReader *stream,
     unsigned entries_count = stream->read(stream, 32);
     struct qt_atom *stsc = qt_stsc_new(version, flags);
 
-    for (i = 0; i < entries_count; i++) {
-        unsigned first_chunk = stream->read(stream, 32);
-        unsigned frames_per_chunk = stream->read(stream, 32);
-        unsigned description_index = stream->read(stream, 32);
-        qt_stsc_add_chunk_size(stsc,
-                               first_chunk,
-                               frames_per_chunk,
-                               description_index);
-    }
+    if (!setjmp(*br_try(stream))) {
+        for (i = 0; i < entries_count; i++) {
+            unsigned first_chunk = stream->read(stream, 32);
+            unsigned frames_per_chunk = stream->read(stream, 32);
+            unsigned description_index = stream->read(stream, 32);
+            qt_stsc_add_chunk_size(stsc,
+                                   first_chunk,
+                                   frames_per_chunk,
+                                   description_index);
+        }
 
-    return stsc;
+        br_etry(stream);
+        return stsc;
+    } else {
+        br_etry(stream);
+        stsc->free(stsc);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
+    }
 }
 
 static void
@@ -2026,10 +2091,19 @@ parse_stsz(BitstreamReader *stream,
     struct qt_atom *stsz = qt_stsz_new(version,
                                        flags,
                                        frame_byte_size);
-    for (i = 0; i < frame_sizes; i++) {
-        qt_stsz_add_size(stsz, stream->read(stream, 32));
+
+    if (!setjmp(*br_try(stream))) {
+        for (i = 0; i < frame_sizes; i++) {
+            qt_stsz_add_size(stsz, stream->read(stream, 32));
+        }
+        br_etry(stream);
+        return stsz;
+    } else {
+        br_etry(stream);
+        stsz->free(stsz);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
     }
-    return stsz;
 }
 
 static void
@@ -2091,10 +2165,18 @@ parse_stco(BitstreamReader *stream,
     unsigned flags = stream->read(stream, 24);
     unsigned chunk_offsets = stream->read(stream, 32);
     struct qt_atom *stco = qt_stco_new(version, flags);
-    for (i = 0; i < chunk_offsets; i++) {
-        qt_stco_add_offset(stco, stream->read(stream, 32));
+    if (!setjmp(*br_try(stream))) {
+        for (i = 0; i < chunk_offsets; i++) {
+            qt_stco_add_offset(stco, stream->read(stream, 32));
+        }
+        br_etry(stream);
+        return stco;
+    } else {
+        br_etry(stream);
+        stco->free(stco);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
     }
-    return stco;
 }
 
 static void
@@ -2151,13 +2233,21 @@ parse_meta(BitstreamReader *stream,
     unsigned flags = stream->read(stream, 24);
     struct qt_atom *meta = qt_meta_new(version, flags, 0);
     atom_size -= 4; /*remove header*/
-    while (atom_size) {
-        struct qt_atom *sub_atom = qt_atom_parse(stream);
-        atom_size -= sub_atom->size(sub_atom);
-        meta->_.meta.sub_atoms = atom_list_append(meta->_.meta.sub_atoms,
-                                                  sub_atom);
+    if (!setjmp(*br_try(stream))) {
+        while (atom_size) {
+            struct qt_atom *sub_atom = qt_atom_parse(stream);
+            atom_size -= sub_atom->size(sub_atom);
+            meta->_.meta.sub_atoms = atom_list_append(meta->_.meta.sub_atoms,
+                                                      sub_atom);
+        }
+        br_etry(stream);
+        return meta;
+    } else {
+        br_etry(stream);
+        meta->free(meta);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
     }
-    return meta;
 }
 
 static void
@@ -2236,10 +2326,18 @@ parse_data(BitstreamReader *stream,
     stream->skip(stream, 32);
     data_size = atom_size - 8;
     data = malloc(data_size);
-    stream->read_bytes(stream, data, data_size);
-    atom = qt_data_new(type, data_size, data);
-    free(data);
-    return atom;
+    if (!setjmp(*br_try(stream))) {
+        stream->read_bytes(stream, data, data_size);
+        br_etry(stream);
+        atom = qt_data_new(type, data_size, data);
+        free(data);
+        return atom;
+    } else {
+        br_etry(stream);
+        free(data);
+        br_abort(stream);
+        return NULL; /*shouldn't get here*/
+    }
 }
 
 static void

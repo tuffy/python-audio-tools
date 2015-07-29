@@ -400,6 +400,10 @@ qt_data_new(unsigned type, unsigned data_size, const uint8_t data[]);
 struct qt_atom*
 qt_free_new(unsigned padding_bytes);
 
+/*given an entire atom in the stream, including its 64-bit header
+  parses the atom and returns it as a qt_atom object
+
+  may call br_abort() if some I/O error occurs reading the stream*/
 struct qt_atom*
 qt_atom_parse(BitstreamReader *reader);
 
