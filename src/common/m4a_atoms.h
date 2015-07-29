@@ -207,6 +207,12 @@ struct qt_atom {
     /*returns the size of the atom in bytes, including its 8 byte header*/
     unsigned (*size)(const struct qt_atom *self);
 
+    /*given a NULL-terminated list of atom names,
+      recursively parses the atom tree and returns
+      the atom at the end of the list
+      or returns NULL if the atom cannot be found*/
+    struct qt_atom* (*find)(struct qt_atom *self, const char *path[]);
+
     /*deallocates atom and any sub-atoms*/
     void (*free)(struct qt_atom *self);
 };

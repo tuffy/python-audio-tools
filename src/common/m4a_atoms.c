@@ -50,6 +50,18 @@ ATOM_DEF(meta)
 ATOM_DEF(data)
 ATOM_DEF(free)
 
+
+#define FIND_DEF(NAME)                    \
+  static struct qt_atom*                  \
+  find_##NAME(struct qt_atom *self, const char *path[]);
+FIND_DEF(leaf)
+FIND_DEF(tree)
+FIND_DEF(dref)
+FIND_DEF(stsd)
+FIND_DEF(alac)
+FIND_DEF(meta)
+
+
 static void
 build_header(const struct qt_atom *self, BitstreamWriter *stream);
 
@@ -129,6 +141,7 @@ qt_leaf_new(const char name[4],
     atom->display = display_leaf;
     atom->build = build_leaf;
     atom->size = size_leaf;
+    atom->find = find_leaf;
     atom->free = free_leaf;
     return atom;
 }
@@ -155,6 +168,7 @@ qt_tree_new(const char name[4],
     atom->display = display_tree;
     atom->build = build_tree;
     atom->size = size_tree;
+    atom->find = find_tree;
     atom->free = free_tree;
     return atom;
 }
@@ -183,6 +197,7 @@ qt_ftyp_new(const uint8_t major_brand[4],
     atom->display = display_ftyp;
     atom->build = build_ftyp;
     atom->size = size_ftyp;
+    atom->find = find_leaf;
     atom->free = free_ftyp;
     return atom;
 }
@@ -198,6 +213,7 @@ qt_free_new(unsigned padding_bytes)
     atom->display = display_free;
     atom->build = build_free;
     atom->size = size_free;
+    atom->find = find_leaf;
     atom->free = free_free;
     return atom;
 }
@@ -238,6 +254,7 @@ qt_mvhd_new(unsigned version,
     atom->display = display_mvhd;
     atom->build = build_mvhd;
     atom->size = size_mvhd;
+    atom->find = find_leaf;
     atom->free = free_mvhd;
     return atom;
 }
@@ -274,6 +291,7 @@ qt_tkhd_new(unsigned version,
     atom->display = display_tkhd;
     atom->build = build_tkhd;
     atom->size = size_tkhd;
+    atom->find = find_leaf;
     atom->free = free_tkhd;
     return atom;
 }
@@ -302,6 +320,7 @@ qt_mdhd_new(unsigned version,
     atom->display = display_mdhd;
     atom->build = build_mdhd;
     atom->size = size_mdhd;
+    atom->find = find_leaf;
     atom->free = free_mdhd;
     return atom;
 }
@@ -333,6 +352,7 @@ qt_hdlr_new(unsigned version,
     atom->display = display_hdlr;
     atom->build = build_hdlr;
     atom->size = size_hdlr;
+    atom->find = find_leaf;
     atom->free = free_hdlr;
     return atom;
 }
@@ -351,6 +371,7 @@ qt_smhd_new(unsigned version,
     atom->display = display_smhd;
     atom->build = build_smhd;
     atom->size = size_smhd;
+    atom->find = find_leaf;
     atom->free = free_smhd;
     return atom;
 }
@@ -381,6 +402,7 @@ qt_dref_new(unsigned version,
     atom->display = display_dref;
     atom->build = build_dref;
     atom->size = size_dref;
+    atom->find = find_dref;
     atom->free = free_dref;
 
     return atom;
@@ -412,6 +434,7 @@ qt_stsd_new(unsigned version,
     atom->display = display_stsd;
     atom->build = build_stsd;
     atom->size = size_stsd;
+    atom->find = find_stsd;
     atom->free = free_stsd;
 
     return atom;
@@ -445,6 +468,7 @@ qt_alac_new(unsigned reference_index,
     atom->display = display_alac;
     atom->build = build_alac;
     atom->size = size_alac;
+    atom->find = find_alac;
     atom->free = free_alac;
     return atom;
 }
@@ -477,6 +501,7 @@ qt_sub_alac_new(unsigned max_samples_per_frame,
     atom->display = display_sub_alac;
     atom->build = build_sub_alac;
     atom->size = size_sub_alac;
+    atom->find = find_leaf;
     atom->free = free_sub_alac;
     return atom;
 }
@@ -494,6 +519,7 @@ qt_stts_new(unsigned version, unsigned flags)
     atom->display = display_stts;
     atom->build = build_stts;
     atom->size = size_stts;
+    atom->find = find_leaf;
     atom->free = free_stts;
     return atom;
 }
@@ -537,6 +563,7 @@ qt_stsc_new(unsigned version, unsigned flags)
     atom->display = display_stsc;
     atom->build = build_stsc;
     atom->size = size_stsc;
+    atom->find = find_leaf;
     atom->free = free_stsc;
     return atom;
 }
@@ -574,6 +601,7 @@ qt_stsz_new(unsigned version,
     atom->display = display_stsz;
     atom->build = build_stsz;
     atom->size = size_stsz;
+    atom->find = find_leaf;
     atom->free = free_stsz;
     return atom;
 }
@@ -606,6 +634,7 @@ qt_stco_new(unsigned version,
     atom->display = display_stco;
     atom->build = build_stco;
     atom->size = size_stco;
+    atom->find = find_leaf;
     atom->free = free_stco;
     return atom;
 }
@@ -648,6 +677,7 @@ qt_meta_new(unsigned version,
     atom->display = display_meta;
     atom->build = build_meta;
     atom->size = size_meta;
+    atom->find = find_meta;
     atom->free = free_meta;
     return atom;
 }
@@ -665,6 +695,7 @@ qt_data_new(unsigned type, unsigned data_size, const uint8_t data[])
     atom->display = display_data;
     atom->build = build_data;
     atom->size = size_data;
+    atom->find = find_leaf;
     atom->free = free_data;
     return atom;
 }
@@ -818,6 +849,17 @@ size_leaf(const struct qt_atom *self)
     return 8 + self->_.leaf.data_size;
 }
 
+static struct qt_atom*
+find_leaf(struct qt_atom *self, const char *path[]) {
+    if (path[0]) {
+        /*no more sub-elements to search*/
+        return NULL;
+    } else {
+        /*reached the last element to find*/
+        return self;
+    }
+}
+
 static void
 free_leaf(struct qt_atom *self)
 {
@@ -885,6 +927,27 @@ size_tree(const struct qt_atom *self)
         size += list->atom->size(list->atom);
     }
     return size;
+}
+
+static struct qt_atom*
+find_tree(struct qt_atom *self, const char *path[])
+{
+    if (path[0]) {
+        struct qt_atom_list *list;
+
+        for (list = self->_.tree; list; list = list->next) {
+            if (!memcmp(list->atom->name, path[0], 4)) {
+                /*return recursive result of first match*/
+                return list->atom->find(list->atom, path + 1);
+            }
+        }
+
+        /*element not found*/
+        return NULL;
+    } else {
+        /*reached the last element to find*/
+        return self;
+    }
 }
 
 static void
@@ -1607,6 +1670,29 @@ size_dref(const struct qt_atom *self)
     return size;
 }
 
+static struct qt_atom*
+find_dref(struct qt_atom *self, const char *path[])
+{
+    if (path[0]) {
+        struct qt_atom_list *reference;
+
+        for (reference = self->_.dref.references;
+             reference;
+             reference = reference->next) {
+            if (!memcmp(reference->atom->name, path[0], 4)) {
+                /*return recursive result of first match*/
+                return reference->atom->find(reference->atom, path + 1);
+            }
+        }
+
+        /*element not found*/
+        return NULL;
+    } else {
+        /*reached the last element to find*/
+        return self;
+    }
+}
+
 static void
 free_dref(struct qt_atom *self)
 {
@@ -1689,6 +1775,29 @@ size_stsd(const struct qt_atom *self)
         size += descriptions->atom->size(descriptions->atom);
     }
     return size;
+}
+
+static struct qt_atom*
+find_stsd(struct qt_atom *self, const char *path[])
+{
+    if (path[0]) {
+        struct qt_atom_list *description;
+
+        for (description = self->_.stsd.descriptions;
+             description;
+             description = description->next) {
+            if (!memcmp(description->atom->name, path[0], 4)) {
+                /*return recursive result of first match*/
+                return description->atom->find(description->atom, path + 1);
+            }
+        }
+
+        /*element not found*/
+        return NULL;
+    } else {
+        /*reached the last element to find*/
+        return self;
+    }
 }
 
 static void
@@ -1788,6 +1897,20 @@ static unsigned
 size_alac(const struct qt_atom *self)
 {
     return 36 + self->_.alac.sub_alac->size(self->_.alac.sub_alac);
+}
+
+static struct qt_atom*
+find_alac(struct qt_atom *self, const char *path[])
+{
+    if (path[0]) {
+        if (!memcmp(path[0], "alac", 4)) {
+            return self->_.alac.sub_alac->find(self->_.alac.sub_alac, path + 1);
+        } else {
+            return NULL;
+        }
+    } else {
+        return self;
+    }
 }
 
 static void
@@ -2272,6 +2395,27 @@ size_meta(const struct qt_atom *self)
         size += list->atom->size(list->atom);
     }
     return size;
+}
+
+static struct qt_atom*
+find_meta(struct qt_atom *self, const char *path[])
+{
+    if (path[0]) {
+        struct qt_atom_list *list;
+
+        for (list = self->_.meta.sub_atoms; list; list = list->next) {
+            if (!memcmp(list->atom->name, path[0], 4)) {
+                /*return recursive result of first match*/
+                return list->atom->find(list->atom, path + 1);
+            }
+        }
+
+        /*element not found*/
+        return NULL;
+    } else {
+        /*reached the last element to find*/
+        return self;
+    }
 }
 
 static void
