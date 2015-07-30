@@ -927,7 +927,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
         from audiotools import PCMReaderError
 
         try:
-            return ALACDecoder(self.filename)
+            return ALACDecoder(open(self.filename, "rb"))
         except (IOError, ValueError) as msg:
             return PCMReaderError(error_message=str(msg),
                                   sample_rate=self.sample_rate(),

@@ -1457,7 +1457,7 @@ read_LPC_subframe(BitstreamReader *r,
         }
 
         for (i = predictor_order; i < block_size; i++) {
-            int64_t sum = 0;
+            register int64_t sum = 0;
             unsigned j;
             for (j = 0; j < predictor_order; j++) {
                 sum += (int64_t)coefficient[j] * (int64_t)samples[i - j - 1];

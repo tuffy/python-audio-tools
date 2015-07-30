@@ -210,7 +210,10 @@ struct qt_atom {
     /*given a NULL-terminated list of atom names,
       recursively parses the atom tree and returns
       the atom at the end of the list
-      or returns NULL if the atom cannot be found*/
+      or returns NULL if the atom cannot be found
+
+      the reference to the atom is stolen from the parent
+      and should not be freed with the free() method*/
     struct qt_atom* (*find)(struct qt_atom *self, const char *path[]);
 
     /*deallocates atom and any sub-atoms*/
@@ -412,6 +415,16 @@ qt_free_new(unsigned padding_bytes);
   may call br_abort() if some I/O error occurs reading the stream*/
 struct qt_atom*
 qt_atom_parse(BitstreamReader *reader);
+
+/*given the total atom size (which must be >= 8)
+  and atom name, parses the remainder of the atom
+  and returns it as a qt_atom object
+
+  may call br_abort() if some I/O error occurs reading the stream*/
+struct qt_atom*
+qt_atom_parse_by_name(BitstreamReader *reader,
+                      unsigned atom_size,
+                      const char atom_name[4]);
 
 /*transforms a standard timestamp into a Mac UTC-compatible one*/
 qt_time_t

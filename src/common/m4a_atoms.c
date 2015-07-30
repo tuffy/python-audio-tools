@@ -705,11 +705,20 @@ qt_atom_parse(BitstreamReader *reader)
 {
     unsigned atom_size;
     char atom_name[4];
-    struct qt_atom *atom;
 
     /*grab the 8 byte atom header*/
     atom_size = reader->read(reader, 32);
     reader->read_bytes(reader, (uint8_t*)atom_name, 4);
+
+    return qt_atom_parse_by_name(reader, atom_size, atom_name);
+}
+
+struct qt_atom*
+qt_atom_parse_by_name(BitstreamReader *reader,
+                      unsigned atom_size,
+                      const char atom_name[4])
+{
+    struct qt_atom *atom;
 
     assert(atom_size >= 8);
 
