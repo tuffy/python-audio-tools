@@ -52,6 +52,18 @@ read_atom_header(BitstreamReader *stream,
                  unsigned *atom_size,
                  char atom_name[4]);
 
+/*given a "moov" atom, parses the stream's decoding parameters
+  returns 1 on success, 0 on failure*/
+static int
+get_decoding_parameters(decoders_ALACDecoder *self,
+                        struct qt_atom *moov_atom);
+
+/*given a "moov" atom, parses the stream's seektable
+  returns 1 on success, 0 on failure*/
+static int
+get_seektable(decoders_ALACDecoder *self,
+              struct qt_atom *moov_atom);
+
 static PyObject*
 alac_exception(status_t status);
 
@@ -143,12 +155,14 @@ ALACDecoder_init(decoders_ALACDecoder *self,
     PyObject *file;
     unsigned atom_size;
     char atom_name[4];
-    int alac_found = 0;
+    int got_decoding_parameters = 0;
+    int got_seektable = 0;
 
     self->bitstream = NULL;
     self->mdat_start = NULL;
-    self->mdat_size = 0;
-    self->mdat_pos = 0;
+    self->total_pcm_frames = 0;
+    self->read_pcm_frames = 0;
+    self->seektable = NULL;
     self->closed = 0;
     self->audiotools_pcm = NULL;
 
@@ -180,7 +194,6 @@ ALACDecoder_init(decoders_ALACDecoder *self,
                 return -1;
             } else {
                 self->mdat_start = self->bitstream->getpos(self->bitstream);
-                self->mdat_size = atom_size - 8;
                 self->bitstream->seek(self->bitstream,
                                       atom_size - 8,
                                       BS_SEEK_CUR);
@@ -188,16 +201,7 @@ ALACDecoder_init(decoders_ALACDecoder *self,
         } else if (!memcmp(atom_name, "moov", 4)) {
             /*find and parse metadata from moov atom*/
 
-            const static char *alac_path[] = {"trak",
-                                              "mdia",
-                                              "minf",
-                                              "stbl",
-                                              "stsd",
-                                              "alac",
-                                              "alac",
-                                              NULL};
             struct qt_atom *moov_atom;
-            struct qt_atom *alac_atom;
 
             if (!setjmp(*br_try(self->bitstream))) {
                 moov_atom = qt_atom_parse_by_name(self->bitstream,
@@ -211,37 +215,16 @@ ALACDecoder_init(decoders_ALACDecoder *self,
                 return -1;
             }
 
-            /*use alac atom to populate stream parameters*/
-            alac_atom = moov_atom->find(moov_atom, alac_path);
-
-            if (alac_atom && (alac_atom->type == QT_SUB_ALAC)) {
-                if (alac_found) {
-                    PyErr_SetString(PyExc_ValueError,
-                                    "multiple alac atoms in stream");
-                    return -1;
-                }
-
-                alac_found = 1;
-                self->params.block_size =
-                    alac_atom->_.sub_alac.max_samples_per_frame;
-                self->bits_per_sample =
-                    alac_atom->_.sub_alac.bits_per_sample;
-                self->params.history_multiplier =
-                    alac_atom->_.sub_alac.history_multiplier;
-                self->params.initial_history =
-                    alac_atom->_.sub_alac.initial_history;
-                self->params.maximum_K =
-                    alac_atom->_.sub_alac.maximum_K;
-                self->channels =
-                    alac_atom->_.sub_alac.channels;
-                self->sample_rate =
-                    alac_atom->_.sub_alac.sample_rate;
-
+            if (!got_decoding_parameters &&
+                get_decoding_parameters(self, moov_atom)) {
                 /*FIXME - reject files with huge block_size*/
+
+                got_decoding_parameters = 1;
             }
 
-            /*use stsz atom to populate seektable*/
-            /*FIXME*/
+            if (!got_seektable && get_seektable(self, moov_atom)) {
+                got_seektable = 1;
+            }
 
             moov_atom->free(moov_atom);
         } else {
@@ -255,17 +238,14 @@ ALACDecoder_init(decoders_ALACDecoder *self,
         }
     }
 
-    if (!alac_found) {
-        PyErr_SetString(PyExc_ValueError, "no alac atom found in stream");
+    if (!got_decoding_parameters) {
+        PyErr_SetString(PyExc_ValueError, "no decoding parameters");
         return -1;
     }
 
     /*seek to start of mdat atom*/
     if (self->mdat_start) {
         self->bitstream->setpos(self->bitstream, self->mdat_start);
-        self->bitstream->add_callback(self->bitstream,
-                                      (bs_callback_f)byte_counter,
-                                      &(self->mdat_pos));
     } else {
         PyErr_SetString(PyExc_ValueError, "no mdat atom found in stream");
         return -1;
@@ -288,6 +268,7 @@ ALACDecoder_dealloc(decoders_ALACDecoder *self)
     if (self->mdat_start) {
         self->mdat_start->del(self->mdat_start);
     }
+    free(self->seektable);
     Py_XDECREF(self->audiotools_pcm);
 
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -330,7 +311,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
         return NULL;
     }
 
-    if (self->mdat_pos >= self->mdat_size) {
+    if (self->read_pcm_frames >= self->total_pcm_frames) {
         return empty_FrameList(self->audiotools_pcm,
                                self->channels,
                                self->bits_per_sample);
@@ -369,6 +350,8 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
     /*reorder FrameList to .wav order*/
     /*FIXME*/
 
+    self->read_pcm_frames += pcm_frames_read;
+
     /*return populated FrameList*/
     return (PyObject*)framelist;
 }
@@ -376,9 +359,69 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
 static PyObject*
 ALACDecoder_seek(decoders_ALACDecoder* self, PyObject *args)
 {
-    /*FIXME - implement this*/
-    Py_INCREF(Py_None);
-    return Py_None;
+    long long seeked_offset;
+
+    if (self->closed) {
+        PyErr_SetString(PyExc_ValueError, "cannot seek closed stream");
+        return NULL;
+    }
+
+    if (!PyArg_ParseTuple(args, "L", &seeked_offset)) {
+        return NULL;
+    }
+
+    if (seeked_offset < 0) {
+        PyErr_SetString(PyExc_ValueError, "cannot seek to negative value");
+        return NULL;
+    }
+
+    if (!self->seektable) {
+        /*no seektable, so seek to beginning of file*/
+        if (!setjmp(*br_try(self->bitstream))) {
+            self->bitstream->setpos(self->bitstream, self->mdat_start);
+            br_etry(self->bitstream);
+            self->read_pcm_frames = 0;
+            return Py_BuildValue("i", 0);
+        } else {
+            br_etry(self->bitstream);
+            PyErr_SetString(PyExc_IOError, "I/O error seeking in stream");
+            return NULL;
+        }
+    } else {
+        unsigned i;
+        unsigned pcm_frames_offset = 0;
+        long byte_offset = 0;
+
+        /*find latest seekpoint whose first sample is <= seeked_offset
+          or 0 if there are no seekpoints in the seektable*/
+        for (i = 0; i < self->total_alac_frames; i++) {
+            if (seeked_offset >= self->seektable[i].pcm_frames) {
+                seeked_offset -= self->seektable[i].pcm_frames;
+                pcm_frames_offset += self->seektable[i].pcm_frames;
+                byte_offset += self->seektable[i].byte_size;
+            } else {
+                break;
+            }
+        }
+
+        /*position bitstream to indicated position in file*/
+        if (!setjmp(*br_try(self->bitstream))) {
+            self->bitstream->setpos(self->bitstream, self->mdat_start);
+            self->bitstream->seek(self->bitstream, byte_offset, BS_SEEK_CUR);
+            br_etry(self->bitstream);
+        } else {
+            br_etry(self->bitstream);
+            PyErr_SetString(PyExc_IOError, "I/O error seeking in stream");
+            return NULL;
+        }
+
+        /*reset stream's total remaining frames*/
+        self->read_pcm_frames = pcm_frames_offset;
+
+        /*return actual PCM frame position in file*/
+        return Py_BuildValue("I", pcm_frames_offset);
+    }
+
 }
 
 static PyObject*
@@ -427,6 +470,98 @@ read_atom_header(BitstreamReader *stream,
         br_etry(stream);
         return 0;
     }
+}
+
+static int
+get_decoding_parameters(decoders_ALACDecoder *self,
+                        struct qt_atom *moov_atom)
+{
+    const static char *mvhd_path[] =
+        {"mvhd", NULL};
+    const static char *alac_path[] =
+        {"trak", "mdia", "minf", "stbl", "stsd", "alac", "alac", NULL};
+    struct qt_atom *mvhd_atom;
+    struct qt_atom *alac_atom;
+
+    /*use mvhd atom to populate total PCM frames*/
+    if (((mvhd_atom = moov_atom->find(moov_atom, mvhd_path)) != NULL) &&
+        (mvhd_atom->type == QT_MVHD)) {
+        self->total_pcm_frames = (unsigned)mvhd_atom->_.mvhd.duration;
+    } else {
+        return 0;
+    }
+
+    /*use alac atom to populate stream parameters*/
+    if (((alac_atom = moov_atom->find(moov_atom, alac_path)) != NULL) &&
+        (alac_atom->type == QT_SUB_ALAC)) {
+        self->params.block_size =
+            alac_atom->_.sub_alac.max_samples_per_frame;
+        self->bits_per_sample =
+            alac_atom->_.sub_alac.bits_per_sample;
+        self->params.history_multiplier =
+            alac_atom->_.sub_alac.history_multiplier;
+        self->params.initial_history =
+            alac_atom->_.sub_alac.initial_history;
+        self->params.maximum_K =
+            alac_atom->_.sub_alac.maximum_K;
+        self->channels =
+            alac_atom->_.sub_alac.channels;
+        self->sample_rate =
+            alac_atom->_.sub_alac.sample_rate;
+    } else {
+        return 0;
+    }
+
+    return 1;
+}
+
+static int
+get_seektable(decoders_ALACDecoder *self,
+              struct qt_atom *moov_atom)
+{
+    const char *stts_path[] =
+        {"trak", "mdia", "minf", "stbl", "stts", NULL};
+    const char *stsz_path[] =
+        {"trak", "mdia", "minf", "stbl", "stsz", NULL};
+    struct qt_atom *stts_atom;
+    struct qt_atom *stsz_atom;
+    unsigned stts_total_frames = 0;
+    unsigned i;
+    unsigned j;
+    struct stts_time time;
+
+    /*ensure both stts and stsz are present and the correct type*/
+    if (((stts_atom = moov_atom->find(moov_atom, stts_path)) == NULL) ||
+        (stts_atom->type != QT_STTS)) {
+        return 0;
+    }
+    if (((stsz_atom = moov_atom->find(moov_atom, stsz_path)) == NULL) ||
+        (stsz_atom->type != QT_STSZ)) {
+        return 0;
+    }
+
+    /*ensure frame count of stts matches frame count of stsz*/
+    for (i = 0; i < stts_atom->_.stts.times_count; i++) {
+        stts_total_frames += stts_atom->_.stts.times[i].occurences;
+    }
+    if (stts_total_frames != stsz_atom->_.stsz.frames_count) {
+        return 0;
+    }
+
+    /*allocate and populate seektable*/
+    time = stts_atom->_.stts.times[0];
+    self->total_alac_frames = stts_total_frames;
+    self->seektable = malloc(stts_total_frames * sizeof(struct alac_seekpoint));
+    for (i = j = 0; i < stts_total_frames; i++) {
+        while (time.occurences == 0) {
+            time = stts_atom->_.stts.times[++j];
+        }
+        self->seektable[i].pcm_frames = time.pcm_frame_count;
+        self->seektable[i].byte_size = stsz_atom->_.stsz.frame_size[i];
+        time.occurences -= 1;
+    }
+
+    return 1;
 }
 
 static PyObject*

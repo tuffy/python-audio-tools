@@ -28,19 +28,28 @@ struct alac_parameters {
     unsigned maximum_K;
 };
 
+struct alac_seekpoint {
+    unsigned pcm_frames;
+    unsigned byte_size;
+};
+
 typedef struct {
     PyObject_HEAD
 
     BitstreamReader *bitstream;
     br_pos_t *mdat_start;
-    unsigned mdat_size;   /*size of mdat atom, not including header*/
-    unsigned mdat_pos;    /*current position in mdat atom*/
+
+    unsigned total_pcm_frames;
+    unsigned read_pcm_frames;
 
     struct alac_parameters params;
 
     unsigned bits_per_sample;
     unsigned channels;
     unsigned sample_rate;
+
+    unsigned total_alac_frames;
+    struct alac_seekpoint *seektable;
 
     int closed;
 
