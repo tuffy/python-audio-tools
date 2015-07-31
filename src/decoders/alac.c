@@ -133,6 +133,11 @@ decorrelate_channels(unsigned block_size,
                      int left[],
                      int right[]);
 
+static void
+reorder_channels(unsigned pcm_frames,
+                 unsigned channel_count,
+                 int *samples);
+
 /*************************************/
 /*  public function implementations  */
 /*************************************/
@@ -217,7 +222,21 @@ ALACDecoder_init(decoders_ALACDecoder *self,
 
             if (!got_decoding_parameters &&
                 get_decoding_parameters(self, moov_atom)) {
-                /*FIXME - reject files with huge block_size*/
+
+                /*this is an arbitrary block size limit
+                  to keep from blowing up the stack
+
+                  Apple's reference encoder uses 4096 exclusively
+                  but the file format allows sizes up to 32 bits(!)
+                  which would break the whole world if anybody used
+                  them all for a single ALAC frame.
+
+                  so I'll just assume such files are malicious
+                  and reject them outright*/
+                if (self->params.block_size > 65535) {
+                    PyErr_SetString(PyExc_ValueError, "block size too large");
+                    return -1;
+                }
 
                 got_decoding_parameters = 1;
             }
@@ -295,8 +314,49 @@ ALACDecoder_channels(decoders_ALACDecoder *self, void *closure)
 static PyObject*
 ALACDecoder_channel_mask(decoders_ALACDecoder *self, void *closure)
 {
-    /*FIXME - calculate this from channel count*/
-    return Py_BuildValue("I", 0);
+    enum {fL=0x1,   /*front left*/
+          fR=0x2,   /*front right*/
+          fC=0x4,   /*front center*/
+          LFE=0x8,
+          bL=0x10,  /*back left*/
+          bR=0x20,  /*back right*/
+          bC=0x100, /*back center*/
+          lC=0x200, /*left center*/
+          rC=0x400  /*right center*/
+          };
+    int mask;
+
+    switch (self->channels) {
+    case 1:
+        mask = fC;
+        break;
+    case 2:
+        mask = fL | fR;
+        break;
+    case 3:
+        mask = fC | fL | fR;
+        break;
+    case 4:
+        mask = fC | fL | fR | bC;
+        break;
+    case 5:
+        mask = fC | fL | fR | bL | bR;
+        break;
+    case 6:
+        mask = fC | fL | fR | bL | bR | LFE;
+        break;
+    case 7:
+        mask = fC | fL | fR | bL | bR | bC | LFE;
+        break;
+    case 8:
+        mask = fC | lC | rC | fL | fR | bL | bR | LFE;
+        break;
+    default:
+        mask = 0;
+        break;
+    }
+
+    return Py_BuildValue("i", mask);
 }
 
 static PyObject*
@@ -348,7 +408,9 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
     framelist->samples_length = pcm_frames_read * self->channels;
 
     /*reorder FrameList to .wav order*/
-    /*FIXME*/
+    reorder_channels(pcm_frames_read,
+                     self->channels,
+                     framelist->samples);
 
     self->read_pcm_frames += pcm_frames_read;
 
@@ -912,9 +974,7 @@ read_residual_block(BitstreamReader *br,
 
                 unsigned j;
 
-                zero_block_size = MIN(zero_block_size, block_size - i);
-
-                for (j = 0; j < zero_block_size; j++) {
+                for (j = 0; (j < zero_block_size) && (i < block_size); j++) {
                     residual[i++] = 0;
                 }
             }
@@ -943,7 +1003,7 @@ read_residual(BitstreamReader *br,
         /*we've exceeded the maximum number of 1 bits,
           so return an unencoded value*/
         return br->read(br, sample_size);
-    } else if (k == 0) {
+    } else if ((k == 0) || (k == 1)) {
         /*no least-significant bits to read, so return most-significant bits*/
         return (unsigned)msb;
     } else {
@@ -1042,5 +1102,86 @@ decorrelate_channels(unsigned block_size,
         leftweight >>= interlacing_shift;
         right[i] = subframe_0[i] - (int)leftweight;
         left[i] = subframe_1[i] + right[i];
+    }
+}
+
+static void
+reorder_channels(unsigned pcm_frames,
+                 unsigned channel_count,
+                 int *samples)
+{
+    switch (channel_count) {
+    default:
+        /*do nothing, leave samples as-is*/
+        break;
+    case 3:
+        /*fC fL fR -> fL fC fR*/
+        swap_channel_data(samples, 0, 1, 3, pcm_frames);
+
+        /*fL fC fR -> fL fR fC*/
+        swap_channel_data(samples, 1, 2, 3, pcm_frames);
+        break;
+    case 4:
+        /*fC fL fR bC -> fL fC fR bC*/
+        swap_channel_data(samples, 0, 1, 4, pcm_frames);
+
+        /*fL fC fR bC -> fL fR fC bC*/
+        swap_channel_data(samples, 1, 2, 4, pcm_frames);
+        break;
+    case 5:
+        /*fC fL fR bL bR -> fL fC fR bL bR*/
+        swap_channel_data(samples, 0, 1, 5, pcm_frames);
+
+        /*fL fC fR bL bR -> fL fR fC bL bR*/
+        swap_channel_data(samples, 1, 2, 5, pcm_frames);
+        break;
+    case 6:
+        /*fC fL fR bL bR LFE -> fL fC fR bL bR LFE*/
+        swap_channel_data(samples, 0, 1, 6, pcm_frames);
+
+        /*fL fC fR bL bR LFE -> fL fR fC bL bR LFE*/
+        swap_channel_data(samples, 1, 2, 6, pcm_frames);
+
+        /*fL fR fC bL bR LFE -> fL fR fC LFE bR bL*/
+        swap_channel_data(samples, 3, 5, 6, pcm_frames);
+
+        /*fL fR fC LFE bR bL -> fL fR fC LFE bL bR*/
+        swap_channel_data(samples, 4, 5, 6, pcm_frames);
+        break;
+    case 7:
+        /*fC fL fR bL bR bC LFE -> fL fC fR bL bR bC LFE*/
+        swap_channel_data(samples, 0, 1, 7, pcm_frames);
+
+        /*fL fC fR bL bR bC LFE -> fL fR fC bL bR bC LFE*/
+        swap_channel_data(samples, 1, 2, 7, pcm_frames);
+
+        /*fL fR fC bL bR bC LFE -> fL fR fC LFE bR bC bL*/
+        swap_channel_data(samples, 3, 6, 7, pcm_frames);
+
+        /*fL fR fC LFE bR bC bL -> fL fR fC LFE bL bC bR*/
+        swap_channel_data(samples, 4, 6, 7, pcm_frames);
+
+        /*fL fR fC LFE bL bC bR -> fL fR fC LFE bL bR bC*/
+        swap_channel_data(samples, 5, 6, 7, pcm_frames);
+        break;
+    case 8:
+        /*fC sL sR fL fR bL bR LFE -> fL sL sR fC fR bL bR LFE*/
+        swap_channel_data(samples, 0, 3, 8, pcm_frames);
+
+        /*fL sL sR fC fR bL bR LFE -> fL fR sR fC sL bL bR LFE*/
+        swap_channel_data(samples, 1, 4, 8, pcm_frames);
+
+        /*fL fR sR fC sL bL bR LFE -> fL fR fC sR sL bL bR LFE*/
+        swap_channel_data(samples, 2, 3, 8, pcm_frames);
+
+        /*fL fR fC sR sL bL bR LFE -> fL fR fC LFE sL bL bR sR*/
+        swap_channel_data(samples, 3, 7, 8, pcm_frames);
+
+        /*fL fR fC LFE sL bL bR sR -> fL fR fC LFE bL sL bR sR*/
+        swap_channel_data(samples, 4, 5, 8, pcm_frames);
+
+        /*fL fR fC LFE bL sL bR sR -> fL fR fC LFE bL bR sL sR*/
+        swap_channel_data(samples, 5, 6, 8, pcm_frames);
+        break;
     }
 }
