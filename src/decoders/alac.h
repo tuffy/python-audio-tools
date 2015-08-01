@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include <stdint.h>
 #include "../bitstream.h"
 
@@ -34,7 +36,9 @@ struct alac_seekpoint {
 };
 
 typedef struct {
+#ifndef STANDALONE
     PyObject_HEAD
+#endif
 
     BitstreamReader *bitstream;
     br_pos_t *mdat_start;
@@ -53,11 +57,14 @@ typedef struct {
 
     int closed;
 
+#ifndef STANDALONE
     /*a framelist generator*/
     PyObject *audiotools_pcm;
+#endif
 } decoders_ALACDecoder;
 
 
+#ifndef STANDALONE
 PyObject*
 ALACDecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
@@ -161,3 +168,4 @@ PyTypeObject decoders_ALACDecoderType = {
     0,                         /* tp_alloc */
     ALACDecoder_new,           /* tp_new */
 };
+#endif

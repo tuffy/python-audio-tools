@@ -64,8 +64,10 @@ static int
 get_seektable(decoders_ALACDecoder *self,
               struct qt_atom *moov_atom);
 
+#ifndef STANDALONE
 static PyObject*
 alac_exception(status_t status);
+#endif
 
 static const char*
 alac_strerror(status_t status);
@@ -142,6 +144,7 @@ reorder_channels(unsigned pcm_frames,
 /*  public function implementations  */
 /*************************************/
 
+#ifndef STANDALONE
 PyObject*
 ALACDecoder_new(PyTypeObject *type,
                 PyObject *args, PyObject *kwds)
@@ -512,7 +515,7 @@ ALACDecoder_exit(decoders_ALACDecoder* self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
 }
-
+#endif
 
 /**************************************/
 /*  private function implementations  */
@@ -626,6 +629,7 @@ get_seektable(decoders_ALACDecoder *self,
     return 1;
 }
 
+#ifndef STANDALONE
 static PyObject*
 alac_exception(status_t status)
 {
@@ -641,6 +645,7 @@ alac_exception(status_t status)
         return PyExc_ValueError;
     }
 }
+#endif
 
 static const char*
 alac_strerror(status_t status)
@@ -961,11 +966,12 @@ read_residual_block(BitstreamReader *br,
 
         /*if history gets too small, we may have a block of 0 samples
           which can be compressed more efficiently*/
-        if ((history < 128) && ((i + 1) < block_size)) {
+        if ((history < 128) && (i < block_size)) {
             unsigned zero_block_size = read_residual(
                 br,
                 MIN(7 - LOG2(history) + ((history + 16) / 64), maximum_k),
                 16);
+
             if (zero_block_size > 0) {
                 /*block of 0s found, so write them out*/
 
@@ -1185,3 +1191,168 @@ reorder_channels(unsigned pcm_frames,
         break;
     }
 }
+
+#ifdef STANDALONE
+
+#include <errno.h>
+
+int
+main(int argc, char *argv[])
+{
+    FILE *file;
+    BitstreamReader *bitstream;
+    unsigned atom_size;
+    char atom_name[4];
+    int got_decoding_parameters = 0;
+    br_pos_t *mdat_start = NULL;
+    decoders_ALACDecoder decoder;
+    int *samples = NULL;
+    int_to_pcm_f converter;
+    unsigned char *buffer = NULL;
+    unsigned bytes_per_sample;
+    int return_status = 0;
+
+    /*open input file*/
+    if (argc < 2) {
+        fprintf(stderr, "*** Usage: alacdec <file.m4a>\n");
+        return 1;
+    }
+
+    errno = 0;
+    if ((file = fopen(argv[1], "rb")) == NULL) {
+        fprintf(stderr, "*** %s: %s\n", argv[1], strerror(errno));
+        return 1;
+    } else {
+        bitstream = br_open(file, BS_BIG_ENDIAN);
+    }
+
+    /*walk through atoms and get decoding parameters*/
+    while (read_atom_header(bitstream, &atom_size, atom_name)) {
+        if (!memcmp(atom_name, "mdat", 4)) {
+            /*get mdat atom's starting position*/
+            if (mdat_start) {
+                fputs("multipled mdat atoms found in stream\n", stderr);
+                return_status = 1;
+                goto done;
+            } else {
+                mdat_start = bitstream->getpos(bitstream);
+                bitstream->seek(bitstream, atom_size - 8, BS_SEEK_CUR);
+            }
+        } else if (!memcmp(atom_name, "moov", 4)) {
+            /*find and parse metadata from moov atom*/
+
+            struct qt_atom *moov_atom;
+
+            if (!setjmp(*br_try(bitstream))) {
+                moov_atom = qt_atom_parse_by_name(bitstream,
+                                                  atom_size,
+                                                  atom_name);
+
+                br_etry(bitstream);
+            } else {
+                br_etry(bitstream);
+                fputs("I/O error reading moov atom\n", stderr);
+                return_status = 1;
+                goto done;
+            }
+
+            if (!got_decoding_parameters &&
+                get_decoding_parameters(&decoder, moov_atom)) {
+
+                if (decoder.params.block_size > 65535) {
+                    fprintf(stderr, "block size %u too large\n",
+                            decoder.params.block_size);
+                    return_status = 1;
+                    goto done;
+                }
+
+                got_decoding_parameters = 1;
+            }
+
+            moov_atom->free(moov_atom);
+        } else {
+            /*skip remaining atoms*/
+
+            if (atom_size >= 8) {
+                bitstream->seek(bitstream, atom_size - 8, BS_SEEK_CUR);
+            }
+        }
+    }
+
+    if (!got_decoding_parameters) {
+        fputs("no decoding parameters found in stream\n", stderr);
+        return_status = 1;
+        goto done;
+    } else {
+        converter = int_to_pcm_converter(decoder.bits_per_sample, 0, 1);
+        bytes_per_sample = decoder.bits_per_sample / 8;
+        samples = malloc(decoder.channels *
+                         decoder.params.block_size *
+                         sizeof(int));
+        buffer = malloc(decoder.channels *
+                        decoder.params.block_size *
+                        bytes_per_sample);
+        decoder.bitstream = bitstream;
+        decoder.read_pcm_frames = 0;
+    }
+
+    /*rewind to start of mdat*/
+    bitstream->setpos(bitstream, mdat_start);
+    mdat_start->del(mdat_start);
+    mdat_start = NULL;
+
+    /*decode all PCM frames from input file to stdout*/
+    while (decoder.read_pcm_frames < decoder.total_pcm_frames) {
+        unsigned pcm_frames_read;
+        status_t status;
+
+        if (!setjmp(*br_try(bitstream))) {
+            status = decode_frameset(&decoder, &pcm_frames_read, samples);
+            br_etry(bitstream);
+        } else {
+            br_etry(bitstream);
+            fputs("I/O error reading stream\n", stderr);
+            return_status = 1;
+            goto done;
+        }
+
+        if (status == OK) {
+            unsigned i;
+
+            /*increment samples read*/
+            decoder.read_pcm_frames += pcm_frames_read;
+
+            /*reorder channels to .wav order*/
+            reorder_channels(pcm_frames_read,
+                             decoder.channels,
+                             samples);
+
+            /*output samples to stdout*/
+            for (i = 0; i < pcm_frames_read * decoder.channels; i++) {
+                converter(samples[i], buffer + i * bytes_per_sample);
+            }
+
+            fwrite(buffer,
+                   1,
+                   pcm_frames_read * decoder.channels * bytes_per_sample,
+                   stdout);
+        } else {
+            fprintf(stderr, "*** Error: %s\n", alac_strerror(status));
+            return_status = 1;
+            goto done;
+        }
+    }
+
+done:
+    /*deallocate reader and any buffers*/
+    free(samples);
+    free(buffer);
+    if (mdat_start) {
+        mdat_start->del(mdat_start);
+    }
+    bitstream->close(bitstream);
+
+    return return_status;
+}
+
+#endif

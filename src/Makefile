@@ -20,8 +20,8 @@ all: $(BINARIES)
 clean:
 	rm -f $(BINARIES) *.o *.a
 
-alacdec: $(OBJS) decoders/alac.c decoders/alac.h pcm_conv.o
-	$(CC) $(FLAGS) -o alacdec decoders/alac.c $(OBJS) pcm_conv.o -DSTANDALONE
+alacdec: $(OBJS) decoders/alac.c decoders/alac.h bitstream.a framelist.o m4a_atoms.o pcm_conv.o
+	$(CC) $(FLAGS) -o alacdec decoders/alac.c bitstream.a framelist.o m4a_atoms.o pcm_conv.o -DSTANDALONE
 
 shndec: $(OBJS) decoders/shn.c decoders/shn.h buffer.o pcm_conv.o
 	$(CC) $(FLAGS) -o shndec decoders/shn.c $(OBJS) buffer.o pcm_conv.o -DSTANDALONE -lm
