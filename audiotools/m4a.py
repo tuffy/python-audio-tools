@@ -816,51 +816,8 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
 
         from audiotools import ChannelMask
 
-        return {
-            1: ChannelMask.from_fields(
-                front_center=True),
-            2: ChannelMask.from_fields(
-                front_left=True,
-                front_right=True),
-            3: ChannelMask.from_fields(
-                front_center=True,
-                front_left=True,
-                front_right=True),
-            4: ChannelMask.from_fields(
-                front_center=True,
-                front_left=True,
-                front_right=True,
-                back_center=True),
-            5: ChannelMask.from_fields(
-                front_center=True,
-                front_left=True,
-                front_right=True,
-                back_left=True,
-                back_right=True),
-            6: ChannelMask.from_fields(
-                front_center=True,
-                front_left=True,
-                front_right=True,
-                back_left=True,
-                back_right=True,
-                low_frequency=True),
-            7: ChannelMask.from_fields(
-                front_center=True,
-                front_left=True,
-                front_right=True,
-                back_left=True,
-                back_right=True,
-                back_center=True,
-                low_frequency=True),
-            8: ChannelMask.from_fields(
-                front_center=True,
-                front_left_of_center=True,
-                front_right_of_center=True,
-                front_left=True,
-                front_right=True,
-                back_left=True,
-                back_right=True,
-                low_frequency=True)}.get(self.channels(), ChannelMask(0))
+        with self.to_pcm() as r:
+            return ChannelMask(r.channel_mask)
 
     def cd_frames(self):
         """returns the total length of the track in CD frames
