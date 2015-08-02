@@ -122,6 +122,7 @@ read_residual(BitstreamReader *br,
 
 static void
 decode_subframe(unsigned block_size,
+                unsigned sample_size,
                 struct subframe_header *subframe_header,
                 const int residuals[],
                 int subframe[]);
@@ -496,6 +497,9 @@ ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args)
       generate ValueErrors*/
     self->closed = 1;
 
+    /*close internal stream*/
+    self->bitstream->close_internal_stream(self->bitstream);
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -511,6 +515,8 @@ static PyObject*
 ALACDecoder_exit(decoders_ALACDecoder* self, PyObject *args)
 {
     self->closed = 1;
+
+    self->bitstream->close_internal_stream(self->bitstream);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -840,6 +846,7 @@ decode_compressed_frame(BitstreamReader *br,
         read_residual_block(br, params, sample_size, block_size, residual);
 
         decode_subframe(block_size,
+                        sample_size,
                         &subframe_header[c],
                         residual,
                         subframe[c]);
@@ -1036,8 +1043,23 @@ SIGN_ONLY(int value)
         return 0;
 }
 
+static inline int
+TRUNCATE_BITS(int value, unsigned bits)
+{
+    /*truncate value to bits*/
+    const int truncated = value & ((1 << bits) - 1);
+
+    /*apply sign bit*/
+    if (truncated & (1 << (bits - 1))) {
+        return truncated - (1 << bits);
+    } else {
+        return truncated;
+    }
+}
+
 static void
 decode_subframe(unsigned block_size,
+                unsigned sample_size,
                 struct subframe_header *subframe_header,
                 const int residuals[],
                 int subframe[])
@@ -1050,7 +1072,8 @@ decode_subframe(unsigned block_size,
     subframe[0] = residuals[0];
 
     for (i = 1; i < coeff_count + 1; i++) {
-        subframe[i] = residuals[i] + subframe[i - 1];
+        subframe[i] = TRUNCATE_BITS(residuals[i] + subframe[i - 1],
+                                    sample_size);
     }
 
     for (i = coeff_count + 1; i < block_size; i++) {
@@ -1066,7 +1089,8 @@ decode_subframe(unsigned block_size,
         qlp_sum += (1 << (qlp_shift_needed - 1));
         qlp_sum >>= qlp_shift_needed;
 
-        subframe[i] = (int)(qlp_sum) + residual + base_sample;
+        subframe[i] = TRUNCATE_BITS((int)(qlp_sum) + residual + base_sample,
+                                    sample_size);
 
         if (residual > 0) {
             for (j = 0; j < coeff_count; j++) {
