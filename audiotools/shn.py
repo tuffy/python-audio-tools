@@ -226,7 +226,9 @@ class ShortenAudio(WaveContainer, AiffContainer):
                                   bits_per_sample=self.bits_per_sample())
 
         try:
-            return SHNDecoder(f)
+            return SHNDecoder(file=f,
+                              sample_rate=self.sample_rate(),
+                              channel_mask=int(self.channel_mask()))
         except (IOError, ValueError) as msg:
             f.close()
             return PCMReaderError(error_message=str(msg),

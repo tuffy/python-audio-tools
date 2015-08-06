@@ -24,8 +24,140 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+/*all valid shorten commands*/
+enum {FN_DIFF0     = 0,
+      FN_DIFF1     = 1,
+      FN_DIFF2     = 2,
+      FN_DIFF3     = 3,
+      FN_QUIT      = 4,
+      FN_BLOCKSIZE = 5,
+      FN_BITSHIFT  = 6,
+      FN_QLPC      = 7,
+      FN_ZERO      = 8,
+      FN_VERBATIM  = 9};
 
-#ifndef STANDALONE
+/*reject overly large block sizes outright
+  to keep a broken or malicious file from trying to
+  allocate all the memory in the world*/
+#define MAX_BLOCK_SIZE 65535
+
+struct verbatim_list {
+    uint8_t *bytes;
+    unsigned size;
+    struct verbatim_list *next;
+};
+
+/**********************************/
+/*  private function definitions  */
+/**********************************/
+
+static inline unsigned
+read_unsigned(BitstreamReader *bs, unsigned count)
+{
+    const register unsigned MSB = (bs->read_unary(bs, 1) << count);
+    const register unsigned LSB = bs->read(bs, count);
+    return MSB | LSB;
+}
+
+static inline void
+skip_unsigned(BitstreamReader *bs, unsigned count)
+{
+    bs->skip_unary(bs, 1);
+    bs->skip(bs, count);
+}
+
+static inline int
+read_signed(BitstreamReader *bs, unsigned count)
+{
+    /*1 additional sign bit*/
+    const unsigned u = read_unsigned(bs, count + 1);
+    if (u % 2)
+        return -(u >> 1) - 1;
+    else
+        return u >> 1;
+}
+
+static inline void
+skip_signed(BitstreamReader *bs, unsigned count)
+{
+    skip_unsigned(bs, count + 1);
+}
+
+static inline unsigned
+read_long(BitstreamReader *bs)
+{
+    return read_unsigned(bs, read_unsigned(bs, 2));
+}
+
+static void
+parse_header(BitstreamReader *bs, struct shn_header *header);
+
+/*skips a VERBATIM block*/
+static void
+skip_verbatim(BitstreamReader *bs);
+
+/*reads "count" individual bytes from the stream to the buffer*/
+static void
+read_verbatim_chunk(BitstreamReader *bs,
+                    unsigned count,
+                    uint8_t buffer[]);
+
+/*parses a VERBATIM block and returns a block of bytes and their size
+  the bytes should be freed when no longer needed*/
+static uint8_t*
+read_verbatim(BitstreamReader *bs, unsigned *size);
+
+/*adds a new node to the top of the verbatim list
+  steals a reference to "bytes" so it should not be freed elsewhere*/
+static struct verbatim_list*
+push_verbatim(struct verbatim_list *head,
+              uint8_t *bytes,
+              unsigned size);
+
+/*appends the given data to the verbatim entry at the top of the list
+  steals a reference to "bytes" so it should not be freed elsewhere*/
+static struct verbatim_list*
+append_verbatim(struct verbatim_list *head,
+                uint8_t *bytes,
+                unsigned size);
+
+/*given a verbatim list sorted with the last entry at the top,
+  returns a Python list*/
+static PyObject*
+verbatim_list_to_py_list(const struct verbatim_list *head);
+
+/*frees the entire verbatim list*/
+static void
+free_verbatim_list(struct verbatim_list *head);
+
+static inline int
+valid_block_size(unsigned block_size) {
+    return (block_size > 0) && (block_size < MAX_BLOCK_SIZE);
+}
+
+typedef void (*command_f)(BitstreamReader *bs,
+                          unsigned block_size,
+                          int channel[]);
+
+#define COMMAND_DEF(NAME) \
+  static void \
+  command_##NAME(BitstreamReader *bs, \
+                 unsigned block_size, \
+                 int channel[]);
+COMMAND_DEF(diff1)
+COMMAND_DEF(diff2)
+COMMAND_DEF(diff3)
+COMMAND_DEF(zero)
+
+static void
+apply_left_shift(unsigned left_shift,
+                 unsigned block_size,
+                 int channel[]);
+
+/*************************************/
+/*  public function implementations  */
+/*************************************/
+
 PyObject*
 SHNDecoder_new(PyTypeObject *type,
                PyObject *args, PyObject *kwds)
@@ -41,25 +173,35 @@ int
 SHNDecoder_init(decoders_SHNDecoder *self,
                 PyObject *args, PyObject *kwds)
 {
+    static char *kwlist[] = {"file",
+                             "sample_rate",
+                             "channel_mask",
+                             NULL};
+    const uint8_t shn_magic[4] = {0x61, 0x6A, 0x6B, 0x67};
+    uint8_t file_magic[4];
+    unsigned version;
+
     PyObject *file;
+    self->channel_mask = 0;
     self->bitstream = NULL;
-    self->stream_finished = 0;
+    self->bits_per_sample =0;
+    self->left_shift = 0;
+    self->audiotools_pcm = NULL;
+    self->closed = 0;
+    self->quitted = 0;
 
-    self->means = aa_int_new();
-    self->previous_samples = aa_int_new();
-
-    /*setup temporary buffers*/
-    self->samples = aa_int_new();
-    self->unshifted = aa_int_new();
-    self->pcm_header = a_int_new();
-    self->pcm_footer = a_int_new();
-
-    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
-        return -1;
-
-    if (!PyArg_ParseTuple(args, "O", &file)) {
+    if (!PyArg_ParseTupleAndKeywords(args,
+                                     kwds,
+                                     "Oi|i",
+                                     kwlist,
+                                     &file,
+                                     &(self->sample_rate),
+                                     &(self->channel_mask))) {
         return -1;
     } else {
+        /*sanity-check sample rate and channel mask*/
+        /*FIXME*/
+
         Py_INCREF(file);
     }
 
@@ -76,43 +218,86 @@ SHNDecoder_init(decoders_SHNDecoder *self,
         (ext_close_f)bs_close_python,
         (ext_free_f)bs_free_python_decref);
 
-    /*read Shorten header for basic info*/
-    switch (read_shn_header(self, self->bitstream)) {
-    case INVALID_MAGIC_NUMBER:
-        PyErr_SetString(PyExc_ValueError, "invalid magic number");
-        return -1;
-    case INVALID_SHORTEN_VERSION:
-        PyErr_SetString(PyExc_ValueError, "invalid Shorten version");
-        return -1;
-    case UNSUPPORTED_FILE_TYPE:
-        PyErr_SetString(PyExc_ValueError, "unsupported Shorten file type");
-        return -1;
-    case IOERROR:
-        PyErr_SetString(PyExc_IOError, "I/O error reading Shorten header");
-        return -1;
-    default:
-        /*mark stream as not closed and ready for reading*/
-        self->closed = 0;
+    if (!setjmp(*br_try(self->bitstream))) {
+        unsigned c;
 
-        return 0;
+        /*validate file header*/
+        self->bitstream->read_bytes(self->bitstream, file_magic, 4);
+        version = self->bitstream->read(self->bitstream, 8);
+
+        if (memcmp(file_magic, shn_magic, 4)) {
+            br_etry(self->bitstream);
+            PyErr_SetString(PyExc_ValueError, "invalid magic number");
+            return -1;
+        }
+
+        if (version != 2) {
+            br_etry(self->bitstream);
+            PyErr_SetString(PyExc_ValueError, "invalid version");
+            return -1;
+        }
+
+        /*parse header*/
+        parse_header(self->bitstream, &(self->header));
+
+        br_etry(self->bitstream);
+
+        if (!valid_block_size(self->header.block_size)) {
+            PyErr_SetString(PyExc_ValueError, "invalid block size");
+            return -1;
+        }
+
+        /*determine bits-per-sample*/
+        switch (self->header.file_type) {
+        case 1: /*signed 8-bit PCM*/
+        case 2: /*unsigned 8-bit PCM*/
+            self->bits_per_sample = 8;
+            break;
+        case 3: /*signed 16-bit big-endian PCM*/
+        case 4: /*unsigned 16-bit big-endian PCM*/
+        case 5: /*signed 16-bit little-endian PCM*/
+        case 6: /*unsigned 16-bit little-endian PCM*/
+            self->bits_per_sample = 16;
+            break;
+        default:
+            PyErr_SetString(PyExc_ValueError, "unsupported file type");
+            return -1;
+        }
+
+        /*allocate wrapped samples per channel*/
+        self->wrapped_samples = malloc(self->header.channels * sizeof(int*));
+        for (c = 0; c < self->header.channels; c++) {
+            self->wrapped_samples[c] = calloc(3, sizeof(int));
+        }
+    } else {
+        br_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading Shorten metadata");
+        return -1;
     }
+
+    /*setup PCM generator*/
+    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
+        return -1;
+
+    return 0;
 }
 
 void
 SHNDecoder_dealloc(decoders_SHNDecoder *self)
 {
-    self->means->del(self->means);
-    self->previous_samples->del(self->previous_samples);
-    self->samples->del(self->samples);
-    self->unshifted->del(self->unshifted);
-    self->pcm_header->del(self->pcm_header);
-    self->pcm_footer->del(self->pcm_footer);
-
-    Py_XDECREF(self->audiotools_pcm);
+    unsigned c;
 
     if (self->bitstream != NULL) {
         self->bitstream->free(self->bitstream);
     }
+
+    /*deallocate per-buffer channels*/
+    for (c = 0; c < self->header.channels; c++) {
+        free(self->wrapped_samples[c]);
+    }
+    free(self->wrapped_samples);
+
+    Py_XDECREF(self->audiotools_pcm);
 
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -151,7 +336,7 @@ SHNDecoder_exit(decoders_SHNDecoder* self, PyObject *args)
 static PyObject*
 SHNDecoder_sample_rate(decoders_SHNDecoder *self, void *closure)
 {
-    return Py_BuildValue("I", self->sample_rate);
+    return Py_BuildValue("i", self->sample_rate);
 }
 
 static PyObject*
@@ -170,1036 +355,445 @@ SHNDecoder_channels(decoders_SHNDecoder *self, void *closure)
 static PyObject*
 SHNDecoder_channel_mask(decoders_SHNDecoder *self, void *closure)
 {
-    return Py_BuildValue("I", self->channel_mask);
+    return Py_BuildValue("i", self->channel_mask);
 }
 
 PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 {
+    unsigned c = 0;
+    unsigned command;
     pcm_FrameList *framelist;
-    unsigned channels;
-    unsigned pcm_frames;
-    unsigned c;
+    const static command_f audio_command[] = {NULL, /*FIXME - DIFF0*/
+                                              command_diff1,
+                                              command_diff2,
+                                              command_diff3,
+                                              NULL, /*QUIT*/
+                                              NULL, /*BLOCKSIZE*/
+                                              NULL, /*BITSHIFT*/
+                                              NULL, /*FIXME - QLPC*/
+                                              command_zero,
+                                              NULL  /*VERBATIM*/};
 
     if (self->closed) {
+        /*ensure .close() hasn't been called on reader*/
         PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
         return NULL;
     }
 
-    if (self->stream_finished) {
+    if (self->quitted) {
+        /*if QUIT command encountered, generate empty FrameLists*/
         return empty_FrameList(self->audiotools_pcm,
                                self->header.channels,
                                self->bits_per_sample);
     }
 
-    self->unshifted->reset(self->unshifted);
+    /*process commands until a FrameList is filled or QUIT is called*/
+    framelist = new_FrameList(self->audiotools_pcm,
+                              self->header.channels,
+                              self->bits_per_sample,
+                              self->header.block_size);
 
-    switch (read_framelist(self, self->unshifted)) {
-    case OK:
-        channels = self->header.channels;
-        pcm_frames = self->unshifted->_[0]->len;
+    if (!setjmp(*br_try(self->bitstream))) {
+        while (c < self->header.channels) {
+            switch (command = read_unsigned(self->bitstream, 2)) {
+            /*FIXME - case FN_DIFF0*/
+            case FN_DIFF1:
+            case FN_DIFF2:
+            case FN_DIFF3:
+            /*FIXME - case QLPC*/
+            case FN_ZERO:
+                {
+                    const unsigned block_size = self->header.block_size;
+                    int channel[3 + block_size];
 
-        framelist = new_FrameList(self->audiotools_pcm,
-                                  channels,
-                                  self->bits_per_sample,
-                                  pcm_frames);
+                    /*transfer wrapped samples to start of buffer*/
+                    memcpy(channel, self->wrapped_samples[c], 3 * sizeof(int));
 
-        for (c = 0; c < channels; c++) {
-            put_channel_data(framelist->samples,
-                             c,
-                             channels,
-                             pcm_frames,
-                             self->unshifted->_[c]->_);
+                    /*process audio command*/
+                    audio_command[command](self->bitstream,
+                                           block_size,
+                                           channel + 3);
+
+                    /*apply shift, if any*/
+                    if (self->left_shift) {
+                        apply_left_shift(self->left_shift,
+                                         block_size,
+                                         channel + 3);
+                    }
+
+                    /*transfer new samples in buffer to framelist*/
+                    put_channel_data(framelist->samples,
+                                     c,
+                                     self->header.channels,
+                                     block_size,
+                                     channel + 3);
+
+                    /*wrap trailing 3 samples for next frame*/
+                    memcpy(self->wrapped_samples[c],
+                           channel + block_size,
+                           3 * sizeof(int));
+
+                    c += 1;
+                }
+                break;
+            case FN_QUIT:
+                self->quitted = 1;
+                br_etry(self->bitstream);
+                Py_DECREF((PyObject*)framelist);
+                return empty_FrameList(self->audiotools_pcm,
+                                       self->header.channels,
+                                       self->bits_per_sample);
+            case FN_BLOCKSIZE:
+                Py_DECREF((PyObject*)framelist);
+
+                if (c != 0) {
+                    br_etry(self->bitstream);
+                    PyErr_SetString(PyExc_ValueError,
+                                    "block size changed mid-FrameList");
+                    return NULL;
+                }
+
+                self->header.block_size = read_long(self->bitstream);
+
+                if (!valid_block_size(self->header.block_size)) {
+                    br_etry(self->bitstream);
+                    PyErr_SetString(PyExc_ValueError, "invalid block size");
+                    return NULL;
+                }
+
+                framelist = new_FrameList(self->audiotools_pcm,
+                                          self->header.channels,
+                                          self->bits_per_sample,
+                                          self->header.block_size);
+                break;
+            case FN_BITSHIFT:
+                self->left_shift = read_unsigned(self->bitstream, 2);
+                break;
+            case FN_VERBATIM:
+                skip_verbatim(self->bitstream);
+                break;
+            default:
+                /*unknown or unsupported command encountered*/
+                fprintf(stderr, "got command : %u\n", command);
+                br_etry(self->bitstream);
+                Py_DECREF((PyObject*)framelist);
+                PyErr_SetString(PyExc_ValueError, "unsupported command");
+                return NULL;
+            }
         }
 
+        br_etry(self->bitstream);
         return (PyObject*)framelist;
-    case END_OF_STREAM:
-        return empty_FrameList(self->audiotools_pcm,
-                               self->header.channels,
-                               self->bits_per_sample);
-    case UNKNOWN_COMMAND:
-        PyErr_SetString(PyExc_ValueError,
-                        "unknown command in Shorten stream");
-        return NULL;
-    case IOERROR:
-        PyErr_SetString(PyExc_IOError, "I/O error reading Shorten file");
-        return NULL;
-    default:
-        /*shouldn't get here*/
-        PyErr_SetString(PyExc_ValueError,
-                        "unknown value from read_framelist()");
+    } else {
+        br_etry(self->bitstream);
+        Py_DECREF((PyObject*)framelist);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
 }
 
 static PyObject*
-SHNDecoder_pcm_split(decoders_SHNDecoder* self, PyObject *args)
+SHNDecoder_verbatims(decoders_SHNDecoder* self, PyObject *args)
 {
-#if PY_MAJOR_VERSION >= 3
-    char format[] = "y#y#";
-#else
-    char format[] = "s#s#";
-#endif
+    struct verbatim_list *verbatims = NULL;
+    PyObject *verbatims_obj;
+    unsigned previous_command = 0;
+    unsigned command;
 
+    if (self->closed) {
+        /*ensure .close() hasn't been called on reader*/
+        PyErr_SetString(PyExc_ValueError, "cannot read closed stream");
+        return NULL;
+    }
+
+    if (self->quitted) {
+        return PyList_New(0);
+    }
+
+    /*process all commands until QUIT is called*/
     if (!setjmp(*br_try(self->bitstream))) {
-        a_int* header = self->pcm_header;
-        a_int* footer = self->pcm_footer;
-        a_int* current = header;
-        uint8_t* header_s;
-        uint8_t* footer_s;
-        PyObject* tuple;
-
-        unsigned command;
-        unsigned i;
-
-        header->reset(header);
-        footer->reset(footer);
-
-        /*walk through file, processing all commands*/
-        do {
-            unsigned energy;
-            unsigned LPC_count;
-            unsigned verbatim_size;
-
-            command = read_unsigned(self->bitstream, COMMAND_SIZE);
-
+        while ((command = read_unsigned(self->bitstream, 2)) != FN_QUIT) {
             switch (command) {
             case FN_DIFF0:
             case FN_DIFF1:
             case FN_DIFF2:
             case FN_DIFF3:
-                /*all the DIFF commands have the same structure*/
-                energy = read_unsigned(self->bitstream, ENERGY_SIZE);
-                for (i = 0; i < self->block_length; i++) {
-                    skip_signed(self->bitstream, energy);
+                {
+                    const unsigned energy = read_unsigned(self->bitstream, 3);
+                    unsigned block_size;
+                    for (block_size = self->header.block_size;
+                         block_size;
+                         block_size--) {
+                        skip_signed(self->bitstream, energy);
+                    }
                 }
-                current = footer;
-                break;
-            case FN_QUIT:
-                self->stream_finished = 1;
                 break;
             case FN_BLOCKSIZE:
-                self->block_length = read_long(self->bitstream);
+                /*not going to bother validating mid-FrameList size changes*/
+
+                self->header.block_size = read_long(self->bitstream);
+
+                if (!valid_block_size(self->header.block_size)) {
+                    br_etry(self->bitstream);
+                    free_verbatim_list(verbatims);
+                    PyErr_SetString(PyExc_ValueError, "invalid block size");
+                    return NULL;
+                }
                 break;
             case FN_BITSHIFT:
-                skip_unsigned(self->bitstream, SHIFT_SIZE);
+                skip_unsigned(self->bitstream, 2);
                 break;
             case FN_QLPC:
-                energy = read_unsigned(self->bitstream, ENERGY_SIZE);
-                LPC_count = read_unsigned(self->bitstream, LPC_COUNT_SIZE);
-                for (i = 0; i < LPC_count; i++) {
-                    skip_signed(self->bitstream, LPC_COEFF_SIZE);
+                {
+                    const unsigned energy = read_unsigned(self->bitstream, 3);
+                    unsigned coeff_count;
+                    unsigned block_size;
+                    for (coeff_count = read_unsigned(self->bitstream, 2);
+                         coeff_count;
+                         coeff_count--) {
+                         skip_signed(self->bitstream, 5);
+                    }
+                    for (block_size = self->header.block_size;
+                         block_size;
+                         block_size--) {
+                         skip_signed(self->bitstream, energy);
+                    }
                 }
-                for (i = 0; i < self->block_length; i++) {
-                    skip_signed(self->bitstream, energy);
-                }
-                current = footer;
                 break;
+            case FN_QUIT:
             case FN_ZERO:
-                current = footer;
+                /*do nothing*/
                 break;
             case FN_VERBATIM:
-                /*any VERBATIM commands have their data appended
-                  to header or footer*/
-                verbatim_size = read_unsigned(self->bitstream,
-                                              VERBATIM_CHUNK_SIZE);
-                for (i = 0; i < verbatim_size; i++) {
-                    current->append(current,
-                                    read_unsigned(self->bitstream,
-                                                  VERBATIM_BYTE_SIZE));
+                {
+                    unsigned size;
+                    uint8_t *bytes = read_verbatim(self->bitstream, &size);
+                    if (previous_command == FN_VERBATIM) {
+                        verbatims = append_verbatim(verbatims, bytes, size);
+                    } else {
+                        verbatims = push_verbatim(verbatims, bytes, size);
+                    }
                 }
                 break;
+            default:
+                fprintf(stderr, "got command : %u\n", command);
+                br_etry(self->bitstream);
+                free_verbatim_list(verbatims);
+                PyErr_SetString(PyExc_ValueError, "unsupported command");
+                return NULL;
             }
-        } while (command != FN_QUIT);
 
+            previous_command = command;
+        }
+
+        self->quitted = 1;
         br_etry(self->bitstream);
-
-        /*once all commands have been processed,
-          transform the bytes in header and footer to strings*/
-        header_s = malloc(sizeof(uint8_t) * header->len);
-        for (i = 0; i < header->len; i++)
-            header_s[i] = (uint8_t)(header->_[i] & 0xFF);
-
-        footer_s = malloc(sizeof(uint8_t) * footer->len);
-        for (i = 0; i < footer->len; i++)
-            footer_s[i] = (uint8_t)(footer->_[i] & 0xFF);
-
-        /*generate a tuple from the strings*/
-        tuple = Py_BuildValue(format,
-                              header_s, header->len,
-                              footer_s, footer->len);
-
-        /*deallocate temporary space before returning tuple*/
-        free(header_s);
-        free(footer_s);
-
-        return tuple;
+        verbatims_obj = verbatim_list_to_py_list(verbatims);
+        free_verbatim_list(verbatims);
+        return verbatims_obj;
     } else {
         br_etry(self->bitstream);
-        PyErr_SetString(PyExc_IOError, "I/O error reading Shorten file");
+        free_verbatim_list(verbatims);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
-}
-#endif
 
-static status
-read_shn_header(decoders_SHNDecoder* self, BitstreamReader* reader)
-{
-    if (!setjmp(*br_try(reader))) {
-        uint8_t magic_number[4];
-        unsigned version;
-        unsigned i;
-
-        reader->parse(reader, "4b 8u", magic_number, &version);
-        if (memcmp(magic_number, "ajkg", 4)) {
-            br_etry(reader);
-            return INVALID_MAGIC_NUMBER;
-        }
-        if (version != 2) {
-            br_etry(reader);
-            return INVALID_SHORTEN_VERSION;
-        }
-
-        self->header.file_type = read_long(reader);
-        self->header.channels = read_long(reader);
-        self->block_length = read_long(reader);
-        self->left_shift = 0;
-        self->header.max_LPC = read_long(reader);
-        self->header.mean_count = read_long(reader);
-        reader->skip_bytes(reader, read_long(reader));
-
-        if ((1 <= self->header.file_type) && (self->header.file_type <= 2)) {
-            self->bits_per_sample = 8;
-            self->signed_samples = (self->header.file_type == 1);
-        } else if ((3 <= self->header.file_type) &&
-                   (self->header.file_type <= 6)) {
-            self->bits_per_sample = 16;
-            self->signed_samples = ((self->header.file_type == 3) ||
-                                    (self->header.file_type == 5));
-        } else {
-            br_etry(reader);
-            return UNSUPPORTED_FILE_TYPE;
-        }
-
-        for (i = 0; i < self->header.channels; i++) {
-            a_int* means = self->means->append(self->means);
-            means->mset(means, self->header.mean_count, 0);
-            self->previous_samples->append(self->previous_samples);
-        }
-
-        /*process first instruction for wave/aiff header, if present*/
-        process_iff_header(reader,
-                           &(self->sample_rate),
-                           &(self->channel_mask));
-
-        br_etry(reader);
-
-        return OK;
-    } else {
-        /*read error in Shorten header*/
-        br_etry(reader);
-        return IOERROR;
-    }
 }
 
-static status
-read_framelist(decoders_SHNDecoder* self, aa_int* framelist)
+/**************************************/
+/*  private function implementations  */
+/**************************************/
+
+static void
+parse_header(BitstreamReader *bs, struct shn_header *header)
 {
-    unsigned c = 0;
+    unsigned bytes_to_skip;
 
-    self->samples->reset(self->samples);
+    header->file_type = read_long(bs);
+    header->channels = read_long(bs);
+    header->block_size = read_long(bs);
+    header->max_LPC = read_long(bs);
+    header->mean_count = read_long(bs);
+    bytes_to_skip = read_long(bs);
+    bs->skip_bytes(bs, bytes_to_skip);
+}
 
-    if (!setjmp(*br_try(self->bitstream))) {
-        while (1) {
-            const unsigned command = read_unsigned(self->bitstream,
-                                                   COMMAND_SIZE);
-
-            if (((FN_DIFF0 <= command) && (command <= FN_DIFF3)) ||
-                ((FN_QLPC <= command) && (command <= FN_ZERO))) {
-                /*audio data commands*/
-                a_int* means = self->means->_[c];
-                a_int* previous_samples = self->previous_samples->_[c];
-                a_int* samples = self->samples->append(self->samples);
-                a_int* unshifted = framelist->append(framelist);
-
-                switch (command) {
-                case FN_DIFF0:
-                    read_diff0(self->bitstream,
-                               self->block_length,
-                               means,
-                               samples);
-                    break;
-                case FN_DIFF1:
-                    read_diff1(self->bitstream,
-                               self->block_length,
-                               previous_samples,
-                               samples);
-                    break;
-                case FN_DIFF2:
-                    read_diff2(self->bitstream,
-                               self->block_length,
-                               previous_samples,
-                               samples);
-                    break;
-                case FN_DIFF3:
-                    read_diff3(self->bitstream,
-                               self->block_length,
-                               previous_samples,
-                               samples);
-                    break;
-                case FN_QLPC:
-                    read_qlpc(self->bitstream,
-                              self->block_length,
-                              previous_samples,
-                              means,
-                              samples);
-                    break;
-                case FN_ZERO:
-                    samples->mset(samples, self->block_length, 0);
-                    break;
-                default:
-                    break; /*can't get here*/
-                }
-
-                /*calculate next mean for given channel*/
-                means->append(means, shnmean(samples));
-                means->tail(means, self->header.mean_count, means);
-
-                /*wrap samples for next set of channels*/
-                samples->tail(samples, MAX(3, self->header.max_LPC),
-                              previous_samples);
-
-                /*apply any left shift to channel*/
-                if (self->left_shift) {
-                    unsigned i;
-                    unshifted->resize_for(unshifted, samples->len);
-                    for (i = 0; i < samples->len; i++)
-                        a_append(unshifted, samples->_[i] << self->left_shift);
-                } else {
-                    samples->copy(samples, unshifted);
-                }
-
-                /*if stream is unsigned, convert unshifted samples to signed*/
-                if (!self->signed_samples) {
-                    const int adjustment = 1 << (self->bits_per_sample - 1);
-                    unsigned i;
-                    for (i = 0; i < unshifted->len; i++)
-                        unshifted->_[i] -= adjustment;
-                }
-
-                /*move on to next channel*/
-                c++;
-
-                /*return OK once all channels are constructed*/
-                if (c == self->header.channels) {
-                    br_etry(self->bitstream);
-                    return OK;
-                }
-            } else if (((FN_QUIT <= command) && (command <= FN_BITSHIFT)) ||
-                       (command == FN_VERBATIM)) {
-                unsigned verbatim_size;
-                unsigned i;
-
-                /*non audio commands*/
-                switch (command) {
-                case FN_QUIT:
-                    self->stream_finished = 1;
-                    br_etry(self->bitstream);
-                    return END_OF_STREAM;
-                case FN_BLOCKSIZE:
-                    self->block_length = read_long(self->bitstream);
-                    break;
-                case FN_BITSHIFT:
-                    self->left_shift = read_unsigned(self->bitstream,
-                                                     SHIFT_SIZE);
-                    break;
-                case FN_VERBATIM:
-                    verbatim_size = read_unsigned(self->bitstream,
-                                                  VERBATIM_CHUNK_SIZE);
-                    for (i = 0; i < verbatim_size; i++)
-                        skip_unsigned(self->bitstream, VERBATIM_BYTE_SIZE);
-                    break;
-                default:
-                    break; /*can't get here*/
-                }
-            } else {
-                /*unknown command*/
-                br_etry(self->bitstream);
-                return UNKNOWN_COMMAND;
-            }
-        }
-    } else {
-        br_etry(self->bitstream);
-        return IOERROR;
+static void
+skip_verbatim(BitstreamReader *bs)
+{
+    unsigned verbatim_bytes;
+    for (verbatim_bytes = read_unsigned(bs, 5);
+         verbatim_bytes;
+         verbatim_bytes--) {
+        skip_unsigned(bs, 8);
     }
 }
 
 static void
-read_diff0(BitstreamReader* bs, unsigned block_length,
-           const a_int* means, a_int* samples)
+read_verbatim_chunk(BitstreamReader *bs,
+                    unsigned count,
+                    uint8_t buffer[])
 {
-    const int offset = shnmean(means);
-    const unsigned energy = read_unsigned(bs, ENERGY_SIZE);
-    unsigned i;
-
-    samples->reset_for(samples, block_length);
-
-    for (i = 0; i < block_length; i++) {
-        const int residual = read_signed(bs, energy);
-        a_append(samples, residual + offset);
+    for (; count; count--) {
+        buffer[0] = read_unsigned(bs, 8) & 0xFF;
+        buffer += 1;
     }
 }
 
-static void
-read_diff1(BitstreamReader* bs, unsigned block_length,
-           a_int* previous_samples, a_int* samples)
+#define BUFFER_SIZE 512
+
+static uint8_t*
+read_verbatim(BitstreamReader *bs, unsigned *size)
 {
-    unsigned i;
-    unsigned energy;
-
-    /*ensure "previous_samples" contains at least 1 value*/
-    if (previous_samples->len < 1) {
-        samples->mset(samples, 1 - previous_samples->len, 0);
-        samples->extend(samples, previous_samples);
-    } else {
-        previous_samples->tail(previous_samples, 1, samples);
-    }
-
-    energy = read_unsigned(bs, ENERGY_SIZE);
-
-    /*process the residuals to samples*/
-    samples->resize_for(samples, block_length);
-    for (i = 1; i < (block_length + 1); i++) {
-        const int residual = read_signed(bs, energy);
-        a_append(samples, samples->_[i - 1] + residual);
-    }
-
-    /*truncate samples to block length*/
-    samples->tail(samples, block_length, samples);
-}
-
-static void
-read_diff2(BitstreamReader* bs, unsigned block_length,
-           a_int* previous_samples, a_int* samples)
-{
-    unsigned i;
-    unsigned energy;
-
-    /*ensure "previous_samples" contains at least 2 values*/
-    if (previous_samples->len < 2) {
-        samples->mset(samples, 2 - previous_samples->len, 0);
-        samples->extend(samples, previous_samples);
-    } else {
-        previous_samples->tail(previous_samples, 2, samples);
-    }
-
-    energy = read_unsigned(bs, ENERGY_SIZE);
-
-    /*process the residuals to samples*/
-    samples->resize_for(samples, block_length);
-    for (i = 2; i < (block_length + 2); i++) {
-        const int residual = read_signed(bs, energy);
-        a_append(samples,
-                 (2 * samples->_[i - 1]) - samples->_[i - 2] + residual);
-    }
-
-    /*truncate samples to block length*/
-    samples->tail(samples, block_length, samples);
-}
-
-static void
-read_diff3(BitstreamReader* bs, unsigned block_length,
-           a_int* previous_samples, a_int* samples)
-{
-    unsigned i;
-    unsigned energy;
-
-    /*ensure "previous_samples" contains at least 3 values*/
-    if (previous_samples->len < 3) {
-        samples->mset(samples, 3 - previous_samples->len, 0);
-        samples->extend(samples, previous_samples);
-    } else {
-        previous_samples->tail(previous_samples, 3, samples);
-    }
-
-    energy = read_unsigned(bs, ENERGY_SIZE);
-
-    /*process the residuals to samples*/
-    samples->resize_for(samples, block_length);
-    for (i = 3; i < (block_length + 3); i++) {
-        const int residual = read_signed(bs, energy);
-        a_append(samples,
-                 (3 * (samples->_[i - 1] - samples->_[i - 2])) +
-                 samples->_[i - 3] + residual);
-    }
-
-    /*truncate samples to block length*/
-    samples->tail(samples, block_length, samples);
-}
-
-static void
-read_qlpc(BitstreamReader* bs, unsigned block_length,
-          a_int* previous_samples, a_int* means, a_int* samples)
-{
-    /*read some QLPC setup values*/
-    const int offset = shnmean(means);
-    const unsigned energy = read_unsigned(bs, ENERGY_SIZE);
-    const unsigned LPC_count = read_unsigned(bs, LPC_COUNT_SIZE);
-    a_int* LPC_coeff = a_int_new();
-    a_int* offset_samples = a_int_new();
-    a_int* unoffset_samples = a_int_new();
+    unsigned verbatim_bytes = read_unsigned(bs, 5);
+    uint8_t *bytes = NULL;
+    *size = 0;
 
     if (!setjmp(*br_try(bs))) {
-        int i;
+        /*read verbatim block in smallish chunks
+          to avoid blowing up if the size turns out to be huge*/
+        uint8_t buffer[BUFFER_SIZE];
 
-        for (i = 0; i < LPC_count; i++)
-            LPC_coeff->append(LPC_coeff, read_signed(bs, LPC_COEFF_SIZE));
-
-        /*ensure "previous_samples" contains at least "LPC count" values*/
-        if (previous_samples->len < LPC_count) {
-            offset_samples->mset(offset_samples,
-                                 LPC_count - previous_samples->len, 0);
-            offset_samples->extend(offset_samples, previous_samples);
-        } else {
-            previous_samples->tail(previous_samples, LPC_count, offset_samples);
-        }
-
-        /*process the residuals to unoffset samples*/
-        for (i = 0; i < block_length; i++) {
-            const int residual = read_signed(bs, energy);
-            int sum = 1 << 5;
-            int j;
-            for (j = 0; j < LPC_count; j++) {
-                if ((i - j - 1) < 0) {
-                    sum += LPC_coeff->_[j] *
-                        (offset_samples->_[LPC_count + (i - j - 1)] -
-                         offset);
-                } else {
-                    sum += LPC_coeff->_[j] * unoffset_samples->_[i - j - 1];
-                }
+        while (verbatim_bytes) {
+            if (verbatim_bytes <= BUFFER_SIZE) {
+                read_verbatim_chunk(bs, verbatim_bytes, buffer);
+                bytes = realloc(bytes, *size + verbatim_bytes);
+                memcpy(bytes + *size, buffer, verbatim_bytes);
+                *size += verbatim_bytes;
+                verbatim_bytes = 0;
+            } else {
+                read_verbatim_chunk(bs, BUFFER_SIZE, buffer);
+                bytes = realloc(bytes, *size + BUFFER_SIZE);
+                memcpy(bytes + *size, buffer, BUFFER_SIZE);
+                *size += verbatim_bytes;
+                verbatim_bytes -= BUFFER_SIZE;
             }
-            unoffset_samples->append(unoffset_samples, (sum >> 5) + residual);
         }
 
-        /*reapply offset to unoffset samples*/
-        samples->reset_for(samples, unoffset_samples->len);
-        for (i = 0; i < unoffset_samples->len; i++) {
-            a_append(samples, unoffset_samples->_[i] + offset);
-        }
-
-        /*deallocate temporary arrays before returning successfully*/
-        LPC_coeff->del(LPC_coeff);
-        offset_samples->del(offset_samples);
-        unoffset_samples->del(unoffset_samples);
         br_etry(bs);
+        return bytes;
     } else {
-        /*error reading QLPC, so deallocate temporary arrays*/
-        LPC_coeff->del(LPC_coeff);
-        offset_samples->del(offset_samples);
-        unoffset_samples->del(unoffset_samples);
         br_etry(bs);
-
-        /*before aborting to the next spot on the abort stack*/
+        free(bytes);
         br_abort(bs);
+        return NULL; /*won't get here*/
     }
 }
 
-static int
-shnmean(const a_int* values)
+static struct verbatim_list*
+push_verbatim(struct verbatim_list *head,
+              uint8_t *bytes,
+              unsigned size)
 {
-    return ((int)(values->len / 2) + values->sum(values)) / (int)(values->len);
+    struct verbatim_list *node = malloc(sizeof(struct verbatim_list));
+    node->bytes = bytes;
+    node->size = size;
+    node->next = head;
+    return node;
 }
 
-static unsigned
-read_unsigned(BitstreamReader* bs, unsigned count)
+static struct verbatim_list*
+append_verbatim(struct verbatim_list *head,
+                uint8_t *bytes,
+                unsigned size)
 {
-    const unsigned MSB = bs->read_unary(bs, 1);
-    const unsigned LSB = bs->read(bs, count);
-
-    return (MSB << count) | LSB;
+    if (head) {
+        head->bytes = realloc(head->bytes, head->size + size);
+        memcpy(head->bytes + head->size, bytes, size);
+        head->size += size;
+        free(bytes);
+        return head;
+    } else {
+        return push_verbatim(head, bytes, size);
+    }
 }
 
-static int
-read_signed(BitstreamReader* bs, unsigned count)
+static PyObject*
+verbatim_list_to_py_list(const struct verbatim_list *head)
 {
-    /*1 additional sign bit*/
-    const unsigned u = read_unsigned(bs, count + 1);
-    if (u % 2)
-        return -(u >> 1) - 1;
-    else
-        return u >> 1;
-}
+    PyObject *list = PyList_New(0);
 
-unsigned int
-read_long(BitstreamReader* bs)
-{
-    return read_unsigned(bs, read_unsigned(bs, 2));
-}
+    for (; head; head = head->next) {
+        PyObject *bytes = PyBytes_FromStringAndSize((char*)head->bytes,
+                                                    head->size);
+        PyList_Append(list, bytes);
+        Py_DECREF(bytes);
+    }
 
-void
-skip_unsigned(BitstreamReader* bs, unsigned int count)
-{
-    bs->skip_unary(bs, 1);
-    bs->skip(bs, count);
-}
-
-void
-skip_signed(BitstreamReader* bs, unsigned int count)
-{
-    bs->skip_unary(bs, 1);
-    bs->skip(bs, count + 1);
+    PyList_Reverse(list);
+    return list;
 }
 
 static void
-process_iff_header(BitstreamReader* bs,
-                   unsigned* sample_rate,
-                   unsigned* channel_mask)
+free_verbatim_list(struct verbatim_list *head)
 {
-    br_pos_t* command_start;
-    br_pos_t* verbatim_start;
-    unsigned command;
-
-    command_start = bs->getpos(bs);
-    if (!setjmp(*br_try(bs))) {
-        command = read_unsigned(bs, COMMAND_SIZE);
-
-        if (command == FN_VERBATIM) {
-            BitstreamReader* verbatim;
-            unsigned verbatim_size;
-
-            verbatim = read_verbatim(bs, &verbatim_size);
-            verbatim_start = verbatim->getpos(verbatim);
-
-            if (!read_wave_header(verbatim, verbatim_size,
-                                  sample_rate, channel_mask)) {
-                verbatim_start->del(verbatim_start);
-                verbatim->close(verbatim);
-                bs->setpos(bs, command_start);
-                command_start->del(command_start);
-                br_etry(bs);
-                return;
-            } else {
-                verbatim->setpos(verbatim, verbatim_start);
-            }
-
-            if (!read_aiff_header(verbatim, verbatim_size,
-                                  sample_rate, channel_mask)) {
-                verbatim_start->del(verbatim_start);
-                verbatim->close(verbatim);
-                bs->setpos(bs, command_start);
-                command_start->del(command_start);
-                br_etry(bs);
-                return;
-            } else {
-                verbatim->setpos(verbatim, verbatim_start);
-            }
-
-            /*neither wave header or aiff header found,
-              so use dummy values again*/
-            verbatim_start->del(verbatim_start);
-            verbatim->close(verbatim);
-            bs->setpos(bs, command_start);
-            command_start->del(command_start);
-            *sample_rate = 44100;
-            *channel_mask = 0;
-            br_etry(bs);
-            return;
-        } else {
-            /*VERBATIM isn't the first command
-              so rewind and set some dummy values*/
-            bs->setpos(bs, command_start);
-            command_start->del(command_start);
-            *sample_rate = 44100;
-            *channel_mask = 0;
-            br_etry(bs);
-            return;
-        }
-    } else {
-        /*wrap IFF chunk reader in try block
-          to unmark the stream prior to bubbling up
-          the read exception to read_shn_header()*/
-        command_start->del(command_start);
-        br_etry(bs);
-        br_abort(bs);
+    while (head) {
+        struct verbatim_list *next = head->next;
+        free(head->bytes);
+        free(head);
+        head = next;
     }
 }
 
-static BitstreamReader*
-read_verbatim(BitstreamReader* bs, unsigned* verbatim_size)
+static void
+command_diff1(BitstreamReader *bs,
+              unsigned block_size,
+              int channel[])
 {
-    struct bs_buffer *verbatim = buf_new();
-    if (!setjmp(*br_try(bs))) {
-        unsigned i;
-        BitstreamReader *verbatim_reader;
-
-        /*read block of verbatim bytes to buffer*/
-        *verbatim_size = read_unsigned(bs, VERBATIM_CHUNK_SIZE);
-
-        for (i = 0; i < *verbatim_size; i++) {
-            const unsigned byte = read_unsigned(bs, VERBATIM_BYTE_SIZE) & 0xFF;
-            buf_putc((int)byte, verbatim);
-        }
-        br_etry(bs);
-
-        /*convert buffer to BitstreamReader*/
-        verbatim_reader = br_open_buffer(buf_window_start(verbatim),
-                                         buf_window_size(verbatim),
-                                         BS_BIG_ENDIAN);
-
-        /*cleanup temporary buffer before returning reader*/
-        buf_close(verbatim);
-
-        return verbatim_reader;
-    } else {
-        /*I/O error reading from main bitstream
-          so cleanup buffer before re-raising error*/
-        buf_close(verbatim);
-        br_etry(bs);
-        br_abort(bs);
-        return NULL; /*shouldn't get here*/
+    const unsigned energy = read_unsigned(bs, 3);
+    for (; block_size; block_size--) {
+        channel[0] = channel[-1] + read_signed(bs, energy);
+        channel += 1;
     }
 }
 
-int
-read_wave_header(BitstreamReader* bs, unsigned verbatim_size,
-                 unsigned* sample_rate, unsigned* channel_mask)
+static void
+command_diff2(BitstreamReader *bs,
+              unsigned block_size,
+              int channel[])
 {
-    if (!setjmp(*br_try(bs))) {
-        uint8_t RIFF[4];
-        unsigned SIZE;
-        uint8_t WAVE[4];
-
-        bs->set_endianness(bs, BS_LITTLE_ENDIAN);
-        bs->parse(bs, "4b 32u 4b", RIFF, &SIZE, WAVE);
-
-        if (memcmp(RIFF, "RIFF", 4) || memcmp(WAVE, "WAVE", 4)) {
-            br_etry(bs);
-            return 1;
-        } else {
-            verbatim_size -= bs_format_byte_size("4b 32u 4b");
-        }
-
-        while (verbatim_size > 0) {
-            uint8_t chunk_id[4];
-            unsigned chunk_size;
-            bs->parse(bs, "4b 32u", chunk_id, &chunk_size);
-            verbatim_size -= bs_format_byte_size("4b 32u");
-            if (!memcmp(chunk_id, "fmt ", 4)) {
-                /*parse fmt chunk*/
-                unsigned compression;
-                unsigned channels;
-                unsigned bytes_per_second;
-                unsigned block_align;
-                unsigned bits_per_sample;
-
-                bs->parse(bs, "16u 16u 32u 32u 16u 16u",
-                          &compression,
-                          &channels,
-                          sample_rate,
-                          &bytes_per_second,
-                          &block_align,
-                          &bits_per_sample);
-                if (compression == 1) {
-                    /*if we have a multi-channel WAVE file
-                      that's not WAVEFORMATEXTENSIBLE,
-                      assume the channels follow
-                      SMPTE/ITU-R recommendations
-                      and hope for the best*/
-                    switch (channels) {
-                    case 1:
-                        *channel_mask = 0x4;
-                        break;
-                    case 2:
-                        *channel_mask = 0x3;
-                        break;
-                    case 3:
-                        *channel_mask = 0x7;
-                        break;
-                    case 4:
-                        *channel_mask = 0x33;
-                        break;
-                    case 5:
-                        *channel_mask = 0x37;
-                        break;
-                    case 6:
-                        *channel_mask = 0x3F;
-                        break;
-                    default:
-                        *channel_mask = 0;
-                        break;
-                    }
-                    br_etry(bs);
-                    return 0;
-                } else if (compression == 0xFFFE) {
-                    unsigned cb_size;
-                    unsigned valid_bits_per_sample;
-                    uint8_t sub_format[16];
-                    bs->parse(bs, "16u 16u 32u 16b",
-                              &cb_size,
-                              &valid_bits_per_sample,
-                              channel_mask,
-                              sub_format);
-                    if (!memcmp(sub_format,
-                                "\x01\x00\x00\x00\x00\x00\x10\x00"
-                                "\x80\x00\x00\xaa\x00\x38\x9b\x71", 16)) {
-                        br_etry(bs);
-                        return 0;
-                    } else {
-                        /*invalid sub format*/
-                        br_etry(bs);
-                        return 1;
-                    }
-                } else {
-                    /*unsupported wave compression*/
-                    br_etry(bs);
-                    return 1;
-                }
-            } else {
-                if (chunk_size % 2) {
-                    /*handle odd-sized chunks*/
-                    bs->skip_bytes(bs, chunk_size + 1);
-                    verbatim_size -= (chunk_size + 1);
-                } else {
-                    bs->skip_bytes(bs, chunk_size);
-                    verbatim_size -= chunk_size;
-                }
-            }
-        }
-
-        /*no fmt chunk found in wave header*/
-        br_etry(bs);
-        return 1;
-    } else {
-        /*I/O error bouncing through wave chunks*/
-        br_etry(bs);
-        return 1;
+    const unsigned energy = read_unsigned(bs, 3);
+    for (; block_size; block_size--) {
+        channel[0] = (2 * channel[-1]) - channel[-2] + read_signed(bs, energy);
+        channel += 1;
     }
 }
 
-int
-read_aiff_header(BitstreamReader* bs, unsigned verbatim_size,
-                 unsigned* sample_rate, unsigned* channel_mask)
+static void
+command_diff3(BitstreamReader *bs,
+              unsigned block_size,
+              int channel[])
 {
-    if (!setjmp(*br_try(bs))) {
-        uint8_t FORM[4];
-        unsigned SIZE;
-        uint8_t AIFF[4];
-
-        bs->set_endianness(bs, BS_BIG_ENDIAN);
-        bs->parse(bs, "4b 32u 4b", FORM, &SIZE, AIFF);
-
-        if (memcmp(FORM, "FORM", 4) || memcmp(AIFF, "AIFF", 4)) {
-            br_etry(bs);
-            return 1;
-        } else {
-            verbatim_size -= bs_format_byte_size("4b 32u 4b");
-        }
-
-        while (verbatim_size > 0) {
-            uint8_t chunk_id[4];
-            unsigned chunk_size;
-            bs->parse(bs, "4b 32u", chunk_id, &chunk_size);
-
-            verbatim_size -= bs_format_byte_size("4b 32u");
-            if (!memcmp(chunk_id, "COMM", 4)) {
-                /*parse COMM chunk*/
-
-                unsigned channels;
-                unsigned total_sample_frames;
-                unsigned bits_per_sample;
-
-                bs->parse(bs, "16u 32u 16u",
-                          &channels,
-                          &total_sample_frames,
-                          &bits_per_sample);
-
-                *sample_rate = read_ieee_extended(bs);
-
-                switch (channels) {
-                case 1:
-                    *channel_mask = 0x4;
-                    break;
-                case 2:
-                    *channel_mask = 0x3;
-                    break;
-                default:
-                    *channel_mask = 0;
-                    break;
-                }
-
-                br_etry(bs);
-                return 0;
-            } else {
-                if (chunk_size % 2) {
-                    /*handle odd-sized chunks*/
-                    bs->skip_bytes(bs, chunk_size + 1);
-                    verbatim_size -= (chunk_size + 1);
-                } else {
-                    bs->skip_bytes(bs, chunk_size);
-                    verbatim_size -= chunk_size;
-                }
-            }
-        }
-
-        /*no COMM chunk found in aiff header*/
-        br_etry(bs);
-        return 1;
-    } else {
-        /*I/O error bouncing through aiff chunks*/
-        br_etry(bs);
-        return 1;
+    const unsigned energy = read_unsigned(bs, 3);
+    for (; block_size; block_size--) {
+        channel[0] = (3 * (channel[-1] - channel[-2])) +
+                     channel[-3] +
+                     read_signed(bs, energy);
+        channel += 1;
     }
 }
 
-int
-read_ieee_extended(BitstreamReader* bs)
+static void
+command_zero(BitstreamReader *bs,
+             unsigned block_size,
+             int channel[])
 {
-    unsigned sign;
-    unsigned exponent;
-    uint64_t mantissa;
-
-    bs->parse(bs, "1u 15u 64U", &sign, &exponent, &mantissa);
-    if ((exponent == 0) && (mantissa == 0)) {
-        return 0;
-    } else if (exponent == 0x7FFF) {
-        return INT_MAX;
-    } else {
-        const int f = (int)((double)mantissa *
-                            pow(2.0, (double)exponent - 16383 - 63));
-        if (sign)
-            return -f;
-        else
-            return f;
+    for (; block_size; block_size--) {
+        channel[0] = 0;
+        channel += 1;
     }
 }
 
-#ifdef STANDALONE
-#include <errno.h>
-
-int main(int argc, char* argv[]) {
-    decoders_SHNDecoder decoder;
-    FILE* file;
-    aa_int* framelist;
-    unsigned output_data_size;
-    unsigned char* output_data;
-    unsigned bytes_per_sample;
-    int_to_pcm_f converter;
-
-    if (argc < 2) {
-        fprintf(stderr, "*** Usage: %s <file.shn>\n", argv[0]);
-        return 1;
-    }
-    if ((file = fopen(argv[1], "rb")) == NULL) {
-        fprintf(stderr, "*** %s: %s\n", argv[1], strerror(errno));
-        return 1;
-    } else {
-        decoder.bitstream = br_open(file, BS_BIG_ENDIAN);
-        decoder.stream_finished = 0;
-
-        decoder.means = aa_int_new();
-        decoder.previous_samples = aa_int_new();
-
-        decoder.samples = aa_int_new();
-        decoder.unshifted = aa_int_new();
-        decoder.pcm_header = a_int_new();
-        decoder.pcm_footer = a_int_new();
-
-        framelist = aa_int_new();
-
-        output_data_size = 1;
-        output_data = malloc(output_data_size);
-    }
-
-    /*read Shorten header for basic info*/
-    switch (read_shn_header(&decoder, decoder.bitstream)) {
-    case INVALID_MAGIC_NUMBER:
-        fprintf(stderr, "invalid magic number");
-        goto error;
-    case INVALID_SHORTEN_VERSION:
-        fprintf(stderr, "invalid Shorten version");
-        goto error;
-    case UNSUPPORTED_FILE_TYPE:
-        fprintf(stderr, "unsupported Shorten file type");
-        goto error;
-    case IOERROR:
-        fprintf(stderr, "I/O error reading Shorten header");
-        goto error;
-    default:
-        bytes_per_sample = decoder.bits_per_sample / 8;
-        converter = int_to_pcm_converter(decoder.bits_per_sample, 0, 1);
-        break;
-    }
-
-    while (!decoder.stream_finished) {
-        unsigned pcm_size;
-        unsigned channel;
-        unsigned frame;
-
-        framelist->reset(framelist);
-        /*decode set of commands into a single framelist*/
-        switch (read_framelist(&decoder, framelist)) {
-        case OK:
-            /*convert framelist to string and output it to stdout*/
-            pcm_size = (bytes_per_sample *
-                        framelist->len *
-                        framelist->_[0]->len);
-            if (pcm_size > output_data_size) {
-                output_data_size = pcm_size;
-                output_data = realloc(output_data, output_data_size);
-            }
-            for (channel = 0; channel < framelist->len; channel++) {
-                const a_int* channel_data = framelist->_[channel];
-                for (frame = 0; frame < channel_data->len; frame++) {
-                    converter(channel_data->_[frame],
-                              output_data +
-                              ((frame * framelist->len) + channel) *
-                              bytes_per_sample);
-                }
-            }
-
-            fwrite(output_data, sizeof(unsigned char), pcm_size, stdout);
-            break;
-        case END_OF_STREAM:
-            /*automatically sets stream_finished to true*/
-            break;
-        case UNKNOWN_COMMAND:
-            fprintf(stderr, "unknown command in Shorten stream");
-            goto error;
-        case IOERROR:
-            fprintf(stderr, "I/O error reading Shorten file");
-            goto error;
-        default:
-            /*shouldn't get here*/
-            fprintf(stderr, "unknown value from read_framelist()");
-            goto error;
+static void
+apply_left_shift(unsigned left_shift,
+                 unsigned block_size,
+                 int channel[])
+{
+    if (left_shift) {
+        for (; block_size; block_size--) {
+            channel[0] <<= left_shift;
+            channel += 1;
         }
     }
-
-    decoder.bitstream->close(decoder.bitstream);
-
-    decoder.means->del(decoder.means);
-    decoder.previous_samples->del(decoder.previous_samples);
-    decoder.samples->del(decoder.samples);
-    decoder.unshifted->del(decoder.unshifted);
-    decoder.pcm_header->del(decoder.pcm_header);
-    decoder.pcm_footer->del(decoder.pcm_footer);
-    framelist->del(framelist);
-    free(output_data);
-
-    return 0;
-
-error:
-    decoder.bitstream->close(decoder.bitstream);
-
-    decoder.means->del(decoder.means);
-    decoder.previous_samples->del(decoder.previous_samples);
-    decoder.samples->del(decoder.samples);
-    decoder.unshifted->del(decoder.unshifted);
-    decoder.pcm_header->del(decoder.pcm_header);
-    decoder.pcm_footer->del(decoder.pcm_footer);
-    framelist->del(framelist);
-    free(output_data);
-
-    return 1;
 }
-#endif

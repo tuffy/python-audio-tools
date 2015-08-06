@@ -3,7 +3,6 @@
 FLAGS = -Wall -g
 BINARIES = \
 alacdec \
-shndec \
 wvdec \
 alacenc \
 flacenc \
@@ -22,9 +21,6 @@ clean:
 
 alacdec: $(OBJS) decoders/alac.c decoders/alac.h bitstream.a framelist.o m4a_atoms.o pcm_conv.o
 	$(CC) $(FLAGS) -o alacdec decoders/alac.c bitstream.a framelist.o m4a_atoms.o pcm_conv.o -DSTANDALONE
-
-shndec: $(OBJS) decoders/shn.c decoders/shn.h buffer.o pcm_conv.o
-	$(CC) $(FLAGS) -o shndec decoders/shn.c $(OBJS) buffer.o pcm_conv.o -DSTANDALONE -lm
 
 wvdec: $(OBJS) decoders/wavpack.c decoders/wavpack.h md5.o pcm_conv.o
 	$(CC) $(FLAGS) -o wvdec decoders/wavpack.c $(OBJS) md5.o pcm_conv.o -DSTANDALONE

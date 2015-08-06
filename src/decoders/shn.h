@@ -3,7 +3,6 @@
 #endif
 #include <stdint.h>
 #include "../bitstream.h"
-#include "../array.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -24,83 +23,45 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-typedef enum {OK,
-              END_OF_STREAM,
-              IOERROR,
-              UNKNOWN_COMMAND,
-              INVALID_MAGIC_NUMBER,
-              INVALID_SHORTEN_VERSION,
-              UNSUPPORTED_FILE_TYPE} status;
-
-#define COMMAND_SIZE 2
-#define ENERGY_SIZE 3
-#define LPC_COUNT_SIZE 2
-#define LPC_COEFF_SIZE 5
-#define VERBATIM_CHUNK_SIZE 5
-#define VERBATIM_BYTE_SIZE 8
-#define SHIFT_SIZE 2
-
-#define QLPC_SIZE 2
-#define QLPC_QUANT 5
-#define QLPC_OFFSET (1 << QLPC_QUANT);
-
-enum {FN_DIFF0     = 0,
-      FN_DIFF1     = 1,
-      FN_DIFF2     = 2,
-      FN_DIFF3     = 3,
-      FN_QUIT      = 4,
-      FN_BLOCKSIZE = 5,
-      FN_BITSHIFT  = 6,
-      FN_QLPC      = 7,
-      FN_ZERO      = 8,
-      FN_VERBATIM  = 9};
+struct shn_header {
+    unsigned file_type;
+    unsigned channels;
+    unsigned block_size;
+    unsigned max_LPC;
+    unsigned mean_count;
+};
 
 typedef struct {
-#ifndef STANDALONE
     PyObject_HEAD
-#endif
+
+    int sample_rate;
+    int channel_mask;
 
     BitstreamReader* bitstream;
 
     /*fixed fields from the Shorten header*/
-    struct {
-        unsigned file_type;
-        unsigned channels;
-        unsigned max_LPC;
-        unsigned mean_count;
-    } header;
+    struct shn_header header;
+
+    /*derives from header's file type*/
+    unsigned bits_per_sample;
 
     /*fields which may change during decoding*/
-    unsigned block_length;
     unsigned left_shift;
 
-    /*derived fields about the stream itself*/
-    unsigned bits_per_sample;
-    unsigned signed_samples;
-    unsigned sample_rate;
-    unsigned channel_mask;
-    int stream_finished;
+    /*an array of channel arrays, one per channel, each 3 entries long
+      contains the wrapped samples from the previous Shorten "frame"*/
+    int **wrapped_samples;
 
-    /*values that persist between commands*/
-    aa_int* means;
-    aa_int* previous_samples;
-
-    /*temporary buffers we don't want to allocate all the time*/
-    aa_int* unshifted;
-    aa_int* samples;
-    a_int* pcm_header;
-    a_int* pcm_footer;
-
-#ifndef STANDALONE
     /*a framelist generator*/
     PyObject* audiotools_pcm;
-#endif
 
     /*a marker to indicate the stream has been explicitly closed*/
     int closed;
+
+    /*a marker to indicate the end of the stream was reached*/
+    int quitted;
 } decoders_SHNDecoder;
 
-#ifndef STANDALONE
 PyObject*
 SHNDecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
@@ -128,7 +89,7 @@ static PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args);
 
 static PyObject*
-SHNDecoder_pcm_split(decoders_SHNDecoder* self, PyObject *args);
+SHNDecoder_verbatims(decoders_SHNDecoder* self, PyObject *args);
 
 static PyObject*
 SHNDecoder_close(decoders_SHNDecoder* self, PyObject *args);
@@ -156,8 +117,8 @@ PyMethodDef SHNDecoder_methods[] = {
      METH_VARARGS, "read(pcm_frame_count) -> FrameList"},
     {"close", (PyCFunction)SHNDecoder_close,
      METH_NOARGS, "close() -> None"},
-    {"pcm_split", (PyCFunction)SHNDecoder_pcm_split,
-     METH_NOARGS, "split() -> (before_pcm_string, after_pcm_string)"},
+    {"verbatims", (PyCFunction)SHNDecoder_verbatims,
+     METH_NOARGS, "verbatims() -> [bytes, bytes, ...]"},
     {"__enter__", (PyCFunction)SHNDecoder_enter,
      METH_NOARGS, "enter() -> self"},
     {"__exit__", (PyCFunction)SHNDecoder_exit,
@@ -205,80 +166,3 @@ PyTypeObject decoders_SHNDecoderType = {
     0,                         /* tp_alloc */
     SHNDecoder_new,            /* tp_new */
 };
-#endif
-
-static status
-read_shn_header(decoders_SHNDecoder* self, BitstreamReader* reader);
-
-static void
-process_iff_header(BitstreamReader* bs,
-                   unsigned* sample_rate,
-                   unsigned* channel_mask);
-
-static status
-read_framelist(decoders_SHNDecoder* self, aa_int* framelist);
-
-/*given a list of samples and a set of means for the given channel,
-  reads a DIFF0 command and sets samples to "block_length" values*/
-static void
-read_diff0(BitstreamReader* bs, unsigned block_length,
-           const a_int* means, a_int* samples);
-
-/*given a list of previous samples (which may be empty)
-  reads a DIFF1 command with the given block length
-  and sets samples to "block_length" values*/
-static void
-read_diff1(BitstreamReader* bs, unsigned block_length,
-           a_int* previous_samples, a_int* samples);
-
-/*given a list of previous samples (which may be empty)
-  reads a DIFF2 command with the given block length
-  and sets samples to "block_length" values*/
-static void
-read_diff2(BitstreamReader* bs, unsigned block_length,
-           a_int* previous_samples, a_int* samples);
-
-/*given a list of previous samples (which may be empty)
-  reads a DIFF3 command with the given block length
-  and sets samples to "block_length" values*/
-static void
-read_diff3(BitstreamReader* bs, unsigned block_length,
-           a_int* previous_samples, a_int* samples);
-
-static void
-read_qlpc(BitstreamReader* bs, unsigned block_length,
-          a_int* previous_samples, a_int* means, a_int* samples);
-
-static int
-shnmean(const a_int* values);
-
-/*reads the contents of a VERBATIM command
-  into a substream for parsing*/
-static BitstreamReader*
-read_verbatim(BitstreamReader* bs, unsigned* verbatim_size);
-
-int
-read_wave_header(BitstreamReader* bs, unsigned verbatim_size,
-                 unsigned* sample_rate, unsigned* channel_mask);
-
-int
-read_aiff_header(BitstreamReader* bs, unsigned verbatim_size,
-                 unsigned* sample_rate, unsigned* channel_mask);
-
-int
-read_ieee_extended(BitstreamReader* bs);
-
-static unsigned
-read_unsigned(BitstreamReader* bs, unsigned count);
-
-static int
-read_signed(BitstreamReader* bs, unsigned count);
-
-static unsigned
-read_long(BitstreamReader* bs);
-
-static void
-skip_unsigned(BitstreamReader* bs, unsigned count);
-
-static void
-skip_signed(BitstreamReader* bs, unsigned count);
