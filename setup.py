@@ -636,8 +636,7 @@ class audiotools_decoders(Extension):
         self.__library_manifest__ = []
 
         defines = [("VERSION", VERSION), ("HAS_PYTHON", None)]
-        sources = ["src/array.c",
-                   "src/pcm_conv.c",
+        sources = ["src/pcm_conv.c",
                    "src/framelist.c",
                    "src/bitstream.c",
                    "src/buffer.c",
