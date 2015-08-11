@@ -359,8 +359,7 @@ calculate_best_diff(unsigned block_size,
         *diff = 1;
 
         /*calculate energy from minimum sum*/
-        while ((block_size << *energy) < sum1)
-            *energy += 1;
+        *energy = ceil(log2((double)sum1 / (double)block_size + 2));
 
         /*residuals are determined from delta values*/
         memcpy(residual, delta1 + 2, block_size * sizeof(int));
@@ -369,8 +368,7 @@ calculate_best_diff(unsigned block_size,
         *diff = 2;
 
         /*calculate energy from minimum sum*/
-        while ((block_size << *energy) < sum2)
-            *energy += 1;
+        *energy = ceil(log2((double)sum2 / (double)block_size + 1));
 
         /*residuals are determined from delta values*/
         memcpy(residual, delta2 + 1, block_size * sizeof(int));
@@ -379,8 +377,7 @@ calculate_best_diff(unsigned block_size,
         *diff = 3;
 
         /*calculate energy from minimum sum*/
-        while ((block_size << *energy) < sum3)
-            *energy += 1;
+        *energy = ceil(log2((double)sum3 / (double)block_size));
 
         /*residuals are determined from delta values*/
         memcpy(residual, delta3, block_size * sizeof(int));

@@ -135,24 +135,36 @@ valid_block_size(unsigned block_size) {
     return (block_size > 0) && (block_size < MAX_BLOCK_SIZE);
 }
 
-typedef void (*command_f)(BitstreamReader *bs,
-                          unsigned block_size,
-                          int channel[]);
+/*returns nonzero and sets Python exception
+  if an error occurs processing the command*/
+typedef int (*command_f)(BitstreamReader *bs,
+                         const struct shn_header *header,
+                         const int means[],
+                         int channel[]);
 
-#define COMMAND_DEF(NAME) \
-  static void \
-  command_##NAME(BitstreamReader *bs, \
-                 unsigned block_size, \
+#define COMMAND_DEF(NAME)                         \
+  static int                                      \
+  command_##NAME(BitstreamReader *bs,             \
+                 const struct shn_header *header, \
+                 const int means[],               \
                  int channel[]);
+COMMAND_DEF(diff0)
 COMMAND_DEF(diff1)
 COMMAND_DEF(diff2)
 COMMAND_DEF(diff3)
+COMMAND_DEF(qlpc)
 COMMAND_DEF(zero)
 
 static void
 apply_left_shift(unsigned left_shift,
                  unsigned block_size,
                  int channel[]);
+
+static int
+shn_mean(unsigned count, const int values[]);
+
+static unsigned
+count_bits(int value);
 
 /*************************************/
 /*  public function implementations  */
@@ -200,7 +212,15 @@ SHNDecoder_init(decoders_SHNDecoder *self,
         return -1;
     } else {
         /*sanity-check sample rate and channel mask*/
-        /*FIXME*/
+        if (self->sample_rate < 1) {
+            PyErr_SetString(PyExc_ValueError, "sample_rate must be > 0");
+            return -1;
+        }
+
+        if (self->channel_mask < 0) {
+            PyErr_SetString(PyExc_ValueError, "channel_mask must be >= 0");
+            return -1;
+        }
 
         Py_INCREF(file);
     }
@@ -242,9 +262,26 @@ SHNDecoder_init(decoders_SHNDecoder *self,
 
         br_etry(self->bitstream);
 
+        /*sanity check header parameters*/
         if (!valid_block_size(self->header.block_size)) {
             PyErr_SetString(PyExc_ValueError, "invalid block size");
             return -1;
+        }
+
+        if (self->channel_mask &&
+            (count_bits(self->channel_mask) != self->header.channels)) {
+            PyErr_SetString(PyExc_ValueError,
+                            "channel mask doesn't match channel count");
+            return -1;
+        }
+
+        if (self->header.max_LPC > 16) {
+            PyErr_SetString(PyExc_ValueError, "excessive LPC coefficients");
+            return -1;
+        } else if (self->header.max_LPC > 3) {
+            self->to_wrap = self->header.max_LPC;
+        } else {
+            self->to_wrap = 3;
         }
 
         /*determine bits-per-sample*/
@@ -266,8 +303,13 @@ SHNDecoder_init(decoders_SHNDecoder *self,
 
         /*allocate wrapped samples per channel*/
         self->wrapped_samples = malloc(self->header.channels * sizeof(int*));
+
+        /*allocate means per channel*/
+        self->means = malloc(self->header.channels * sizeof(int*));
+
         for (c = 0; c < self->header.channels; c++) {
-            self->wrapped_samples[c] = calloc(3, sizeof(int));
+            self->wrapped_samples[c] = calloc(self->to_wrap, sizeof(int));
+            self->means[c] = calloc(self->header.mean_count, sizeof(int));
         }
     } else {
         br_etry(self->bitstream);
@@ -294,8 +336,10 @@ SHNDecoder_dealloc(decoders_SHNDecoder *self)
     /*deallocate per-buffer channels*/
     for (c = 0; c < self->header.channels; c++) {
         free(self->wrapped_samples[c]);
+        free(self->means[c]);
     }
     free(self->wrapped_samples);
+    free(self->means);
 
     Py_XDECREF(self->audiotools_pcm);
 
@@ -364,14 +408,14 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
     unsigned c = 0;
     unsigned command;
     pcm_FrameList *framelist;
-    const static command_f audio_command[] = {NULL, /*FIXME - DIFF0*/
+    const static command_f audio_command[] = {command_diff0,
                                               command_diff1,
                                               command_diff2,
                                               command_diff3,
                                               NULL, /*QUIT*/
                                               NULL, /*BLOCKSIZE*/
                                               NULL, /*BITSHIFT*/
-                                              NULL, /*FIXME - QLPC*/
+                                              command_qlpc,
                                               command_zero,
                                               NULL  /*VERBATIM*/};
 
@@ -397,29 +441,47 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
     if (!setjmp(*br_try(self->bitstream))) {
         while (c < self->header.channels) {
             switch (command = read_unsigned(self->bitstream, 2)) {
-            /*FIXME - case FN_DIFF0*/
+            case FN_DIFF0:
             case FN_DIFF1:
             case FN_DIFF2:
             case FN_DIFF3:
-            /*FIXME - case QLPC*/
+            case FN_QLPC:
             case FN_ZERO:
                 {
+                    const unsigned to_wrap = self->to_wrap;
+                    const unsigned mean_count = self->header.mean_count;
                     const unsigned block_size = self->header.block_size;
-                    int channel[3 + block_size];
+                    int channel[to_wrap + block_size];
 
                     /*transfer wrapped samples to start of buffer*/
-                    memcpy(channel, self->wrapped_samples[c], 3 * sizeof(int));
+                    memcpy(channel,
+                           self->wrapped_samples[c],
+                           to_wrap * sizeof(int));
 
                     /*process audio command*/
-                    audio_command[command](self->bitstream,
-                                           block_size,
-                                           channel + 3);
+                    if (audio_command[command](self->bitstream,
+                                               &(self->header),
+                                               self->means[c],
+                                               channel + to_wrap)) {
+                        br_etry(self->bitstream);
+                        Py_DECREF((PyObject*)framelist);
+                        return NULL;
+                    }
+
+                    /*calculate next mean for given channel*/
+                    if (mean_count) {
+                        memmove(self->means[c],
+                                self->means[c] + 1,
+                                (mean_count - 1) * sizeof(int));
+                        self->means[c][mean_count - 1] =
+                            shn_mean(block_size, channel + to_wrap);
+                    }
 
                     /*apply shift, if any*/
                     if (self->left_shift) {
                         apply_left_shift(self->left_shift,
                                          block_size,
-                                         channel + 3);
+                                         channel + to_wrap);
                     }
 
                     /*transfer new samples in buffer to framelist*/
@@ -427,12 +489,12 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                                      c,
                                      self->header.channels,
                                      block_size,
-                                     channel + 3);
+                                     channel + to_wrap);
 
-                    /*wrap trailing 3 samples for next frame*/
+                    /*wrap trailing samples for next frame*/
                     memcpy(self->wrapped_samples[c],
                            channel + block_size,
-                           3 * sizeof(int));
+                           to_wrap * sizeof(int));
 
                     c += 1;
                 }
@@ -475,7 +537,6 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                 break;
             default:
                 /*unknown or unsupported command encountered*/
-                fprintf(stderr, "got command : %u\n", command);
                 br_etry(self->bitstream);
                 Py_DECREF((PyObject*)framelist);
                 PyErr_SetString(PyExc_ValueError, "unsupported command");
@@ -577,7 +638,6 @@ SHNDecoder_verbatims(decoders_SHNDecoder* self, PyObject *args)
                 }
                 break;
             default:
-                fprintf(stderr, "got command : %u\n", command);
                 br_etry(self->bitstream);
                 free_verbatim_list(verbatims);
                 PyErr_SetString(PyExc_ValueError, "unsupported command");
@@ -736,53 +796,127 @@ free_verbatim_list(struct verbatim_list *head)
     }
 }
 
-static void
-command_diff1(BitstreamReader *bs,
-              unsigned block_size,
+static int
+command_diff0(BitstreamReader *bs,
+              const struct shn_header *header,
+              const int means[],
               int channel[])
 {
+    unsigned block_size;
+    const int offset = shn_mean(header->mean_count, means);
     const unsigned energy = read_unsigned(bs, 3);
-    for (; block_size; block_size--) {
+    for (block_size = header->block_size; block_size; block_size--) {
+        channel[0] = offset + read_signed(bs, energy);
+        channel += 1;
+    }
+    return 0;
+}
+
+static int
+command_diff1(BitstreamReader *bs,
+              const struct shn_header *header,
+              const int means[],
+              int channel[])
+{
+    unsigned block_size;
+    const unsigned energy = read_unsigned(bs, 3);
+    for (block_size = header->block_size; block_size; block_size--) {
         channel[0] = channel[-1] + read_signed(bs, energy);
         channel += 1;
     }
+    return 0;
 }
 
-static void
+static int
 command_diff2(BitstreamReader *bs,
-              unsigned block_size,
+              const struct shn_header *header,
+              const int means[],
               int channel[])
 {
+    unsigned block_size;
     const unsigned energy = read_unsigned(bs, 3);
-    for (; block_size; block_size--) {
+    for (block_size = header->block_size; block_size; block_size--) {
         channel[0] = (2 * channel[-1]) - channel[-2] + read_signed(bs, energy);
         channel += 1;
     }
+    return 0;
 }
 
-static void
+static int
 command_diff3(BitstreamReader *bs,
-              unsigned block_size,
+              const struct shn_header *header,
+              const int means[],
               int channel[])
 {
+    unsigned block_size;
     const unsigned energy = read_unsigned(bs, 3);
-    for (; block_size; block_size--) {
+    for (block_size = header->block_size; block_size; block_size--) {
         channel[0] = (3 * (channel[-1] - channel[-2])) +
                      channel[-3] +
                      read_signed(bs, energy);
         channel += 1;
     }
+    return 0;
 }
 
-static void
-command_zero(BitstreamReader *bs,
-             unsigned block_size,
+static int
+command_qlpc(BitstreamReader *bs,
+             const struct shn_header *header,
+             const int means[],
              int channel[])
 {
-    for (; block_size; block_size--) {
+    const int offset = shn_mean(header->mean_count, means);
+    const unsigned block_size = header->block_size;
+    const unsigned energy = read_unsigned(bs, 3);
+    const unsigned LPC_count = read_unsigned(bs, 2);
+    int coeff[header->max_LPC];
+    int unoffset[header->block_size];
+    int i;
+
+    if (LPC_count > header->max_LPC) {
+        PyErr_SetString(PyExc_ValueError, "excessive LPC coefficients");
+        return 1;
+    }
+
+    for (i = 0; i < LPC_count; i++) {
+        coeff[i] = read_signed(bs, 5);
+    }
+
+    for (i = 0; i < block_size; i++) {
+        register int32_t sum = 1 << 5;
+        const int residual = read_signed(bs, energy);
+        int j;
+        for (j = 0; j < LPC_count; j++) {
+            if ((i - j - 1) < 0) {
+                sum += coeff[j] * (channel[i - j - 1] - offset);
+            } else {
+                sum += coeff[j] * unoffset[i - j - 1];
+            }
+        }
+        sum >>= 5;
+        unoffset[i] = sum + residual;
+    }
+
+    /*re-apply offset to samples*/
+    for (i = 0; i < block_size; i++) {
+        channel[i] = unoffset[i] + offset;
+    }
+
+    return 0;
+}
+
+static int
+command_zero(BitstreamReader *bs,
+             const struct shn_header *header,
+             const int means[],
+             int channel[])
+{
+    unsigned block_size;
+    for (block_size = header->block_size; block_size; block_size--) {
         channel[0] = 0;
         channel += 1;
     }
+    return 0;
 }
 
 static void
@@ -796,4 +930,30 @@ apply_left_shift(unsigned left_shift,
             channel += 1;
         }
     }
+}
+
+static int
+shn_mean(unsigned count, const int values[])
+{
+    unsigned i;
+    int sum = count / 2;
+    for (i = 0; i < count; i++) {
+        sum += values[i];
+    }
+    sum /= count;
+    return sum;
+}
+
+static unsigned
+count_bits(int value)
+{
+    unsigned bits = 0;
+
+    for (; value; value >>= 1) {
+        if (value & 1) {
+            bits += 1;
+        }
+    }
+
+    return bits;
 }

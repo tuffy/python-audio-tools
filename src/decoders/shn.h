@@ -48,9 +48,17 @@ typedef struct {
     /*fields which may change during decoding*/
     unsigned left_shift;
 
-    /*an array of channel arrays, one per channel, each 3 entries long
+    /*the number of samples to wrap on each pass*/
+    unsigned to_wrap;
+
+    /*an array of channel arrays, one per channel, each "to_wrap" entries long
       contains the wrapped samples from the previous Shorten "frame"*/
     int **wrapped_samples;
+
+    /*an array of channel arrays, one per channel, each "mean_count" long
+      contains the averages of previous Shorten frames
+      in order to calculate offsets*/
+    int **means;
 
     /*a framelist generator*/
     PyObject* audiotools_pcm;
