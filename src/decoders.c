@@ -25,8 +25,6 @@
 *******************************************************/
 
 extern PyTypeObject decoders_FlacDecoderType;
-/*extern PyTypeObject decoders_OggFlacDecoderType;*/
-extern PyTypeObject decoders_SHNDecoderType;
 extern PyTypeObject decoders_ALACDecoderType;
 extern PyTypeObject decoders_WavPackDecoderType;
 #ifdef HAS_VORBIS
@@ -52,14 +50,6 @@ MOD_INIT(decoders)
 
     decoders_FlacDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_FlacDecoderType) < 0)
-        return MOD_ERROR_VAL;
-
-    /*decoders_OggFlacDecoderType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&decoders_OggFlacDecoderType) < 0)
-        return MOD_ERROR_VAL;*/
-
-    decoders_SHNDecoderType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&decoders_SHNDecoderType) < 0)
         return MOD_ERROR_VAL;
 
     decoders_ALACDecoderType.tp_new = PyType_GenericNew;
@@ -113,14 +103,6 @@ MOD_INIT(decoders)
     Py_INCREF(&decoders_FlacDecoderType);
     PyModule_AddObject(m, "FlacDecoder",
                        (PyObject *)&decoders_FlacDecoderType);
-
-    /*Py_INCREF(&decoders_OggFlacDecoderType);
-    PyModule_AddObject(m, "OggFlacDecoder",
-                       (PyObject *)&decoders_OggFlacDecoderType);*/
-
-    Py_INCREF(&decoders_SHNDecoderType);
-    PyModule_AddObject(m, "SHNDecoder",
-                       (PyObject *)&decoders_SHNDecoderType);
 
     Py_INCREF(&decoders_ALACDecoderType);
     PyModule_AddObject(m, "ALACDecoder",

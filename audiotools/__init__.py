@@ -1724,8 +1724,6 @@ def file_type(file):
             return OpusAudio
         else:
             return None
-    elif header[0:5] == b"ajkg\x02":
-        return ShortenAudio
     elif header[0:4] == b"wvpk":
         return WavPackAudio
     elif (header[0:4] == b"RIFF") and (header[8:12] == b"WAVE"):
@@ -5723,7 +5721,6 @@ from audiotools.wav import WaveAudio
 from audiotools.aiff import AiffAudio
 from audiotools.flac import FlacAudio
 from audiotools.wavpack import WavPackAudio
-from audiotools.shn import ShortenAudio
 from audiotools.mp3 import MP3Audio
 from audiotools.mp3 import MP2Audio
 from audiotools.vorbis import VorbisAudio
@@ -5752,7 +5749,6 @@ AVAILABLE_TYPES = (FlacAudio,
                    M4AAudio,
                    ALACAudio,
                    WavPackAudio,
-                   ShortenAudio,
                    OpusAudio,
                    TrueAudio)
 

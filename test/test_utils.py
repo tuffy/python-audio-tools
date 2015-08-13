@@ -1987,13 +1987,13 @@ class track2track(UtilTest):
 
         # check conversion from supported to unsupported bits-per-sample
         with tempfile.NamedTemporaryFile(
-                suffix=".shn") as unsupported_bps_file:
+                suffix=".m4a") as unsupported_bps_file:
             supported_track = audiotools.WaveAudio.from_pcm(
                 os.path.join(self.input_dir, "00 - bps.wav"),
-                BLANK_PCM_Reader(1, bits_per_sample=24))
+                BLANK_PCM_Reader(1, bits_per_sample=8))
 
             self.assertEqual(self.__run_app__(["track2track",
-                                               "-t", "shn",
+                                               "-t", "alac",
                                                "-d",
                                                self.output_dir,
                                                supported_track.filename]), 1)
@@ -2001,10 +2001,11 @@ class track2track(UtilTest):
                 ERR_UNSUPPORTED_BITS_PER_SAMPLE %
                 {"target_filename":
                  audiotools.Filename(os.path.join(self.output_dir,
-                                                  "00 - .shn")),
-                 "bps": 24})
+                                                  "00 - .m4a")),
+                 "bps": 8})
 
             self.assertEqual(self.__run_app__(["track2track",
+                                               "-t", "alac",
                                                "-o",
                                                unsupported_bps_file.name,
                                                supported_track.filename]), 1)
@@ -2012,7 +2013,7 @@ class track2track(UtilTest):
                 ERR_UNSUPPORTED_BITS_PER_SAMPLE %
                 {"target_filename":
                  audiotools.Filename(unsupported_bps_file.name),
-                 "bps": 24})
+                 "bps": 8})
 
     @UTIL_TRACK2TRACK
     def test_replay_gain(self):

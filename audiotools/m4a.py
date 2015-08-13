@@ -934,7 +934,7 @@ class ALACAudio(M4ATaggedAudio, AudioFile):
              0x0037,    # 5ch - center, left, right, back left, back right
              0x003F,    # 6ch - C, L, R, back left, back right, LFE
              0x013F,    # 7ch - C, L, R, bL, bR, back center, LFE
-             0x00FF,    # 8ch - C, cL, cR, L, R, bL, bR, LFE
+             0x063F,    # 8ch - fC, lC, rC, fL, fR, bL, bR, LFE
              0x0000}):  # undefined
             from audiotools import UnsupportedChannelMask
 
