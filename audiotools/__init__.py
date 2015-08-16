@@ -147,7 +147,7 @@ MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
 ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default",
                                            True)
 
-VERSION = "3.1alpha1"
+VERSION = "3.1beta1"
 
 DEFAULT_FILENAME_FORMAT = '%(track_number)2.2d - %(track_name)s.%(suffix)s'
 FILENAME_FORMAT = config.get_default("Filenames", "format",
