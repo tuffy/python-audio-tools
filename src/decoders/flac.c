@@ -160,19 +160,18 @@ static void
 decorrelate_left_difference(unsigned block_size,
                             const int left[],
                             const int difference[],
-                            int right[]);
+                            int samples[]);
 static void
 decorrelate_difference_right(unsigned block_size,
                              const int difference[],
                              const int right[],
-                             int left[]);
+                             int samples[]);
 
 static void
 decorrelate_average_difference(unsigned block_size,
                                const int average[],
                                const int difference[],
-                               int left[],
-                               int right[]);
+                               int samples[]);
 
 static status_t
 skip_subframe(BitstreamReader *r,
@@ -1086,7 +1085,6 @@ decode_left_difference(BitstreamReader *r,
     status_t status;
     int left_data[frame_header->block_size];
     int difference_data[frame_header->block_size];
-    int right_data[frame_header->block_size];
 
     if ((status = read_subframe(r,
                                 frame_header->block_size,
@@ -1105,19 +1103,7 @@ decode_left_difference(BitstreamReader *r,
     decorrelate_left_difference(frame_header->block_size,
                                 left_data,
                                 difference_data,
-                                right_data);
-
-    put_channel_data(samples,
-                     0,
-                     2,
-                     frame_header->block_size,
-                     left_data);
-
-    put_channel_data(samples,
-                     1,
-                     2,
-                     frame_header->block_size,
-                     right_data);
+                                samples);
 
     return OK;
 }
@@ -1130,7 +1116,6 @@ decode_difference_right(BitstreamReader *r,
     status_t status;
     int difference_data[frame_header->block_size];
     int right_data[frame_header->block_size];
-    int left_data[frame_header->block_size];
 
     if ((status = read_subframe(r,
                                 frame_header->block_size,
@@ -1149,19 +1134,7 @@ decode_difference_right(BitstreamReader *r,
     decorrelate_difference_right(frame_header->block_size,
                                  difference_data,
                                  right_data,
-                                 left_data);
-
-    put_channel_data(samples,
-                     0,
-                     2,
-                     frame_header->block_size,
-                     left_data);
-
-    put_channel_data(samples,
-                     1,
-                     2,
-                     frame_header->block_size,
-                     right_data);
+                                 samples);
 
     return OK;
 }
@@ -1174,8 +1147,6 @@ decode_average_difference(BitstreamReader *r,
     status_t status;
     int average_data[frame_header->block_size];
     int difference_data[frame_header->block_size];
-    int right_data[frame_header->block_size];
-    int left_data[frame_header->block_size];
 
     if ((status = read_subframe(r,
                                 frame_header->block_size,
@@ -1194,20 +1165,7 @@ decode_average_difference(BitstreamReader *r,
     decorrelate_average_difference(frame_header->block_size,
                                    average_data,
                                    difference_data,
-                                   left_data,
-                                   right_data);
-
-    put_channel_data(samples,
-                     0,
-                     2,
-                     frame_header->block_size,
-                     left_data);
-
-    put_channel_data(samples,
-                     1,
-                     2,
-                     frame_header->block_size,
-                     right_data);
+                                   samples);
 
     return OK;
 }
@@ -1529,13 +1487,15 @@ static void
 decorrelate_left_difference(unsigned block_size,
                             const int left[],
                             const int difference[],
-                            int right[])
+                            int samples[])
 {
     for (; block_size; block_size--) {
-        right[0] = left[0] - difference[0];
+        /*samples[0] = left[0];*/
+        /*samples[1] = left[0] - difference[0];*/
+        samples[1] = (samples[0] = left[0]) - difference[0];
         left += 1;
-        right += 1;
         difference += 1;
+        samples += 2;
     }
 }
 
@@ -1543,13 +1503,15 @@ static void
 decorrelate_difference_right(unsigned block_size,
                              const int difference[],
                              const int right[],
-                             int left[])
+                             int samples[])
 {
     for (; block_size; block_size--) {
-        left[0] = difference[0] + right[0];
+        /*samples[0] = difference[0] + right[0];*/
+        /*samples[1] = right[0];*/
+        samples[0] = difference[0] + (samples[1] = right[0]);
         difference += 1;
         right += 1;
-        left += 1;
+        samples += 2;
     }
 }
 
@@ -1557,17 +1519,15 @@ static void
 decorrelate_average_difference(unsigned block_size,
                                const int average[],
                                const int difference[],
-                               int left[],
-                               int right[])
+                               int samples[])
 {
     for (; block_size; block_size--) {
         const int sum = (average[0] * 2) + (abs(difference[0]) % 2);
-        left[0] = (sum + difference[0]) >> 1;
-        right[0] = (sum - difference[0]) >> 1;
+        samples[0] = (sum + difference[0]) >> 1;
+        samples[1] = (sum - difference[0]) >> 1;
         average += 1;
         difference += 1;
-        left += 1;
-        right += 1;
+        samples += 2;
     }
 }
 
