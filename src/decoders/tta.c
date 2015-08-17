@@ -84,6 +84,8 @@ read_tta_frame(BitstreamReader *frame,
 static void
 init_residual_params(struct residual_params *params);
 
+/*given raw TTA frame data and residual parameters,
+  updates the parameters and returns the next residual*/
 static int
 read_residual(struct residual_params *params, BitstreamReader *frame);
 
@@ -91,6 +93,8 @@ static void
 init_filter_params(unsigned bits_per_sample,
                    struct filter_params *params);
 
+/*given a residual and filter parameters,
+  updates the parameters and returns a predicted sample*/
 static int
 run_filter(struct filter_params *params, int residual);
 
@@ -98,9 +102,13 @@ static void
 init_prediction_params(unsigned bits_per_sample,
                        struct prediction_params *params);
 
+/*given a filtered sample and prediction parameters,
+  updates the parameters and returns a predicted sample*/
 static int
 run_prediction(struct prediction_params *params, int filtered);
 
+/*given a PCM frame's worth of predicted samples and channel count,
+  decorrelates the samples*/
 static void
 decorrelate_channels(unsigned channel_count,
                      const int predicted[],
@@ -500,24 +508,25 @@ read_tta_frame(BitstreamReader *frame,
 
     /*initialize per-channel parameters*/
     for (c = 0; c < channels; c++) {
-        init_residual_params(residual_params + c);
-        init_filter_params(bits_per_sample, filter_params + c);
-        init_prediction_params(bits_per_sample, prediction_params + c);
+        init_residual_params(&residual_params[c]);
+        init_filter_params(bits_per_sample, &filter_params[c]);
+        init_prediction_params(bits_per_sample, &prediction_params[c]);
     }
 
+    /*decode one PCM frame at a time*/
     for (; block_size; block_size--) {
         int predicted[channels];
 
         for (c = 0; c < channels; c++) {
-            /*run fixed prediction over filtered values*/
+            /*run fixed prediction over filtered value*/
             predicted[c] = run_prediction(
-                prediction_params + c,
-                /*run hybrid filter over residuals*/
+                &prediction_params[c],
+                /*run hybrid filter over residual*/
                 run_filter(
-                    filter_params + c,
-                    /*decode a PCM frame's worth of residuals*/
+                    &filter_params[c],
+                    /*decode a residual*/
                     read_residual(
-                        residual_params + c,
+                        &residual_params[c],
                         frame)));
         }
 

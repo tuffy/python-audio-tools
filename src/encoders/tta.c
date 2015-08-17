@@ -52,8 +52,10 @@ encode_frame(unsigned bits_per_sample,
              const int samples[],
              BitstreamWriter *output);
 
+/*given a PCM frame's worth of samples and channel count,
+  correlates the samples*/
 static void
-correlate_channels(unsigned channels,
+correlate_channels(unsigned channel_count,
                    const int samples[],
                    int correlated[]);
 
@@ -61,6 +63,8 @@ static void
 init_prediction_params(unsigned bits_per_sample,
                        struct prediction_params *params);
 
+/*given a correlated sample and prediction parameters,
+  updates the parameters and returns a predicted sample*/
 static int
 run_prediction(struct prediction_params *params, int correlated);
 
@@ -68,12 +72,16 @@ static void
 init_filter_params(unsigned bits_per_sample,
                    struct filter_params *params);
 
+/*given a predicted sample and filter parameters,
+  updates the parameters and returns a residual*/
 static int
 run_filter(struct filter_params *params, int predicted);
 
 static void
 init_residual_params(struct residual_params *params);
 
+/*given residual parameters and a residual,
+  updates the parameters and writes the residual to disk*/
 static void
 write_residual(struct residual_params *params,
                int residual,
@@ -159,53 +167,61 @@ encode_frame(unsigned bits_per_sample,
 
     /*initialize per-channel parameters*/
     for (c = 0; c < channels; c++) {
-        init_prediction_params(bits_per_sample, prediction_params + c);
-        init_filter_params(bits_per_sample, filter_params + c);
-        init_residual_params(residual_params + c);
+        init_prediction_params(bits_per_sample, &prediction_params[c]);
+        init_filter_params(bits_per_sample, &filter_params[c]);
+        init_residual_params(&residual_params[c]);
     }
 
+    /*setup CRC-32 calculation*/
     output->add_callback(output, (bs_callback_f)tta_crc32, &crc32);
 
+    /*encode one PCM frame at a time*/
     for (; block_size; block_size--) {
         int correlated[channels];
 
+        /*correlate samples to channels*/
         correlate_channels(channels, samples, correlated);
 
         for (c = 0; c < channels; c++) {
+            /*encode a residual*/
             write_residual(
-                residual_params + c,
+                &residual_params[c],
+                /*run hybrid filter over predicted value*/
                 run_filter(
-                    filter_params + c,
+                    &filter_params[c],
+                    /*run fixed prediction over correlated sample*/
                     run_prediction(
-                        prediction_params + c,
+                        &prediction_params[c],
                         correlated[c])),
                 output);
         }
 
+        /*move on to next batch of samples*/
         samples += channels;
     }
 
+    /*write calculated CRC-32 at end of frame*/
     output->byte_align(output);
     output->pop_callback(output, NULL);
     output->write(output, 32, crc32 ^ 0xFFFFFFFF);
 }
 
 static void
-correlate_channels(unsigned channels,
+correlate_channels(unsigned channel_count,
                    const int samples[],
                    int correlated[])
 {
-    assert(channels > 0);
-    if (channels == 1) {
+    assert(channel_count > 0);
+    if (channel_count == 1) {
         correlated[0] = samples[0];
     } else {
         unsigned c;
-        for (c = 0; c < (channels - 1); c++) {
+        for (c = 0; c < (channel_count - 1); c++) {
             correlated[c] = samples[c + 1] - samples[c];
         }
         /*this should round toward zero*/
-        correlated[channels - 1] =
-            samples[channels - 1] - (correlated[channels - 2] / 2);
+        correlated[channel_count - 1] =
+            samples[channel_count - 1] - (correlated[channel_count - 2] / 2);
     }
 }
 
@@ -295,7 +311,7 @@ static int
 run_filter(struct filter_params *params, int predicted)
 {
     const int previous_sign = sign(params->previous_residual);
-    int32_t sum = params->round;
+    register int32_t sum = params->round;
     int residual = predicted;
 
     sum += params->dl[0] * (params->qm[0] += previous_sign * params->dx[0]);
