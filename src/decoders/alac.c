@@ -812,15 +812,14 @@ decode_compressed_frame(BitstreamReader *br,
                         int channel_0[],
                         int channel_1[])
 {
+
+    const unsigned uncompressed_bits = uncompressed_LSBs * 8;
     const unsigned sample_size =
-        bits_per_sample - (uncompressed_LSBs * 8) + (channels - 1);
+        bits_per_sample - uncompressed_bits + (channels - 1);
     const unsigned interlacing_shift = br->read(br, 8);
     const unsigned interlacing_leftweight = br->read(br, 8);
-    struct subframe_header subframe_header[2];
-    int LSBs[channels][uncompressed_LSBs ? block_size : 0];
-    int subframe_0[block_size];
-    int subframe_1[block_size];
-    int *subframe[] = {subframe_0, subframe_1};
+    struct subframe_header subframe_header[channels];
+    int subframe[channels][block_size];
     unsigned i;
     unsigned c;
     status_t status;
@@ -831,44 +830,79 @@ decode_compressed_frame(BitstreamReader *br,
         }
     }
 
-    if (uncompressed_LSBs) {
-        const unsigned uncompressed_bits = uncompressed_LSBs * 8;
+    if (!uncompressed_bits) {
+        /*the common case where there's no uncompressed
+          least-significant bits to handle, such as 16bps audio*/
+
+        for (c = 0; c < channels; c++) {
+            int residual[block_size];
+
+            read_residual_block(br, params, sample_size, block_size, residual);
+
+            decode_subframe(block_size,
+                            sample_size,
+                            &subframe_header[c],
+                            residual,
+                            subframe[c]);
+        }
+
+        /*perform channel decorrelation, if necessary*/
+        if (channels == 2) {
+            if (interlacing_leftweight > 0) {
+                decorrelate_channels(block_size,
+                                     interlacing_shift,
+                                     interlacing_leftweight,
+                                     subframe[0],
+                                     subframe[1],
+                                     channel_0,
+                                     channel_1);
+            } else {
+                memcpy(channel_0, subframe[0], block_size * sizeof(int));
+                memcpy(channel_1, subframe[1], block_size * sizeof(int));
+            }
+        } else {
+            memcpy(channel_0, subframe[0], block_size * sizeof(int));
+        }
+    } else {
+        /*the case where there are least significant bits to handle
+          such as for 24bps audio*/
+
+        int LSBs[channels][block_size];
+
         for (i = 0; i < block_size; i++) {
             for (c = 0; c < channels; c++) {
                 LSBs[c][i] = br->read(br, uncompressed_bits);
             }
         }
-    }
 
-    for (c = 0; c < channels; c++) {
-        int residual[block_size];
+        for (c = 0; c < channels; c++) {
+            int residual[block_size];
 
-        read_residual_block(br, params, sample_size, block_size, residual);
+            read_residual_block(br, params, sample_size, block_size, residual);
 
-        decode_subframe(block_size,
-                        sample_size,
-                        &subframe_header[c],
-                        residual,
-                        subframe[c]);
-    }
+            decode_subframe(block_size,
+                            sample_size,
+                            &subframe_header[c],
+                            residual,
+                            subframe[c]);
+        }
 
-    if ((channels == 2) && (interlacing_leftweight > 0)) {
-        decorrelate_channels(block_size,
-                             interlacing_shift,
-                             interlacing_leftweight,
-                             subframe[0],
-                             subframe[1],
-                             channel_0,
-                             channel_1);
-    } else {
-        memcpy(channel_0, subframe[0], block_size * sizeof(int));
-        memcpy(channel_1, subframe[1], block_size * sizeof(int));
-    }
-
-    /*apply uncompressed LSBs, if any*/
-    if (uncompressed_LSBs > 0) {
-        const unsigned uncompressed_bits = uncompressed_LSBs * 8;
+        /*perform channel decorrelation, if necessary*/
         if (channels == 2) {
+            if (interlacing_leftweight > 0) {
+                decorrelate_channels(block_size,
+                                     interlacing_shift,
+                                     interlacing_leftweight,
+                                     subframe[0],
+                                     subframe[1],
+                                     channel_0,
+                                     channel_1);
+            } else {
+                memcpy(channel_0, subframe[0], block_size * sizeof(int));
+                memcpy(channel_1, subframe[1], block_size * sizeof(int));
+            }
+
+            /*apply uncompressed LSBs to channel data*/
             for (i = 0; i < block_size; i++) {
                 channel_0[i] <<= uncompressed_bits;
                 channel_0[i] |= LSBs[0][i];
@@ -876,6 +910,9 @@ decode_compressed_frame(BitstreamReader *br,
                 channel_1[i] |= LSBs[1][i];
             }
         } else {
+            memcpy(channel_0, subframe[0], block_size * sizeof(int));
+
+            /*apply uncompressed LSBs to channel data*/
             for (i = 0; i < block_size; i++) {
                 channel_0[i] <<= uncompressed_bits;
                 channel_0[i] |= LSBs[0][i];
