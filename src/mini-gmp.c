@@ -2,7 +2,7 @@
 
    Contributed to the GNU project by Niels Möller
 
-Copyright 1991-1997, 1999-2014 Free Software Foundation, Inc.
+Copyright 1991-1997, 1999-2015 Free Software Foundation, Inc.
 
 This file is part of the GNU MP Library.
 
@@ -265,7 +265,7 @@ gmp_default_alloc (size_t size)
 static void *
 gmp_default_realloc (void *old, size_t old_size, size_t new_size)
 {
-  mp_ptr p;
+  void * p;
 
   p = realloc (old, new_size);
 
@@ -323,14 +323,14 @@ mp_set_memory_functions (void *(*alloc_func) (size_t),
 static mp_ptr
 gmp_xalloc_limbs (mp_size_t size)
 {
-  return gmp_xalloc (size * sizeof (mp_limb_t));
+  return (mp_ptr) gmp_xalloc (size * sizeof (mp_limb_t));
 }
 
 static mp_ptr
 gmp_xrealloc_limbs (mp_ptr old, mp_size_t size)
 {
   assert (size > 0);
-  return (*gmp_reallocate_func) (old, 0, size * sizeof (mp_limb_t));
+  return (mp_ptr) (*gmp_reallocate_func) (old, 0, size * sizeof (mp_limb_t));
 }
 
 
@@ -379,7 +379,11 @@ mpn_normalized_size (mp_srcptr xp, mp_size_t n)
   return n;
 }
 
-#define mpn_zero_p(xp, n) (mpn_normalized_size ((xp), (n)) == 0)
+int
+mpn_zero_p(mp_srcptr rp, mp_size_t n)
+{
+  return mpn_normalized_size (rp, n) == 0;
+}
 
 void
 mpn_zero (mp_ptr rp, mp_size_t n)
@@ -1384,7 +1388,7 @@ mpz_clear (mpz_t r)
   gmp_free (r->_mp_d);
 }
 
-static void *
+static mp_ptr
 mpz_realloc (mpz_t r, mp_size_t size)
 {
   size = GMP_MAX (size, 1);
@@ -2327,7 +2331,7 @@ mpz_div_q_2exp (mpz_t q, const mpz_t u, mp_bitcnt_t bit_index,
 
       if (bit_index != 0)
 	{
-	  mpn_rshift (qp, u->_mp_d + limb_cnt, qn, (int)bit_index);
+	  mpn_rshift (qp, u->_mp_d + limb_cnt, qn, (unsigned int)bit_index);
 	  qn -= qp[qn - 1] == 0;
 	}
       else
@@ -4050,7 +4054,7 @@ mpz_get_str (char *sp, int base, const mpz_t u)
 
   sn = 1 + mpz_sizeinbase (u, base);
   if (!sp)
-    sp = gmp_xalloc (1 + sn);
+    sp = (char *) gmp_xalloc (1 + sn);
 
   un = GMP_ABS (u->_mp_size);
 
@@ -4132,7 +4136,7 @@ mpz_set_str (mpz_t r, const char *sp, int base)
     }
 
   sn = strlen (sp);
-  dp = gmp_xalloc (sn + (sn == 0));
+  dp = (unsigned char *) gmp_xalloc (sn + (sn == 0));
 
   for (sn = 0; *sp; sp++)
     {
