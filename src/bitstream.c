@@ -568,10 +568,10 @@ static void
 bw_copy_sr(const BitstreamRecorder *self, BitstreamWriter *target);
 
 
-static const uint8_t*
-bw_data_r(const BitstreamRecorder *self);
-static const uint8_t*
-bw_data_sr(const BitstreamRecorder* self);
+static void
+bw_data_r(const BitstreamRecorder *self, uint8_t data[]);
+static void
+bw_data_sr(const BitstreamRecorder* self, uint8_t data[]);
 
 
 static void
@@ -4302,27 +4302,26 @@ bw_close_internal_stream_e(BitstreamWriter* self)
 static void
 bw_free_f(BitstreamWriter* self)
 {
-    struct bs_exception *e_node;
-    struct bs_exception *e_next;
-
     /*deallocate callbacks*/
     while (self->callbacks != NULL) {
         self->pop_callback(self, NULL);
     }
 
     /*deallocate exceptions*/
-    if (self->exceptions != NULL) {
+    if (self->exceptions) {
         fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
-    }
-    for (e_node = self->exceptions; e_node != NULL; e_node = e_next) {
-        e_next = e_node->next;
-        free(e_node);
+        while (self->exceptions) {
+            struct bs_exception *next = self->exceptions->next;
+            free(self->exceptions);
+            self->exceptions = next;
+        }
     }
 
     /*deallocate used exceptions*/
-    for (e_node = self->exceptions_used; e_node != NULL; e_node = e_next) {
-        e_next = e_node->next;
-        free(e_node);
+    while (self->exceptions_used) {
+        struct bs_exception *next = self->exceptions_used->next;
+        free(self->exceptions_used);
+        self->exceptions_used = next;
     }
 
     /*deallocate the struct itself*/
@@ -4346,8 +4345,30 @@ bw_free_sr(BitstreamRecorder* self)
     /*deallocate buffer*/
     bw_buf_free(self->output.string_recorder);
 
-    /*perform additional deallocations on rest of struct*/
-    bw_free_f((BitstreamWriter*)self);
+    /*deallocate callbacks*/
+    while (self->callbacks) {
+        self->pop_callback((BitstreamWriter*)self, NULL);
+    }
+
+    /*deallocate exceptions*/
+    if (self->exceptions) {
+        fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
+        while (self->exceptions) {
+            struct bs_exception *next = self->exceptions->next;
+            free(self->exceptions);
+            self->exceptions = next;
+        }
+    }
+
+    /*deallocate used exceptions*/
+    while (self->exceptions_used) {
+        struct bs_exception *next = self->exceptions_used->next;
+        free(self->exceptions_used);
+        self->exceptions_used = next;
+    }
+
+    /*deallocate the struct itself*/
+    free(self);
 }
 
 static void
@@ -4687,7 +4708,9 @@ static void
 bw_copy_sr(const BitstreamRecorder *self, BitstreamWriter *target)
 {
     /*dump all the bytes from our internal buffer*/
-    target->write_bytes(target, self->data(self), self->bytes_written(self));
+    target->write_bytes(target,
+                        self->output.string_recorder->buffer,
+                        bw_buf_size(self->output.string_recorder));
 
     /*then dump remaining bits with a partial write() call*/
     if (self->buffer_size > 0) {
@@ -4704,7 +4727,7 @@ bw_copy_r(const BitstreamRecorder* self, BitstreamWriter* target)
     unsigned i;
     for (i = 0; i < self->output.recorder.entry_count; i++) {
         struct BitstreamRecorderEntry *entry =
-            self->output.recorder.entries + i;
+            &self->output.recorder.entries[i];
         entry->playback(entry, target);
     }
 }
@@ -4719,26 +4742,51 @@ bw_close_r(BitstreamRecorder* self)
 static void
 bw_free_r(BitstreamRecorder *self)
 {
+    /*deallocate list of recorded entries*/
     bw_reset_r(self);
     free(self->output.recorder.entries);
-    bw_free_f((BitstreamWriter*)self);
+
+    /*deallocate callbacks*/
+    while (self->callbacks) {
+        self->pop_callback((BitstreamWriter*)self, NULL);
+    }
+
+    /*deallocate exceptions*/
+    if (self->exceptions) {
+        fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
+        while (self->exceptions) {
+            struct bs_exception *next = self->exceptions->next;
+            free(self->exceptions);
+            self->exceptions = next;
+        }
+    }
+
+    /*deallocate used exceptions*/
+    while (self->exceptions_used) {
+        struct bs_exception *next = self->exceptions_used->next;
+        free(self->exceptions_used);
+        self->exceptions_used = next;
+    }
+
+    /*deallocate the struct itself*/
+    free(self);
 }
 
-static const uint8_t*
-bw_data_sr(const BitstreamRecorder *self)
+static void
+bw_data_sr(const BitstreamRecorder *self, uint8_t data[])
 {
-    return self->output.string_recorder->buffer;
+    memcpy(data,
+           self->output.string_recorder->buffer,
+           bw_buf_size(self->output.string_recorder));
 }
 
-static const uint8_t*
-bw_data_r(const BitstreamRecorder *self)
+static void
+bw_data_r(const BitstreamRecorder *self, uint8_t data[])
 {
     BitstreamRecorder *rec = bw_open_bytes_recorder(self->endianness);
-    const uint8_t *buffer;
     self->copy(self, (BitstreamWriter*)rec);
-    buffer = rec->data(rec);
+    rec->data(rec, data);
     rec->close(rec);
-    return buffer;
 }
 
 static unsigned int
@@ -4778,8 +4826,30 @@ bw_reset_la(BitstreamAccumulator* self)
 static void
 bw_free_a(BitstreamAccumulator *self)
 {
-    /*perform deallocations on reset of struct*/
-    bw_free_f((BitstreamWriter*)self);
+    /*deallocate callbacks*/
+    while (self->callbacks != NULL) {
+        self->pop_callback((BitstreamWriter*)self, NULL);
+    }
+
+    /*deallocate exceptions*/
+    if (self->exceptions) {
+        fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
+        while (self->exceptions) {
+            struct bs_exception *next = self->exceptions->next;
+            free(self->exceptions);
+            self->exceptions = next;
+        }
+    }
+
+    /*deallocate used exceptions*/
+    while (self->exceptions_used) {
+        struct bs_exception *next = self->exceptions_used->next;
+        free(self->exceptions_used);
+        self->exceptions_used = next;
+    }
+
+    /*deallocate the struct itself*/
+    free(self);
 }
 
 static void
@@ -7515,22 +7585,25 @@ test_writer(bs_endianness endianness) {
     }
 
     /*check that bytes recorder-based marks works*/
-    writer = (BitstreamWriter*)bw_open_bytes_recorder(endianness);
-    test_writer_marks(writer);
-    assert(writer->output.string_recorder->buffer[0] == 0xFF);
-    assert(writer->output.string_recorder->buffer[1] == 0x00);
-    assert(writer->output.string_recorder->buffer[2] == 0xFF);
-    writer->free(writer);
+    if (1) {
+        BitstreamRecorder *recorder = bw_open_bytes_recorder(endianness);
+        test_writer_marks((BitstreamWriter*)recorder);
+        assert(recorder->output.string_recorder->buffer[0] == 0xFF);
+        assert(recorder->output.string_recorder->buffer[1] == 0x00);
+        assert(recorder->output.string_recorder->buffer[2] == 0xFF);
+        recorder->free(recorder);
+
+    }
 
     /*check that bytes recorder-based seeking works*/
     for (i = 0; i < 3; i++) {
-        writer = (BitstreamWriter*)bw_open_bytes_recorder(endianness);
-        test_writer_seeks(writer, i);
-        assert(writer->output.string_recorder->buffer[0] == 0x00);
-        assert(writer->output.string_recorder->buffer[1] == 0x00);
-        assert(writer->output.string_recorder->buffer[2] == 0xFF);
-        assert(writer->output.string_recorder->buffer[3] == 0x00);
-        writer->free(writer);
+        BitstreamRecorder *recorder = bw_open_bytes_recorder(endianness);
+        test_writer_seeks((BitstreamWriter*)recorder, i);
+        assert(recorder->output.string_recorder->buffer[0] == 0x00);
+        assert(recorder->output.string_recorder->buffer[1] == 0x00);
+        assert(recorder->output.string_recorder->buffer[2] == 0xFF);
+        assert(recorder->output.string_recorder->buffer[3] == 0x00);
+        recorder->free(recorder);
     }
 }
 

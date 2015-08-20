@@ -921,11 +921,10 @@ typedef struct BitstreamRecorder_s {
     (*copy)(const struct BitstreamRecorder_s* self,
             struct BitstreamWriter_s* target);
 
-    /*returns our internal buffer of data written so far
-      not including any partial bytes
-      use bytes_written() to determine this buffer's total size*/
-    const uint8_t*
-    (*data)(const struct BitstreamRecorder_s* self);
+    /*given a data buffer at least self->bytes_written() large,
+      copies all the data from this recorder to the buffer*/
+    void
+    (*data)(const struct BitstreamRecorder_s* self, uint8_t buffer[]);
 
     /*flushes and closes the internal stream*/
     /*for recorders, does nothing           */

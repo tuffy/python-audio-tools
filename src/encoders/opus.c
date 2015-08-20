@@ -243,12 +243,14 @@ encode_opus_file(char *filename,
             }
         }
 
-        packet_head.packet = (uint8_t*)header->data(header);
+        packet_head.packet = malloc(header->bytes_written(header));
+        header->data(header, (uint8_t*)packet_head.packet);
         packet_head.bytes = header->bytes_written(header);
         packet_head.b_o_s = 1;
         packet_head.e_o_s = 0;
         packet_head.granulepos = 0;
         packet_head.packetno = packetno++;
+        header->close(header);
 
         ogg_stream_packetin(&ogg_stream, &packet_head);
 
@@ -258,6 +260,8 @@ encode_opus_file(char *filename,
             fwrite(ogg_page.header, 1, ogg_page.header_len, output_file);
             fwrite(ogg_page.body, 1, ogg_page.body_len, output_file);
         }
+
+        free(packet_head.packet);
 
         /*write comment packet to Ogg stream*/
         comment_w->write_bytes(comment_w,
@@ -269,12 +273,14 @@ encode_opus_file(char *filename,
                                (unsigned)vendor_string_len);
         comment_w->write(comment_w, 32, 0);
 
-        packet_tags.packet = (uint8_t*)comment->data(comment);
+        packet_tags.packet = malloc(comment->bytes_written(comment));
+        comment->data(comment, (uint8_t*)packet_tags.packet);
         packet_tags.bytes = comment->bytes_written(comment);
         packet_tags.b_o_s = 0;
         packet_tags.e_o_s = 0;
         packet_tags.granulepos = 0;
         packet_tags.packetno = packetno++;
+        comment->close(comment);
 
         ogg_stream_packetin(&ogg_stream, &packet_tags);
 
@@ -285,8 +291,7 @@ encode_opus_file(char *filename,
             fwrite(ogg_page.body, 1, ogg_page.body_len, output_file);
         }
 
-        header->close(header);
-        comment->close(comment);
+        free(packet_tags.packet);
     }
 
     opus_samples = malloc(sizeof(opus_int16) *

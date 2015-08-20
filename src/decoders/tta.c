@@ -299,17 +299,32 @@ TTADecoder_read(decoders_TTADecoder* self, PyObject *args)
                                   self->header.bits_per_sample,
                                   block_size);
 
-        read_tta_frame(tta_frame,
-                       self->header.channels,
-                       self->header.bits_per_sample,
-                       block_size,
-                       framelist->samples);
+        if (!setjmp(*br_try(tta_frame))) {
+            read_tta_frame(tta_frame,
+                           self->header.channels,
+                           self->header.bits_per_sample,
+                           block_size,
+                           framelist->samples);
 
-        tta_frame->close(tta_frame);
+            br_etry(tta_frame);
+            tta_frame->close(tta_frame);
 
-        self->current_tta_frame += 1;
+            self->current_tta_frame += 1;
 
-        return (PyObject*)framelist;
+            return (PyObject*)framelist;
+        } else {
+            /*this implies the frame size in the seektable was read correctly,
+              the TTA frame itself was read correctly,
+              and it *still* had a read error during decoding
+              which means there's either something wrong with the
+              residual decoding function or the file is malicious*/
+
+            br_etry(tta_frame);
+            tta_frame->close(tta_frame);
+            Py_DECREF((PyObject*)framelist);
+            PyErr_SetString(tta_exception(IO_ERROR), tta_strerror(IO_ERROR));
+            return NULL;
+        }
     }
 }
 

@@ -152,7 +152,7 @@ brpy_read_signed(BitstreamReader *br, unsigned bits)
             const int result = br->read_signed(br, bits);
             br_etry(br);
             return Py_BuildValue("i", result);
-        } else if (bits <= (sizeof(uint64_t) * 8)) {
+        } else if (bits <= (sizeof(int64_t) * 8)) {
             /*or try read_64*/
             const int64_t result = br->read_signed_64(br, bits);
             br_etry(br);
@@ -194,6 +194,18 @@ brpy_read_signed(BitstreamReader *br, unsigned bits)
         PyErr_SetString(PyExc_IOError, "I/O error reading stream");
         return NULL;
     }
+}
+
+static PyObject*
+recorder_to_bytes(BitstreamRecorder* recorder)
+{
+    PyObject *bytes =
+        PyBytes_FromStringAndSize(
+            NULL, (Py_ssize_t)recorder->bytes_written(recorder));
+
+    recorder->data(recorder, (uint8_t*)PyBytes_AsString(bytes));
+
+    return bytes;
 }
 
 static PyObject*
@@ -2332,11 +2344,7 @@ static PyObject*
 BitstreamRecorder_data(bitstream_BitstreamRecorder *self,
                        PyObject *args)
 {
-    BitstreamRecorder* recorder = self->bitstream;
-
-    return PyBytes_FromStringAndSize(
-        (char*)recorder->data(recorder),
-        (Py_ssize_t)recorder->bytes_written(recorder));
+    return recorder_to_bytes(self->bitstream);
 }
 
 static PyObject*
@@ -2703,9 +2711,7 @@ bitstream_build_func(PyObject *dummy, PyObject *args)
         if (!bitstream_build((BitstreamWriter*)stream,
                              format,
                              iterator)) {
-            PyObject* data = PyBytes_FromStringAndSize(
-                (char *)stream->data(stream),
-                (Py_ssize_t)stream->bytes_written(stream));
+            PyObject* data = recorder_to_bytes(stream);
             stream->close(stream);
             Py_DECREF(iterator);
             return data;
