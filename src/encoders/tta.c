@@ -540,9 +540,9 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
     if (total_pcm_frames) {
         /*if total PCM frames is known*/
 
-        const unsigned block_size = tta_block_size(pcmreader->sample_rate);
-        const unsigned total_tta_frames = div_ceil((unsigned)total_pcm_frames,
-                                                   block_size);
+        const unsigned total_tta_frames =
+            div_ceil((unsigned)total_pcm_frames,
+                     tta_block_size(pcmreader->sample_rate));
         bw_pos_t *seektable_pos;
         unsigned i;
 
@@ -561,10 +561,16 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
         output->write(output, 32, 0);
 
         /*write frames*/
-        frame_sizes = ttaenc_encode_tta_frames(pcmreader, output);
+        if ((frame_sizes =
+             ttaenc_encode_tta_frames(pcmreader, output)) == NULL) {
+            seektable_pos->del(seektable_pos);
+            PyErr_SetString(PyExc_IOError, "read error during encoding");
+            goto error;
+        }
 
         /*ensure PCM frames written equals total PCM frames*/
         if (total_tta_frame_sizes(frame_sizes) != total_pcm_frames) {
+            seektable_pos->del(seektable_pos);
             PyErr_SetString(PyExc_IOError, "total_pcm_frames mismatch");
             goto error;
         }
@@ -593,6 +599,10 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
         /*write frames to temporary space*/
         frame_sizes = ttaenc_encode_tta_frames(pcmreader, tempwriter);
         tempwriter->free(tempwriter);
+        if (!frame_sizes) {
+            PyErr_SetString(PyExc_IOError, "read error during encoding");
+            goto error;
+        }
 
         /*write full header*/
         write_header(pcmreader->bits_per_sample,
@@ -618,6 +628,7 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
         fclose(tempfile);
     }
 
+    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
 
     output->flush(output);
@@ -626,6 +637,7 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
     Py_INCREF(Py_None);
     return Py_None;
 error:
+    pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
 
     output->flush(output);

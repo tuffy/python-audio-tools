@@ -255,7 +255,7 @@ ext_open_w(void* user_data,
 }
 
 /*returns true if the buffer can hold no more data*/
-static int
+static inline int
 writer_buffer_full(const struct bw_external_output* stream)
 {
     return stream->buffer.pos == stream->buffer.maximum_size;

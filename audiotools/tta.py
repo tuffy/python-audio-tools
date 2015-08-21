@@ -209,13 +209,22 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             pcmreader.close()
             raise EncodingError(str(err))
 
-        encode_tta(
-            file=file,
-            pcmreader=pcmreader,
-            total_pcm_frames=(total_pcm_frames if
-                              total_pcm_frames is not None else 0))
+        try:
+            encode_tta(
+                file=file,
+                pcmreader=pcmreader,
+                total_pcm_frames=(total_pcm_frames if
+                                  total_pcm_frames is not None else 0))
 
-        return cls(filename)
+            return cls(filename)
+        except (IOError, ValueError) as err:
+            cls.__unlink__(filename)
+            raise EncodingError(str(err))
+        except:
+            cls.__unlink__(filename)
+            raise
+        finally:
+            file.close()
 
     def data_size(self):
         """returns the size of the file's data, in bytes,

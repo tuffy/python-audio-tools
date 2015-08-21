@@ -5273,9 +5273,10 @@ br_read_python(PyObject *reader,
     return to_copy;
 }
 
-int bw_write_python(PyObject* writer,
-                    const uint8_t *buffer,
-                    unsigned buffer_size)
+int
+bw_write_python(PyObject* writer,
+                const uint8_t *buffer,
+                unsigned buffer_size)
 {
 #if PY_MAJOR_VERSION >= 3
     char format[] = "y#";

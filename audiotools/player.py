@@ -39,7 +39,7 @@ class Player(object):
         next_track_callback is a function with no arguments
         which is called by the player when the current track is finished
 
-        Raises :exc:`ValueError` if unable to start player subprocess."""
+        Raises ValueError if unable to start player subprocess."""
 
         import threading
         try:
