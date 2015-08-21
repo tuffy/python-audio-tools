@@ -209,80 +209,11 @@ class TrueAudio(AudioFile, ApeGainedAudio):
             pcmreader.close()
             raise EncodingError(str(err))
 
-        writer = BitstreamWriter(file, True)
-        counter = CounterPCMReader(pcmreader)
-        try:
-            if total_pcm_frames is not None:
-                # write header to disk
-                write_header(writer,
-                             pcmreader.channels,
-                             pcmreader.bits_per_sample,
-                             pcmreader.sample_rate,
-                             total_pcm_frames)
-
-                block_size = (pcmreader.sample_rate * 256) // 245
-                total_tta_frames = div_ceil(total_pcm_frames, block_size)
-
-                # write temporary seektable to disk
-                seektable_start = writer.getpos()
-                write_seektable(writer, [0] * total_tta_frames)
-                writer.flush()
-
-                # write frames to disk
-                try:
-                    frame_sizes = \
-                        (encode_tta if encoding_function is None
-                         else encoding_function)(file,
-                                                 BufferedPCMReader(counter))
-                except (IOError, ValueError) as err:
-                    cls.__unlink__(filename)
-                    raise EncodingError(str(err))
-
-                # ensure written number of PCM frames
-                # matches total_pcm_frames
-                if counter.frames_written != total_pcm_frames:
-                    from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
-                    cls.__unlink__(filename)
-                    raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
-
-                assert(len(frame_sizes) == total_tta_frames)
-
-                # go back and rewrite seektable with completed one
-                writer.setpos(seektable_start)
-                write_seektable(writer, frame_sizes)
-            else:
-                import tempfile
-
-                frames = tempfile.TemporaryFile()
-
-                # encode TTA frames to temporary file
-                try:
-                    frame_sizes = \
-                        (encode_tta if encoding_function is None
-                         else encoding_function)(frames,
-                                                 BufferedPCMReader(counter))
-                except (IOError, ValueError) as err:
-                    frames.close()
-                    cls.__unlink__(filename)
-                    raise EncodingError(str(err))
-
-                # write header to disk
-                write_header(writer,
-                             pcmreader.channels,
-                             pcmreader.bits_per_sample,
-                             pcmreader.sample_rate,
-                             counter.frames_written)
-
-                # write seektable to disk
-                write_seektable(writer, frame_sizes)
-
-                # transfer TTA frames from temporary space to disk
-                frames.seek(0, 0)
-                transfer_data(frames.read, writer.write_bytes)
-                frames.close()
-        finally:
-            counter.close()
-            writer.close()
+        encode_tta(
+            file=file,
+            pcmreader=pcmreader,
+            total_pcm_frames=(total_pcm_frames if
+                              total_pcm_frames is not None else 0))
 
         return cls(filename)
 

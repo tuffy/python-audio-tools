@@ -45,6 +45,30 @@ struct residual_params {
  * private function signatures *
  *******************************/
 
+static inline unsigned
+tta_block_size(unsigned sample_rate)
+{
+    return (sample_rate * 256) / 245;
+}
+
+static void
+write_header(unsigned bits_per_sample,
+             unsigned sample_rate,
+             unsigned channels,
+             unsigned total_pcm_frames,
+             BitstreamWriter *output);
+
+static void
+write_seektable(const struct tta_frame_size *frame_sizes,
+                BitstreamWriter *output);
+
+static inline unsigned
+div_ceil(unsigned x, unsigned y)
+{
+    ldiv_t div = ldiv((long)x, (long)y);
+    return div.rem ? ((unsigned)div.quot + 1) : (unsigned)div.quot;
+}
+
 static void
 encode_frame(unsigned bits_per_sample,
              unsigned channels,
@@ -88,7 +112,9 @@ write_residual(struct residual_params *params,
                BitstreamWriter *output);
 
 static struct tta_frame_size*
-append_size(struct tta_frame_size *stack, unsigned size);
+append_size(struct tta_frame_size *stack,
+            unsigned pcm_frames,
+            unsigned byte_size);
 
 static void
 reverse_frame_sizes(struct tta_frame_size **stack);
@@ -102,7 +128,7 @@ ttaenc_encode_tta_frames(struct PCMReader *pcmreader,
                          BitstreamWriter *output)
 {
     struct tta_frame_size *frame_sizes = NULL;
-    const unsigned default_block_size = (pcmreader->sample_rate * 256) / 245;
+    const unsigned default_block_size = tta_block_size(pcmreader->sample_rate);
     unsigned block_size;
     unsigned frame_size = 0;
     int *samples = malloc(default_block_size *
@@ -118,7 +144,7 @@ ttaenc_encode_tta_frames(struct PCMReader *pcmreader,
                      block_size,
                      samples,
                      output);
-        frame_sizes = append_size(frame_sizes, frame_size);
+        frame_sizes = append_size(frame_sizes, block_size, frame_size);
         frame_size = 0;
     }
 
@@ -138,6 +164,20 @@ ttaenc_encode_tta_frames(struct PCMReader *pcmreader,
 
 }
 
+unsigned
+total_tta_frame_sizes(const struct tta_frame_size *frame_sizes)
+{
+    unsigned total_pcm_frames = 0;
+
+    while (frame_sizes) {
+        struct tta_frame_size *next = frame_sizes->next;
+        total_pcm_frames += frame_sizes->pcm_frames;
+        frame_sizes = next;
+    }
+
+    return total_pcm_frames;
+}
+
 void
 free_tta_frame_sizes(struct tta_frame_size *frame_sizes)
 {
@@ -151,6 +191,39 @@ free_tta_frame_sizes(struct tta_frame_size *frame_sizes)
 /************************************
  * private function implementations *
  ************************************/
+
+static void
+write_header(unsigned bits_per_sample,
+             unsigned sample_rate,
+             unsigned channels,
+             unsigned total_pcm_frames,
+             BitstreamWriter *output)
+{
+    const uint8_t signature[] = "TTA1";
+    uint32_t crc32 = 0xFFFFFFFF;
+    output->add_callback(output, (bs_callback_f)tta_crc32, &crc32);
+    output->write_bytes(output, signature, 4);
+    output->write(output, 16, 1);
+    output->write(output, 16, channels);
+    output->write(output, 16, bits_per_sample);
+    output->write(output, 32, sample_rate);
+    output->write(output, 32, total_pcm_frames);
+    output->pop_callback(output, NULL);
+    output->write(output, 32, crc32 ^ 0xFFFFFFFF);
+}
+
+static void
+write_seektable(const struct tta_frame_size *frame_sizes,
+                BitstreamWriter *output)
+{
+    uint32_t crc32 = 0xFFFFFFFF;
+    output->add_callback(output, (bs_callback_f)tta_crc32, &crc32);
+    for (; frame_sizes; frame_sizes = frame_sizes->next) {
+        output->write(output, 32, frame_sizes->byte_size);
+    }
+    output->pop_callback(output, NULL);
+    output->write(output, 32, crc32 ^ 0xFFFFFFFF);
+}
 
 static void
 encode_frame(unsigned bits_per_sample,
@@ -391,10 +464,13 @@ write_residual(struct residual_params *params,
 }
 
 static struct tta_frame_size*
-append_size(struct tta_frame_size *stack, unsigned size)
+append_size(struct tta_frame_size *stack,
+            unsigned pcm_frames,
+            unsigned byte_size)
 {
     struct tta_frame_size *frame_size = malloc(sizeof(struct tta_frame_size));
-    frame_size->byte_size = size;
+    frame_size->pcm_frames = pcm_frames;
+    frame_size->byte_size = byte_size;
     frame_size->next = stack;
     return frame_size;
 }
@@ -415,29 +491,40 @@ reverse_frame_sizes(struct tta_frame_size **stack)
 
 #ifndef STANDALONE
 
-#if PY_MAJOR_VERSION >= 3
-#ifndef PyInt_FromLong
-#define PyInt_FromLong PyLong_FromLong
-#endif
-#endif
+#define BUFFER_SIZE 4096
 
 PyObject*
 encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
     PyObject *file_obj;
     struct PCMReader *pcmreader;
+    long long total_pcm_frames = 0;
+    const long long maximum_pcm_frames = 0xFFFFFFFFll;
     BitstreamWriter *output;
     struct tta_frame_size *frame_sizes;
-    static char *kwlist[] = {"file", "pcmreader", NULL};
+    static char *kwlist[] = {"file", "pcmreader", "total_pcm_frames", NULL};
 
     if (!PyArg_ParseTupleAndKeywords(
-            args, keywds, "OO&", kwlist,
+            args, keywds, "OO&|L", kwlist,
             &file_obj,
             py_obj_to_pcmreader,
-            &pcmreader)) {
+            &pcmreader,
+            &total_pcm_frames)) {
         return NULL;
     }
 
+    /*sanity check total PCM frames*/
+    if (total_pcm_frames < 0) {
+        PyErr_SetString(PyExc_ValueError,
+                        "total_pcm_frames must be >= 0");
+        return NULL;
+    } else if (total_pcm_frames > maximum_pcm_frames) {
+        PyErr_SetString(PyExc_ValueError,
+                        "total_pcm_frames must be <= 0xFFFFFFFF");
+        return NULL;
+    }
+
+    /*wrap BitstreamWriter around file object*/
     output = bw_open_external(file_obj,
                               BS_LITTLE_ENDIAN,
                               4096,
@@ -450,34 +537,101 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
                               (ext_close_f)bs_close_python,
                               (ext_free_f)bs_free_python_nodecref);
 
-    frame_sizes = ttaenc_encode_tta_frames(pcmreader, output);
+    if (total_pcm_frames) {
+        /*if total PCM frames is known*/
+
+        const unsigned block_size = tta_block_size(pcmreader->sample_rate);
+        const unsigned total_tta_frames = div_ceil((unsigned)total_pcm_frames,
+                                                   block_size);
+        bw_pos_t *seektable_pos;
+        unsigned i;
+
+        /*write dummy header*/
+        write_header(pcmreader->bits_per_sample,
+                     pcmreader->sample_rate,
+                     pcmreader->channels,
+                     (unsigned)total_pcm_frames,
+                     output);
+
+        /*write dummy seektable*/
+        seektable_pos = output->getpos(output);
+        for (i = 0; i < total_tta_frames; i++) {
+            output->write(output, 32, 0);
+        }
+        output->write(output, 32, 0);
+
+        /*write frames*/
+        frame_sizes = ttaenc_encode_tta_frames(pcmreader, output);
+
+        /*ensure PCM frames written equals total PCM frames*/
+        if (total_tta_frame_sizes(frame_sizes) != total_pcm_frames) {
+            PyErr_SetString(PyExc_IOError, "total_pcm_frames mismatch");
+            goto error;
+        }
+
+        /*go back and rewrite completed seektable*/
+        output->setpos(output, seektable_pos);
+        write_seektable(frame_sizes, output);
+        free_tta_frame_sizes(frame_sizes);
+        seektable_pos->del(seektable_pos);
+    } else {
+        /*if total PCM frames is not known*/
+
+        /*open temporary space*/
+        FILE *tempfile;
+        BitstreamWriter *tempwriter;
+        uint8_t buffer[BUFFER_SIZE];
+        size_t bytes_read;
+
+        if ((tempfile = tmpfile()) == NULL) {
+            PyErr_SetString(PyExc_IOError, "unable to open temporary file");
+            goto error;
+        } else {
+            tempwriter = bw_open(tempfile, BS_LITTLE_ENDIAN);
+        }
+
+        /*write frames to temporary space*/
+        frame_sizes = ttaenc_encode_tta_frames(pcmreader, tempwriter);
+        tempwriter->free(tempwriter);
+
+        /*write full header*/
+        write_header(pcmreader->bits_per_sample,
+                     pcmreader->sample_rate,
+                     pcmreader->channels,
+                     total_tta_frame_sizes(frame_sizes),
+                     output);
+
+        /*write seektable*/
+        write_seektable(frame_sizes, output);
+        free_tta_frame_sizes(frame_sizes);
+
+        /*copy frames from temporary space to actual file*/
+        rewind(tempfile);
+        while ((bytes_read = fread(buffer,
+                                   sizeof(uint8_t),
+                                   BUFFER_SIZE,
+                                   tempfile)) > 0) {
+            output->write_bytes(output, buffer, bytes_read);
+        }
+
+        /*cleanup temporary space*/
+        fclose(tempfile);
+    }
 
     pcmreader->del(pcmreader);
 
-    if (frame_sizes) {
-        PyObject *frame_size_list = PyList_New(0);
-        struct tta_frame_size *sizes;
-        for (sizes = frame_sizes; sizes; sizes = sizes->next) {
-            PyObject *value = Py_BuildValue("I", sizes->byte_size);
-            if (!PyList_Append(frame_size_list, value)) {
-                Py_DECREF(value);
-            } else {
-                Py_DECREF(sizes);
-                Py_DECREF(value);
-                free_tta_frame_sizes(frame_sizes);
-                return NULL;
-            }
-        }
-        free_tta_frame_sizes(frame_sizes);
-        output->flush(output);
-        output->free(output);
-        return frame_size_list;
-    } else {
-        /*some read error occurred during encoding*/
-        output->free(output);
-        PyErr_SetString(PyExc_IOError, "read error during encoding");
-        return NULL;
-    }
+    output->flush(output);
+    output->free(output);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+error:
+    pcmreader->del(pcmreader);
+
+    output->flush(output);
+    output->free(output);
+
+    return NULL;
 }
 #endif
 
@@ -486,26 +640,6 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
 #include <getopt.h>
 #include <string.h>
 #include <errno.h>
-
-static void
-write_header(unsigned bits_per_sample,
-             unsigned sample_rate,
-             unsigned channels,
-             unsigned total_pcm_frames,
-             BitstreamWriter *output);
-
-static void
-write_seektable(const struct tta_frame_size *frame_sizes,
-                BitstreamWriter *output);
-
-
-static inline unsigned
-div_ceil(unsigned x, unsigned y)
-{
-    ldiv_t div = ldiv((long)x, (long)y);
-    return div.rem ? ((unsigned)div.quot + 1) : (unsigned)div.quot;
-}
-
 
 int
 main(int argc, char* argv[]) {
@@ -604,7 +738,7 @@ main(int argc, char* argv[]) {
     assert(sample_rate > 0);
     assert(total_pcm_frames > 0);
 
-    block_size = (sample_rate * 256) / 245;
+    block_size = tta_block_size(sample_rate);
     total_tta_frames = div_ceil(total_pcm_frames, block_size);
 
     printf("total TTA frames : %u\n", total_tta_frames);
@@ -649,40 +783,6 @@ main(int argc, char* argv[]) {
 
     return 0;
 }
-
-static void
-write_header(unsigned bits_per_sample,
-             unsigned sample_rate,
-             unsigned channels,
-             unsigned total_pcm_frames,
-             BitstreamWriter *output)
-{
-    const uint8_t signature[] = "TTA1";
-    uint32_t crc32 = 0xFFFFFFFF;
-    output->add_callback(output, (bs_callback_f)tta_crc32, &crc32);
-    output->write_bytes(output, signature, 4);
-    output->write(output, 16, 1);
-    output->write(output, 16, channels);
-    output->write(output, 16, bits_per_sample);
-    output->write(output, 32, sample_rate);
-    output->write(output, 32, total_pcm_frames);
-    output->pop_callback(output, NULL);
-    output->write(output, 32, crc32 ^ 0xFFFFFFFF);
-}
-
-static void
-write_seektable(const struct tta_frame_size *frame_sizes,
-                BitstreamWriter *output)
-{
-    uint32_t crc32 = 0xFFFFFFFF;
-    output->add_callback(output, (bs_callback_f)tta_crc32, &crc32);
-    for (; frame_sizes; frame_sizes = frame_sizes->next) {
-        output->write(output, 32, frame_sizes->byte_size);
-    }
-    output->pop_callback(output, NULL);
-    output->write(output, 32, crc32 ^ 0xFFFFFFFF);
-}
-
 
 #include "../common/tta_crc.c"
 #endif

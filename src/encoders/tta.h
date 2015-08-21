@@ -25,6 +25,7 @@
 *******************************************************/
 
 struct tta_frame_size {
+    unsigned pcm_frames;
     unsigned byte_size;
     struct tta_frame_size *next; /*NULL at end of list*/
 };
@@ -38,6 +39,10 @@ struct tta_frame_size {
 struct tta_frame_size*
 ttaenc_encode_tta_frames(struct PCMReader *pcmreader,
                          BitstreamWriter *output);
+
+/*given a list of TTA frame sizes, returns the total PCM frames*/
+unsigned
+total_tta_frame_sizes(const struct tta_frame_size *frame_sizes);
 
 void
 free_tta_frame_sizes(struct tta_frame_size *frame_sizes);
