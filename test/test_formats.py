@@ -6553,37 +6553,6 @@ class TTAFileTest(LosslessFileTest):
                         bits_per_sample=16)),
                 pcm_frames)
 
-    @FORMAT_TTA
-    def test_clean(self):
-        # check TTA file with double ID3 tags
-
-        from audiotools.text import CLEAN_REMOVE_DUPLICATE_ID3V2
-
-        original_size = os.path.getsize("tta-id3-2.tta")
-
-        track = audiotools.open("tta-id3-2.tta")
-
-        # ensure second ID3 tag is ignored
-        self.assertEqual(track.get_metadata().track_name, u"Title1")
-
-        # ensure duplicate ID3v2 tag is detected and removed
-        fixes = track.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_DUPLICATE_ID3V2])
-        temp = tempfile.NamedTemporaryFile(suffix=".tta")
-        try:
-            fixes = track.clean(temp.name)
-            self.assertEqual(fixes,
-                             [CLEAN_REMOVE_DUPLICATE_ID3V2])
-            track2 = audiotools.open(temp.name)
-            self.assertEqual(track2.get_metadata(), track.get_metadata())
-            # ensure new file is exactly one tag smaller
-            # and the padding is preserved in the old tag
-            self.assertEqual(os.path.getsize(temp.name),
-                             original_size - 0x46A)
-        finally:
-            temp.close()
-
 
 class SineStreamTest(unittest.TestCase):
     @FORMAT_SINES

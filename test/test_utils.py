@@ -5409,9 +5409,9 @@ class tracktag_misc(UtilTest):
                         metadata = audiotools.open(
                             track.filename).get_metadata()
 
-                        self.assertEqual(
-                            getattr(metadata, field_name),
-                            None,
+                        self.assertTrue(
+                            (metadata is None) or
+                            (getattr(metadata, field_name) is None),
                             "remove option failed for %s field %s" %
                             (audio_type.NAME, remove_field))
 
@@ -5460,6 +5460,8 @@ class tracktag_misc(UtilTest):
                                 0)
                             metadata = audiotools.open(
                                 track.filename).get_metadata()
+                            if metadata is None:
+                                metadata = audiotools.MetaData()
                             self.assertTrue(
                                 metadata_fields_values(metadata).issubset(
                                     deleted_number_fields_values(
@@ -5472,7 +5474,6 @@ class tracktag_misc(UtilTest):
                                      fields),
                                  fields,
                                  audio_type.NAME))
-
                 except NoMetaData:
                     pass
 

@@ -546,7 +546,7 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
         bw_pos_t *seektable_pos;
         unsigned i;
 
-        /*write dummy header*/
+        /*write header*/
         write_header(pcmreader->bits_per_sample,
                      pcmreader->sample_rate,
                      pcmreader->channels,
