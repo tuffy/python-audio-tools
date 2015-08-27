@@ -39,6 +39,7 @@ pcmreader_##name##_del(struct PCMReader *self);
 
 #ifdef STANDALONE
 READER_DEFS(raw)
+READER_DEFS(error)
 #else
 READER_DEFS(python)
 #endif
@@ -70,6 +71,36 @@ pcmreader_open_raw(FILE *file,
     reader->read = pcmreader_raw_read;
     reader->close = pcmreader_raw_close;
     reader->del = pcmreader_raw_del;
+    return reader;
+}
+
+struct PCMReader*
+pcmreader_open_error(FILE *file,
+                     unsigned sample_rate,
+                     unsigned channels,
+                     unsigned channel_mask,
+                     unsigned bits_per_sample,
+                     int is_little_endian,
+                     int is_signed,
+                     unsigned total_pcm_frames)
+{
+    struct PCMReader *reader = malloc(sizeof(struct PCMReader));
+
+    reader->input.error.file = file;
+    reader->input.error.converter =
+        pcm_to_int_converter(bits_per_sample, !is_little_endian, is_signed);
+    reader->input.error.total_pcm_frames = total_pcm_frames;
+
+    reader->sample_rate = sample_rate;
+    reader->channels = channels;
+    reader->channel_mask = channel_mask;
+    reader->bits_per_sample = bits_per_sample;
+
+    reader->status = PCM_OK;
+
+    reader->read = pcmreader_error_read;
+    reader->close = pcmreader_error_close;
+    reader->del = pcmreader_error_del;
     return reader;
 }
 
@@ -239,6 +270,64 @@ pcmreader_raw_close(struct PCMReader *self)
 
 static void
 pcmreader_raw_del(struct PCMReader *self)
+{
+    free(self);
+}
+
+static unsigned
+pcmreader_error_read(struct PCMReader *self,
+                     unsigned pcm_frames,
+                     int *pcm_data)
+{
+    if (self->input.error.total_pcm_frames) {
+        const register unsigned bytes_per_sample = self->bits_per_sample / 8;
+
+        int (*converter)(const unsigned char *) = self->input.error.converter;
+
+        const unsigned pcm_frames_to_read =
+            MIN(pcm_frames, self->input.error.total_pcm_frames);
+
+        const unsigned bytes_to_read =
+            pcm_frames_to_read * bytes_per_sample * self->channels;
+
+        unsigned char buffer[bytes_to_read];
+
+        const size_t bytes_read =
+            fread(buffer,
+                  sizeof(unsigned char),
+                  bytes_to_read,
+                  self->input.error.file);
+
+        const unsigned pcm_frames_read =
+            bytes_read / bytes_per_sample / self->channels;
+
+        /*cull partial PCM frames*/
+        const unsigned samples_read = pcm_frames_read * self->channels;
+
+        register unsigned i;
+
+        for (i = 0; i < samples_read; i++) {
+            *pcm_data = converter(buffer + (i * bytes_per_sample));
+            pcm_data += 1;
+        }
+
+        self->input.error.total_pcm_frames -= pcm_frames_to_read;
+
+        return pcm_frames_read;
+    } else {
+        self->status = PCM_READ_ERROR;
+        return 0;
+    }
+}
+
+static void
+pcmreader_error_close(struct PCMReader *self)
+{
+    fclose(self->input.error.file);
+}
+
+static void
+pcmreader_error_del(struct PCMReader *self)
 {
     free(self);
 }

@@ -447,6 +447,9 @@ flacenc_encode_flac(struct PCMReader *pcmreader,
 
         return frame_sizes;
     } else {
+        /*remove unused start of stream position*/
+        streaminfo_start->del(streaminfo_start);
+
         /*delete window, if necessary*/
         free(options->window);
 

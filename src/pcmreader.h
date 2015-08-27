@@ -41,6 +41,11 @@ struct PCMReader {
             FILE *file;
             int (*converter)(const unsigned char *raw_pcm_data);
         } raw;
+        struct {
+            FILE *file;
+            int (*converter)(const unsigned char *raw_pcm_data);
+            unsigned total_pcm_frames;
+        } error;
         #else
         struct {
             PyObject *obj;             /*PCMReader object*/
@@ -94,6 +99,16 @@ pcmreader_open_raw(FILE *file,
                    unsigned bits_per_sample,
                    int is_little_endian,
                    int is_signed);
+
+struct PCMReader*
+pcmreader_open_error(FILE *file,
+                     unsigned sample_rate,
+                     unsigned channels,
+                     unsigned channel_mask,
+                     unsigned bits_per_sample,
+                     int is_little_endian,
+                     int is_signed,
+                     unsigned total_pcm_frames);
 
 #else
 

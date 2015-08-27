@@ -621,7 +621,7 @@ encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds)
                                    sizeof(uint8_t),
                                    BUFFER_SIZE,
                                    tempfile)) > 0) {
-            output->write_bytes(output, buffer, bytes_read);
+            output->write_bytes(output, buffer, (unsigned)bytes_read);
         }
 
         /*cleanup temporary space*/
