@@ -173,8 +173,8 @@ encode_ogg_vorbis(char *filename, struct PCMReader *pcmreader, float quality)
     ogg_stream_state ogg_stream;
     ogg_page ogg_page;
     int end_of_stream = 0;
-    int_to_double_f converter =
-        int_to_double_converter(pcmreader->bits_per_sample);
+    int_to_float_f converter =
+        int_to_float_converter(pcmreader->bits_per_sample);
 
     /*ensure PCMReader object is compatible with Vorbis output*/
     if ((pcmreader->channels == 0) || (pcmreader->channels > 255)) {
@@ -266,7 +266,7 @@ encode_ogg_vorbis(char *filename, struct PCMReader *pcmreader, float quality)
             unsigned c;
             float **buffer;
 
-            /*FIXME*/
+            /*reorder channels from .wav to Vorbis order*/
             reorder_channels(pcmreader->channel_mask, pcm_frames, samples);
 
             /*grab buffer to be populated*/
@@ -275,15 +275,15 @@ encode_ogg_vorbis(char *filename, struct PCMReader *pcmreader, float quality)
             /*populate buffer with floating point samples
               on channel-by-channel basis*/
             for (c = 0; c < channel_count; c++) {
-                unsigned i;
+                int channel[pcm_frames];
 
-                for (i = 0; i < pcm_frames; i++) {
-                    buffer[c][i] =
-                        (float)converter(get_sample(samples,
-                                                    c,
-                                                    channel_count,
-                                                    i));
-                }
+                get_channel_data(samples,
+                                 c,
+                                 channel_count,
+                                 pcm_frames,
+                                 channel);
+
+                converter(pcm_frames, channel, buffer[c]);
             }
 
             vorbis_analysis_wrote(&vorbis_dsp, pcm_frames);

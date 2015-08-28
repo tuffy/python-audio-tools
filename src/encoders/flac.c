@@ -694,19 +694,13 @@ update_md5sum(audiotools__MD5Context *md5sum,
               unsigned bits_per_sample,
               unsigned pcm_frames)
 {
-    const unsigned bytes_per_sample = bits_per_sample / 8;
-    unsigned total_samples = pcm_frames * channels;
-    const unsigned buffer_size = total_samples * bytes_per_sample;
+    const unsigned total_samples = pcm_frames * channels;
+    const unsigned buffer_size = total_samples * (bits_per_sample / 8);
     unsigned char buffer[buffer_size];
-    unsigned char *output_buffer = buffer;
-    void (*converter)(int, unsigned char *) =
-        int_to_pcm_converter(bits_per_sample, 0, 1);
 
-    for (; total_samples; total_samples--) {
-        converter(*pcm_data, output_buffer);
-        pcm_data += 1;
-        output_buffer += bytes_per_sample;
-    }
+    int_to_pcm_converter(bits_per_sample, 0, 1)(total_samples,
+                                                pcm_data,
+                                                buffer);
 
     audiotools__MD5Update(md5sum, buffer, buffer_size);
 }

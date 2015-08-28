@@ -226,17 +226,4 @@ FloatFrameList_converter(PyObject* obj, void** floatframelist);
 
 #endif
 
-void
-FrameList_char_to_samples(int *samples,
-                          const unsigned char *data,
-                          pcm_to_int_f converter,
-                          unsigned samples_length,
-                          unsigned bits_per_sample);
-
-void
-FrameList_samples_to_char(unsigned char *data,
-                          const int *samples,
-                          int_to_pcm_f converter,
-                          unsigned samples_length,
-                          unsigned bits_per_sample);
 #endif

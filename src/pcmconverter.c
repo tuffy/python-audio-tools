@@ -402,9 +402,6 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
             self->pcmreader,
             (unsigned)(RESAMPLER_BLOCK_SIZE - self->src_data.input_frames),
             pcm_data);
-    int_to_double_f i_to_f_conv = int_to_double_converter(bits_per_sample);
-    double_to_int_f f_to_i_conv = double_to_int_converter(bits_per_sample);
-    int i;
     int process_result;
     pcm_FrameList *framelist;
 
@@ -413,10 +410,11 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
     }
 
     /*convert data to floats and append them to input buffer*/
-    for (i = 0; i < (frames_read * channels); i++) {
-        self->src_data.data_in[self->src_data.input_frames * channels + i] =
-            (float)i_to_f_conv(pcm_data[i]);
-    }
+    int_to_float_converter(
+        bits_per_sample)(frames_read * channels,
+                         pcm_data,
+                         self->src_data.data_in +
+                         (self->src_data.input_frames * channels));
     self->src_data.input_frames += frames_read;
     self->src_data.end_of_input = (frames_read == 0);
 
@@ -440,9 +438,10 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
                               channels,
                               bits_per_sample,
                               (unsigned)(self->src_data.output_frames_gen));
-    for (i = 0; i < framelist->samples_length; i++) {
-        framelist->samples[i] = f_to_i_conv(self->src_data.data_out[i]);
-    }
+    float_to_int_converter(
+        bits_per_sample)(framelist->samples_length,
+                         self->src_data.data_out,
+                         framelist->samples);
 
     /*return built FrameList*/
     return (PyObject*)framelist;
@@ -579,10 +578,7 @@ BPSConverter_channel_mask(pcmconverter_BPSConverter *self, void *closure)
 static PyObject*
 BPSConverter_read(pcmconverter_BPSConverter *self, PyObject *args)
 {
-    int_to_double_f i_to_f =
-        int_to_double_converter(self->pcmreader->bits_per_sample);
-    double_to_int_f f_to_i =
-        double_to_int_converter(self->bits_per_sample);
+    int shift = self->bits_per_sample - self->pcmreader->bits_per_sample;
 
     /*read FrameList from PCMReader*/
     pcm_FrameList *framelist = new_FrameList(
@@ -595,6 +591,7 @@ BPSConverter_read(pcmconverter_BPSConverter *self, PyObject *args)
         self->pcmreader->read(self->pcmreader,
                               CHUNK_SIZE,
                               framelist->samples);
+
     unsigned i;
 
     if (!frames_read && (self->pcmreader->status != PCM_OK)) {
@@ -605,12 +602,22 @@ BPSConverter_read(pcmconverter_BPSConverter *self, PyObject *args)
     framelist->frames = frames_read;
     framelist->samples_length = frames_read * framelist->channels;
 
-    /*convert old bits-per-sample to new bits-per-sample
-      by converting through doubles, then adding white noise*/
-    for (i = 0; i < framelist->samples_length; i++) {
-        framelist->samples[i] =
-            f_to_i(i_to_f(framelist->samples[i])) ^
-            (self->white_noise->read(self->white_noise, 1));
+    if (shift > 0) {
+        /*going from fewer bits-per-sample to more, like 16 to 24 bps
+          so perform left shift on each sample*/
+        for (i = 0; i < framelist->samples_length; i++) {
+            framelist->samples[i] <<= shift;
+        }
+    } else if (shift < 0) {
+        /*going from more bits-per-sample to fewer, like 24bps to 16
+          so perform right shift on each sample*/
+
+        /*FIXME - add dither?*/
+
+        shift = abs(shift);
+        for (i = 0; i < framelist->samples_length; i++) {
+            framelist->samples[i] >>= shift;
+        }
     }
 
     return (PyObject*)framelist;

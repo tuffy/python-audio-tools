@@ -498,25 +498,20 @@ CDDAReader_read_image(cdio_CDDAReader *self,
                       unsigned sectors_to_read,
                       int *samples)
 {
+    const unsigned samples_per_sector = (44100 / 75) * 2;
     const unsigned initial_sectors_to_read = sectors_to_read;
-    pcm_to_int_f converter = pcm_to_int_converter(16, 0, 1);
 
     while (sectors_to_read &&
            (self->_.image.current_sector <= self->_.image.final_sector)) {
         uint8_t sector[CDIO_CD_FRAMESIZE_RAW];
-        uint8_t *data = sector;
         const int result = cdio_read_audio_sector(
             self->_.image.image,
             sector,
             self->_.image.current_sector);
 
         if (result == DRIVER_OP_SUCCESS) {
-            unsigned i;
-            for (i = 0; i < ((44100 / 75) * 2); i++) {
-                *samples = converter(data);
-                data += 2;
-                samples += 1;
-            }
+            pcm_to_int_converter(16, 0, 1)(samples_per_sector, sector, samples);
+            samples += samples_per_sector;
             self->_.image.current_sector++;
             sectors_to_read--;
         } else {

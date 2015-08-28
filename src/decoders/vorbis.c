@@ -184,14 +184,19 @@ VorbisDecoder_read(decoders_VorbisDecoder *self, PyObject *args) {
         /*convert floating point samples to integer-based ones*/
         pcm_FrameList *framelist;
         int *samples;
-        double_to_int_f converter = double_to_int_converter(BITS_PER_SAMPLE);
         int c;
 
-        if ((samples_read == 0) && (self->vorbisfile.os.e_o_s == 0)) {
-            /*EOF encountered without EOF being marked in stream*/
-            PyErr_SetString(PyExc_IOError,
-                            "I/O error reading from Ogg stream");
-            return NULL;
+        if (samples_read == 0) {
+            if (self->vorbisfile.os.e_o_s == 0) {
+                /*EOF encountered without EOF being marked in stream*/
+                PyErr_SetString(PyExc_IOError,
+                                "I/O error reading from Ogg stream");
+                return NULL;
+            } else {
+                return empty_FrameList(self->audiotools_pcm,
+                                       self->channel_count,
+                                       BITS_PER_SAMPLE);
+            }
         }
 
         framelist = new_FrameList(self->audiotools_pcm,
@@ -202,14 +207,18 @@ VorbisDecoder_read(decoders_VorbisDecoder *self, PyObject *args) {
         samples = framelist->samples;
 
         for (c = 0; c < self->channel_count; c++) {
-            long sample;
-            for (sample = 0; sample < samples_read; sample++) {
-                put_sample(samples,
-                           c,
-                           self->channel_count,
-                           (unsigned)sample,
-                           converter(pcm_channels[c][sample]));
-            }
+            int channel[samples_read];
+
+            float_to_int_converter(BITS_PER_SAMPLE)(
+                (unsigned)samples_read,
+                pcm_channels[c],
+                channel);
+
+            put_channel_data(samples,
+                             c,
+                             self->channel_count,
+                             (unsigned)samples_read,
+                             channel);
         }
 
         /*reorder channels to .wav order if necessary*/

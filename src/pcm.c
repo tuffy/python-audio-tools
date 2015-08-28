@@ -196,7 +196,6 @@ FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds)
 #endif
     int is_big_endian;
     int is_signed;
-    pcm_to_int_f converter;
 
     if (!PyArg_ParseTuple(args, "s#IIii",
                           &data, &data_size,
@@ -225,15 +224,11 @@ FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds)
         self->samples_length = data_size / (self->bits_per_sample / 8);
         self->frames = self->samples_length / self->channels;
         self->samples = malloc(sizeof(int) * self->samples_length);
-        converter = pcm_to_int_converter(self->bits_per_sample,
-                                         is_big_endian,
-                                         is_signed);
+        pcm_to_int_f converter = pcm_to_int_converter(self->bits_per_sample,
+                                                      is_big_endian,
+                                                      is_signed);
         if (converter) {
-            FrameList_char_to_samples(self->samples,
-                                      data,
-                                      converter,
-                                      self->samples_length,
-                                      self->bits_per_sample);
+            converter(self->samples_length, data, self->samples);
         } else {
             PyErr_SetString(PyExc_ValueError,
                             "unsupported number of bits per sample");
@@ -434,14 +429,12 @@ FrameList_to_bytes(pcm_FrameList *self, PyObject *args)
                 PyBytes_FromStringAndSize(NULL, bytes_size)) == NULL) {
         return NULL;
     } else {
-        FrameList_samples_to_char(
-             (uint8_t*)PyBytes_AsString(bytes_obj),
-             self->samples,
-             int_to_pcm_converter(self->bits_per_sample,
-                                  is_big_endian,
-                                  is_signed),
-             self->samples_length,
-             self->bits_per_sample);
+        int_to_pcm_converter(
+            self->bits_per_sample,
+            is_big_endian,
+            is_signed)(self->samples_length,
+                       self->samples,
+                       (unsigned char *)PyBytes_AsString(bytes_obj));
     }
 
     return bytes_obj;
@@ -632,17 +625,15 @@ FrameList_inplace_repeat(pcm_FrameList *a, Py_ssize_t i)
 PyObject*
 FrameList_to_float(pcm_FrameList *self, PyObject *args)
 {
-    unsigned i;
-    int_to_double_f converter = int_to_double_converter(self->bits_per_sample);
     pcm_FloatFrameList *framelist = FloatFrameList_create();
     framelist->frames = self->frames;
     framelist->channels = self->channels;
     framelist->samples_length = self->samples_length;
     framelist->samples = malloc(sizeof(double) * framelist->samples_length);
 
-    for (i = 0; i < self->samples_length; i++) {
-        framelist->samples[i] = converter(self->samples[i]);
-    }
+    int_to_double_converter(self->bits_per_sample)(self->samples_length,
+                                                   self->samples,
+                                                   framelist->samples);
 
     return (PyObject*)framelist;
 }
@@ -664,20 +655,6 @@ FrameList_frame_count(pcm_FrameList *self, PyObject *args)
 
 #endif
 
-void
-FrameList_char_to_samples(int *samples,
-                          const unsigned char *data,
-                          pcm_to_int_f converter,
-                          unsigned samples_length,
-                          unsigned bits_per_sample)
-{
-    const unsigned bytes_per_sample = bits_per_sample / 8;
-    int i;
-
-    for (i = 0; i < samples_length; i++, data += bytes_per_sample) {
-        samples[i] = converter(data);
-    }
-}
 
 #ifndef STANDALONE
 PyObject*
@@ -1308,7 +1285,6 @@ FloatFrameList_channel(pcm_FloatFrameList *self, PyObject *args)
 PyObject*
 FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args)
 {
-    unsigned i;
     pcm_FrameList *framelist;
     int bits_per_sample;
     double_to_int_f converter;
@@ -1328,9 +1304,7 @@ FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args)
     framelist->samples_length = self->samples_length;
     framelist->samples = malloc(sizeof(int) * framelist->samples_length);
 
-    for (i = 0; i < self->samples_length; i++) {
-        framelist->samples[i] = converter(self->samples[i]);
-    }
+    converter(self->samples_length, self->samples, framelist->samples);
 
     return (PyObject*)framelist;
 }
@@ -1743,18 +1717,3 @@ MOD_INIT(pcm)
 }
 
 #endif
-
-void
-FrameList_samples_to_char(unsigned char *data,
-                          const int *samples,
-                          int_to_pcm_f converter,
-                          unsigned samples_length,
-                          unsigned bits_per_sample)
-{
-    const unsigned bytes_per_sample = bits_per_sample / 8;
-    int i;
-
-    for (i = 0; i < samples_length; i++, data += bytes_per_sample) {
-        converter(samples[i], data);
-    }
-}

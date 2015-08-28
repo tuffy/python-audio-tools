@@ -32,12 +32,16 @@
  * private function signatures *
  *******************************/
 
-#define PCM_CONV(name)                              \
-    static int                                      \
-    pcm_##name##_to_int(const unsigned char *pcm);  \
-                                                    \
-    static void                                     \
-    int_to_##name##_pcm(int i, unsigned char *pcm);
+#define PCM_CONV(name)                                     \
+    static void                                            \
+    pcm_##name##_to_int(unsigned total_samples,            \
+                        const unsigned char pcm_samples[], \
+                        int int_samples[]);                \
+                                                           \
+    static void                                            \
+    int_to_##name##_pcm(unsigned total_samples,            \
+                        const int int_samples[],           \
+                        unsigned char pcm_samples[]);
 
 PCM_CONV(S8)
 PCM_CONV(U8)
@@ -50,12 +54,26 @@ PCM_CONV(SL24)
 PCM_CONV(UB24)
 PCM_CONV(UL24)
 
-#define PCM_INT_CONV_DEFS(bits)       \
-    static double                     \
-    int_##bits##_to_double(int i);    \
-                                      \
-    static int                        \
-    double_to_##bits##_int(double d);
+#define PCM_INT_CONV_DEFS(bits)                           \
+    static void                                           \
+    int_##bits##_to_double(unsigned total_samples,        \
+                           const int int_samples[],       \
+                           double double_samples[]);      \
+                                                          \
+    static void                                           \
+    int_##bits##_to_float(unsigned total_samples,         \
+                          const int int_samples[],        \
+                          float float_samples[]);         \
+                                                          \
+    static void                                           \
+    double_to_##bits##_int(unsigned total_samples,        \
+                           const double double_samples[], \
+                           int int_samples[]);            \
+                                                          \
+    static void                                           \
+    float_to_##bits##_int(unsigned total_samples,         \
+                          const float float_samples[],    \
+                          int int_samples[]);
 
 PCM_INT_CONV_DEFS(8)
 PCM_INT_CONV_DEFS(16)
@@ -64,6 +82,7 @@ PCM_INT_CONV_DEFS(24)
 /***********************************
  * public function implementations *
  ***********************************/
+
 pcm_to_int_f
 pcm_to_int_converter(unsigned bits_per_sample,
                      int is_big_endian,
@@ -137,6 +156,21 @@ int_to_double_converter(unsigned bits_per_sample)
     }
 }
 
+int_to_float_f
+int_to_float_converter(unsigned bits_per_sample)
+{
+    switch (bits_per_sample) {
+    case 8:
+        return int_8_to_float;
+    case 16:
+        return int_16_to_float;
+    case 24:
+        return int_24_to_float;
+    default:
+        return NULL;
+    }
+}
+
 double_to_int_f
 double_to_int_converter(unsigned bits_per_sample)
 {
@@ -152,241 +186,485 @@ double_to_int_converter(unsigned bits_per_sample)
     }
 }
 
+float_to_int_f
+float_to_int_converter(unsigned bits_per_sample)
+{
+    switch (bits_per_sample) {
+    case 8:
+        return float_to_8_int;
+    case 16:
+        return float_to_16_int;
+    case 24:
+        return float_to_24_int;
+    default:
+        return NULL;
+    }
+}
+
 /************************************
  * private function implementations *
  ************************************/
 
-static int
-pcm_S8_to_int(const unsigned char *pcm)
+static void
+pcm_S8_to_int(unsigned total_samples,
+              const unsigned char pcm_samples[],
+              int int_samples[])
 {
-
-    if (pcm[0] & 0x80) {
-        /*negative*/
-        return -(int)(0x100 - pcm[0]);
-    } else {
-        /*positive*/
-        return (int)pcm[0];
+    for (; total_samples; total_samples--) {
+        if (pcm_samples[0] & 0x80) {
+            /*negative*/
+            int_samples[0] = -(int)(0x100 - pcm_samples[0]);
+        } else {
+            /*positive*/
+            int_samples[0] = (int)pcm_samples[0];
+        }
+        pcm_samples += 1;
+        int_samples += 1;
     }
 }
 
 static void
-int_to_S8_pcm(int i, unsigned char *pcm)
+int_to_S8_pcm(unsigned total_samples,
+              const int int_samples[],
+              unsigned char pcm_samples[])
 {
-    if (i > 0x7F)
-        i = 0x7F;  /*avoid overflow*/
-    else if (i < -0x80)
-        i = -0x80; /*avoid underflow*/
+    for (; total_samples; total_samples--) {
+        register int i = int_samples[0];
 
-    if (i >= 0) {
-        /*positive*/
-        pcm[0] = i;
-    } else {
-        /*negative*/
-        pcm[0] = (1 << 8) - (-i);
-    }
-}
+        if (i > 0x7F)
+            i = 0x7F;  /*avoid overflow*/
+        else if (i < -0x80)
+            i = -0x80; /*avoid underflow*/
 
-static int
-pcm_U8_to_int(const unsigned char *pcm)
-{
-    return ((int)pcm[0]) - (1 << 7);
-}
+        if (int_samples[0] >= 0) {
+            /*positive*/
+            pcm_samples[0] = i;
+        } else {
+            /*negative*/
+            pcm_samples[0] = (1 << 8) - (-i);
+        }
 
-static void
-int_to_U8_pcm(int i, unsigned char *pcm)
-{
-    i += (1 << 7);
-    pcm[0] = i & 0xFF;
-}
-
-static int
-pcm_SB16_to_int(const unsigned char *pcm)
-{
-    if (pcm[0] & 0x80) {
-        /*negative*/
-        return -(int)(0x10000 - ((pcm[0] << 8) | pcm[1]));
-    } else {
-        /*positive*/
-        return (int)(pcm[0] << 8) | pcm[1];
+        int_samples += 1;
+        pcm_samples += 1;
     }
 }
 
 static void
-int_to_SB16_pcm(int i, unsigned char *pcm)
+pcm_U8_to_int(unsigned total_samples,
+              const unsigned char pcm_samples[],
+              int int_samples[])
 {
-    if (i > 0x7FFF)
-        i = 0x7FFF;
-    else if (i < -0x8000)
-        i = -0x8000;
-
-    if (i < 0) {
-        i = (1 << 16) - (-i);
-    }
-
-    pcm[0] = i >> 8;
-    pcm[1] = i & 0xFF;
-}
-
-static int
-pcm_SL16_to_int(const unsigned char *pcm)
-{
-    if (pcm[1] & 0x80) {
-        /*negative*/
-        return -(int)(0x10000 - ((pcm[1] << 8) | pcm[0]));
-    } else {
-        /*positive*/
-        return (int)(pcm[1] << 8) | pcm[0];
+    for (; total_samples; total_samples--) {
+        int_samples[0] = ((int)pcm_samples[0]) - (1 << 7);
+        pcm_samples += 1;
+        int_samples += 1;
     }
 }
 
 static void
-int_to_SL16_pcm(int i, unsigned char *pcm)
+int_to_U8_pcm(unsigned total_samples,
+              const int int_samples[],
+              unsigned char pcm_samples[])
 {
-    if (i > 0x7FFF)
-        i = 0x7FFF;
-    else if (i < -0x8000)
-        i = -0x8000;
+    for (; total_samples; total_samples--) {
+        register int i = int_samples[0];
 
-    if (i < 0) {
-        i = (1 << 16) - (-i);
-    }
+        i += (1 << 7);
 
-    pcm[1] = i >> 8;
-    pcm[0] = i & 0xFF;
-}
+        pcm_samples[0] = i & 0xFF;
 
-static int
-pcm_UB16_to_int(const unsigned char *pcm)
-{
-    return ((int)(pcm[0] << 8) | pcm[1]) - (1 << 15);
-}
-
-static void
-int_to_UB16_pcm(int i, unsigned char *pcm)
-{
-    i += (1 << 15);
-    pcm[0] = (i >> 8) & 0xFF;
-    pcm[1] = i & 0xFF;
-}
-
-static int
-pcm_UL16_to_int(const unsigned char *pcm)
-{
-    return ((int)(pcm[1] << 8) | pcm[0]) - (1 << 15);
-}
-
-static void
-int_to_UL16_pcm(int i, unsigned char *pcm)
-{
-    i += (1 << 15);
-    pcm[1] = (i >> 8) & 0xFF;
-    pcm[0] = i & 0xFF;
-}
-
-static int
-pcm_SB24_to_int(const unsigned char *pcm)
-{
-    if (pcm[0] & 0x80) {
-        /*negative*/
-        return -(int)(0x1000000 - ((pcm[0] << 16) | (pcm[1] << 8) | pcm[2]));
-    } else {
-        /*positive*/
-        return (int)((pcm[0] << 16) | (pcm[1] << 8) | pcm[2]);
+        int_samples += 1;
+        pcm_samples += 1;
     }
 }
 
 static void
-int_to_SB24_pcm(int i, unsigned char *pcm)
+pcm_SB16_to_int(unsigned total_samples,
+                const unsigned char pcm_samples[],
+                int int_samples[])
 {
-    if (i > 0x7FFFFF)
-        i = 0x7FFFFF;
-    else if (i < -0x800000)
-        i = -0x800000;
-
-    if (i < 0) {
-        i = (1 << 24) - (-i);
-    }
-
-    pcm[0] = i >> 16;
-    pcm[1] = (i >> 8) & 0xFF;
-    pcm[2] = i & 0xFF;
-}
-
-static int
-pcm_SL24_to_int(const unsigned char *pcm)
-{
-    if (pcm[2] & 0x80) {
-        /*negative*/
-        return -(int)(0x1000000 - ((pcm[2] << 16) | (pcm[1] << 8) | pcm[0]));
-    } else {
-        /*positive*/
-        return (int)((pcm[2] << 16) | (pcm[1] << 8) | pcm[0]);
+    for (; total_samples; total_samples--) {
+        if (pcm_samples[0] & 0x80) {
+            /*negative*/
+            int_samples[0] =
+                -(int)(0x10000 - ((pcm_samples[0] << 8) | pcm_samples[1]));
+        } else {
+            /*positive*/
+            int_samples[0] =
+                (int)(pcm_samples[0] << 8) | pcm_samples[1];
+        }
+        pcm_samples += 2;
+        int_samples += 1;
     }
 }
 
 static void
-int_to_SL24_pcm(int i, unsigned char *pcm)
+int_to_SB16_pcm(unsigned total_samples,
+                const int int_samples[],
+                unsigned char pcm_samples[])
 {
-    if (i > 0x7FFFFF)
-        i = 0x7FFFFF;
-    else if (i < -0x800000)
-        i = -0x800000;
+    for (; total_samples; total_samples--) {
+        register int i = int_samples[0];
 
-    if (i < 0) {
-        i = (1 << 24) - (-i);
+        if (i > 0x7FFF)
+            i = 0x7FFF;
+        else if (i < -0x8000)
+            i = -0x8000;
+
+        if (i < 0) {
+            i = (1 << 16) - (-i);
+        }
+
+        pcm_samples[0] = i >> 8;
+        pcm_samples[1] = i & 0xFF;
+
+        int_samples += 1;
+        pcm_samples += 2;
+    }
+}
+
+static void
+pcm_SL16_to_int(unsigned total_samples,
+                const unsigned char pcm_samples[],
+                int int_samples[])
+{
+    for (; total_samples; total_samples--) {
+        if (pcm_samples[1] & 0x80) {
+            /*negative*/
+            int_samples[0] =
+               -(int)(0x10000 - ((pcm_samples[1] << 8) | pcm_samples[0]));
+        } else {
+            /*positive*/
+            int_samples[0] =
+               (int)(pcm_samples[1] << 8) | pcm_samples[0];
+        }
+        pcm_samples += 2;
+        int_samples += 1;
+    }
+}
+
+static void
+int_to_SL16_pcm(unsigned total_samples,
+                const int int_samples[],
+                unsigned char pcm_samples[])
+{
+    for (; total_samples; total_samples--) {
+        register int i = int_samples[0];
+
+        if (i > 0x7FFF)
+            i = 0x7FFF;
+        else if (i < -0x8000)
+            i = -0x8000;
+
+        if (i < 0) {
+            i = (1 << 16) - (-i);
+        }
+
+        pcm_samples[1] = i >> 8;
+        pcm_samples[0] = i & 0xFF;
+
+        int_samples += 1;
+        pcm_samples += 2;
+    }
+}
+
+static void
+pcm_UB16_to_int(unsigned total_samples,
+                const unsigned char pcm_samples[],
+                int int_samples[])
+{
+    for (; total_samples; total_samples--) {
+        int_samples[0] =
+            ((int)(pcm_samples[0] << 8) | pcm_samples[1]) - (1 << 15);
+        pcm_samples += 2;
+        int_samples += 1;
+    }
+}
+
+static void
+int_to_UB16_pcm(unsigned total_samples,
+                const int int_samples[],
+                unsigned char pcm_samples[])
+{
+    for (; total_samples; total_samples--) {
+        register int i = int_samples[0];
+
+        i += (1 << 15);
+
+        pcm_samples[0] = (i >> 8) & 0xFF;
+        pcm_samples[1] = i & 0xFF;
+
+        int_samples += 1;
+        pcm_samples += 2;
+    }
+}
+
+static void
+pcm_UL16_to_int(unsigned total_samples,
+                const unsigned char pcm_samples[],
+                int int_samples[])
+{
+    for (; total_samples; total_samples--) {
+        int_samples[0] =
+            ((int)(pcm_samples[1] << 8) | pcm_samples[0]) - (1 << 15);
+        pcm_samples += 2;
+        int_samples += 1;
+    }
+}
+
+static void
+int_to_UL16_pcm(unsigned total_samples,
+                const int int_samples[],
+                unsigned char pcm_samples[])
+{
+    for (; total_samples; total_samples--) {
+        register int i = int_samples[0];
+
+        i += (1 << 15);
+
+        pcm_samples[1] = (i >> 8) & 0xFF;
+        pcm_samples[0] = i & 0xFF;
+
+        int_samples += 1;
+        pcm_samples += 2;
+    }
+}
+
+static void
+pcm_SB24_to_int(unsigned total_samples,
+                const unsigned char pcm_samples[],
+                int int_samples[])
+{
+    for (; total_samples; total_samples--) {
+        if (pcm_samples[0] & 0x80) {
+            /*negative*/
+            int_samples[0] =
+                -(int)(0x1000000 - ((pcm_samples[0] << 16) |
+                                    (pcm_samples[1] << 8) |
+                                    pcm_samples[2]));
+        } else {
+            /*positive*/
+            int_samples[0] =
+                (int)((pcm_samples[0] << 16) |
+                      (pcm_samples[1] << 8) |
+                      pcm_samples[2]);
+        }
+
+        pcm_samples += 3;
+        int_samples += 1;
+    }
+}
+
+static void
+int_to_SB24_pcm(unsigned total_samples,
+                const int int_samples[],
+                unsigned char pcm_samples[])
+{
+    for (; total_samples; total_samples--) {
+        register int i = int_samples[0];
+
+        if (i > 0x7FFFFF)
+            i = 0x7FFFFF;
+        else if (i < -0x800000)
+            i = -0x800000;
+
+        if (i < 0) {
+            i = (1 << 24) - (-i);
+        }
+
+        pcm_samples[0] = i >> 16;
+        pcm_samples[1] = (i >> 8) & 0xFF;
+        pcm_samples[2] = i & 0xFF;
+
+        int_samples += 1;
+        pcm_samples += 3;
+    }
+}
+
+static void
+pcm_SL24_to_int(unsigned total_samples,
+                const unsigned char pcm_samples[],
+                int int_samples[])
+{
+    for (; total_samples; total_samples--) {
+        if (pcm_samples[2] & 0x80) {
+            /*negative*/
+            int_samples[0] =
+                -(int)(0x1000000 - ((pcm_samples[2] << 16) |
+                                    (pcm_samples[1] << 8) |
+                                    pcm_samples[0]));
+        } else {
+            /*positive*/
+            int_samples[0] =
+                (int)((pcm_samples[2] << 16) |
+                      (pcm_samples[1] << 8) |
+                      pcm_samples[0]);
+        }
+
+        pcm_samples += 3;
+        int_samples += 1;
+    }
+}
+
+static void
+int_to_SL24_pcm(unsigned total_samples,
+                const int int_samples[],
+                unsigned char pcm_samples[])
+{
+    for (; total_samples; total_samples--) {
+        register int i = int_samples[0];
+
+        if (i > 0x7FFFFF)
+            i = 0x7FFFFF;
+        else if (i < -0x800000)
+            i = -0x800000;
+
+        if (i < 0) {
+            i = (1 << 24) - (-i);
+        }
+
+        pcm_samples[2] = i >> 16;
+        pcm_samples[1] = (i >> 8) & 0xFF;
+        pcm_samples[0] = i & 0xFF;
+
+        int_samples += 1;
+        pcm_samples += 3;
     }
 
-    pcm[2] = i >> 16;
-    pcm[1] = (i >> 8) & 0xFF;
-    pcm[0] = i & 0xFF;
-}
-
-static int
-pcm_UB24_to_int(const unsigned char *pcm)
-{
-    return ((int)((pcm[0] << 16) | (pcm[1] << 8) | pcm[2])) - (1 << 23);
 }
 
 static void
-int_to_UB24_pcm(int i, unsigned char *pcm)
+pcm_UB24_to_int(unsigned total_samples,
+                const unsigned char pcm_samples[],
+                int int_samples[])
 {
-    i += (1 << 23);
-    pcm[0] = (i >> 16) & 0xFF;
-    pcm[1] = (i >> 8) & 0xFF;
-    pcm[2] = i & 0xFF;
-}
-
-static int
-pcm_UL24_to_int(const unsigned char *pcm)
-{
-    return ((int)((pcm[2] << 16) | (pcm[1] << 8) | pcm[0])) - (1 << 23);
+    for (; total_samples; total_samples--) {
+        int_samples[0] =
+            ((int)((pcm_samples[0] << 16) |
+                   (pcm_samples[1] << 8) |
+                   pcm_samples[2])) - (1 << 23);
+        pcm_samples += 3;
+        int_samples += 1;
+    }
 }
 
 static void
-int_to_UL24_pcm(int i, unsigned char *pcm)
+int_to_UB24_pcm(unsigned total_samples,
+                const int int_samples[],
+                unsigned char pcm_samples[])
 {
-    i += (1 << 23);
-    pcm[2] = (i >> 16) & 0xFF;
-    pcm[1] = (i >> 8) & 0xFF;
-    pcm[0] = i & 0xFF;
+    for (; total_samples; total_samples--) {
+        register int i = int_samples[0];
+
+        i += (1 << 23);
+
+        pcm_samples[0] = (i >> 16) & 0xFF;
+        pcm_samples[1] = (i >> 8) & 0xFF;
+        pcm_samples[2] = i & 0xFF;
+
+        int_samples += 1;
+        pcm_samples += 3;
+    }
 }
+
+static void
+pcm_UL24_to_int(unsigned total_samples,
+                const unsigned char pcm_samples[],
+                int int_samples[])
+{
+    for (; total_samples; total_samples--) {
+        int_samples[0] = ((int)((pcm_samples[2] << 16) |
+                                (pcm_samples[1] << 8) |
+                                pcm_samples[0])) - (1 << 23);
+        pcm_samples += 3;
+        int_samples += 1;
+    }
+}
+
+static void
+int_to_UL24_pcm(unsigned total_samples,
+                const int int_samples[],
+                unsigned char pcm_samples[])
+{
+    for (; total_samples; total_samples--) {
+        register int i = int_samples[0];
+
+        i += (1 << 23);
+
+        pcm_samples[2] = (i >> 16) & 0xFF;
+        pcm_samples[1] = (i >> 8) & 0xFF;
+        pcm_samples[0] = i & 0xFF;
+
+        int_samples += 1;
+        pcm_samples += 3;
+    }
+}
+
+#include <stdio.h>
 
 #define PCM_INT_CONV(BITS, NEGATIVE_MIN, POSITIVE_MAX)                     \
-  static double                                                            \
-  int_##BITS##_to_double(int i)                                            \
+  static void                                                              \
+  int_##BITS##_to_double(unsigned total_samples,                           \
+                         const int int_samples[],                          \
+                         double double_samples[])                          \
   {                                                                        \
-      if (i >= 0) {                                                        \
-          return (double)i / POSITIVE_MAX;                                 \
-      } else {                                                             \
-          return (double)i / -(NEGATIVE_MIN);                              \
+      for (; total_samples; total_samples--) {                             \
+          const register int i = int_samples[0];                           \
+          if (i >= 0) {                                                    \
+              double_samples[0] = (double)i / POSITIVE_MAX;                \
+          } else {                                                         \
+              double_samples[0] = (double)i / -(NEGATIVE_MIN);             \
+          }                                                                \
+          int_samples += 1;                                                \
+          double_samples += 1;                                             \
       }                                                                    \
   }                                                                        \
                                                                            \
-  static int                                                               \
-  double_to_##BITS##_int(double d)                                         \
+  static void                                                              \
+  int_##BITS##_to_float(unsigned total_samples,                            \
+                        const int int_samples[],                           \
+                        float float_samples[])                             \
   {                                                                        \
-      const int value = d * (signbit(d) ? -(NEGATIVE_MIN) : POSITIVE_MAX); \
-      return MIN(MAX(value, NEGATIVE_MIN), POSITIVE_MAX);                  \
+      for (; total_samples; total_samples--) {                             \
+          const register int i = int_samples[0];                           \
+          if (i >= 0) {                                                    \
+              float_samples[0] = (float)i / POSITIVE_MAX;                  \
+          } else {                                                         \
+              float_samples[0] = (float)i / -(NEGATIVE_MIN);               \
+          }                                                                \
+          int_samples += 1;                                                \
+          float_samples += 1;                                              \
+      }                                                                    \
+  }                                                                        \
+                                                                           \
+  static void                                                              \
+  double_to_##BITS##_int(unsigned total_samples,                           \
+                         const double double_samples[],                    \
+                         int int_samples[])                                \
+  {                                                                        \
+      for (; total_samples; total_samples--) {                             \
+          const register double d = double_samples[0];                     \
+          const int value =                                                \
+              d * (signbit(d) ? -(NEGATIVE_MIN) : POSITIVE_MAX);           \
+          int_samples[0] = MIN(MAX(value, NEGATIVE_MIN), POSITIVE_MAX);    \
+          double_samples += 1;                                             \
+          int_samples += 1;                                                \
+      }                                                                    \
+  }                                                                        \
+                                                                           \
+  static void                                                              \
+  float_to_##BITS##_int(unsigned total_samples,                            \
+                        const float float_samples[],                       \
+                        int int_samples[])                                 \
+  {                                                                        \
+      for (; total_samples; total_samples--) {                             \
+          const register double d = float_samples[0];                      \
+          const int value =                                                \
+              d * (signbit(d) ? -(NEGATIVE_MIN) : POSITIVE_MAX);           \
+          int_samples[0] = MIN(MAX(value, NEGATIVE_MIN), POSITIVE_MAX);    \
+          float_samples += 1;                                              \
+          int_samples += 1;                                                \
+      }                                                                    \
   }
 
 PCM_INT_CONV(8, -128, 127)
