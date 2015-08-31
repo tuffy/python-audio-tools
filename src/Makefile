@@ -5,6 +5,7 @@ BINARIES = \
 alacdec \
 wvdec \
 alacenc \
+flacdec \
 flacenc \
 shnenc \
 wvenc \
@@ -25,14 +26,14 @@ alacdec: $(OBJS) decoders/alac.c decoders/alac.h bitstream.a framelist.o m4a_ato
 wvdec: $(OBJS) decoders/wavpack.c decoders/wavpack.h md5.o pcm_conv.o
 	$(CC) $(FLAGS) -o wvdec decoders/wavpack.c $(OBJS) md5.o pcm_conv.o -DSTANDALONE
 
-alacenc: encoders/alac.c encoders/alac.h bitstream.a array.o pcmreader.o pcm_conv.o m4a_atoms.o
-	$(CC) $(FLAGS) -o alacenc encoders/alac.c bitstream.a array.o pcmreader.o pcm_conv.o m4a_atoms.o -DSTANDALONE -lm
+alacenc: encoders/alac.c encoders/alac.h bitstream.a pcmreader.o pcm_conv.o m4a_atoms.o
+	$(CC) $(FLAGS) -o alacenc encoders/alac.c bitstream.a pcmreader.o pcm_conv.o m4a_atoms.o -DSTANDALONE -lm
+
+flacdec: decoders/flac.c decoders/flac.h bitstream.a framelist.o pcm_conv.o flac_crc.o md5.o
+	$(CC) $(FLAGS) -o $@ decoders/flac.c bitstream.a framelist.o pcm_conv.o flac_crc.o md5.o -DSTANDALONE
 
 flacenc: encoders/flac.c encoders/flac.h bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o
 	$(CC) $(FLAGS) -o $@ encoders/flac.c bitstream.a pcmreader.o pcm_conv.o md5.o flac_crc.o -DSTANDALONE -DEXECUTABLE -lm
-
-shnenc: encoders/shn.c encoders/shn.h bitstream.a array.o pcmreader.o pcm_conv.o
-	$(CC) $(FLAGS) -o shnenc encoders/shn.c bitstream.a array.o pcmreader.o pcm_conv.o -DSTANDALONE -lm
 
 wvenc: $(OBJS) encoders/wavpack.c pcmreader.o pcm_conv.o bitstream.a md5.o
 	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c pcmreader.o pcm_conv.o bitstream.a md5.o -DSTANDALONE `pkg-config --cflags --libs wavpack`

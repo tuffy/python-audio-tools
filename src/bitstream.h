@@ -281,6 +281,7 @@ typedef void
                                                                          \
     state_t state;                                                       \
     struct bs_callback* callbacks;                                       \
+    struct bs_callback* callbacks_used;                                  \
     struct bs_exception* exceptions;                                     \
     struct bs_exception* exceptions_used;                                \
                                                                          \
@@ -764,6 +765,7 @@ struct BitstreamRecorderEntry;
     unsigned int buffer;                                    \
                                                             \
     struct bs_callback* callbacks;                          \
+    struct bs_callback* callbacks_used;                     \
     struct bs_exception* exceptions;                        \
     struct bs_exception* exceptions_used;                   \
                                                             \

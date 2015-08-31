@@ -1,6 +1,8 @@
 #include "flac.h"
 #include "../framelist.h"
 #include "../common/flac_crc.h"
+#include <string.h>
+#include <errno.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -30,6 +32,7 @@ typedef enum {OK,
               INVALID_CRC8,
               IOERROR_HEADER,
               IOERROR_SUBFRAME,
+              IOERROR_CRC16,
               INVALID_SUBFRAME_HEADER,
               INVALID_FIXED_ORDER,
               INVALID_LPC_ORDER,
@@ -60,6 +63,9 @@ struct frame_header {
     unsigned bits_per_sample;
     unsigned frame_number;
 };
+
+const static uint8_t empty_md5[16] = {0, 0, 0, 0, 0, 0, 0, 0,
+                                      0, 0, 0, 0, 0, 0, 0, 0};
 
 /*******************************
  * private function signatures *
@@ -92,6 +98,13 @@ read_frame_header(BitstreamReader *r,
 
 static status_t
 read_utf8(BitstreamReader *r, unsigned *utf8);
+
+typedef status_t (*decode_f)(BitstreamReader *r,
+                             const struct frame_header *frame_header,
+                             int samples[]);
+
+static decode_f
+get_decoder(channel_assignment_t channel_assignment);
 
 static status_t
 decode_independent(BitstreamReader *r,
@@ -156,6 +169,9 @@ read_residual_block(BitstreamReader *r,
                     unsigned predictor_order,
                     int residuals[]);
 
+static status_t
+read_crc16(BitstreamReader *r);
+
 static void
 decorrelate_left_difference(unsigned block_size,
                             const int left[],
@@ -215,8 +231,10 @@ static int
 verify_md5sum(audiotools__MD5Context *stream_md5,
               const uint8_t streaminfo_md5[]);
 
+#ifndef STANDALONE
 PyObject*
 flac_exception(status_t status);
+#endif
 
 const char*
 flac_strerror(status_t status);
@@ -225,6 +243,7 @@ flac_strerror(status_t status);
  * public function implementations *
  ***********************************/
 
+#ifndef STANDALONE
 PyObject*
 FlacDecoder_new(PyTypeObject *type,
                 PyObject *args, PyObject *kwds)
@@ -302,8 +321,6 @@ FlacDecoder_init(decoders_FlacDecoder *self,
                           bC  = 0x100,
                           sL  = 0x200,
                           sR  = 0x400};
-                    const uint8_t empty_md5[16] = {0, 0, 0, 0, 0, 0, 0, 0,
-                                                   0, 0, 0, 0, 0, 0, 0, 0};
 
                     read_STREAMINFO(self->bitstream, &(self->streaminfo));
                     /*use a dummy channel mask for now*/
@@ -533,24 +550,7 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
                                                  frame_header.block_size);
 
         /*decode subframes based on channel assignment*/
-        status_t (*decode)(BitstreamReader *r,
-                           const struct frame_header *frame_header,
-                           int samples[]) = NULL;
-
-        switch (frame_header.channel_assignment) {
-        case INDEPENDENT:
-            decode = decode_independent;
-            break;
-        case LEFT_DIFFERENCE:
-            decode = decode_left_difference;
-            break;
-        case DIFFERENCE_RIGHT:
-            decode = decode_difference_right;
-            break;
-        case AVERAGE_DIFFERENCE:
-            decode = decode_average_difference;
-            break;
-        }
+        decode_f decode = get_decoder(frame_header.channel_assignment);
         assert(decode);
 
         if ((status = decode(self->bitstream,
@@ -563,19 +563,13 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         }
 
         /*validate CRC-16 in frame footer*/
-        if (!setjmp(*br_try(self->bitstream))) {
-            self->bitstream->byte_align(self->bitstream);
-            self->bitstream->skip(self->bitstream, 16); /*CRC-16 itself*/
-            br_etry(self->bitstream);
-        } else {
-            br_etry(self->bitstream);
-            self->bitstream->pop_callback(self->bitstream, NULL);
-            PyErr_SetString(PyExc_IOError, "I/O error reading CRC-16");
+        status = read_crc16(self->bitstream);
+        self->bitstream->pop_callback(self->bitstream, NULL);
+        if (status != OK) {
+            PyErr_SetString(flac_exception(status), flac_strerror(status));
             Py_DECREF((PyObject*)framelist);
             return NULL;
-        }
-        self->bitstream->pop_callback(self->bitstream, NULL);
-        if (crc16) {
+        } else if (crc16) {
             PyErr_SetString(PyExc_ValueError, "frame CRC-16 mismatch");
             Py_DECREF((PyObject*)framelist);
             return NULL;
@@ -786,6 +780,7 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
     /*return actual PCM frames position in file*/
     return Py_BuildValue("K", pcm_frames_offset);
 }
+#endif
 
 /************************************
  * private function implementations *
@@ -1049,6 +1044,24 @@ read_utf8(BitstreamReader *r, unsigned *utf8)
         }
     }
     return OK;
+}
+
+static decode_f
+get_decoder(channel_assignment_t channel_assignment)
+{
+    switch (channel_assignment) {
+    case INDEPENDENT:
+        return decode_independent;
+    case LEFT_DIFFERENCE:
+        return decode_left_difference;
+    case DIFFERENCE_RIGHT:
+        return decode_difference_right;
+    case AVERAGE_DIFFERENCE:
+        return decode_average_difference;
+    }
+
+    /*shouldn't get here*/
+    return NULL;
 }
 
 static status_t
@@ -1483,6 +1496,20 @@ read_residual_block(BitstreamReader *r,
     return OK;
 }
 
+static status_t
+read_crc16(BitstreamReader *r)
+{
+    if (!setjmp(*br_try(r))) {
+        r->byte_align(r);
+        r->skip(r, 16);
+        br_etry(r);
+        return OK;
+    } else {
+        br_etry(r);
+        return IOERROR_CRC16;
+    }
+}
+
 static void
 decorrelate_left_difference(unsigned block_size,
                             const int left[],
@@ -1703,6 +1730,7 @@ verify_md5sum(audiotools__MD5Context *stream_md5,
     return (memcmp(digest, streaminfo_md5, 16) == 0);
 }
 
+#ifndef STANDALONE
 PyObject*
 flac_exception(status_t status)
 {
@@ -1728,9 +1756,11 @@ flac_exception(status_t status)
         return PyExc_ValueError;
     case IOERROR_HEADER:
     case IOERROR_SUBFRAME:
+    case IOERROR_CRC16:
         return PyExc_IOError;
     }
 }
+#endif
 
 const char*
 flac_strerror(status_t status)
@@ -1756,6 +1786,8 @@ flac_strerror(status_t status)
         return "I/O error reading frame header";
     case IOERROR_SUBFRAME:
         return "I/O error reading subframe data";
+    case IOERROR_CRC16:
+        return "I/O error reading CRC-16";
     case INVALID_SUBFRAME_HEADER:
         return "invalid subframe header";
     case INVALID_FIXED_ORDER:
@@ -1778,3 +1810,152 @@ flac_strerror(status_t status)
         return "frame header channel count mismatch";
     }
 }
+
+/*******************************
+ * main function for debugging *
+ *******************************/
+
+#ifdef STANDALONE
+int
+main(int argc, char *argv[])
+{
+    FILE *flac;
+    BitstreamReader *input;
+    struct STREAMINFO streaminfo;
+    audiotools__MD5Context stream_md5;
+    uint64_t total_samples;
+    int_to_pcm_f converter;
+
+    if (argc < 2) {
+        fputs("*** Usage: flacdec <file.flac>\n", stderr);
+        return 1;
+    }
+
+    errno = 0;
+    if ((flac = fopen(argv[1], "rb")) == NULL) {
+        fprintf(stderr, "*** %s: %s\n", argv[1], strerror(errno));
+        return 1;
+    } else {
+        input = br_open(flac, BS_BIG_ENDIAN);
+    }
+
+    if (!setjmp(*br_try(input))) {
+        unsigned last;
+        unsigned type;
+        unsigned size;
+        int streaminfo_read = 0;
+
+        /*ensure 4 byte stream ID is valid*/
+        if (!valid_stream_id(input)) {
+            fputs("*** Error: invalid stream ID\n", stderr);
+            br_etry(input);
+            goto error;
+        }
+
+        /*read metadata blocks*/
+        do {
+            read_block_header(input, &last, &type, &size);
+            if (type == 0) {
+                if (!streaminfo_read) {
+                    read_STREAMINFO(input, &streaminfo);
+                    streaminfo_read = 1;
+                }
+            } else {
+                input->skip_bytes(input, size);
+            }
+        } while (!last);
+
+        br_etry(input);
+
+        /*ensure STREAMINFO has been read*/
+        if (!streaminfo_read) {
+            fputs("*** Error: no STREAMINFO block in stream\n", stderr);
+            goto error;
+        }
+    } else {
+        fputs("*** Error: I/O error reading metadata\n", stderr);
+        br_etry(input);
+        goto error;
+    }
+
+    /*perform stream initialization*/
+    audiotools__MD5Init(&stream_md5);
+    total_samples = streaminfo.total_samples;
+    converter = int_to_pcm_converter(streaminfo.bits_per_sample, 0, 1);
+
+    /*while samples remain*/
+    while (total_samples) {
+        struct frame_header frame_header;
+        status_t status;
+        uint16_t crc16 = 0;
+
+        input->add_callback(input, (bs_callback_f)flac_crc16, &crc16);
+
+        /*read header*/
+        if ((status =
+             read_frame_header(input, &streaminfo, &frame_header)) != OK) {
+            fprintf(stderr, "*** Error: %s\n", flac_strerror(status));
+            input->pop_callback(input, NULL);
+            goto error;
+        } else {
+            /*setup output space*/
+            const unsigned sample_count = frame_header.channel_count *
+                                          frame_header.block_size;
+
+            int samples[sample_count];
+
+            unsigned char pcm_samples[sample_count *
+                                      (frame_header.bits_per_sample / 8)];
+
+            /*decode subframes based on channel assignment*/
+            decode_f decode = get_decoder(frame_header.channel_assignment);
+            assert(decode);
+
+            if ((status = decode(input, &frame_header, samples)) != OK) {
+                fprintf(stderr, "*** Error: %s\n", flac_strerror(status));
+                input->pop_callback(input, NULL);
+                goto error;
+            }
+
+            /*validate CRC-16 in frame footer*/
+            status = read_crc16(input);
+            input->pop_callback(input, NULL);
+            if (status != OK) {
+                fprintf(stderr, "*** Error: %s\n", flac_strerror(status));
+                goto error;
+            } else if (crc16) {
+                fputs("*** Error: CRC-16 mismatch\n", stderr);
+                goto error;
+            }
+
+            /*output samples to stdout*/
+            converter(sample_count, samples, pcm_samples);
+            fwrite(pcm_samples, sizeof(pcm_samples), 1, stdout);
+
+            /*update MD5 sum*/
+            update_md5sum(&stream_md5,
+                          samples,
+                          frame_header.channel_count,
+                          frame_header.bits_per_sample,
+                          frame_header.block_size);
+
+            /*decrement remaining samples*/
+            total_samples -= frame_header.block_size;
+        }
+    }
+
+    /*validate MD5 signature*/
+    if (memcmp(streaminfo.MD5, empty_md5, 16)) {
+        if (!verify_md5sum(&stream_md5, streaminfo.MD5)) {
+            fputs("*** Error: MD5 mismatch at end of stream\n", stderr);
+            goto error;
+        }
+    }
+
+    input->close(input);
+    return 0;
+error:
+    input->close(input);
+    return 1;
+}
+#endif

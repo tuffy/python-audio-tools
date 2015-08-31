@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include <stdint.h>
 #include "../bitstream.h"
 #include "../common/md5.h"
@@ -45,6 +47,7 @@ struct SEEKTABLE {
     struct SEEKPOINT *seek_points;
 };
 
+#ifndef STANDALONE
 typedef struct {
     PyObject_HEAD
 
@@ -177,3 +180,4 @@ PyTypeObject decoders_FlacDecoderType = {
     0,                         /* tp_alloc */
     FlacDecoder_new,           /* tp_new */
 };
+#endif

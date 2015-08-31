@@ -1014,6 +1014,7 @@ __base_bitstreamreader__(bs_endianness endianness)
     /*bs->input.??? = ???*/
     bs->state = 0;
     bs->callbacks = NULL;
+    bs->callbacks_used = NULL;
     bs->exceptions = NULL;
     bs->exceptions_used = NULL;
 
@@ -1172,6 +1173,7 @@ br_open_queue(bs_endianness endianness)
     bs->input.queue = br_queue_new();
     bs->state = 0;
     bs->callbacks = NULL;
+    bs->callbacks_used = NULL;
     bs->exceptions = NULL;
     bs->exceptions_used = NULL;
 
@@ -2566,27 +2568,29 @@ br_close_internal_stream_c(BitstreamReader* self)
 static void
 br_free_f(BitstreamReader* self)
 {
-    struct bs_exception *e_node;
-    struct bs_exception *e_next;
-
     /*deallocate callbacks*/
-    while (self->callbacks != NULL) {
+    while (self->callbacks) {
         self->pop_callback(self, NULL);
+    }
+    while (self->callbacks_used) {
+        struct bs_callback* next = self->callbacks_used->next;
+        free(self->callbacks_used);
+        self->callbacks_used = next;
     }
 
     /*deallocate exceptions*/
-    if (self->exceptions != NULL) {
+    if (self->exceptions) {
         fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
-    }
-    for (e_node = self->exceptions; e_node != NULL; e_node = e_next) {
-        e_next = e_node->next;
-        free(e_node);
+        while (self->exceptions) {
+            br_etry(self);
+        }
     }
 
     /*deallocate used exceptions*/
-    for (e_node = self->exceptions_used; e_node != NULL; e_node = e_next) {
-        e_next = e_node->next;
-        free(e_node);
+    while (self->exceptions_used) {
+        struct bs_exception *next = self->exceptions_used->next;
+        free(self->exceptions_used);
+        self->exceptions_used = next;
     }
 
     /*deallocate the struct itself*/
@@ -2606,9 +2610,6 @@ br_free_b(BitstreamReader* self)
 static void
 br_free_q(BitstreamQueue* self)
 {
-    struct bs_exception *e_node;
-    struct bs_exception *e_next;
-
     /*deallocate queue*/
     br_queue_free(self->input.queue);
 
@@ -2616,20 +2617,25 @@ br_free_q(BitstreamQueue* self)
     while (self->callbacks != NULL) {
         self->pop_callback((BitstreamReader*)self, NULL);
     }
+    while (self->callbacks_used) {
+        struct bs_callback* next = self->callbacks_used->next;
+        free(self->callbacks_used);
+        self->callbacks_used = next;
+    }
 
     /*deallocate exceptions*/
-    if (self->exceptions != NULL) {
+    if (self->exceptions) {
         fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
-    }
-    for (e_node = self->exceptions; e_node != NULL; e_node = e_next) {
-        e_next = e_node->next;
-        free(e_node);
+        while(self->exceptions) {
+            br_etry((BitstreamReader*)self);
+        }
     }
 
     /*deallocate used exceptions*/
-    for (e_node = self->exceptions_used; e_node != NULL; e_node = e_next) {
-        e_next = e_node->next;
-        free(e_node);
+    while (self->exceptions_used) {
+        struct bs_exception *next = self->exceptions_used->next;
+        free(self->exceptions_used);
+        self->exceptions_used = next;
     }
 
     /*deallocate the struct itself*/
@@ -2753,6 +2759,7 @@ bw_open(FILE *f, bs_endianness endianness)
     bs->buffer = 0;
 
     bs->callbacks = NULL;
+    bs->callbacks_used = NULL;
     bs->exceptions = NULL;
     bs->exceptions_used = NULL;
 
@@ -2829,6 +2836,7 @@ bw_open_external(void* user_data,
     bs->buffer = 0;
 
     bs->callbacks = NULL;
+    bs->callbacks_used = NULL;
     bs->exceptions = NULL;
     bs->exceptions_used = NULL;
 
@@ -2897,6 +2905,7 @@ bw_open_limited_recorder(bs_endianness endianness, unsigned maximum_size)
     bs->buffer = 0;
 
     bs->callbacks = NULL;
+    bs->callbacks_used = NULL;
     bs->exceptions = NULL;
     bs->exceptions_used = NULL;
 
@@ -2956,6 +2965,7 @@ bw_open_limited_bytes_recorder(bs_endianness endianness,
     bs->buffer = 0;
 
     bs->callbacks = NULL;
+    bs->callbacks_used = NULL;
     bs->exceptions = NULL;
     bs->exceptions_used = NULL;
 
@@ -3018,6 +3028,7 @@ bw_open_accumulator(bs_endianness endianness)
     bs->buffer = 0;
 
     bs->callbacks = NULL;
+    bs->callbacks_used = NULL;
     bs->exceptions = NULL;
     bs->exceptions_used = NULL;
 
@@ -3069,6 +3080,7 @@ bw_open_limited_accumulator(bs_endianness endianness, unsigned maximum_size)
         bs->buffer = 0;
 
         bs->callbacks = NULL;
+        bs->callbacks_used = NULL;
         bs->exceptions = NULL;
         bs->exceptions_used = NULL;
 
@@ -4306,14 +4318,17 @@ bw_free_f(BitstreamWriter* self)
     while (self->callbacks != NULL) {
         self->pop_callback(self, NULL);
     }
+    while (self->callbacks_used) {
+        struct bs_callback* next = self->callbacks_used->next;
+        free(self->callbacks_used);
+        self->callbacks_used = next;
+    }
 
     /*deallocate exceptions*/
     if (self->exceptions) {
         fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
         while (self->exceptions) {
-            struct bs_exception *next = self->exceptions->next;
-            free(self->exceptions);
-            self->exceptions = next;
+            bw_etry(self);
         }
     }
 
@@ -4349,14 +4364,17 @@ bw_free_sr(BitstreamRecorder* self)
     while (self->callbacks) {
         self->pop_callback((BitstreamWriter*)self, NULL);
     }
+    while (self->callbacks_used) {
+        struct bs_callback* next = self->callbacks_used->next;
+        free(self->callbacks_used);
+        self->callbacks_used = next;
+    }
 
     /*deallocate exceptions*/
     if (self->exceptions) {
         fprintf(stderr, "*** Warning: leftover etry entries on stack\n");
         while (self->exceptions) {
-            struct bs_exception *next = self->exceptions->next;
-            free(self->exceptions);
-            self->exceptions = next;
+            bw_etry((BitstreamWriter*)self);
         }
     }
 
@@ -5107,18 +5125,23 @@ reset_noop(struct BitstreamRecorderEntry *self)
 FUNC_ADD_CALLBACK(br_add_callback, br_push_callback, BitstreamReader)
 FUNC_ADD_CALLBACK(bw_add_callback, bw_push_callback, BitstreamWriter)
 
-#define FUNC_PUSH_CALLBACK(FUNC_NAME, STREAM)           \
-  static void                                           \
-  FUNC_NAME(STREAM *self, struct bs_callback *callback) \
-  {                                                     \
-      if (callback != NULL) {                           \
-          struct bs_callback *callback_node =           \
-            malloc(sizeof(struct bs_callback));         \
-          callback_node->callback = callback->callback; \
-          callback_node->data = callback->data;         \
-          callback_node->next = self->callbacks;        \
-          self->callbacks = callback_node;              \
-      }                                                 \
+#define FUNC_PUSH_CALLBACK(FUNC_NAME, STREAM)                     \
+  static void                                                     \
+  FUNC_NAME(STREAM *self, struct bs_callback *callback)           \
+  {                                                               \
+      if (callback != NULL) {                                     \
+          struct bs_callback *callback_node;                      \
+          if (self->callbacks_used) {                             \
+              callback_node = self->callbacks_used;               \
+              self->callbacks_used = self->callbacks_used->next;  \
+          } else {                                                \
+              callback_node = malloc(sizeof(struct bs_callback)); \
+          }                                                       \
+          callback_node->callback = callback->callback;           \
+          callback_node->data = callback->data;                   \
+          callback_node->next = self->callbacks;                  \
+          self->callbacks = callback_node;                        \
+      }                                                           \
   }
 FUNC_PUSH_CALLBACK(br_push_callback, BitstreamReader)
 FUNC_PUSH_CALLBACK(bw_push_callback, BitstreamWriter)
@@ -5135,7 +5158,8 @@ FUNC_PUSH_CALLBACK(bw_push_callback, BitstreamWriter)
               callback->next = NULL;                             \
           }                                                      \
           self->callbacks = c_node->next;                        \
-          free(c_node);                                          \
+          c_node->next = self->callbacks_used;                   \
+          self->callbacks_used = c_node;                         \
       } else {                                                   \
           fprintf(stderr, "*** Warning: no callbacks to pop\n"); \
       }                                                          \
@@ -5159,7 +5183,7 @@ FUNC_CALL_CALLBACKS(bw_call_callbacks, BitstreamWriter)
 
 
 #define FUNC_FSEEK(FUNC_NAME, TYPE)                             \
-  static int                                                           \
+  static int                                                    \
   FUNC_NAME(TYPE buf, long position, int whence)                \
   {                                                             \
       switch (whence) {                                         \
