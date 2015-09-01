@@ -1378,8 +1378,6 @@ main(int argc, char *argv[])
         }
 
         if (status == OK) {
-            unsigned i;
-
             /*increment samples read*/
             decoder.read_pcm_frames += pcm_frames_read;
 
@@ -1389,9 +1387,7 @@ main(int argc, char *argv[])
                              samples);
 
             /*output samples to stdout*/
-            for (i = 0; i < pcm_frames_read * decoder.channels; i++) {
-                converter(samples[i], buffer + i * bytes_per_sample);
-            }
+            converter(pcm_frames_read * decoder.channels, samples, buffer);
 
             fwrite(buffer,
                    1,
