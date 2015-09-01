@@ -12,6 +12,7 @@ wvenc \
 huffman \
 bitstream \
 bitstream-table \
+ttadec \
 ttaenc \
 opusenc
 
@@ -37,6 +38,9 @@ flacenc: encoders/flac.c encoders/flac.h bitstream.a pcmreader.o pcm_conv.o md5.
 
 wvenc: $(OBJS) encoders/wavpack.c pcmreader.o pcm_conv.o bitstream.a md5.o
 	$(CC) $(FLAGS) -o wvenc encoders/wavpack.c pcmreader.o pcm_conv.o bitstream.a md5.o -DSTANDALONE `pkg-config --cflags --libs wavpack`
+
+ttadec: decoders/tta.c decoders/tta.h bitstream.a tta_crc.o pcm_conv.o
+	$(CC) $(FLAGS) -o $@ decoders/tta.c bitstream.a tta_crc.o pcm_conv.o -DSTANDALONE
 
 ttaenc: encoders/tta.c encoders/tta.h pcmreader.o pcm_conv.o bitstream.a
 	$(CC) $(FLAGS) -o ttaenc encoders/tta.c pcmreader.o pcm_conv.o bitstream.a -DSTANDALONE
@@ -85,6 +89,9 @@ ogg_crc.o: ogg_crc.c ogg_crc.h
 
 flac_crc.o: common/flac_crc.c common/flac_crc.h
 	$(CC) $(FLAGS) -c common/flac_crc.c -DSTANDALONE
+
+tta_crc.o: common/tta_crc.c common/tta_crc.h
+	$(CC) $(FLAGS) -c common/tta_crc.c -DSTANDALONE
 
 huffman.o: huffman.c huffman.h
 	$(CC) $(FLAGS) -c huffman.c -DSTANDALONE

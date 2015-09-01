@@ -2,6 +2,8 @@
 #include "../common/tta_crc.h"
 #include "../framelist.h"
 #include <string.h>
+#include <stdio.h>
+#include <errno.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -114,8 +116,10 @@ decorrelate_channels(unsigned channel_count,
                      const int predicted[],
                      int samples[]);
 
+#ifndef STANDALONE
 static PyObject*
 tta_exception(status_t error);
+#endif
 
 static const char*
 tta_strerror(status_t error);
@@ -130,6 +134,8 @@ div_ceil(unsigned x, unsigned y)
 /***********************************
  * public function implementations *
  ***********************************/
+
+#ifndef STANDALONE
 
 PyObject*
 TTADecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
@@ -417,6 +423,8 @@ TTADecoder_exit(decoders_TTADecoder* self, PyObject *args)
     Py_INCREF(Py_None);
     return Py_None;
 }
+
+#endif
 
 /************************************
  * private function implementations *
@@ -743,6 +751,7 @@ decorrelate_channels(unsigned channel_count,
     }
 }
 
+#ifndef STANDALONE
 static PyObject*
 tta_exception(status_t error)
 {
@@ -758,6 +767,7 @@ tta_exception(status_t error)
         return PyExc_IOError;
     }
 }
+#endif
 
 static const char*
 tta_strerror(status_t error)
@@ -778,3 +788,149 @@ tta_strerror(status_t error)
         return "invalid file format";
     }
 }
+
+#ifdef STANDALONE
+
+int
+main(int argc, char *argv[])
+{
+    FILE *file;
+    BitstreamReader *input;
+    BitstreamReader *packet;
+    status_t status;
+    struct tta_header header;
+    unsigned default_block_size;
+    unsigned total_tta_frames;
+    unsigned current_tta_frame;
+    unsigned *seektable = NULL;
+    int_to_pcm_f converter;
+
+    if (argc < 2) {
+        fputs("*** Usage: ttadec <file.tta>\n", stderr);
+        return 1;
+    }
+
+    errno = 0;
+    if ((file = fopen(argv[1], "rb")) == NULL) {
+        fprintf(stderr, "*** %s: %s\n", argv[1], strerror(errno));
+        return 1;
+    } else {
+        input = br_open(file, BS_LITTLE_ENDIAN);
+    }
+
+    /*read and validate header*/
+    if ((packet = read_frame(input, 22, &status)) != NULL) {
+        status = read_header(packet, &header);
+        packet->close(packet);
+        if (status != OK) {
+            fprintf(stderr, "*** Error: %s\n", tta_strerror(status));
+            goto error;
+        }
+    } else {
+        fprintf(stderr, "*** Error: %s\n", tta_strerror(status));
+        goto error;
+    }
+
+    /*calculate parameters from header*/
+    default_block_size = (header.sample_rate * 256) / 245;
+    total_tta_frames = div_ceil(header.total_pcm_frames, default_block_size);
+    converter = int_to_pcm_converter(header.bits_per_sample, 0, 1);
+
+    /*read seektable for frame sizes*/
+    if ((packet = read_frame(input,
+                             4 * total_tta_frames + 4,
+                             &status)) != NULL) {
+        seektable = read_seektable(packet, total_tta_frames);
+        packet->close(packet);
+    } else {
+        fprintf(stderr, "*** Error: %s\n", tta_strerror(status));
+        goto error;
+    }
+
+    /*process all frames in file*/
+    for (current_tta_frame = 0;
+         current_tta_frame < total_tta_frames;
+         current_tta_frame++) {
+        unsigned block_size;
+
+        if ((packet = read_frame(input,
+                                 seektable[current_tta_frame],
+                                 &status)) == NULL) {
+            fprintf(stderr, "*** Error: %s\n", tta_strerror(status));
+            goto error;
+        }
+
+        /*decode all samples in frame*/
+        if ((current_tta_frame + 1) < total_tta_frames) {
+            block_size = default_block_size;
+        } else if ((header.total_pcm_frames % default_block_size) == 0) {
+            block_size = default_block_size;
+        } else {
+            block_size = header.total_pcm_frames % default_block_size;
+        }
+
+        if (!setjmp(*br_try(packet))) {
+            struct residual_params residual_params[header.channels];
+            struct filter_params filter_params[header.channels];
+            struct prediction_params prediction_params[header.channels];
+            unsigned c;
+
+            /*initialize per-channel parameters*/
+            for (c = 0; c < header.channels; c++) {
+                init_residual_params(&residual_params[c]);
+                init_filter_params(header.bits_per_sample,
+                                   &filter_params[c]);
+                init_prediction_params(header.bits_per_sample,
+                                       &prediction_params[c]);
+            }
+
+            for (; block_size; block_size--) {
+                int predicted[header.channels];
+                int samples[header.channels];
+                unsigned char pcm_samples[header.channels *
+                                          (header.bits_per_sample / 8)];
+
+                for (c = 0; c < header.channels; c++) {
+                    /*run fixed prediction over filtered value*/
+                    predicted[c] = run_prediction(
+                        &prediction_params[c],
+                        /*run hybrid filter over residual*/
+                        run_filter(
+                            &filter_params[c],
+                            /*decode a residual*/
+                            read_residual(
+                                &residual_params[c],
+                                packet)));
+                }
+
+                /*decorrelate channels to samples*/
+                decorrelate_channels(header.channels, predicted, samples);
+
+                /*convert samples to raw bytes*/
+                converter(header.channels, samples, pcm_samples);
+
+                /*output samples to stdout*/
+                fwrite(pcm_samples, sizeof(pcm_samples), 1, stdout);
+            }
+
+            br_etry(packet);
+            packet->close(packet);
+        } else {
+            br_etry(packet);
+            packet->close(packet);
+            fputs("*** Error: I/O error reading audio packet\n", stderr);
+            goto error;
+        }
+
+    }
+
+    input->close(input);
+    free(seektable);
+    return 0;
+error:
+    input->close(input);
+    free(seektable);
+    return 1;
+}
+
+#endif
