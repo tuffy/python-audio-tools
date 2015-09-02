@@ -286,6 +286,7 @@ if (__name__ == '__main__'):
 
         loop = urwid.MainLoop(cdplay,
                               audiotools.ui.style(),
+                              screen=audiotools.ui.Screen(),
                               unhandled_input=cdplay.handle_text,
                               pop_ups=True)
 

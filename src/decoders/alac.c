@@ -175,6 +175,12 @@ ALACDecoder_init(decoders_ALACDecoder *self,
     self->closed = 0;
     self->audiotools_pcm = NULL;
 
+    /*setup some dummy parameters*/
+    self->params.block_size = 4096;
+    self->params.history_multiplier = 40;
+    self->params.initial_history = 10;
+    self->params.maximum_K = 14;
+
     if (!PyArg_ParseTuple(args, "O", &file)) {
         return -1;
     } else {
@@ -1273,6 +1279,12 @@ main(int argc, char *argv[])
     unsigned bytes_per_sample;
     int return_status = 0;
 
+    /*setup some dummy parameters*/
+    decoder.params.block_size = 4096;
+    decoder.params.history_multiplier = 40;
+    decoder.params.initial_history = 10;
+    decoder.params.maximum_K = 14;
+
     /*open input file*/
     if (argc < 2) {
         fprintf(stderr, "*** Usage: alacdec <file.m4a>\n");
@@ -1292,7 +1304,7 @@ main(int argc, char *argv[])
         if (!memcmp(atom_name, "mdat", 4)) {
             /*get mdat atom's starting position*/
             if (mdat_start) {
-                fputs("multipled mdat atoms found in stream\n", stderr);
+                fputs("multiple mdat atoms found in stream\n", stderr);
                 return_status = 1;
                 goto done;
             } else {

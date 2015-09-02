@@ -1154,6 +1154,7 @@ if (__name__ == '__main__'):
 
         display_defaults(audiotools.config, msg)
     elif options.interactive:
+
         # update options interactively
 
         if not audiotools.ui.AVAILABLE:
@@ -1168,6 +1169,7 @@ if (__name__ == '__main__'):
             loop = audiotools.ui.urwid.MainLoop(
                 widget,
                 audiotools.ui.style(),
+                screen=audiotools.ui.Screen(),
                 unhandled_input=widget.handle_text,
                 pop_ups=True)
             try:

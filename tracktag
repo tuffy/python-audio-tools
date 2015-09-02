@@ -452,6 +452,7 @@ if (__name__ == '__main__'):
         loop = audiotools.ui.urwid.MainLoop(
             widget,
             audiotools.ui.style(),
+            screen=audiotools.ui.Screen(),
             unhandled_input=widget.handle_text)
         try:
             loop.run()

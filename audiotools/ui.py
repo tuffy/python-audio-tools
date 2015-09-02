@@ -29,6 +29,10 @@ try:
     if urwid.version.VERSION < (1, 0, 0):
         raise ImportError()
 
+    def Screen():
+        from urwid.raw_display import Screen as __Screen__
+        return __Screen__()
+
     AVAILABLE = True
 
     class DownEdit(urwid.Edit):
