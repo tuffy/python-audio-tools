@@ -405,8 +405,7 @@ if (__name__ == '__main__'):
                 DEFAULT_TYPE = config.get_default("System",
                                                   "default_type",
                                                   "wav")
-                if (not audiotools.TYPE_MAP[DEFAULT_TYPE].available(
-                        audiotools.BIN)):
+                if not audiotools.TYPE_MAP[DEFAULT_TYPE].supports_from_pcm():
                     DEFAULT_TYPE = "wav"
 
                 audio_types = list(sorted(audiotools.TYPE_MAP.values(),
