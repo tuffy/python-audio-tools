@@ -5346,9 +5346,14 @@ class ExecProgressQueue(object):
     def run(self, max_processes=1):
         """runs all the queued jobs"""
 
-        if (max_processes == 1) or (len(self.__queued_jobs__) == 1):
+        if len(self.__queued_jobs__) == 0:
+            # nothing to do
+            return []
+        elif (max_processes == 1) or (len(self.__queued_jobs__) == 1):
+            # perform one job at a time
             return self.__run_serial__()
         else:
+            # perform multiple jobs in parallel
             return self.__run_parallel__(max_processes=max_processes)
 
     def __run_serial__(self):
@@ -5545,8 +5550,13 @@ class ExecProgressQueue(object):
 class __ProgressQueueJob__(object):
     """this class is a the parent process end of a running child job"""
 
-    def __init__(self, job_index, process, progress, result_pipe,
-                 progress_text, completion_output):
+    def __init__(self,
+                 job_index,
+                 process,
+                 progress,
+                 result_pipe,
+                 progress_text,
+                 completion_output):
         """job_index is the order this job was inserted into the queue
 
         process is the Process object of the running child
@@ -5580,12 +5590,17 @@ class __ProgressQueueJob__(object):
         return self.progress[1]
 
     @classmethod
-    def spawn(cls, job_index,
-              function, args, kwargs, progress_text, completion_output):
+    def spawn(cls,
+              job_index,
+              function,
+              args,
+              kwargs,
+              progress_text,
+              completion_output):
         """spawns a subprocess and returns the parent-side
         __ProgressQueueJob__ object
 
-        job_index is the order this jhob was inserted into the queue
+        job_index is the order this job was inserted into the queue
 
         function is the function to execute
 
@@ -5598,6 +5613,14 @@ class __ProgressQueueJob__(object):
         completion_output is either unicode or a callable function
         to be displayed when the job finishes
         """
+
+        class __progress__(object):
+            def __init__(self, memory):
+                self.memory = memory
+
+            def update(self, current, total):
+                self.memory[0] = current
+                self.memory[1] = total
 
         def execute_job(function, args, kwargs, progress, result_pipe):
             try:
@@ -5645,15 +5668,6 @@ class __ProgressQueueJob__(object):
         self.result_pipe.close()
         self.process.join()
         return (exception, result)
-
-
-class __progress__(object):
-    def __init__(self, memory):
-        self.memory = memory
-
-    def update(self, current, total):
-        self.memory[0] = current
-        self.memory[1] = total
 
 
 class TemporaryFile(object):
