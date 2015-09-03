@@ -552,23 +552,11 @@ AudioFile Objects
    whereas the ``to_pcm``/``from_pcm`` method alone will not.
 
    The optional ``progress`` argument is a function which takes
-   two integer arguments: ``amount_processed`` and ``total_amount``.
+   a single :class:`Fraction` argument which is the current
+   progress between 0 and 1, inclusive.
    If supplied, this function is called at regular intervals
    during the conversion process and may be used to indicate
    the current status to the user.
-   Note that these numbers are only meaningful when compared
-   to one another; ``amount`` may represent PCM frames, bytes
-   or anything else.
-   The only restriction is that ``total_amount`` will remain
-   static during processing and ``amount_processed`` will
-   progress from 0 to ``total_amount``.
-
-   >>> def print_progress(x, y):
-   ...   print "%d%%" % (x * 100 / y)
-   ...
-   >>> audiotools.open("track.flac").convert("track.wv",
-   ...                                       audiotools.WavPackAudio,
-   ...                                       progress=print_progress)
 
 .. method:: AudioFile.seekable()
 
@@ -588,8 +576,6 @@ AudioFile Objects
 
    The optional ``progress`` argument functions identically
    to the one provided to :meth:`convert`.
-   That is, it takes a two integer argument function which is called
-   at regular intervals to indicate the status of verification.
 
 .. classmethod:: AudioFile.track_name(file_path[, track_metadata[, format[, suffix]]])
 
@@ -1837,8 +1823,8 @@ ExecProgressQueue Objects
    This function is passed the optional ``args`` and ``kwargs``
    arguments upon execution.
    However, this function is also passed an *additional* ``progress``
-   keyword argument which is a function that takes ``current`` and
-   ``total`` integer arguments.
+   keyword argument which is a function that takes the current progress
+   value as a :class:`Fraction` object between 0 and 1, inclusive.
    The executed function can then call that ``progress`` function
    at regular intervals to indicate its progress.
 
@@ -1868,7 +1854,7 @@ ExecProgressQueue Objects
 
    >>> def progress_function(progress, filename):
    ...   # perform work here
-   ...   progress(current, total)
+   ...   progress(Fraction(current, total))
    ...   # more work
    ...   result.a = a
    ...   result.b = b
@@ -2057,9 +2043,10 @@ ProgressDisplay Objects
    ``output_line`` is a unicode string.
    It is not typically instantiated directly.
 
-.. method:: ProgressRow.update(current, total)
+.. method:: ProgressRow.update(progress)
 
-   Updates the current progress with ``current`` and ``total`` integer values.
+   Updates the current progress as a :class:`Fraction` between
+   0 and 1, inclusive.
 
 .. method:: ProgressRow.finish()
 
@@ -2080,11 +2067,10 @@ ProgressDisplay Objects
    at initialization time and can avoid the row management functions
    entirely.
 
-.. method:: SingleProgressDisplay.update(current, total)
+.. method:: SingleProgressDisplay.update(progress)
 
-   Updates the status of our output row with ``current`` and ``total``
-   integers, which function identically to those of
-   :meth:`ProgressDisplay.update_row`.
+   Updates the status of our output row with the current progress,
+   which is a :class:`Fraction` between 0 and 1, inclusive.
 
 .. class:: ReplayGainProgressDisplay(messenger, lossless_replay_gain)
 
@@ -2104,9 +2090,10 @@ ProgressDisplay Objects
    will be displayed.
    Otherwise, this indicates that ReplayGain application has begun.
 
-.. method:: ReplayGainProgressDisplay.update(current, total)
+.. method:: ReplayGainProgressDisplay.update(progress)
 
-   Updates the status of ReplayGain application.
+   Updates the status of ReplayGain application with the current progress
+   which is a :class:`Fraction` between 0 and 1, inclusive.
 
 .. method:: ReplayGainProgressDisplay.final_message()
 

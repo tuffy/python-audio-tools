@@ -23,6 +23,7 @@ import os
 import os.path
 import audiotools.pcm as pcm
 from functools import total_ordering
+from fractions import Fraction
 
 
 PY3 = sys.version_info[0] >= 3
@@ -1360,15 +1361,13 @@ class ProgressRow(object):
         self.progress_display = progress_display
         self.row_index = row_index
         self.output_line = output_text(output_line)
-        self.current = 0
-        self.total = 1
+        self.progress = Fraction(0, 1)
         self.start_time = time()
 
-    def update(self, current, total):
-        """updates our row with the current progress values"""
+    def update(self, progress):
+        """updates our row with the current progress value"""
 
-        self.current = min(current, total)
-        self.total = total
+        self.progress = min(progress, 1)
 
     def finish(self):
         """indicate output is finished and the row will no longer be needed"""
@@ -1383,8 +1382,8 @@ class ProgressRow(object):
         try:
             time_spent = time() - self.start_time
 
-            split_point = (width * self.current) // self.total
-            estimated_total_time = (time_spent * self.total) / self.current
+            split_point = int(width * self.progress)
+            estimated_total_time = time_spent / self.progress
             estimated_time_remaining = int(round(estimated_total_time -
                                                  time_spent))
             time_remaining = u" %2.1d:%2.2d" % (estimated_time_remaining // 60,
@@ -1434,13 +1433,13 @@ class SingleProgressDisplay(ProgressDisplay):
         self.time = time
         self.last_updated = 0
 
-    def update(self, current, total):
-        """updates the output line with new current and total values"""
+    def update(self, progress):
+        """updates the output line with new progress value"""
 
         now = self.time()
         if (now - self.last_updated) > 0.25:
             self.clear_rows()
-            self.row.update(current, total)
+            self.row.update(progress)
             self.display_rows()
             self.last_updated = now
 
@@ -1482,17 +1481,17 @@ class ReplayGainProgressDisplay(ProgressDisplay):
 
         self.messenger.info(RG_ADDING_REPLAYGAIN_WAIT)
 
-    def update_tty(self, current, total):
+    def update_tty(self, progress):
         """updates the current status of ReplayGain application"""
 
         now = self.time()
         if (now - self.last_updated) > 0.25:
             self.clear_rows()
-            self.row.update(current, total)
+            self.row.update(progress)
             self.display_rows()
             self.last_updated = now
 
-    def update_nontty(self, current, total):
+    def update_nontty(self, progress):
         """updates the current status of ReplayGain application"""
 
         pass
@@ -2495,18 +2494,20 @@ class PCMReaderProgress(PCMReader):
                            channel_mask=pcmreader.channel_mask,
                            bits_per_sample=pcmreader.bits_per_sample)
 
+        assert(total_frames > 0)
+
         self.pcmreader = pcmreader
         self.current_frames = current_frames
         self.total_frames = total_frames
         if callable(progress):
             self.progress = progress
         else:
-            self.progress = lambda current_frames, total_frames: None
+            self.progress = lambda progress: None
 
     def read(self, pcm_frames):
         frame = self.pcmreader.read(pcm_frames)
         self.current_frames += frame.frames
-        self.progress(self.current_frames, self.total_frames)
+        self.progress(Fraction(self.current_frames, self.total_frames))
         return frame
 
     def close(self):
@@ -4280,21 +4281,18 @@ class AudioFile(object):
         raises an InvalidFile with an error message if there is
         some problem with the file"""
 
-        total_frames = self.total_frames()
         pcm_frame_count = 0
-        with self.to_pcm() as decoder:
+        with to_pcm_progress(self, progress) as decoder:
             try:
-                framelist = decoder.read(FRAMELIST_SIZE)
-                while len(framelist) > 0:
+                framelist = decoder.read(BUFFER_SIZE)
+                while framelist.frames > 0:
                     pcm_frame_count += framelist.frames
-                    if progress is not None:
-                        progress(pcm_frame_count, total_frames)
-                    framelist = decoder.read(FRAMELIST_SIZE)
+                    framelist = decoder.read(BUFFER_SIZE)
             except (IOError, ValueError) as err:
                 raise InvalidFile(str(err))
 
         if self.lossless():
-            if pcm_frame_count == total_frames:
+            if pcm_frame_count == self.total_frames():
                 return True
             else:
                 raise InvalidFile("incorrect PCM frame count")
@@ -5526,7 +5524,7 @@ class ExecProgressQueue(object):
                 for job in job_pool.values():
                     if job.job_fd() in self.__displayed_rows__:
                         self.__displayed_rows__[job.job_fd()].update(
-                            job.current(), job.total())
+                            job.progress())
 
                 # display new set of progress rows
                 progress_display.display_rows()
@@ -5573,7 +5571,7 @@ class __ProgressQueueJob__(object):
 
         self.job_index = job_index
         self.process = process
-        self.progress = progress
+        self.__progress__ = progress
         self.result_pipe = result_pipe
         self.progress_text = progress_text
         self.completion_output = completion_output
@@ -5583,11 +5581,12 @@ class __ProgressQueueJob__(object):
 
         return self.result_pipe.fileno()
 
-    def current(self):
-        return self.progress[0]
-
-    def total(self):
-        return self.progress[1]
+    def progress(self):
+        (current, total) = self.__progress__
+        if total > 0:
+            return Fraction(current, total)
+        else:
+            return Fraction(0, 1)
 
     @classmethod
     def spawn(cls,
@@ -5618,9 +5617,9 @@ class __ProgressQueueJob__(object):
             def __init__(self, memory):
                 self.memory = memory
 
-            def update(self, current, total):
-                self.memory[0] = current
-                self.memory[1] = total
+            def update(self, progress):
+                self.memory[0] = progress.numerator
+                self.memory[1] = progress.denominator
 
         def execute_job(function, args, kwargs, progress, result_pipe):
             try:
@@ -5635,7 +5634,7 @@ class __ProgressQueueJob__(object):
         from multiprocessing import Process, Array, Pipe
 
         # construct shared memory array to store progress
-        progress = Array("L", [0, 0])
+        progress = Array("L", [0, 1])
 
         # construct one-way pipe to collect result
         (parent_conn, child_conn) = Pipe(False)
