@@ -229,7 +229,7 @@ if (__name__ == '__main__'):
 
             if not audiofile_a.__class__.supports_to_pcm():
                 msg.error(_.ERR_UNSUPPORTED_TO_PCM %
-                          {"filename":filename_a, "type":audiofile_a.NAME})
+                          {"filename": filename_a, "type": audiofile_a.NAME})
                 sys.exit(1)
 
             try:
@@ -240,7 +240,7 @@ if (__name__ == '__main__'):
 
             if not audiofile_b.__class__.supports_to_pcm():
                 msg.error(_.ERR_UNSUPPORTED_TO_PCM %
-                          {"filename":filename_b, "type":audiofile_b.NAME})
+                          {"filename": filename_b, "type": audiofile_b.NAME})
                 sys.exit(1)
 
             (path1, path2, mismatch) = cmp_files(None,
@@ -270,8 +270,8 @@ if (__name__ == '__main__'):
                                 files[audiofile.filename] = audiofile
                             else:
                                 msg.warning(_.ERR_UNSUPPORTED_TO_PCM %
-                                            {"filename":audiofile.filename,
-                                             "type":audiofile.NAME})
+                                            {"filename": audiofile.filename,
+                                             "type": audiofile.NAME})
                         except audiotools.UnsupportedFile:
                             pass
                         except audiotools.InvalidFile as err:

@@ -493,7 +493,7 @@ class audiotools_cdio(Extension):
                         paranoia_version = [("OLD_PARANOIA", None)]
                     else:
                         paranoia_version = []
-                except (KeyError,ValueError):
+                except (KeyError, ValueError):
                     paranoia_version = []
             else:
                 extra_compile_args.extend(

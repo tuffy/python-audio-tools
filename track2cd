@@ -168,7 +168,7 @@ if (__name__ == '__main__'):
                 audiofiles.append(audiofile)
             else:
                 msg.error(_.ERR_UNSUPPORTED_TO_PCM %
-                          {"filename":filename, "type":audiofile.NAME})
+                          {"filename": filename, "type": audiofile.NAME})
                 sys.exit(1)
         except audiotools.UnsupportedFile:
             msg.error(_.ERR_UNSUPPORTED_FILE % (filename,))

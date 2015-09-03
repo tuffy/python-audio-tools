@@ -1894,7 +1894,6 @@ class FlacAudio(WaveContainer, AiffContainer):
         from audiotools import __default_quality__
         from audiotools import VERSION
 
-
         if ((compression is None) or (compression not in
                                       cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
@@ -3229,7 +3228,7 @@ class OggFlacAudio(FlacAudio):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        from audiotools import BIN,PCMFileReader
+        from audiotools import BIN, PCMFileReader
         import subprocess
         import os
         sub = subprocess.Popen(
@@ -3481,6 +3480,7 @@ class OggFlacAudio(FlacAudio):
                 output_track.update_metadata(metadata)
 
             return fixes_performed + metadata_fixes
+
 
 def sizes_to_offsets(sizes):
     """takes list of (frame_size, frame_frames) tuples
