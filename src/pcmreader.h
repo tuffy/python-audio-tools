@@ -3,6 +3,7 @@
 #include "pcm.h"
 #endif
 #include <stdio.h>
+#include "pcm_conv.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -39,11 +40,11 @@ struct PCMReader {
         #ifdef STANDALONE
         struct {
             FILE *file;
-            int (*converter)(const unsigned char *raw_pcm_data);
+            pcm_to_int_f converter;
         } raw;
         struct {
             FILE *file;
-            int (*converter)(const unsigned char *raw_pcm_data);
+            pcm_to_int_f converter;
             unsigned total_pcm_frames;
         } error;
         #else

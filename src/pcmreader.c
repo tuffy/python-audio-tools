@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include "pcmreader.h"
-#include "pcm_conv.h"
 
 #ifndef MIN
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -233,7 +232,7 @@ pcmreader_raw_read(struct PCMReader *self,
 {
     const register unsigned bytes_per_sample = self->bits_per_sample / 8;
 
-    int (*converter)(const unsigned char *) = self->input.raw.converter;
+    pcm_to_int_f converter = self->input.raw.converter;
 
     const unsigned bytes_to_read =
         pcm_frames * bytes_per_sample * self->channels;
@@ -252,12 +251,7 @@ pcmreader_raw_read(struct PCMReader *self,
     /*cull partial PCM frames*/
     const unsigned samples_read = pcm_frames_read * self->channels;
 
-    register unsigned i;
-
-    for (i = 0; i < samples_read; i++) {
-        *pcm_data = converter(buffer + (i * bytes_per_sample));
-        pcm_data += 1;
-    }
+    converter(samples_read, buffer , pcm_data);
 
     return pcm_frames_read;
 }
@@ -282,7 +276,7 @@ pcmreader_error_read(struct PCMReader *self,
     if (self->input.error.total_pcm_frames) {
         const register unsigned bytes_per_sample = self->bits_per_sample / 8;
 
-        int (*converter)(const unsigned char *) = self->input.error.converter;
+        pcm_to_int_f converter = self->input.error.converter;
 
         const unsigned pcm_frames_to_read =
             MIN(pcm_frames, self->input.error.total_pcm_frames);
@@ -304,12 +298,7 @@ pcmreader_error_read(struct PCMReader *self,
         /*cull partial PCM frames*/
         const unsigned samples_read = pcm_frames_read * self->channels;
 
-        register unsigned i;
-
-        for (i = 0; i < samples_read; i++) {
-            *pcm_data = converter(buffer + (i * bytes_per_sample));
-            pcm_data += 1;
-        }
+        converter(samples_read, buffer , pcm_data);
 
         self->input.error.total_pcm_frames -= pcm_frames_to_read;
 
