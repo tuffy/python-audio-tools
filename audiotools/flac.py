@@ -886,8 +886,7 @@ class Flac_CUESHEET(Sheet):
 
         metadata = sheet.get_metadata()
         if (metadata is not None) and (metadata.catalog is not None):
-            catalog_number = pad(metadata.catalog.encode("ascii", "replace"),
-                                 128)
+            catalog_number = pad(metadata.catalog, 128)
         else:
             catalog_number = b"\x00" * 128
 
