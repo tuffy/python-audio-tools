@@ -2494,11 +2494,9 @@ class PCMReaderProgress(PCMReader):
                            channel_mask=pcmreader.channel_mask,
                            bits_per_sample=pcmreader.bits_per_sample)
 
-        assert(total_frames > 0)
-
         self.pcmreader = pcmreader
         self.current_frames = current_frames
-        self.total_frames = total_frames
+        self.total_frames = max(total_frames, 1)
         if callable(progress):
             self.progress = progress
         else:
@@ -5552,6 +5550,7 @@ class __ProgressQueueJob__(object):
                  job_index,
                  process,
                  progress,
+                 lock,
                  result_pipe,
                  progress_text,
                  completion_output):
@@ -5560,6 +5559,8 @@ class __ProgressQueueJob__(object):
         process is the Process object of the running child
 
         progress is an Array object of [current, total] progress status
+
+        lock is a Lock object to synchronize access to "progress"
 
         result_pipe is a Connection object which will be read for data
 
@@ -5572,6 +5573,7 @@ class __ProgressQueueJob__(object):
         self.job_index = job_index
         self.process = process
         self.__progress__ = progress
+        self.__lock__ = lock
         self.result_pipe = result_pipe
         self.progress_text = progress_text
         self.completion_output = completion_output
@@ -5582,7 +5584,9 @@ class __ProgressQueueJob__(object):
         return self.result_pipe.fileno()
 
     def progress(self):
+        self.__lock__.acquire()
         (current, total) = self.__progress__
+        self.__lock__.release()
         if total > 0:
             return Fraction(current, total)
         else:
@@ -5614,12 +5618,15 @@ class __ProgressQueueJob__(object):
         """
 
         class __progress__(object):
-            def __init__(self, memory):
+            def __init__(self, memory, lock):
                 self.memory = memory
+                self.lock = lock
 
             def update(self, progress):
+                self.lock.acquire()
                 self.memory[0] = progress.numerator
                 self.memory[1] = progress.denominator
+                self.lock.release()
 
         def execute_job(function, args, kwargs, progress, result_pipe):
             try:
@@ -5631,10 +5638,13 @@ class __ProgressQueueJob__(object):
 
             result_pipe.close()
 
-        from multiprocessing import Process, Array, Pipe
+        from multiprocessing import Process, Array, Pipe, Lock
 
         # construct shared memory array to store progress
         progress = Array("L", [0, 1])
+
+        # construct lock to keep array access process-safe
+        lock = Lock()
 
         # construct one-way pipe to collect result
         (parent_conn, child_conn) = Pipe(False)
@@ -5644,7 +5654,7 @@ class __ProgressQueueJob__(object):
                           args=(function,
                                 args,
                                 kwargs,
-                                __progress__(progress).update,
+                                __progress__(progress, lock).update,
                                 child_conn))
 
         # start child job
@@ -5654,6 +5664,7 @@ class __ProgressQueueJob__(object):
         return cls(job_index=job_index,
                    process=process,
                    progress=progress,
+                   lock=lock,
                    result_pipe=parent_conn,
                    progress_text=progress_text,
                    completion_output=completion_output)
