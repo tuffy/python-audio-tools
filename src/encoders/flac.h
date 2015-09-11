@@ -23,6 +23,13 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+typedef enum {
+    FLAC_OK,           /*everything ok*/
+    FLAC_READ_ERROR,   /*read error from PCMReader*/
+    FLAC_PCM_MISMATCH, /*total PCM frames mismatch*/
+    FLAC_NO_TEMPFILE   /*unable to open temporary file*/
+} flacenc_status_t;
+
 struct flac_encoding_options {
     unsigned block_size;                    /*typically 1152 or 4096*/
     unsigned min_residual_partition_order;  /*typically 0*/
@@ -50,29 +57,17 @@ void
 flacenc_display_options(const struct flac_encoding_options *options,
                         FILE *output);
 
-struct flac_frame_size {
-    unsigned byte_size;
-    unsigned pcm_frames_size;
-    struct flac_frame_size *next;  /*NULL at end of list*/
-};
 
 /*encodes a FLAC file using data from the given PCMReader
   to the given output stream
-  using the given options
-  and returns a linked list of frame sizes
-  which must be deallocated when no longer needed
-  using free_flac_frame_sizes()
-
-  returns NULL if some error occurs reading from PCMReader*/
-struct flac_frame_size*
+  using the given options*/
+flacenc_status_t
 flacenc_encode_flac(struct PCMReader *pcmreader,
                     BitstreamWriter *output,
                     struct flac_encoding_options *options,
+                    uint64_t total_pcm_frames,
+                    const char version[],
                     unsigned padding_size);
-
-/*deallocates linked list of frame sizes*/
-void
-free_flac_frame_sizes(struct flac_frame_size *sizes);
 
 #ifndef STANDALONE
 PyObject*

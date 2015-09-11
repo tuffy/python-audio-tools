@@ -62,7 +62,17 @@ pcmreader_open_raw(FILE *file,
 
     reader->sample_rate = sample_rate;
     reader->channels = channels;
-    reader->channel_mask = channel_mask;
+    if (!channel_mask) {
+        if (channels == 1) {
+            reader->channel_mask = 0x4;
+        } else if (channels == 2) {
+            reader->channel_mask = 0x3;
+        } else {
+            reader->channel_mask = 0;
+        }
+    } else {
+        reader->channel_mask = channel_mask;
+    }
     reader->bits_per_sample = bits_per_sample;
 
     reader->status = PCM_OK;

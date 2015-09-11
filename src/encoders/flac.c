@@ -19,6 +19,12 @@ typedef enum {CONSTANT, VERBATIM, FIXED, LPC} subframe_type_t;
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
+struct flac_frame_size {
+    unsigned byte_size;
+    unsigned pcm_frames_size;
+    struct flac_frame_size *next;  /*NULL at end of list*/
+};
+
 /*******************************
  * private function signatures *
  *******************************/
@@ -32,6 +38,7 @@ write_block_header(BitstreamWriter *output,
 /*writes the STREAMINFO block, not including the block header*/
 static void
 write_STREAMINFO(BitstreamWriter *output,
+                 int is_last,
                  unsigned minimum_block_size,
                  unsigned maximum_block_size,
                  unsigned minimum_frame_size,
@@ -44,7 +51,37 @@ write_STREAMINFO(BitstreamWriter *output,
 
 static void
 write_PADDING(BitstreamWriter *output,
+              int is_last,
               unsigned padding_size);
+
+static unsigned
+total_seek_points(const struct flac_frame_size *sizes,
+                  unsigned seekpoint_interval);
+
+static struct flac_frame_size*
+dummy_frame_sizes(uint64_t total_pcm_frames, unsigned block_size);
+
+static void
+write_placeholder_SEEKTABLE(BitstreamWriter *output,
+                            int is_last,
+                            uint64_t total_pcm_frames,
+                            unsigned block_size,
+                            unsigned seekpoint_interval);
+
+static void
+write_SEEKTABLE(BitstreamWriter *output,
+                int is_last,
+                struct flac_frame_size *sizes,
+                unsigned seekpoint_interval);
+
+static unsigned
+reader_mask(const struct PCMReader *pcmreader);
+
+static void
+write_VORBIS_COMMENT(BitstreamWriter *output,
+                     int is_last,
+                     const char version[],
+                     const struct PCMReader *pcmreader);
 
 static void
 update_md5sum(audiotools__MD5Context *md5sum,
@@ -52,6 +89,12 @@ update_md5sum(audiotools__MD5Context *md5sum,
               unsigned channels,
               unsigned bits_per_sample,
               unsigned pcm_frames);
+
+static struct flac_frame_size*
+encode_frames(struct PCMReader *pcmreader,
+              BitstreamWriter *output,
+              const struct flac_encoding_options *options,
+              audiotools__MD5Context *md5_context);
 
 static void
 encode_frame(const struct PCMReader *pcmreader,
@@ -248,6 +291,15 @@ push_frame_size(struct flac_frame_size *head,
 static void
 reverse_frame_sizes(struct flac_frame_size **head);
 
+static void
+frame_sizes_info(const struct flac_frame_size *sizes,
+                 unsigned *minimum_frame_size,
+                 unsigned *maximum_frame_size,
+                 uint64_t *total_samples);
+
+static void
+free_frame_sizes(struct flac_frame_size *sizes);
+
 static int
 samples_identical(unsigned sample_count, const int *samples);
 
@@ -311,23 +363,27 @@ flacenc_display_options(const struct flac_encoding_options *options,
            options->use_fixed);
 }
 
-struct flac_frame_size*
+#define BUFFER_SIZE 4096
+
+flacenc_status_t
 flacenc_encode_flac(struct PCMReader *pcmreader,
                     BitstreamWriter *output,
                     struct flac_encoding_options *options,
+                    uint64_t total_pcm_frames,
+                    const char version[],
                     unsigned padding_size)
 {
     const uint8_t signature[] = "fLaC";
     struct flac_frame_size *frame_sizes = NULL;
-    bw_pos_t *streaminfo_start;
-    unsigned minimum_frame_size = (1 << 24) - 1;
-    unsigned maximum_frame_size = 0;
-    uint64_t total_samples = 0;
+    unsigned minimum_frame_size;
+    unsigned maximum_frame_size;
     audiotools__MD5Context md5_context;
     uint8_t md5sum[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    int pcm_data[options->block_size * pcmreader->channels];
-    unsigned pcm_frames_read;
-    unsigned frame_number = 0;
+
+    /*make seekpoints every 10 seconds, or every 10 frames
+      whichever is larger*/
+    const unsigned seekpoint_interval = MAX(pcmreader->sample_rate * 10,
+                                            options->block_size * 10);
 
     audiotools__MD5Init(&md5_context);
 
@@ -366,68 +422,70 @@ flacenc_encode_flac(struct PCMReader *pcmreader,
     /*write signature*/
     output->write_bytes(output, signature, 4);
 
-    /*write initial STREAMINFO block*/
-    write_block_header(output, padding_size ? 0 : 1, 0, 34);
-    streaminfo_start = output->getpos(output);
-    write_STREAMINFO(output,
-                     options->block_size,
-                     options->block_size,
-                     minimum_frame_size,
-                     maximum_frame_size,
-                     pcmreader->sample_rate,
-                     pcmreader->channels,
-                     pcmreader->bits_per_sample,
-                     total_samples,
-                     md5sum);
+    if (total_pcm_frames) {
+        /*total number of PCM frames is known in advance*/
 
-    /*write PADDING block, if any*/
-    if (padding_size) {
-        write_block_header(output, 1, 1, padding_size);
-        write_PADDING(output, padding_size);
-    }
+        bw_pos_t *streaminfo_start = output->getpos(output);
+        uint64_t encoded_pcm_frames;
 
-    /*write frames*/
-    while ((pcm_frames_read =
-            pcmreader->read(pcmreader, options->block_size, pcm_data)) > 0) {
-        unsigned frame_size = 0;
-
-        /*update running MD5 of stream*/
-        update_md5sum(&md5_context,
-                      pcm_data,
-                      pcmreader->channels,
-                      pcmreader->bits_per_sample,
-                      pcm_frames_read);
-
-        /*encode frame itself*/
-        output->add_callback(output, (bs_callback_f)byte_counter, &frame_size);
-        encode_frame(pcmreader,
-                     output,
-                     options,
-                     pcm_data,
-                     pcm_frames_read,
-                     frame_number++);
-        output->pop_callback(output, NULL);
-
-        /*save total length of frame*/
-        frame_sizes = push_frame_size(frame_sizes,
-                                      frame_size,
-                                      pcm_frames_read);
-        if (frame_size < minimum_frame_size) {
-            minimum_frame_size = frame_size;
-        }
-        if (frame_size > maximum_frame_size) {
-            maximum_frame_size = frame_size;
-        }
-        total_samples += pcm_frames_read;
-    }
-
-    if (pcmreader->status == PCM_OK) {
-        /*finalize MD5 sum*/
-        audiotools__MD5Final(md5sum, &md5_context);
-
-        /*rewrite initial STREAMINFO block*/
-        output->setpos(output, streaminfo_start);
+        /*write placeholder STREAMINFO based on total PCM frames*/
         write_STREAMINFO(output,
+                         0,
+                         options->block_size,
+                         options->block_size,
+                         (1 << 24) - 1,
+                         0,
+                         pcmreader->sample_rate,
+                         pcmreader->channels,
+                         pcmreader->bits_per_sample,
+                         total_pcm_frames,
+                         md5sum);
+
+        /*write placeholder SEEKTABLE based on total PCM frames*/
+        write_placeholder_SEEKTABLE(output,
+                                    0,
+                                    total_pcm_frames,
+                                    options->block_size,
+                                    seekpoint_interval);
+
+        /*write VORBIS_COMMENT based on version and channel mask*/
+        write_VORBIS_COMMENT(output,
+                             padding_size ? 0 : 1,
+                             version,
+                             pcmreader);
+
+        /*write PADDING to disk, if any*/
+        if (padding_size) {
+            write_PADDING(output, 1, padding_size);
+        }
+
+        /*encode frames to to output file*/
+        frame_sizes = encode_frames(pcmreader,
+                                    output,
+                                    options,
+                                    &md5_context);
+
+        /*delete window now that we're done with it, if necessary*/
+        free(options->window);
+
+        /*ensure total PCM frames matches*/
+        frame_sizes_info(frame_sizes,
+                         &minimum_frame_size,
+                         &maximum_frame_size,
+                         &encoded_pcm_frames);
+
+        if (encoded_pcm_frames != total_pcm_frames) {
+            streaminfo_start->del(streaminfo_start);
+            free_frame_sizes(frame_sizes);
+            return FLAC_PCM_MISMATCH;
+        }
+
+        /*rewrite STREAMINFO based on frames information*/
+        output->setpos(output, streaminfo_start);
+        streaminfo_start->del(streaminfo_start);
+        audiotools__MD5Final(md5sum, &md5_context);
+        write_STREAMINFO(output,
+                         0,
                          options->block_size,
                          options->block_size,
                          minimum_frame_size,
@@ -435,41 +493,103 @@ flacenc_encode_flac(struct PCMReader *pcmreader,
                          pcmreader->sample_rate,
                          pcmreader->channels,
                          pcmreader->bits_per_sample,
-                         total_samples,
+                         total_pcm_frames,
                          md5sum);
-        streaminfo_start->del(streaminfo_start);
 
-        /*delete window, if necessary*/
-        free(options->window);
+        /*rewrite SEEKTABLE based on frames information*/
+        write_SEEKTABLE(output,
+                        0,
+                        frame_sizes,
+                        seekpoint_interval);
 
-        /*return frame lengths for SEEKTABLE generation in proper order*/
-        reverse_frame_sizes(&frame_sizes);
-
-        return frame_sizes;
+        /*free frames information*/
+        free_frame_sizes(frame_sizes);
     } else {
-        /*remove unused start of stream position*/
-        streaminfo_start->del(streaminfo_start);
+        /*total number of PCM frames isn't known in advance*/
 
-        /*delete window, if necessary*/
+        /*encode frames to temporary space*/
+        FILE *tempfile = tmpfile();
+        BitstreamWriter *temp_output;
+        uint8_t buffer[BUFFER_SIZE];
+        size_t amount_read;
+
+        if (tempfile) {
+            temp_output = bw_open(tempfile, BS_BIG_ENDIAN);
+        } else {
+            /*unable to open temporary file*/
+            fclose(tempfile);
+            return FLAC_NO_TEMPFILE;
+        }
+
+        frame_sizes = encode_frames(pcmreader,
+                                    temp_output,
+                                    options,
+                                    &md5_context);
+
+        temp_output->free(temp_output);
+
+        /*delete window now that we're done with it, if necessary*/
         free(options->window);
 
-        /*delete any frame lengths*/
-        free_flac_frame_sizes(frame_sizes);
+        if (!frame_sizes) {
+            fclose(tempfile);
+            return FLAC_READ_ERROR;
+        }
 
-        /*indicate read error has occurred*/
-        return NULL;
+        /*determine STREAMINFO from frames information*/
+        frame_sizes_info(frame_sizes,
+                         &minimum_frame_size,
+                         &maximum_frame_size,
+                         &total_pcm_frames);
+
+        /*write STREAMINFO to disk*/
+        audiotools__MD5Final(md5sum, &md5_context);
+        write_STREAMINFO(output,
+                         0,
+                         options->block_size,
+                         options->block_size,
+                         minimum_frame_size,
+                         maximum_frame_size,
+                         pcmreader->sample_rate,
+                         pcmreader->channels,
+                         pcmreader->bits_per_sample,
+                         total_pcm_frames,
+                         md5sum);
+
+        /*write SEEKTABLE to disk*/
+        write_SEEKTABLE(output,
+                        0,
+                        frame_sizes,
+                        seekpoint_interval);
+
+        /*free frames information*/
+        free_frame_sizes(frame_sizes);
+
+        /*write VORBIS_COMMENT based on version and channel mask*/
+        write_VORBIS_COMMENT(output,
+                             padding_size ? 0 : 1,
+                             version,
+                             pcmreader);
+
+        /*write PADDING to disk, if any*/
+        if (padding_size) {
+            write_PADDING(output, 1, padding_size);
+        }
+
+        /*transfer frame data from temporary space to output file*/
+        rewind(tempfile);
+        while ((amount_read = fread(buffer, 1, BUFFER_SIZE, tempfile)) > 0) {
+            output->write_bytes(output, buffer, (unsigned)amount_read);
+        }
+
+        /*free temporary space*/
+        fclose(tempfile);
     }
+
+    /*return success*/
+    return FLAC_OK;
 }
 
-void
-free_flac_frame_sizes(struct flac_frame_size *sizes)
-{
-    while (sizes) {
-        struct flac_frame_size *next = sizes->next;
-        free(sizes);
-        sizes = next;
-    }
-}
 
 #ifndef STANDALONE
 
@@ -480,6 +600,9 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
 
     static char *kwlist[] = {"filename",
                              "pcmreader",
+                             "version",
+
+                             "total_pcm_frames",
                              "block_size",
                              "max_lpc_order",
                              "min_residual_partition_order",
@@ -487,7 +610,6 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
                              "mid_side",
                              "adaptive_mid_side",
                              "exhaustive_model_search",
-
                              "disable_verbatim_subframes",
                              "disable_constant_subframes",
                              "disable_fixed_subframes",
@@ -499,8 +621,9 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     FILE *output_file = NULL;
     BitstreamWriter *output = NULL;
     struct PCMReader *pcmreader = NULL;
-    struct flac_frame_size *frame_sizes = NULL;
+    char *version = NULL;
 
+    long long total_pcm_frames = 0;
     int block_size = 4096;
     int max_lpc_order = 12;
     int min_residual_partition_order = 0;
@@ -512,17 +635,21 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     int no_fixed_subframes = 0;
     int no_lpc_subframes = 0;
 
+    flacenc_status_t result;
+
     flacenc_init_options(&options);
 
     if (!PyArg_ParseTupleAndKeywords(
             args,
             keywds,
-            "sO&|iiiiiiiiiiii",
+            "sO&s|Liiiiiiiiiiii",
             kwlist,
             &filename,
             py_obj_to_pcmreader,
             &pcmreader,
+            &version,
 
+            &total_pcm_frames,
             &block_size,
             &max_lpc_order,
             &min_residual_partition_order,
@@ -539,6 +666,10 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     }
 
     /*sanity-check options and populate options struct*/
+    if (total_pcm_frames < 0) {
+        PyErr_SetString(PyExc_ValueError, "total PCM frames must be >= 0");
+        goto error;
+    }
     if (block_size < 1) {
         PyErr_SetString(PyExc_ValueError, "block size must be > 0");
         goto error;
@@ -602,37 +733,32 @@ encoders_encode_flac(PyObject *dummy, PyObject *args, PyObject *keywds)
     output = bw_open(output_file, BS_BIG_ENDIAN);
 
     /*perform actual encoding*/
-    frame_sizes = flacenc_encode_flac(pcmreader,
-                                      output,
-                                      &options,
-                                      padding_size);
+    result = flacenc_encode_flac(pcmreader,
+                                 output,
+                                 &options,
+                                 (uint64_t)total_pcm_frames,
+                                 version,
+                                 padding_size);
 
     output->close(output);
     pcmreader->del(pcmreader);
 
-    if (frame_sizes) {
-        PyObject *frame_size_list = PyList_New(0);
-        struct flac_frame_size *sizes;
-        for (sizes = frame_sizes; sizes; sizes = sizes->next) {
-            PyObject *tuple = Py_BuildValue("(I, I)",
-                                            sizes->byte_size,
-                                            sizes->pcm_frames_size);
-            if (!PyList_Append(frame_size_list, tuple)) {
-                Py_DECREF(tuple);
-            } else {
-                Py_DECREF(sizes);
-                Py_DECREF(tuple);
-                free_flac_frame_sizes(frame_sizes);
-                return NULL;
-            }
-        }
-        free_flac_frame_sizes(frame_sizes);
-        return frame_size_list;
-    } else {
-        /*some read error occurred during encoding*/
+    switch (result) {
+    case FLAC_OK:
+    default:
+        Py_INCREF(Py_None);
+        return Py_None;
+    case FLAC_READ_ERROR:
         PyErr_SetString(PyExc_IOError, "read error during encoding");
         return NULL;
+    case FLAC_PCM_MISMATCH:
+        PyErr_SetString(PyExc_ValueError, "total_pcm_frames mismatch");
+        return NULL;
+    case FLAC_NO_TEMPFILE:
+        PyErr_SetString(PyExc_IOError, "error opening temporary file");
+        return NULL;
     }
+
 error:
     pcmreader->del(pcmreader);
     return NULL;
@@ -655,6 +781,7 @@ write_block_header(BitstreamWriter *output,
 
 static void
 write_STREAMINFO(BitstreamWriter *output,
+                 int is_last,
                  unsigned minimum_block_size,
                  unsigned maximum_block_size,
                  unsigned minimum_frame_size,
@@ -665,6 +792,8 @@ write_STREAMINFO(BitstreamWriter *output,
                  uint64_t total_samples,
                  uint8_t md5sum[])
 {
+    write_block_header(output, is_last, 0, 34);
+
     output->build(output,
                   "16u 16u 24u 24u 20u 3u 5u 36U 16b",
                   minimum_block_size,
@@ -680,11 +809,186 @@ write_STREAMINFO(BitstreamWriter *output,
 
 static void
 write_PADDING(BitstreamWriter *output,
+              int is_last,
               unsigned padding_size)
 {
+    write_block_header(output, is_last, 1, padding_size);
+
     for (; padding_size; padding_size--) {
         output->write(output, 8, 0);
     }
+}
+
+static unsigned
+total_seek_points(const struct flac_frame_size *sizes,
+                  unsigned seekpoint_interval)
+{
+    unsigned total = 0;
+
+    while (sizes) {
+        unsigned interval = seekpoint_interval;
+        total += 1;
+
+        if (interval > sizes->pcm_frames_size) {
+            while (sizes && (interval > sizes->pcm_frames_size)) {
+                interval -= sizes->pcm_frames_size;
+                sizes = sizes->next;
+            }
+        } else {
+            sizes = sizes->next;
+        }
+    }
+
+    return total;
+}
+
+static struct flac_frame_size*
+dummy_frame_sizes(uint64_t total_pcm_frames, unsigned block_size)
+{
+    struct flac_frame_size *sizes = NULL;
+
+    while (total_pcm_frames) {
+        if (total_pcm_frames > block_size) {
+            sizes = push_frame_size(sizes, 0, block_size);
+            total_pcm_frames -= block_size;
+        } else {
+            sizes = push_frame_size(sizes, 0, (unsigned)total_pcm_frames);
+            total_pcm_frames = 0;
+        }
+    }
+
+    reverse_frame_sizes(&sizes);
+    return sizes;
+}
+
+static void
+write_placeholder_SEEKTABLE(BitstreamWriter *output,
+                            int is_last,
+                            uint64_t total_pcm_frames,
+                            unsigned block_size,
+                            unsigned seekpoint_interval)
+{
+    struct flac_frame_size *dummy_sizes =
+        dummy_frame_sizes(total_pcm_frames, block_size);
+
+    write_PADDING(
+        output, is_last,
+        total_seek_points(dummy_sizes, seekpoint_interval) * (8 + 8 + 2));
+
+    free_frame_sizes(dummy_sizes);
+}
+
+static void
+write_SEEKTABLE(BitstreamWriter *output,
+                int is_last,
+                struct flac_frame_size *sizes,
+                unsigned seekpoint_interval)
+{
+#ifndef NDEBUG
+    struct flac_frame_size *original_sizes = sizes;
+#endif
+    unsigned written_seek_points = 0;
+    uint64_t first_sample = 0;
+    uint64_t file_offset = 0;
+
+    write_block_header(
+        output, is_last, 3,
+        total_seek_points(sizes, seekpoint_interval) * (8 + 8 + 2));
+
+    while (sizes) {
+        unsigned interval = seekpoint_interval;
+
+        output->write_64(output, 64, first_sample);
+        output->write_64(output, 64, file_offset);
+        output->write(output, 16, sizes->pcm_frames_size);
+        written_seek_points += 1;
+
+        if (interval > sizes->pcm_frames_size) {
+            while (sizes && (interval > sizes->pcm_frames_size)) {
+                first_sample += sizes->pcm_frames_size;
+                file_offset += sizes->byte_size;
+                interval -= sizes->pcm_frames_size;
+                sizes = sizes->next;
+            }
+        } else {
+            first_sample += sizes->pcm_frames_size;
+            file_offset += sizes->byte_size;
+            sizes = sizes->next;
+        }
+    }
+
+    assert(written_seek_points ==
+           total_seek_points(original_sizes, seekpoint_interval));
+}
+
+static unsigned
+reader_mask(const struct PCMReader *pcmreader)
+{
+    const static unsigned fL  = 0x1;
+    const static unsigned fR  = 0x2;
+    const static unsigned fC  = 0x4;
+    const static unsigned LFE = 0x8;
+    const static unsigned bL  = 0x10;
+    const static unsigned bR  = 0x20;
+    const static unsigned bC  = 0x100;
+    const static unsigned sL  = 0x200;
+    const static unsigned sR  = 0x400;
+
+    if (pcmreader->channel_mask) {
+        return pcmreader->channel_mask;
+    } else switch (pcmreader->channels) {
+    case 1:  return fC;
+    case 2:  return fL | fR;
+    case 3:  return fL | fR | fC;
+    case 4:  return fL | fR | bL | bR;
+    case 5:  return fL | fR | fC | bL | bR;
+    case 6:  return fL | fR | fC | bL | bR | LFE;
+    case 7:  return fL | fR | fC | LFE | bC | sL | sR;
+    case 8:  return fL | fR | fC | LFE | bL | bR | sL | sR;
+    default: return 0; /*this shouldn't happen*/
+    }
+}
+
+static void
+write_VORBIS_COMMENT(BitstreamWriter *output,
+                     int is_last,
+                     const char version[],
+                     const struct PCMReader *pcmreader)
+{
+    /*note that the comment is in little-endian format
+      unlike the rest of the file*/
+    BitstreamRecorder *comment = bw_open_bytes_recorder(BS_LITTLE_ENDIAN);
+    BitstreamWriter *comment_w = (BitstreamWriter*)comment;
+    const size_t version_len = strlen(version);
+    const int has_channel_mask =
+        (pcmreader->channels > 2) || (pcmreader->bits_per_sample > 16);
+    const unsigned channel_mask = reader_mask(pcmreader);
+
+    comment_w->write(comment_w, 32, (unsigned)version_len);
+    comment_w->write_bytes(comment_w,
+                           (uint8_t*)version,
+                           (unsigned)version_len);
+
+    if (has_channel_mask && channel_mask) {
+        char channel_mask_str[] = "WAVEFORMATEXTENSIBLE_CHANNEL_MASK=0xXXXX";
+        const unsigned channel_mask_len =
+            (unsigned)snprintf(channel_mask_str,
+                               sizeof(channel_mask_str),
+                               "WAVEFORMATEXTENSIBLE_CHANNEL_MASK=0x%.4X",
+                               channel_mask);
+
+        comment_w->write(comment_w, 32, 1);
+        comment_w->write(comment_w, 32, channel_mask_len);
+        comment_w->write_bytes(comment_w,
+                               (uint8_t*)channel_mask_str,
+                               channel_mask_len);
+    } else {
+        comment_w->write(comment_w, 32, 0);
+    }
+
+    write_block_header(output, is_last, 4, comment->bytes_written(comment));
+    comment->copy(comment, output);
+    comment->close(comment);
 }
 
 static void
@@ -703,6 +1007,53 @@ update_md5sum(audiotools__MD5Context *md5sum,
                                                 buffer);
 
     audiotools__MD5Update(md5sum, buffer, buffer_size);
+}
+
+static struct flac_frame_size*
+encode_frames(struct PCMReader *pcmreader,
+              BitstreamWriter *output,
+              const struct flac_encoding_options *options,
+              audiotools__MD5Context *md5_context)
+{
+    struct flac_frame_size *frame_sizes = NULL;
+    int pcm_data[options->block_size * pcmreader->channels];
+    unsigned pcm_frames_read;
+    unsigned frame_number = 0;
+
+    while ((pcm_frames_read =
+            pcmreader->read(pcmreader, options->block_size, pcm_data)) > 0) {
+        unsigned frame_size = 0;
+
+        /*update running MD5 of stream*/
+        update_md5sum(md5_context,
+                      pcm_data,
+                      pcmreader->channels,
+                      pcmreader->bits_per_sample,
+                      pcm_frames_read);
+
+        /*encode frame itself*/
+        output->add_callback(output, (bs_callback_f)byte_counter, &frame_size);
+        encode_frame(pcmreader,
+                     output,
+                     options,
+                     pcm_data,
+                     pcm_frames_read,
+                     frame_number++);
+        output->pop_callback(output, NULL);
+
+        /*save total length of frame*/
+        frame_sizes = push_frame_size(frame_sizes,
+                                      frame_size,
+                                      pcm_frames_read);
+    }
+
+    if (pcmreader->status == PCM_OK) {
+        reverse_frame_sizes(&frame_sizes);
+        return frame_sizes;
+    } else {
+        free_frame_sizes(frame_sizes);
+        return NULL;
+    }
 }
 
 static void
@@ -1881,6 +2232,37 @@ reverse_frame_sizes(struct flac_frame_size **head)
     *head = reversed;
 }
 
+static void
+frame_sizes_info(const struct flac_frame_size *sizes,
+                 unsigned *minimum_frame_size,
+                 unsigned *maximum_frame_size,
+                 uint64_t *total_samples)
+{
+    *minimum_frame_size = (1 << 24) - 1;
+    *maximum_frame_size = 0;
+    *total_samples = 0;
+
+    for (; sizes; sizes = sizes->next) {
+        if (sizes->byte_size < *minimum_frame_size) {
+            *minimum_frame_size = sizes->byte_size;
+        }
+        if (sizes->byte_size > *maximum_frame_size) {
+            *maximum_frame_size = sizes->byte_size;
+        }
+        *total_samples += sizes->pcm_frames_size;
+    }
+}
+
+static void
+free_frame_sizes(struct flac_frame_size *sizes)
+{
+    while (sizes) {
+        struct flac_frame_size *next = sizes->next;
+        free(sizes);
+        sizes = next;
+    }
+}
+
 static int
 samples_identical(unsigned sample_count, const int *samples)
 {
@@ -1967,15 +2349,17 @@ largest_residual_bits(const int residual[], unsigned residual_count)
 
 int main(int argc, char *argv[])
 {
+    const char version[] = "Python Audio Tools";
     static struct flac_encoding_options options;
     char* output_filename = NULL;
     unsigned channels = 2;
     unsigned sample_rate = 44100;
     unsigned bits_per_sample = 16;
+    unsigned long long total_pcm_frames = 0;
     struct PCMReader *pcmreader;
     FILE *output_file;
     BitstreamWriter *output;
-    struct flac_frame_size *frame_sizes;
+    flacenc_status_t status;
 
     char c;
     const static struct option long_opts[] = {
@@ -1983,6 +2367,7 @@ int main(int argc, char *argv[])
         {"channels",                required_argument, NULL, 'c'},
         {"sample-rate",             required_argument, NULL, 'r'},
         {"bits-per-sample",         required_argument, NULL, 'b'},
+        {"total-pcm-frames",        required_argument, NULL, 'T'},
         {"block-size",              required_argument, NULL, 'B'},
         {"max-lpc-order",           required_argument, NULL, 'l'},
         {"min-partition-order",     required_argument, NULL, 'P'},
@@ -2001,7 +2386,7 @@ int main(int argc, char *argv[])
          &options.use_fixed, 0},
         {NULL,                      no_argument,       NULL,  0}
     };
-    const static char* short_opts = "-hc:r:b:B:l:P:R:mMe";
+    const static char* short_opts = "-hc:r:b:T:B:l:P:R:mMe";
 
     flacenc_init_options(&options);
 
@@ -2035,6 +2420,13 @@ int main(int argc, char *argv[])
         case 'b':
             if (((bits_per_sample = strtoul(optarg, NULL, 10)) == 0) && errno) {
                 printf("invalid --bits-per-sample \"%s\"\n", optarg);
+                return 1;
+            }
+            break;
+        case 'T':
+            if (((total_pcm_frames = strtoull(optarg, NULL, 10)) == 0) &&
+                errno) {
+                printf("invalid --total-pcm-frames \"%s\"\n", optarg);
                 return 1;
             }
             break;
@@ -2082,6 +2474,7 @@ int main(int argc, char *argv[])
             printf("-c, --channels=#          number of input channels\n");
             printf("-r, --sample_rate=#       input sample rate in Hz\n");
             printf("-b, --bits-per-sample=#   bits per input sample\n");
+            printf("-T, --total-pcm_frames=#  total number of PCM frames\n");
             printf("\n");
             printf("-B, --block-size=#              block size\n");
             printf("-l, --max-lpc-order=#           maximum LPC order\n");
@@ -2126,21 +2519,30 @@ int main(int argc, char *argv[])
     fputs("\n", stderr);
     flacenc_display_options(&options, stderr);
 
-    frame_sizes = flacenc_encode_flac(pcmreader, output, &options, 0);
-
-    while (frame_sizes) {
-        struct flac_frame_size *next = frame_sizes->next;
-        fprintf(stderr, "frame size : %u bytes, %u samples\n",
-                frame_sizes->byte_size,
-                frame_sizes->pcm_frames_size);
-        free(frame_sizes);
-        frame_sizes = next;
+    switch (status = flacenc_encode_flac(pcmreader,
+                                         output,
+                                         &options,
+                                         total_pcm_frames,
+                                         version,
+                                         0)) {
+    case FLAC_OK:
+    default:
+        break;
+    case FLAC_READ_ERROR:
+        fputs("*** Error: read error from input\n", stderr);
+        break;
+    case FLAC_PCM_MISMATCH:
+        fputs("*** Error: total PCM frames mismatch\n", stderr);
+        break;
+    case FLAC_NO_TEMPFILE:
+        fputs("*** Error: unable to open temporary file\n", stderr);
+        break;
     }
 
     output->close(output);
     pcmreader->close(pcmreader);
     pcmreader->del(pcmreader);
 
-    return 0;
+    return (status == FLAC_OK) ? 0 : 1;
 }
 #endif

@@ -5275,7 +5275,7 @@ class TestMultiChannel(unittest.TestCase):
             else:
                 self.assertNotEqual(int(temp_track.channel_mask()), 0,
                                     "mask = %s for format %s at %d channels" %
-                                    (temp_track.channel_mask(),
+                                    (repr(temp_track.channel_mask()),
                                      audio_class,
                                      channels))
                 pcm = temp_track.to_pcm()
@@ -6675,10 +6675,11 @@ class Test_ExecProgressQueue(unittest.TestCase):
     def test_queue(self):
         def range_sum(start, end, progress):
             import time
+            from fractions import Fraction
 
             sum_ = 0
             for i in range(start, end):
-                progress(start, end)
+                progress(Fraction(start, end))
                 sum_ += i
                 time.sleep(0.1)
             return sum_

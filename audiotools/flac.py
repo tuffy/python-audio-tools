@@ -1888,8 +1888,6 @@ class FlacAudio(WaveContainer, AiffContainer):
         from audiotools.encoders import encode_flac
         from audiotools import EncodingError
         from audiotools import UnsupportedChannelCount
-        from audiotools import BufferedPCMReader
-        from audiotools import CounterPCMReader
         from audiotools import __default_quality__
         from audiotools import VERSION
 
@@ -1947,82 +1945,33 @@ class FlacAudio(WaveContainer, AiffContainer):
         if pcmreader.channels > 8:
             raise UnsupportedChannelCount(filename, pcmreader.channels)
 
-        if pcmreader.channel_mask == 0:
-            if pcmreader.channels <= 6:
-                channel_mask = {1: 0x0004,
-                                2: 0x0003,
-                                3: 0x0007,
-                                4: 0x0033,
-                                5: 0x0037,
-                                6: 0x003F}[pcmreader.channels]
-            else:
-                channel_mask = 0
-        elif (pcmreader.channel_mask in
-              {0x0001,    # 1ch - mono
-               0x0004,    # 1ch - mono
-               0x0003,    # 2ch - left, right
-               0x0007,    # 3ch - left, right, center
-               0x0033,    # 4ch - left, right, back left, back right
-               0x0603,    # 4ch - left, right, side left, side right
-               0x0037,    # 5ch - L, R, C, back left, back right
-               0x0607,    # 5ch - L, R, C, side left, side right
-               0x003F,    # 6ch - L, R, C, LFE, back left, back right
-               0x060F}):  # 6ch - L, R, C, LFE, side left, side right
-            channel_mask = pcmreader.channel_mask
-        else:
+        if (pcmreader.channel_mask not in
+                {0x0001, # 1ch - mono
+                 0x0004, # 1ch - mono
+                 0x0003, # 2ch - left, right
+                 0x0007, # 3ch - left, right, center
+                 0x0033, # 4ch - left, right, back left, back right
+                 0x0603, # 4ch - left, right, side left, side right
+                 0x0037, # 5ch - L, R, C, back left, back right
+                 0x0607, # 5ch - L, R, C, side left, side right
+                 0x003F, # 6ch - L, R, C, LFE, back left, back right
+                 0x060F, # 6ch - L, R, C, LFE, side left, side right
+                 0}):
             from audiotools import UnsupportedChannelMask
 
             raise UnsupportedChannelMask(filename, pcmreader.channel_mask)
 
-        if total_pcm_frames is not None:
-            expected_seekpoints = \
-                ((total_pcm_frames // (pcmreader.sample_rate * 10)) +
-                 (1 if (total_pcm_frames % (pcmreader.sample_rate * 10)) else
-                  0))
-            padding_size = 4096 + 4 + (expected_seekpoints * 18)
-            pcmreader = CounterPCMReader(pcmreader)
-        else:
-            padding_size = 4096
-
         try:
-            offsets = (encode_flac if encoding_function is None
-                       else encoding_function)(
-                filename,
+            (encode_flac if encoding_function is None else encoding_function)(
+                filename=filename,
                 pcmreader=pcmreader,
-                padding_size=padding_size,
+                version="Python Audio Tools " + VERSION,
+                total_pcm_frames=(total_pcm_frames if
+                                  total_pcm_frames is not None else 0),
+                padding_size=4096,
                 **encoding_options)
 
-            if ((total_pcm_frames is not None) and
-                (total_pcm_frames != pcmreader.frames_written)):
-                from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
-                raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
-
-            flac = FlacAudio(filename)
-            metadata = flac.get_metadata()
-            assert(metadata is not None)
-
-            # add VORBIS_COMMENT block with encoder set
-            # if channels or bps is too high,
-            # automatically generate and add channel mask
-            vorbis_comment = Flac_VORBISCOMMENT(
-                [u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK=0x%0.4X" %
-                 (channel_mask)]
-                if (((pcmreader.channels > 2) or
-                     (pcmreader.bits_per_sample > 16)) and
-                    (channel_mask != 0)) else
-                [],
-                u"Python Audio Tools %s" % (VERSION))
-            metadata.add_block(vorbis_comment)
-
-            # generate SEEKTABLE from encoder offsets and add it to metadata
-            metadata.add_block(
-                flac.seektable(
-                    offsets=sizes_to_offsets(offsets),
-                    seekpoint_interval=pcmreader.sample_rate * 10))
-
-            flac.update_metadata(metadata)
-
-            return flac
+            return FlacAudio(filename)
         except (IOError, ValueError) as err:
             cls.__unlink__(filename)
             raise EncodingError(str(err))

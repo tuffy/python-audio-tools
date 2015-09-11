@@ -312,15 +312,15 @@ FlacDecoder_init(decoders_FlacDecoder *self,
             switch (type) {
             case 0: /*STREAMINFO*/
                 if (!streaminfo_read) {
-                    enum {fL  = 0x1,
-                          fR  = 0x2,
-                          fC  = 0x4,
-                          LFE = 0x8,
-                          bL  = 0x10,
-                          bR  = 0x20,
-                          bC  = 0x100,
-                          sL  = 0x200,
-                          sR  = 0x400};
+                    const static unsigned fL  = 0x1;
+                    const static unsigned fR  = 0x2;
+                    const static unsigned fC  = 0x4;
+                    const static unsigned LFE = 0x8;
+                    const static unsigned bL  = 0x10;
+                    const static unsigned bR  = 0x20;
+                    const static unsigned bC  = 0x100;
+                    const static unsigned sL  = 0x200;
+                    const static unsigned sR  = 0x400;
 
                     read_STREAMINFO(self->bitstream, &(self->streaminfo));
                     /*use a dummy channel mask for now*/
