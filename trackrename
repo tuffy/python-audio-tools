@@ -32,21 +32,17 @@ if audiotools.ui.AVAILABLE:
     urwid = audiotools.ui.urwid
 
     class Trackrename(urwid.Pile):
-        def __init__(self, audio_class, format_string,
-                     input_filenames, metadatas):
-            """audio_class is an AudioFile class
-            format_string is a UTF-8 encoded plain string
-            input_filenames is a list of Filename objects
-            metadata is a list of MetaData objects, or Nones"""
+        def __init__(self, audio_tracks, format_string):
+            """audio_tracks is a list of AudioFile objects
+            format_string is a formatting string"""
 
             assert(isinstance(format_string, str))
-            assert(len(input_filenames) == len(metadatas))
-            for filename in input_filenames:
-                assert(isinstance(filename, audiotools.Filename))
+            for t in audio_tracks:
+                assert(isinstance(t, audiotools.AudioFile))
 
             self.__cancelled__ = True
 
-            self.input_filenames = input_filenames
+            self.audio_tracks = audio_tracks
 
             # setup a previous/finish button set
             metadata_buttons = urwid.Filler(
@@ -61,7 +57,7 @@ if audiotools.ui.AVAILABLE:
                     focus_column=1))
 
             # setup a widget with an output preview
-            self.track_previews = [urwid.Text(u"") for m in metadatas]
+            self.track_previews = [urwid.Text(u"") for t in audio_tracks]
             self.output_tracks_list = urwid.ListBox(
                 self.track_previews)
             self.output_tracks_frame = urwid.Frame(
@@ -78,9 +74,7 @@ if audiotools.ui.AVAILABLE:
             urwid.connect_signal(output_format,
                                  'change',
                                  self.format_changed,
-                                 (audio_class,
-                                  input_filenames,
-                                  metadatas))
+                                 audio_tracks)
 
             browse_fields = audiotools.ui.BrowseFields(output_format)
             template_row = urwid.Columns(
@@ -95,9 +89,7 @@ if audiotools.ui.AVAILABLE:
             # perform initial data population
             self.format_changed(output_format,
                                 format_string,
-                                (audio_class,
-                                 input_filenames,
-                                 metadatas))
+                                audio_tracks)
 
             urwid.Pile.__init__(
                 self,
@@ -123,24 +115,19 @@ if audiotools.ui.AVAILABLE:
             if i == 'esc':
                 self.exit(None)
 
-        def format_changed(self, widget, new_value, user_data):
-            (output_class,
-             input_filenames,
-             metadatas) = user_data
-
+        def format_changed(self, widget, new_value, audio_tracks):
             try:
                 # generate list of Filename objects
-                # from paths, metadatas and format
+                # from list of AudioFile objects
                 format_string = new_value if PY3 else new_value.encode("UTF-8")
 
                 self.output_filenames = [
                     audiotools.Filename(
-                        output_class.track_name(
-                            file_path=str(filename),
-                            track_metadata=metadata,
+                        track.__class__.track_name(
+                            file_path=track.filename,
+                            track_metadata=track.get_metadata(),
                             format=format_string))
-                    for (filename,
-                         metadata) in zip(input_filenames, metadatas)]
+                    for track in audio_tracks]
 
                 # and populate output files list
                 for (path, preview) in zip(self.output_filenames,
@@ -164,11 +151,13 @@ if audiotools.ui.AVAILABLE:
         def to_rename(self):
             """yields (old_name, new_name) tuples
             where old_name and new_name differ
-            where the names are Filename objects"""
+            and the names are Filename objects"""
 
             if not self.has_errors:
-                for (old_name, new_name) in zip(self.input_filenames,
-                                                self.output_filenames):
+                for (old_name,
+                     new_name) in zip([audiotools.Filename(t.filename)
+                                       for t in self.audio_tracks],
+                                      self.output_filenames):
                     if old_name != new_name:
                         yield (old_name, new_name)
 
@@ -229,12 +218,13 @@ if (__name__ == '__main__'):
     renamed_filenames = {audiotools.Filename(t.filename) for t in audiofiles}
 
     if options.interactive:
-        widget = Trackrename(
-            audio_class=audiofiles[0].__class__,
-            format_string=options.format,
-            input_filenames=[audiotools.Filename(t.filename) for t in
-                             audiofiles],
-            metadatas=[t.get_metadata() for t in audiofiles])
+        widget = Trackrename(audio_tracks=audiofiles,
+                             format_string=options.format)
+            #audio_class=audiofiles[0].__class__,
+            #format_string=options.format,
+            #input_filenames=[audiotools.Filename(t.filename) for t in
+            #                 audiofiles],
+            #metadatas=[t.get_metadata() for t in audiofiles])
         loop = audiotools.ui.urwid.MainLoop(
             widget,
             audiotools.ui.style(),
