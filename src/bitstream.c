@@ -1325,8 +1325,8 @@ br_open_external(void* user_data,
             result =                                                    \
                 read_bits_table_be[result.state][MIN(count, 8) - 1];    \
                                                                         \
-            accumulator =                                               \
-                ((accumulator << result.value_size) | result.value);    \
+            accumulator <<= result.value_size;                          \
+            accumulator |= result.value;                                \
                                                                         \
             count -= result.value_size;                                 \
         }                                                               \

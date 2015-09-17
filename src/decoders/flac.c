@@ -1449,8 +1449,8 @@ read_residual_block(BitstreamReader *r,
 {
     br_read_f read = r->read;
     br_read_unary_f read_unary = r->read_unary;
-    const unsigned coding_method = r->read(r, 2);
-    const unsigned partition_order = r->read(r, 4);
+    const unsigned coding_method = read(r, 2);
+    const unsigned partition_order = read(r, 4);
     const unsigned partition_count = 1 << partition_order;
     unsigned rice_bits;
     unsigned i = 0;
@@ -1470,7 +1470,7 @@ read_residual_block(BitstreamReader *r,
     }
 
     for (p = 0; p < partition_count; p++) {
-        const unsigned rice = r->read(r, rice_bits);
+        const unsigned rice = read(r, rice_bits);
         const unsigned partition_size = block_size / partition_count -
                                         (p == 0 ? predictor_order : 0);
         register unsigned j;

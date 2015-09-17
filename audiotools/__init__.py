@@ -2064,8 +2064,8 @@ def filename_to_type(path):
     >>> filename_to_type("/foo/file.flac")
     <class audiotools.__flac__.FlacAudio at 0x7fc8456d55f0>
 
-    raises an UnknownAudioType exception if the type is unknown
-    raise AmbiguousAudioType exception if the type is ambiguous
+    raises UnknownAudioType exception if the type is unknown
+    raises AmbiguousAudioType exception if the type is ambiguous
     """
 
     (path, ext) = os.path.splitext(path)
@@ -2972,16 +2972,16 @@ def PCMConverter(pcmreader,
             if pcmreader.channels > 2:
                 # reduce channel count through downmixing
                 # followed by averaging
-                from .pcmconverter import (Averager, Downmixer)
+                from audiotools.pcmconverter import (Averager, Downmixer)
                 pcmreader = Averager(Downmixer(pcmreader))
             else:
                 # pcmreader.channels == 2
                 # so reduce channel count through averaging
-                from .pcmconverter import Averager
+                from audiotools.pcmconverter import Averager
                 pcmreader = Averager(pcmreader)
         elif (channels == 2) and (channel_mask in (0, 0x3)):
             # reduce channel count through downmixing
-            from .pcmconverter import Downmixer
+            from audiotools.pcmconverter import Downmixer
             pcmreader = Downmixer(pcmreader)
         else:
             # unusual channel count/mask combination
@@ -3000,12 +3000,12 @@ def PCMConverter(pcmreader,
 
     if pcmreader.sample_rate != sample_rate:
         # convert sample rate through resampling
-        from .pcmconverter import Resampler
+        from audiotools.pcmconverter import Resampler
         pcmreader = Resampler(pcmreader, sample_rate)
 
     if pcmreader.bits_per_sample != bits_per_sample:
         # use bitshifts/dithering to adjust bits-per-sample
-        from .pcmconverter import BPSConverter
+        from audiotools.pcmconverter import BPSConverter
         pcmreader = BPSConverter(pcmreader, bits_per_sample)
 
     return pcmreader
@@ -5340,7 +5340,8 @@ class ExecProgressQueue(object):
                                      kwargs))
 
     def run(self, max_processes=1):
-        """runs all the queued jobs"""
+        """runs all the queued jobs
+        and returns the result of queued functions as a list"""
 
         if len(self.__queued_jobs__) == 0:
             # nothing to do
@@ -5376,13 +5377,13 @@ class ExecProgressQueue(object):
                                   progress=progress_display.update,
                                   **kwargs)
 
-                # add result to results list
-                results.append(result)
-
                 # remove job from progress display, if present
                 progress_display.clear_rows()
             else:
                 result = function(*args, **kwargs)
+
+            # add result to results list
+            results.append(result)
 
             # display any output message attached to job
             if callable(completion_output):
@@ -5390,9 +5391,10 @@ class ExecProgressQueue(object):
             else:
                 output = completion_output
 
-            self.messenger.output(output_progress(output,
-                                                  completed_job_number,
-                                                  total_jobs))
+            if output is not None:
+                self.messenger.output(output_progress(output,
+                                                      completed_job_number,
+                                                      total_jobs))
 
         self.__queued_jobs__.clear()
         return results

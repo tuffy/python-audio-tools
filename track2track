@@ -574,11 +574,11 @@ if (__name__ == '__main__'):
                 sleep(1)
 
         # a list of (audiofile,
-        #           output_class,
-        #           output_filename,
-        #           output_quality,
-        #           output_metadata,
-        #           output_replay_gain) tuples to be executed
+        #            output_class,
+        #            output_filename,
+        #            output_quality,
+        #            output_metadata,
+        #            output_replay_gain) tuples to be executed
         conversion_jobs = []
 
         # a list of [audiofile, audiofile, ...] lists
@@ -730,9 +730,9 @@ if (__name__ == '__main__'):
 
         # re-check that the same output file doesn't occur more than once
         # (although process_output_options also performs that check,
-        # it's possible processing multiple albums at once
-        # may result in the same output file occurring across the whole
-        # job, but not in any individual album)
+        #  it's possible processing multiple albums at once
+        #  may result in the same output file occurring across the whole
+        #  job, but not in any individual album)
         output_filenames = set()
         for job in conversion_jobs:
             output_filename = job[2]
