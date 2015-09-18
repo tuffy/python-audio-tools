@@ -71,7 +71,7 @@ PyMethodDef Averager_methods[] = {
 
 PyTypeObject pcmconverter_AveragerType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "pcmconverter.Averager",     /*tp_name*/
+    "pcmconverter.Averager",   /*tp_name*/
     sizeof(pcmconverter_Averager),/*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)Averager_dealloc, /*tp_dealloc*/
@@ -161,7 +161,7 @@ PyMethodDef Downmixer_methods[] = {
 
 PyTypeObject pcmconverter_DownmixerType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "pcmconverter.Downmixer",     /*tp_name*/
+    "pcmconverter.Downmixer",  /*tp_name*/
     sizeof(pcmconverter_Downmixer),/*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)Downmixer_dealloc, /*tp_dealloc*/
@@ -253,7 +253,7 @@ PyMethodDef Resampler_methods[] = {
 
 PyTypeObject pcmconverter_ResamplerType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "pcmconverter.Resampler",     /*tp_name*/
+    "pcmconverter.Resampler",  /*tp_name*/
     sizeof(pcmconverter_Resampler),/*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)Resampler_dealloc, /*tp_dealloc*/
@@ -349,7 +349,7 @@ PyMethodDef BPSConverter_methods[] = {
 
 PyTypeObject pcmconverter_BPSConverterType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "pcmconverter.BPSConverter",     /*tp_name*/
+    "pcmconverter.BPSConverter", /*tp_name*/
     sizeof(pcmconverter_BPSConverter),/*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)BPSConverter_dealloc, /*tp_dealloc*/
@@ -368,22 +368,123 @@ PyTypeObject pcmconverter_BPSConverterType = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "BPSConverter objects",       /* tp_doc */
+    "BPSConverter objects",    /* tp_doc */
     0,                         /* tp_traverse */
     0,                         /* tp_clear */
     0,                         /* tp_richcompare */
     0,                         /* tp_weaklistoffset */
     0,                         /* tp_iter */
     0,                         /* tp_iternext */
-    BPSConverter_methods,         /* tp_methods */
+    BPSConverter_methods,      /* tp_methods */
     0,                         /* tp_members */
-    BPSConverter_getseters,       /* tp_getset */
+    BPSConverter_getseters,    /* tp_getset */
     0,                         /* tp_base */
     0,                         /* tp_dict */
     0,                         /* tp_descr_get */
     0,                         /* tp_descr_set */
     0,                         /* tp_dictoffset */
-    (initproc)BPSConverter_init,  /* tp_init */
+    (initproc)BPSConverter_init, /* tp_init */
     0,                         /* tp_alloc */
-    BPSConverter_new,             /* tp_new */
+    BPSConverter_new,          /* tp_new */
 };
+
+
+typedef struct {
+    PyObject_HEAD
+
+    int closed;
+    struct PCMReader *pcmreader;
+    PyObject *audiotools_pcm;
+} pcmconverter_BufferedPCMReader;
+
+static PyObject*
+BufferedPCMReader_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+
+int
+BufferedPCMReader_init(pcmconverter_BufferedPCMReader *self,
+                       PyObject *args, PyObject *kwds);
+
+void
+BufferedPCMReader_dealloc(pcmconverter_BufferedPCMReader *self);
+
+static PyObject*
+BufferedPCMReader_sample_rate(pcmconverter_BufferedPCMReader *self,
+                              void *closure);
+
+static PyObject*
+BufferedPCMReader_bits_per_sample(pcmconverter_BufferedPCMReader *self,
+                                  void *closure);
+
+static PyObject*
+BufferedPCMReader_channels(pcmconverter_BufferedPCMReader *self,
+                           void *closure);
+
+static PyObject*
+BufferedPCMReader_channel_mask(pcmconverter_BufferedPCMReader *self,
+                               void *closure);
+
+static PyObject*
+BufferedPCMReader_read(pcmconverter_BufferedPCMReader *self, PyObject *args);
+
+static PyObject*
+BufferedPCMReader_close(pcmconverter_BufferedPCMReader *self, PyObject *args);
+
+PyGetSetDef BufferedPCMReader_getseters[] = {
+    {"sample_rate", (getter)BufferedPCMReader_sample_rate,
+     NULL, "sample rate", NULL},
+    {"bits_per_sample", (getter)BufferedPCMReader_bits_per_sample,
+     NULL, "bits per sample", NULL},
+    {"channels", (getter)BufferedPCMReader_channels,
+     NULL, "channels", NULL},
+    {"channel_mask", (getter)BufferedPCMReader_channel_mask,
+     NULL, "channel_mask", NULL},
+    {NULL}
+};
+
+PyMethodDef BufferedPCMReader_methods[] = {
+    {"read", (PyCFunction)BufferedPCMReader_read, METH_VARARGS, ""},
+    {"close", (PyCFunction)BufferedPCMReader_close, METH_NOARGS, ""},
+    {NULL}
+};
+
+PyTypeObject pcmconverter_BufferedPCMReaderType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "pcmconverter.BufferedPCMReader", /*tp_name*/
+    sizeof(pcmconverter_BufferedPCMReader),/*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)BufferedPCMReader_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "BufferedPCMReader objects", /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    BufferedPCMReader_methods, /* tp_methods */
+    0,                         /* tp_members */
+    BufferedPCMReader_getseters, /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)BufferedPCMReader_init, /* tp_init */
+    0,                         /* tp_alloc */
+    BufferedPCMReader_new,     /* tp_new */
+};
+

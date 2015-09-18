@@ -2808,51 +2808,7 @@ class PCMCat(PCMReader):
             reader.close()
 
 
-class BufferedPCMReader(PCMReader):
-    """a PCMReader which reads exact counts of PCM frames"""
-
-    def __init__(self, pcmreader):
-        """pcmreader is a regular PCMReader object"""
-
-        PCMReader.__init__(self,
-                           sample_rate=pcmreader.sample_rate,
-                           channels=pcmreader.channels,
-                           channel_mask=pcmreader.channel_mask,
-                           bits_per_sample=pcmreader.bits_per_sample)
-
-        self.pcmreader = pcmreader
-        self.buffer = pcm.empty_framelist(self.channels,
-                                          self.bits_per_sample)
-
-    def read(self, pcm_frames):
-        """reads the given number of PCM frames
-
-        this may return fewer than the given number
-        at the end of a stream
-        but will never return more than requested
-        """
-
-        # fill our buffer to at least "pcm_frames", possibly more
-        while self.buffer.frames < pcm_frames:
-            frame = self.pcmreader.read(FRAMELIST_SIZE)
-            if len(frame):
-                self.buffer += frame
-            else:
-                break
-
-        # chop off the preceding number of PCM frames and return them
-        (output, self.buffer) = self.buffer.split(pcm_frames)
-
-        return output
-
-    def read_closed(self, pcm_frames):
-        raise ValueError()
-
-    def close(self):
-        """closes the sub-pcmreader and frees our internal buffer"""
-
-        self.pcmreader.close()
-        self.read = self.read_closed
+from audiotools.pcmconverter import BufferedPCMReader
 
 
 class CounterPCMReader(PCMReader):
