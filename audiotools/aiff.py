@@ -814,7 +814,16 @@ class AiffAudio(AiffContainer):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        return AiffReader(self.filename)
+        try:
+            return AiffReader(self.filename)
+        except (IOError, ValueError) as err:
+            from audiotools import PCMReaderError
+
+            return PCMReaderError(error_message=str(err),
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
 
     @classmethod
     def supports_from_pcm(cls):
@@ -1056,7 +1065,7 @@ class AiffAudio(AiffContainer):
         counter = CounterPCMReader(to_pcm_progress(self, progress))
         try:
             transfer_framelist_data(counter, lambda f: f)
-        except IOError:
+        except (IOError, ValueError):
             from audiotools.text import ERR_AIFF_TRUNCATED_SSND_CHUNK
             raise InvalidAIFF(ERR_AIFF_TRUNCATED_SSND_CHUNK)
 

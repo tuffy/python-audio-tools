@@ -689,7 +689,16 @@ class WaveAudio(WaveContainer):
     def to_pcm(self):
         """returns a PCMReader object containing the track's PCM data"""
 
-        return WaveReader(self.filename)
+        try:
+            return WaveReader(self.filename)
+        except (IOError, ValueError) as err:
+            from audiotools import PCMReaderError
+
+            return PCMReaderError(error_message=str(err),
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
 
     @classmethod
     def supports_from_pcm(cls):
@@ -1081,7 +1090,7 @@ class WaveAudio(WaveContainer):
         counter = CounterPCMReader(to_pcm_progress(self, progress))
         try:
             transfer_framelist_data(counter, lambda f: f)
-        except IOError:
+        except (IOError, ValueError):
             from audiotools.text import ERR_WAV_TRUNCATED_DATA_CHUNK
             raise InvalidWave(ERR_WAV_TRUNCATED_DATA_CHUNK)
 
