@@ -5251,10 +5251,12 @@ bw_pos_stack_pop(struct bw_pos_stack** stack)
 #ifdef HAS_PYTHON
 
 unsigned
-br_read_python(PyObject *reader,
+br_read_python(void *stream,
                uint8_t *buffer,
                unsigned buffer_size)
 {
+    PyObject* reader = stream;
+
     /*call read() method on reader*/
     PyObject* read_result =
         PyObject_CallMethod(reader, "read", "I", buffer_size);
@@ -5298,10 +5300,11 @@ br_read_python(PyObject *reader,
 }
 
 int
-bw_write_python(PyObject* writer,
+bw_write_python(void *stream,
                 const uint8_t *buffer,
                 unsigned buffer_size)
 {
+    PyObject *writer = stream;
 #if PY_MAJOR_VERSION >= 3
     char format[] = "y#";
 #else
@@ -5323,8 +5326,9 @@ bw_write_python(PyObject* writer,
 }
 
 int
-bw_flush_python(PyObject* writer)
+bw_flush_python(void *stream)
 {
+    PyObject* writer = stream;
     PyObject* flush_result = PyObject_CallMethod(writer, "flush", NULL);
     if (flush_result != NULL) {
         Py_DECREF(flush_result);
@@ -5337,12 +5341,15 @@ bw_flush_python(PyObject* writer)
 }
 
 int
-bs_setpos_python(PyObject* stream, PyObject* pos)
+bs_setpos_python(void *stream, void *pos)
 {
-    if (pos != NULL) {
-        PyObject *seek = PyObject_GetAttrString(stream, "seek");
-        if (seek != NULL) {
-            PyObject *result = PyObject_CallFunctionObjArgs(seek, pos, NULL);
+    if (pos) {
+        PyObject *stream_obj = stream;
+        PyObject *seek = PyObject_GetAttrString(stream_obj, "seek");
+        if (seek) {
+            PyObject *pos_obj = pos;
+            PyObject *result =
+                PyObject_CallFunctionObjArgs(seek, pos_obj, NULL);
             Py_DECREF(seek);
             if (result != NULL) {
                 Py_DECREF(result);
@@ -5357,15 +5364,17 @@ bs_setpos_python(PyObject* stream, PyObject* pos)
             PyErr_Clear();
             return EOF;
         }
+    } else {
+        /*do nothing if position is empty*/
+        return 0;
     }
-    /*do nothing if position is empty*/
-    return 0;
 }
 
-PyObject*
-bs_getpos_python(PyObject* stream)
+void*
+bs_getpos_python(void *stream)
 {
-    PyObject *pos = PyObject_CallMethod(stream, "tell", NULL);
+    PyObject *stream_obj = stream;
+    PyObject *pos = PyObject_CallMethod(stream_obj, "tell", NULL);
     if (pos != NULL) {
         return pos;
     } else {
@@ -5375,16 +5384,18 @@ bs_getpos_python(PyObject* stream)
 }
 
 void
-bs_free_pos_python(PyObject* pos)
+bs_free_pos_python(void *pos)
 {
-    Py_XDECREF(pos);
+    PyObject *pos_obj = pos;
+    Py_XDECREF(pos_obj);
 }
 
 int
-bs_fseek_python(PyObject* stream, long position, int whence)
+bs_fseek_python(void* stream, long position, int whence)
 {
+    PyObject *stream_obj = stream;
     PyObject *result =
-        PyObject_CallMethod(stream, "seek", "li", position, whence);
+        PyObject_CallMethod(stream_obj, "seek", "li", position, whence);
     if (result != NULL) {
         Py_DECREF(result);
         return 0;
@@ -5394,10 +5405,11 @@ bs_fseek_python(PyObject* stream, long position, int whence)
 }
 
 int
-bs_close_python(PyObject* obj)
+bs_close_python(void *stream)
 {
+    PyObject* stream_obj = stream;
     /*call close method on reader/writer*/
-    PyObject* close_result = PyObject_CallMethod(obj, "close", NULL);
+    PyObject* close_result = PyObject_CallMethod(stream_obj, "close", NULL);
     if (close_result != NULL) {
         /*ignore result*/
         Py_DECREF(close_result);
@@ -5410,13 +5422,14 @@ bs_close_python(PyObject* obj)
 }
 
 void
-bs_free_python_decref(PyObject* obj)
+bs_free_python_decref(void *stream)
 {
+    PyObject *obj = stream;
     Py_XDECREF(obj);
 }
 
 void
-bs_free_python_nodecref(PyObject* obj)
+bs_free_python_nodecref(void *stream)
 {
     /*no DECREF, so does nothing*/
     return;
@@ -5624,27 +5637,27 @@ typedef void (*write_check)(BitstreamWriter*, bs_endianness);
 void
 check_output_file(void);
 
-unsigned ext_fread_test(FILE* user_data,
+unsigned ext_fread_test(void* user_data,
                         uint8_t* buffer,
                         unsigned buffer_size);
 
-int ext_fclose_test(FILE* user_data);
+int ext_fclose_test(void* user_data);
 
-void ext_ffree_test(FILE* user_data);
+void ext_ffree_test(void* user_data);
 
-int ext_fwrite_test(FILE* user_data,
+int ext_fwrite_test(void* user_data,
                     const uint8_t* buffer,
                     unsigned buffer_size);
 
-int ext_fflush_test(FILE* user_data);
+int ext_fflush_test(void* user_data);
 
-int ext_fsetpos_test(FILE *user_data, fpos_t *pos);
+int ext_fsetpos_test(void *user_data, void *pos);
 
-fpos_t* ext_fgetpos_test(FILE *user_data);
+void* ext_fgetpos_test(void *user_data);
 
-int ext_fseek_test(FILE *user_data, long location, int whence);
+int ext_fseek_test(void *user_data, long location, int whence);
 
-void ext_free_pos_test(fpos_t *pos);
+void ext_free_pos_test(void *pos);
 
 typedef struct {
     unsigned bits;
@@ -5784,13 +5797,13 @@ int main(int argc, char* argv[]) {
     reader = br_open_external(temp_file,
                               BS_BIG_ENDIAN,
                               2,
-                              (ext_read_f)ext_fread_test,
-                              (ext_setpos_f)ext_fsetpos_test,
-                              (ext_getpos_f)ext_fgetpos_test,
-                              (ext_free_pos_f)ext_free_pos_test,
-                              (ext_seek_f)ext_fseek_test,
-                              (ext_close_f)ext_fclose_test,
-                              (ext_free_f)ext_ffree_test);
+                              ext_fread_test,
+                              ext_fsetpos_test,
+                              ext_fgetpos_test,
+                              ext_free_pos_test,
+                              ext_fseek_test,
+                              ext_fclose_test,
+                              ext_ffree_test);
     test_big_endian_reader(reader, be_table);
     test_big_endian_parse(reader);
     test_try(reader, be_table);
@@ -5862,13 +5875,13 @@ int main(int argc, char* argv[]) {
     reader = br_open_external(temp_file,
                               BS_LITTLE_ENDIAN,
                               2,
-                              (ext_read_f)ext_fread_test,
-                              (ext_setpos_f)ext_fsetpos_test,
-                              (ext_getpos_f)ext_fgetpos_test,
-                              (ext_free_pos_f)ext_free_pos_test,
-                              (ext_seek_f)ext_fseek_test,
-                              (ext_close_f)ext_fclose_test,
-                              (ext_free_f)ext_ffree_test);
+                              ext_fread_test,
+                              ext_fsetpos_test,
+                              ext_fgetpos_test,
+                              ext_free_pos_test,
+                              ext_fseek_test,
+                              ext_fclose_test,
+                              ext_ffree_test);
     test_little_endian_reader(reader, le_table);
     test_little_endian_parse(reader);
     test_try(reader, le_table);
@@ -7352,14 +7365,14 @@ test_writer(bs_endianness endianness) {
         writer = bw_open_external(output_file,
                                   endianness,
                                   2,
-                                  (ext_write_f)ext_fwrite_test,
-                                  (ext_setpos_f)ext_fsetpos_test,
-                                  (ext_getpos_f)ext_fgetpos_test,
-                                  (ext_free_pos_f)ext_free_pos_test,
-                                  (ext_seek_f)ext_fseek_test,
-                                  (ext_flush_f)ext_fflush_test,
-                                  (ext_close_f)ext_fclose_test,
-                                  (ext_free_f)ext_ffree_test);
+                                  ext_fwrite_test,
+                                  ext_fsetpos_test,
+                                  ext_fgetpos_test,
+                                  ext_free_pos_test,
+                                  ext_fseek_test,
+                                  ext_fflush_test,
+                                  ext_fclose_test,
+                                  ext_ffree_test);
         checks[i](writer, endianness);
         writer->flush(writer);
         check_output_file();
@@ -7371,14 +7384,14 @@ test_writer(bs_endianness endianness) {
     writer = bw_open_external(output_file,
                               endianness,
                               2,
-                              (ext_write_f)ext_fwrite_test,
-                              (ext_setpos_f)ext_fsetpos_test,
-                              (ext_getpos_f)ext_fgetpos_test,
-                              (ext_free_pos_f)ext_free_pos_test,
-                              (ext_seek_f)ext_fseek_test,
-                              (ext_flush_f)ext_fflush_test,
-                              (ext_close_f)ext_fclose_test,
-                              (ext_free_f)ext_ffree_test);
+                              ext_fwrite_test,
+                              ext_fsetpos_test,
+                              ext_fgetpos_test,
+                              ext_free_pos_test,
+                              ext_fseek_test,
+                              ext_fflush_test,
+                              ext_fclose_test,
+                              ext_ffree_test);
     test_writer_close_errors(writer);
     writer->set_endianness(writer, endianness == BS_BIG_ENDIAN ?
                            BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
@@ -7495,14 +7508,14 @@ test_writer(bs_endianness endianness) {
         writer = bw_open_external(output_file,
                                   endianness,
                                   2,
-                                  (ext_write_f)ext_fwrite_test,
-                                  (ext_setpos_f)ext_fsetpos_test,
-                                  (ext_getpos_f)ext_fgetpos_test,
-                                  (ext_free_pos_f)ext_free_pos_test,
-                                  (ext_seek_f)ext_fseek_test,
-                                  (ext_flush_f)ext_fflush_test,
-                                  (ext_close_f)ext_fclose_test,
-                                  (ext_free_f)ext_ffree_test);
+                                  ext_fwrite_test,
+                                  ext_fsetpos_test,
+                                  ext_fgetpos_test,
+                                  ext_free_pos_test,
+                                  ext_fseek_test,
+                                  ext_fflush_test,
+                                  ext_fclose_test,
+                                  ext_ffree_test);
         writer->add_callback(writer, (bs_callback_f)func_add_one, &(sums[0]));
         writer->add_callback(writer, (bs_callback_f)func_add_two, &(sums[1]));
         writer->add_callback(writer, (bs_callback_f)func_mult_three, &(sums[2]));
@@ -7567,14 +7580,14 @@ test_writer(bs_endianness endianness) {
     writer = bw_open_external(output_file,
                               endianness,
                               4096,
-                              (ext_write_f)ext_fwrite_test,
-                              (ext_setpos_f)ext_fsetpos_test,
-                              (ext_getpos_f)ext_fgetpos_test,
-                              (ext_free_pos_f)ext_free_pos_test,
-                              (ext_seek_f)ext_fseek_test,
-                              (ext_flush_f)ext_fflush_test,
-                              (ext_close_f)ext_fclose_test,
-                              (ext_free_f)ext_ffree_test);
+                              ext_fwrite_test,
+                              ext_fsetpos_test,
+                              ext_fgetpos_test,
+                              ext_free_pos_test,
+                              ext_fseek_test,
+                              ext_fflush_test,
+                              ext_fclose_test,
+                              ext_ffree_test);
     test_writer_marks(writer);
     writer->flush(writer);
     writer->free(writer);
@@ -7590,14 +7603,14 @@ test_writer(bs_endianness endianness) {
         writer = bw_open_external(output_file,
                                   endianness,
                                   4096,
-                                  (ext_write_f)ext_fwrite_test,
-                                  (ext_setpos_f)ext_fsetpos_test,
-                                  (ext_getpos_f)ext_fgetpos_test,
-                                  (ext_free_pos_f)ext_free_pos_test,
-                                  (ext_seek_f)ext_fseek_test,
-                                  (ext_flush_f)ext_fflush_test,
-                                  (ext_close_f)ext_fclose_test,
-                                  (ext_free_f)ext_ffree_test);
+                                  ext_fwrite_test,
+                                  ext_fsetpos_test,
+                                  ext_fgetpos_test,
+                                  ext_free_pos_test,
+                                  ext_fseek_test,
+                                  ext_fflush_test,
+                                  ext_fclose_test,
+                                  ext_ffree_test);
         test_writer_seeks(writer, i);
         writer->flush(writer);
         writer->free(writer);
@@ -8294,14 +8307,14 @@ void check_alignment_e(const align_check* check,
         f,
         endianness,
         4096,
-        (ext_write_f)ext_fwrite_test,
-        (ext_setpos_f)ext_fsetpos_test,
-        (ext_getpos_f)ext_fgetpos_test,
-        (ext_free_pos_f)ext_free_pos_test,
-        (ext_seek_f)ext_fseek_test,
-        (ext_flush_f)ext_fflush_test,
-        (ext_close_f)ext_fclose_test,
-        (ext_free_f)ext_ffree_test);
+        ext_fwrite_test,
+        ext_fsetpos_test,
+        ext_fgetpos_test,
+        ext_free_pos_test,
+        ext_fseek_test,
+        ext_fflush_test,
+        ext_fclose_test,
+        ext_ffree_test);
     BitstreamReader* br;
     struct stat s;
 
@@ -8786,32 +8799,35 @@ test_rec_copy_dumps(bs_endianness endianness,
 }
 
 
-unsigned ext_fread_test(FILE* user_data,
+unsigned ext_fread_test(void* user_data,
                         uint8_t* buffer,
                         unsigned buffer_size)
 {
-    const size_t read = fread(buffer, sizeof(uint8_t), buffer_size, user_data);
+    FILE *file = user_data;
+    const size_t read = fread(buffer, sizeof(uint8_t), buffer_size, file);
     return (unsigned)read;
 }
 
-int ext_fclose_test(FILE* user_data)
+int ext_fclose_test(void* user_data)
 {
-    return fclose(user_data);
+    FILE *file = user_data;
+    return fclose(file);
 }
 
-void ext_ffree_test(FILE* user_data)
+void ext_ffree_test(void* user_data)
 {
     return;
 }
 
-int ext_fwrite_test(FILE* user_data,
+int ext_fwrite_test(void* user_data,
                     const uint8_t* buffer,
                     unsigned buffer_size)
 {
+    FILE *file = user_data;
     const size_t written = fwrite(buffer,
                                   sizeof(uint8_t),
                                   buffer_size,
-                                  user_data);
+                                  file);
     if (written == buffer_size) {
         return 0;
     } else {
@@ -8819,24 +8835,28 @@ int ext_fwrite_test(FILE* user_data,
     }
 }
 
-int ext_fflush_test(FILE* user_data)
+int ext_fflush_test(void* user_data)
 {
-    return fflush(user_data);
+    FILE *file = user_data;
+    return fflush(file);
 }
 
-int ext_fsetpos_test(FILE *user_data, fpos_t *pos)
+int ext_fsetpos_test(void *user_data, void *pos)
 {
-    if (!fsetpos(user_data, pos)) {
+    FILE *file = user_data;
+    fpos_t *fpos = pos;
+    if (!fsetpos(file, fpos)) {
         return 0;
     } else {
         return EOF;
     }
 }
 
-fpos_t* ext_fgetpos_test(FILE *user_data)
+void* ext_fgetpos_test(void *user_data)
 {
+    FILE *file = user_data;
     fpos_t* pos = malloc(sizeof(fpos_t));
-    if (!fgetpos(user_data, pos)) {
+    if (!fgetpos(file, pos)) {
         return pos;
     } else {
         free(pos);
@@ -8844,12 +8864,13 @@ fpos_t* ext_fgetpos_test(FILE *user_data)
     }
 }
 
-int ext_fseek_test(FILE *user_data, long location, int whence)
+int ext_fseek_test(void *user_data, long location, int whence)
 {
-    return fseek(user_data, location, whence);
+    FILE *file = user_data;
+    return fseek(file, location, whence);
 }
 
-void ext_free_pos_test(fpos_t *pos)
+void ext_free_pos_test(void *pos)
 {
     free(pos);
 }

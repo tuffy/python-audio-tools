@@ -1146,38 +1146,38 @@ bw_pos_stack_pop(struct bw_pos_stack** stack);
  *******************************************************************/
 
 unsigned
-br_read_python(PyObject *reader,
+br_read_python(void *stream,
                uint8_t *buffer,
                unsigned buffer_size);
 
 int
-bw_write_python(PyObject* writer,
+bw_write_python(void *stream,
                 const uint8_t *buffer,
                 unsigned buffer_size);
 
 int
-bw_flush_python(PyObject* writer);
+bw_flush_python(void *stream);
 
 int
-bs_setpos_python(PyObject* stream, PyObject* pos);
+bs_setpos_python(void *stream, void *pos);
 
-PyObject*
-bs_getpos_python(PyObject* stream);
+void*
+bs_getpos_python(void* stream);
 
 void
-bs_free_pos_python(PyObject* pos);
+bs_free_pos_python(void *pos);
 
 int
-bs_fseek_python(PyObject* stream, long position, int whence);
+bs_fseek_python(void* stream, long position, int whence);
 
 int
-bs_close_python(PyObject* obj);
+bs_close_python(void *stream);
 
 void
-bs_free_python_decref(PyObject* obj);
+bs_free_python_decref(void *stream);
 
 void
-bs_free_python_nodecref(PyObject* obj);
+bs_free_python_nodecref(void *stream);
 
 int
 python_obj_seekable(PyObject* obj);

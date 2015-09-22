@@ -1129,13 +1129,13 @@ BitstreamReader_init(bitstream_BitstreamReader *self,
             file_obj,
             little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
             (unsigned)buffer_size,
-            (ext_read_f)br_read_python,
-            (ext_setpos_f)bs_setpos_python,
-            (ext_getpos_f)bs_getpos_python,
-            (ext_free_pos_f)bs_free_pos_python,
-            (ext_seek_f)bs_fseek_python,
-            (ext_close_f)bs_close_python,
-            (ext_free_f)bs_free_python_decref);
+            br_read_python,
+            bs_setpos_python,
+            bs_getpos_python,
+            bs_free_pos_python,
+            bs_fseek_python,
+            bs_close_python,
+            bs_free_python_decref);
     }
 
     return 0;
@@ -1417,14 +1417,14 @@ BitstreamWriter_init(bitstream_BitstreamWriter *self, PyObject *args)
         file_obj,
         little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN,
         (unsigned)buffer_size,
-        (ext_write_f)bw_write_python,
-        (ext_setpos_f)bs_setpos_python,
-        (ext_getpos_f)bs_getpos_python,
-        (ext_free_pos_f)bs_free_pos_python,
-        (ext_seek_f)bs_fseek_python,
-        (ext_flush_f)bw_flush_python,
-        (ext_close_f)bs_close_python,
-        (ext_free_f)bs_free_python_decref);
+        bw_write_python,
+        bs_setpos_python,
+        bs_getpos_python,
+        bs_free_pos_python,
+        bs_fseek_python,
+        bw_flush_python,
+        bs_close_python,
+        bs_free_python_decref);
 
     return 0;
 }

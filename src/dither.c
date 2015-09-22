@@ -24,10 +24,11 @@
 /*this is quite similar to br_read_python
   except that it pulls data from os.urandom()*/
 static unsigned
-read_os_random(PyObject* os_module,
+read_os_random(void *user_data,
                uint8_t* buffer,
                unsigned buffer_size)
 {
+    PyObject *os_module = user_data;
     /*call unrandom() function on os module*/
     PyObject* read_result =
         PyObject_CallMethod(os_module, "urandom", "I", buffer_size);
@@ -70,15 +71,16 @@ read_os_random(PyObject* os_module,
     return to_copy;
 }
 
-static void
-close_os_random(PyObject* os_module)
+static int
+close_os_random(void *user_data)
 {
-    return;  /* does nothing*/
+    return 0;
 }
 
 static void
-free_os_random(PyObject* os_module)
+free_os_random(void *user_data)
 {
+    PyObject *os_module = user_data;
     Py_XDECREF(os_module);
 }
 
@@ -93,13 +95,13 @@ open_dither(void)
         return br_open_external(os_module,
                                 BS_BIG_ENDIAN,
                                 4096,
-                                (ext_read_f)read_os_random,
+                                read_os_random,
                                 NULL, /*unseekable stream*/
                                 NULL, /*unseekable stream*/
                                 NULL, /*unseekable stream*/
                                 NULL, /*unseekable stream*/
-                                (ext_close_f)close_os_random,
-                                (ext_free_f)free_os_random);
+                                close_os_random,
+                                free_os_random);
     } else {
         return NULL;
     }

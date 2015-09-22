@@ -484,15 +484,15 @@ Resampler_channel_mask(pcmconverter_Resampler *self, void *closure)
 }
 
 static unsigned
-read_os_random(PyObject* os_module,
+read_os_random(void *user_data,
                uint8_t* buffer,
                unsigned buffer_size);
 
-static void
-close_os_random(PyObject* os_module);
+static int
+close_os_random(void *user_data);
 
 static void
-free_os_random(PyObject* os_module);
+free_os_random(void *user_data);
 
 static PyObject*
 BPSConverter_new(PyTypeObject *type, PyObject *args, PyObject *kwds)

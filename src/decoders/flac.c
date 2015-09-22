@@ -285,17 +285,16 @@ FlacDecoder_init(decoders_FlacDecoder *self,
         Py_INCREF(file);
     }
 
-    self->bitstream = br_open_external(
-        file,
-        BS_BIG_ENDIAN,
-        4096,
-        (ext_read_f)br_read_python,
-        (ext_setpos_f)bs_setpos_python,
-        (ext_getpos_f)bs_getpos_python,
-        (ext_free_pos_f)bs_free_pos_python,
-        (ext_seek_f)bs_fseek_python,
-        (ext_close_f)bs_close_python,
-        (ext_free_f)bs_free_python_decref);
+    self->bitstream = br_open_external(file,
+                                       BS_BIG_ENDIAN,
+                                       4096,
+                                       br_read_python,
+                                       bs_setpos_python,
+                                       bs_getpos_python,
+                                       bs_free_pos_python,
+                                       bs_fseek_python,
+                                       bs_close_python,
+                                       bs_free_python_decref);
 
     if (!setjmp(*br_try(self->bitstream))) {
         /*validate stream ID*/
