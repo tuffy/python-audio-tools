@@ -1809,9 +1809,16 @@ class FlacAudio(WaveContainer, AiffContainer):
         except IndexError:
             pass
 
-        # then, check for a CDTOC tag
+        # then, check for a CUESHEET tag or CDTOC tag
         try:
             vorbiscomment = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+            if u"CUESHEET" in vorbiscomment:
+                from audiotools import SheetException
+                from audiotools.cue import read_cuesheet_string
+                try:
+                    return read_cuesheet_string(vorbiscomment[u"CUESHEET"][0])
+                except SheetException:
+                    pass
             if u"CDTOC" in vorbiscomment:
                 from audiotools.cdtoc import CDTOC
                 try:
