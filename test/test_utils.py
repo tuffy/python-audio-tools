@@ -5310,13 +5310,14 @@ class NoMetaData(Exception):
 class tracktag_misc(UtilTest):
     @UTIL_TRACKTAG
     def test_text_options(self):
+        INTEGER_FIELDS = [f for f in audiotools.MetaData.FIELDS
+                          if audiotools.MetaData.FIELD_TYPES[f] is int]
+
         def number_fields_values(fields, metadata_class):
             values = set([])
-            for field in audiotools.MetaData.INTEGER_FIELDS:
+            for field in INTEGER_FIELDS:
                 if field in fields:
-                    values.add(
-                        (field,
-                         audiotools.MetaData.INTEGER_FIELDS.index(field) + 1))
+                    values.add((field, INTEGER_FIELDS.index(field) + 1))
                 else:
                     values.add((field, None))
 
@@ -5324,11 +5325,9 @@ class tracktag_misc(UtilTest):
 
         def deleted_number_fields_values(fields, metadata_class):
             values = set([])
-            for field in audiotools.MetaData.INTEGER_FIELDS:
+            for field in INTEGER_FIELDS:
                 if field not in fields:
-                    values.add(
-                        (field,
-                         audiotools.MetaData.INTEGER_FIELDS.index(field) + 1))
+                    values.add((field, INTEGER_FIELDS.index(field) + 1))
                 else:
                     values.add((field, None))
 
@@ -5336,7 +5335,7 @@ class tracktag_misc(UtilTest):
 
         def metadata_fields_values(metadata):
             values = set([])
-            for field in audiotools.MetaData.INTEGER_FIELDS:
+            for field in INTEGER_FIELDS:
                 values.add((field, getattr(metadata, field)))
             return values
 

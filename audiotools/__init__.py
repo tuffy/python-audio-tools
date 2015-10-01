@@ -3191,10 +3191,24 @@ class MetaData(object):
               "album_total",
               "comment")
 
-    INTEGER_FIELDS = ("track_number",
-                      "track_total",
-                      "album_number",
-                      "album_total")
+    FIELD_TYPES = {"track_name": type(u""),
+                   "track_number": int,
+                   "track_total": int,
+                   "album_name": type(u""),
+                   "artist_name": type(u""),
+                   "performer_name": type(u""),
+                   "composer_name": type(u""),
+                   "conductor_name": type(u""),
+                   "media": type(u""),
+                   "ISRC": type(u""),
+                   "catalog": type(u""),
+                   "copyright": type(u""),
+                   "publisher": type(u""),
+                   "year": type(u""),
+                   "date": type(u""),
+                   "album_number": int,
+                   "album_total": int,
+                   "comment": type(u"")}
 
     # this is the order fields should be presented to the user
     # to ensure consistency across utilities
@@ -4132,10 +4146,8 @@ class AudioFile(object):
 
         # populate remainder of format dictionary
         # with fields from MetaData, if any
-        for field in MetaData.FIELDS:
-            if field in MetaData.INTEGER_FIELDS:
-                continue
-
+        for field in (f for f,t in
+                      MetaData.FIELD_TYPES.items() if t is type(u"")):
             if PY2:
                 field_name = field.decode("ascii")
             else:

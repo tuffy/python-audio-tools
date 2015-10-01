@@ -216,14 +216,22 @@ if (__name__ == '__main__'):
         if field in UPDATE_OPTIONS:
             variable = "update_%s" % (field)
             (option, help_text) = UPDATE_OPTIONS[field]
-            text_group.add_argument(
-                option,
-                type=str if field not in
-                audiotools.MetaData.INTEGER_FIELDS else int,
-                dest=variable,
-                metavar="STRING" if field not in
-                audiotools.MetaData.INTEGER_FIELDS else "INT",
-                help=help_text)
+            field_type = audiotools.MetaData.FIELD_TYPES[field]
+            if field_type is type(u""):
+                type_arg = str
+                metavar = "STRING"
+            elif field_type is int:
+                type_arg = field_type
+                metavar = "INT"
+            else:
+                #FIXME - implement other types here as needed
+                assert(False)
+
+            text_group.add_argument(option,
+                                    type=type_arg,
+                                    dest=variable,
+                                    metavar=metavar,
+                                    help=help_text)
 
     text_group.add_argument("--comment-file",
                             dest="comment_file",
@@ -435,7 +443,8 @@ if (__name__ == '__main__'):
                 for attr in audiotools.MetaData.FIELD_ORDER:
                     if getattr(options, "update_%s" % (attr)) is not None:
                         value = getattr(options, "update_%s" % (attr))
-                        if ((attr not in audiotools.MetaData.INTEGER_FIELDS) and
+                        field_type = audiotools.MetaData.FIELD_TYPES[attr]
+                        if ((field_type is type(u"")) and
                             (sys.version_info[0] < 3)):
                             value = value.decode("UTF-8")
                         setattr(metadata, attr, value)

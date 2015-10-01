@@ -1490,7 +1490,7 @@ class ID3v22Comment(MetaData):
 
         for (attr, key) in cls.ATTRIBUTE_MAP.items():
             value = getattr(metadata, attr)
-            if (attr not in cls.INTEGER_FIELDS) and (value is not None):
+            if (cls.FIELD_TYPES[attr] == type(u"")) and (value is not None):
                 if attr == 'comment':
                     frames.append(cls.COMMENT_FRAME.converted(key, value))
                 else:
@@ -1515,10 +1515,11 @@ class ID3v22Comment(MetaData):
         for image in metadata.images():
             frames.append(cls.IMAGE_FRAME.converted(cls.IMAGE_FRAME_ID, image))
 
-        if hasattr(cls, 'ITUNES_COMPILATION_ID'):
-            frames.append(
-                cls.TEXT_FRAME.converted(
-                    cls.ITUNES_COMPILATION_ID, u'1'))
+        #FIXME - handle compilation ID properly
+        #if hasattr(cls, 'ITUNES_COMPILATION_ID'):
+        #    frames.append(
+        #        cls.TEXT_FRAME.converted(
+        #            cls.ITUNES_COMPILATION_ID, u'1'))
 
         return cls(frames)
 

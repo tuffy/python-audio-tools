@@ -7943,3 +7943,27 @@
    Although the fdk-aac library doesn't have a compatible license,
    there must be *some* way to support AAC without the nasty
    hacks in place now.
+* TODO Add compilation field to metadata
+  This boolean field indicates the track is part of a compilation
+  and should round-trip correctly across all metadata types
+  that support it.
+** DONE Replace MetaData.INTEGER_FIELDS with a FIELD_TYPE lookup
+   This allows a field to be either a Unicode string (like track_name)
+   integer field (like track_number) or a boolean (like compilation).
+** TODO Add field to metadata classes
+*** TODO Add compilation field to MetaData class
+*** TODO Add compilation field to ID3v2 classes
+    - [ ] ID3v2.2
+    - [ ] ID3v2.3
+    - [ ] ID3v2.4
+    - [ ] ID3CommentPair
+*** TODO Add compilation field to VorbisComment classes
+    - [ ] VorbisComment
+    - [ ] FlacMetaData
+*** TODO Add compilation field to M4A metadata
+*** TODO Add compilation field to APEv2 metadata
+** TODO Update tracktag to support compilation field
+   - [ ] add command-line options
+   - [ ] add UI support
+** TODO Update documentation
+** TODO Update unit tests

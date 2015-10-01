@@ -110,8 +110,9 @@ class MetaDataTest(unittest.TestCase):
 
                 # check that setting the fields to random values works
                 for field in self.supported_fields:
+                    field_type = audiotools.MetaData.FIELD_TYPES[field]
                     metadata = self.empty_metadata()
-                    if field not in audiotools.MetaData.INTEGER_FIELDS:
+                    if field_type is type(u""):
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in range(random.choice(range(1, 21)))])
@@ -120,33 +121,37 @@ class MetaDataTest(unittest.TestCase):
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field),
                                          unicode_string)
-                    else:
+                    elif field_type is int:
                         number = random.choice(range(1, 100))
                         setattr(metadata, field, number)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), number)
+                    #FIXME - handle boolean type here
 
                 # check that blanking out the fields works
                 for field in self.supported_fields:
+                    field_type = audiotools.MetaData.FIELD_TYPES[field]
                     metadata = self.empty_metadata()
                     self.assertIsNone(getattr(metadata, field))
-                    if field not in audiotools.MetaData.INTEGER_FIELDS:
+                    if field_type is type(u""):
                         setattr(metadata, field, u"")
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), u"")
-                    else:
+                    elif field_type is int:
                         setattr(metadata, field, None)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         if metadata is not None:
                             self.assertIsNone(getattr(metadata, field))
+                    #FIXME - handle boolean type here
 
                 # re-set the fields with random values
                 for field in self.supported_fields:
+                    field_type = audiotools.MetaData.FIELD_TYPES[field]
                     metadata = self.empty_metadata()
-                    if field not in audiotools.MetaData.INTEGER_FIELDS:
+                    if field_type is type(u""):
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in range(random.choice(range(1, 21)))])
@@ -155,12 +160,13 @@ class MetaDataTest(unittest.TestCase):
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field),
                                          unicode_string)
-                    else:
+                    elif field_type is int:
                         number = random.choice(range(1, 100))
                         setattr(metadata, field, number)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), number)
+                    #FIXME - handle boolean type here
 
                     # check that deleting the fields works
                     delattr(metadata, field)
@@ -426,10 +432,12 @@ class MetaDataTest(unittest.TestCase):
 
         metadata = self.empty_metadata()
         for field in self.supported_fields:
-            if field not in audiotools.MetaData.INTEGER_FIELDS:
+            field_type = audiotools.MetaData.FIELD_TYPES[field]
+            if field_type is type(u""):
                 setattr(metadata, field, u"A" * 5)
-            else:
+            elif field_type is int:
                 setattr(metadata, field, 1)
+            #FIXME - handle boolean type here
         raw_info = metadata.raw_info()
         self.assertIsInstance(raw_info, __unicode__)
         self.assertGreater(len(raw_info), 0)
@@ -2074,8 +2082,9 @@ class ID3v1MetaData(MetaDataTest):
 
                 # check that setting the fields to random values works
                 for field in self.supported_fields:
+                    field_type = audiotools.MetaData.FIELD_TYPES[field]
                     metadata = self.empty_metadata()
-                    if field not in audiotools.MetaData.INTEGER_FIELDS:
+                    if field_type is type(u""):
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in range(random.choice(range(1, 5)))])
@@ -2084,17 +2093,19 @@ class ID3v1MetaData(MetaDataTest):
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field),
                                          unicode_string)
-                    else:
+                    elif field_type is int:
                         number = random.choice(range(1, 100))
                         setattr(metadata, field, number)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), number)
+                    #FIXME - handle boolean type here
 
                 # check that overlong fields are truncated
                 for field in self.supported_fields:
+                    field_type = audiotools.MetaData.FIELD_TYPES[field]
                     metadata = self.empty_metadata()
-                    if field not in audiotools.MetaData.INTEGER_FIELDS:
+                    if field_type is type(u""):
                         unicode_string = u"a" * 50
                         setattr(metadata, field, unicode_string)
                         track.set_metadata(metadata)
@@ -2111,22 +2122,25 @@ class ID3v1MetaData(MetaDataTest):
 
                 # check that blanking out the fields works
                 for field in self.supported_fields:
+                    field_type = audiotools.MetaData.FIELD_TYPES[field]
                     metadata = self.empty_metadata()
-                    if field not in audiotools.MetaData.INTEGER_FIELDS:
+                    if field_type is type(u""):
                         setattr(metadata, field, u"")
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertIsNone(getattr(metadata, field))
-                    else:
+                    elif field_type is int:
                         setattr(metadata, field, 0)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertIsNone(getattr(metadata, field))
+                    #FIXME - handle boolean type here
 
                 # re-set the fields with random values
                 for field in self.supported_fields:
+                    field_type = audiotools.MetaData.FIELD_TYPES[field]
                     metadata = self.empty_metadata()
-                    if field not in audiotools.MetaData.INTEGER_FIELDS:
+                    if field_type is type(u""):
                         unicode_string = u"".join(
                             [random.choice(chars)
                              for i in range(random.choice(range(1, 5)))])
@@ -2135,12 +2149,13 @@ class ID3v1MetaData(MetaDataTest):
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field),
                                          unicode_string)
-                    else:
+                    elif field_type is int:
                         number = random.choice(range(1, 100))
                         setattr(metadata, field, number)
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), number)
+                    #FIXME - support boolean type here
 
                 # check that deleting the fields works
                 for field in self.supported_fields:
@@ -7744,7 +7759,7 @@ class VorbisCommentTest(MetaDataTest):
                     audiotools.VorbisComment.ATTRIBUTE_MAP.items()
                     if item in map_to][0]
 
-            if attr in audiotools.VorbisComment.INTEGER_FIELDS:
+            if audiotools.VorbisComment.FIELD_TYPES[attr] is int:
                 old_raw_value = u"1"
                 old_attr_value = 1
                 new_raw_value = u"2"

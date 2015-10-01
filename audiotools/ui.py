@@ -809,15 +809,16 @@ try:
 
             self.metadata = metadata
             self.checkbox_groups = {}
-            for field in metadata.FIELDS:
-                if field not in metadata.INTEGER_FIELDS:
+            for field, field_type in metadata.FIELD_TYPES.items():
+                if field_type is type(u""):
                     value = getattr(metadata, field)
                     widget = DownEdit(edit_text=value if value is not None
                                       else u"")
-                else:
+                elif field_type is int:
                     value = getattr(metadata, field)
                     widget = DownIntEdit(default=value if value is not None
                                          else 0)
+                #FIXME - handle other types here
 
                 if on_change is not None:
                     urwid.connect_signal(widget, 'change', on_change)
@@ -832,15 +833,16 @@ try:
             base_metadata is a BaseMetaData object to link against
             on_change is a callback for when the text field is modified"""
 
-            for field in metadata.FIELDS:
-                if field not in metadata.INTEGER_FIELDS:
+            for field, field_type in metadata.FIELD_TYPES.items():
+                if field_type is type(u""):
                     value = getattr(metadata, field)
                     widget = DownEdit(edit_text=value if value is not None
                                       else u"")
-                else:
+                elif field_type is int:
                     value = getattr(metadata, field)
                     widget = DownIntEdit(default=value if value is not None
                                          else 0)
+                #FIXME - handle other types here
 
                 if on_change is not None:
                     urwid.connect_signal(widget, 'change', on_change)
@@ -861,13 +863,21 @@ try:
             """returns a new MetaData object of the track's
             current value based on its widgets' values"""
 
+            def is_set(field_type, value):
+                if field_type is type(u""):
+                    return len(value) > 0
+                elif field_type is int:
+                    return value > 0
+                else:
+                    #FIXME - handle boolean types
+                    return False
+
             return audiotools.MetaData(
                 **{attr: value for (attr, value) in
-                   [(attr, getattr(self, attr).value())
-                    for attr in audiotools.MetaData.FIELDS]
-                    if ((len(value) > 0) if
-                        (attr not in audiotools.MetaData.INTEGER_FIELDS) else
-                        (value > 0))})
+                   [(attr, field_type, getattr(self, attr).value())
+                    for attr, field_type in
+                    audiotools.MetaData.FIELD_TYPES.items()]
+                    if is_set(field_type, value)})
 
     class Swivel(object):
         """this is a container for the objects of a swiveling operation"""
