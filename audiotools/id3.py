@@ -443,6 +443,7 @@ class ID3v22_Frame(object):
 
 class ID3v22_T__Frame(object):
     NUMERICAL_IDS = (b'TRK', b'TPA')
+    BOOLEAN_IDS = (b'TCP',)
 
     def __init__(self, frame_id, encoding, data):
         """fields are as follows:
@@ -536,6 +537,15 @@ class ID3v22_T__Frame(object):
             return int(int_string.group(0))
         else:
             return None
+
+    def true(self):
+        """if the frame is boolean, returns True if it represents true
+        raises TypeError if not"""
+
+        if self.id not in self.BOOLEAN_IDS:
+            raise TypeError()
+
+        return self.__unicode__() == u"1"
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -1158,7 +1168,8 @@ class ID3v22Comment(MetaData):
                      'date': b'TRD',
                      'album_number': b'TPA',
                      'album_total': b'TPA',
-                     'comment': b'COM'}
+                     'comment': b'COM',
+                     'compilation': b'TCP'}
 
     RAW_FRAME = ID3v22_Frame
     TEXT_FRAME = ID3v22_T__Frame
@@ -1334,6 +1345,8 @@ class ID3v22Comment(MetaData):
                     return frame.number()
                 elif attr in {'track_total', 'album_total'}:
                     return frame.total()
+                elif attr == 'compilation':
+                    return frame.true()
                 else:
                     return frame.__unicode__()
             except KeyError:
@@ -1390,6 +1403,9 @@ class ID3v22Comment(MetaData):
                 elif attr == 'comment':
                     new_frame = self.COMMENT_FRAME.converted(
                         frame_id, value)
+                elif attr == 'compilation':
+                    new_frame = self.TEXT_FRAME.converted(
+                        frame_id, u"%d" % (1 if value else 0))
                 else:
                     new_frame = self.TEXT_FRAME.converted(
                         frame_id, u"%s" % (value,))
@@ -1495,6 +1511,9 @@ class ID3v22Comment(MetaData):
                     frames.append(cls.COMMENT_FRAME.converted(key, value))
                 else:
                     frames.append(cls.TEXT_FRAME.converted(key, value))
+            elif attr == 'compilation':
+                frames.append(
+                    cls.TEXT_FRAME.converted(key, u"%d" % (1 if value else 0)))
 
         if (((metadata.track_number is not None) or
              (metadata.track_total is not None))):
@@ -1514,12 +1533,6 @@ class ID3v22Comment(MetaData):
 
         for image in metadata.images():
             frames.append(cls.IMAGE_FRAME.converted(cls.IMAGE_FRAME_ID, image))
-
-        #FIXME - handle compilation ID properly
-        #if hasattr(cls, 'ITUNES_COMPILATION_ID'):
-        #    frames.append(
-        #        cls.TEXT_FRAME.converted(
-        #            cls.ITUNES_COMPILATION_ID, u'1'))
 
         return cls(frames)
 
@@ -1550,6 +1563,7 @@ class ID3v23_Frame(ID3v22_Frame):
 
 class ID3v23_T___Frame(ID3v22_T__Frame):
     NUMERICAL_IDS = (b'TRCK', b'TPOS')
+    BOOLEAN_IDS = (b'TCMP',)
 
     def __repr__(self):
         return "ID3v23_T___Frame(%s, %s, %s)" % \
@@ -1809,7 +1823,8 @@ class ID3v23Comment(ID3v22Comment):
                      'date': b'TRDA',
                      'album_number': b'TPOS',
                      'album_total': b'TPOS',
-                     'comment': b'COMM'}
+                     'comment': b'COMM',
+                     'compilation': b'TCMP'}
 
     RAW_FRAME = ID3v23_Frame
     TEXT_FRAME = ID3v23_T___Frame

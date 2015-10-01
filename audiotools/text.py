@@ -200,6 +200,9 @@ METADATA_DATE = u"recording date"
 METADATA_ALBUM_NUMBER = u"album number"
 METADATA_ALBUM_TOTAL = u"album total"
 METADATA_COMMENT = u"comment"
+METADATA_COMPILATION = u"compilation part"
+METADATA_TRUE = u"yes"
+METADATA_FALSE = u"no"
 
 # Derived MetaData Fields
 METADATA_SUFFIX = u"file name suffix"

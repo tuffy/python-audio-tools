@@ -37,7 +37,8 @@ class VorbisComment(MetaData):
                      'year': u'DATE',
                      'album_number': u'DISCNUMBER',
                      'album_total': u'DISCTOTAL',
-                     'comment': u'COMMENT'}
+                     'comment': u'COMMENT',
+                     'compilation': u'COMPILATION'}
 
     ALIASES = {}
 
@@ -244,6 +245,13 @@ class VorbisComment(MetaData):
                     # no slashed TRACKNUMBER/DISCNUMBER values either
                     # so return None
                     return None
+            elif attr == "compilation":
+                try:
+                    # if present, return True if the first value is "1"
+                    return self[key][0] == u"1"
+                except KeyError:
+                    # if not present, return None
+                    return None
             else:
                 # attribute is supported by VorbisComment
                 try:
@@ -344,6 +352,8 @@ class VorbisComment(MetaData):
                 # no slashed TRACKNUMBER/DISCNUMBER values either
                 # so append a TRACKTOTAL/DISCTOTAL field
                 self[key] = current_values + [u"%d" % (value)]
+            elif attr == "compilation":
+                self[key] = [u"1" if value else u"0"]
             else:
                 # leave subsequent fields with the same key as-is
                 try:
@@ -463,7 +473,16 @@ class VorbisComment(MetaData):
             for (attr, key) in cls.ATTRIBUTE_MAP.items():
                 value = getattr(metadata, attr)
                 if value is not None:
-                    comment_strings.append(u"%s=%s" % (key, value))
+                    attr_type = cls.FIELD_TYPES[attr]
+                    if attr_type is type(u""):
+                        comment_strings.append(
+                            u"%s=%s" % (key, value))
+                    elif attr_type is int:
+                        comment_strings.append(
+                            u"%s=%d" % (key, value))
+                    elif attr_type is bool:
+                        comment_strings.append(
+                            u"%s=%d" % (key, 1 if value else 0))
 
             return cls(comment_strings, u"Python Audio Tools %s" % (VERSION))
 

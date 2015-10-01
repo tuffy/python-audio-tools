@@ -1088,6 +1088,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
     TOTAL_ATTRIB_TO_ILST = {"track_total": b"trkn",
                             "album_total": b"disk"}
 
+    BOOL_ATTRIB_TO_ILST = {"compilation": b"cpil"}
+
     def __init__(self, version, flags, leaf_atoms):
         M4A_Tree_Atom.__init__(self, b"meta", leaf_atoms)
         MetaData.__setattr__(self, "version", version)
@@ -1205,6 +1207,15 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     return None
             else:
                 return None
+        elif attr == 'compilation':
+            if self.has_ilst_atom():
+                try:
+                    return (self.ilst_atom()[b'cpil'][b'data'].data ==
+                            b'\x00\x00\x00\x15\x00\x00\x00\x00\x01')
+                except KeyError:
+                    return None
+            else:
+                return None
         elif attr in self.FIELDS:
             return None
         else:
@@ -1222,6 +1233,11 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 return M4A_ILST_DISK_Data_Atom(int(value), 0)
             elif attribute == "album_total":
                 return M4A_ILST_DISK_Data_Atom(0, int(value))
+            elif attribute == "compilation":
+                return M4A_Leaf_Atom(
+                    b'data',
+                    b'\x00\x00\x00\x15\x00\x00\x00\x00\x01' if value else
+                    b'\x00\x00\x00\x15\x00\x00\x00\x00\x00')
             else:
                 raise ValueError(value)
 
@@ -1264,7 +1280,9 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 attr,
                 self.TOTAL_ATTRIB_TO_ILST.get(
                     attr,
-                    None)))
+                    self.BOOL_ATTRIB_TO_ILST.get(
+                        attr,
+                        None))))
 
         if ilst_leaf is not None:
             if not self.has_ilst_atom():
@@ -1293,6 +1311,10 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 ilst_atom.leaf_atoms = [
                     atom for atom in ilst_atom if
                     atom.name != self.UNICODE_ATTRIB_TO_ILST[attr]]
+            elif attr in self.BOOL_ATTRIB_TO_ILST:
+                ilst_atom.leaf_atoms = [
+                    atom for atom in ilst_atom if
+                    atom.name != self.BOOL_ATTRIB_TO_ILST[attr]]
             elif attr == "track_number":
                 if self.track_total is None:
                     # if track_number and track_total are both 0
@@ -1391,6 +1413,13 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
             for (attrib, value) in metadata.filled_fields()
             if (attrib in cls.UNICODE_ATTRIB_TO_ILST)]
 
+        if metadata.compilation:
+            ilst_atoms.append(
+                M4A_ILST_Leaf_Atom(
+                    b'cpil',
+                    [M4A_Leaf_Atom(b'data',
+                                   b'\x00\x00\x00\x15\x00\x00\x00\x00\x01')]))
+
         if (((metadata.track_number is not None) or
              (metadata.track_total is not None))):
             ilst_atoms.append(
@@ -1421,12 +1450,6 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                     b'covr',
                     [M4A_ILST_COVR_Data_Atom.converted(
                         metadata.front_covers()[0])]))
-
-        ilst_atoms.append(
-            M4A_ILST_Leaf_Atom(
-                b'cpil',
-                [M4A_Leaf_Atom(b'data',
-                               b'\x00\x00\x00\x15\x00\x00\x00\x00\x01')]))
 
         return cls(0, 0, [M4A_HDLR_Atom(0, 0, b'\x00\x00\x00\x00',
                                         b'mdir', b'appl', 0, 0, b'', 0),

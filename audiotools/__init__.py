@@ -3189,7 +3189,8 @@ class MetaData(object):
               "date",
               "album_number",
               "album_total",
-              "comment")
+              "comment",
+              "compilation")
 
     FIELD_TYPES = {"track_name": type(u""),
                    "track_number": int,
@@ -3208,7 +3209,8 @@ class MetaData(object):
                    "date": type(u""),
                    "album_number": int,
                    "album_total": int,
-                   "comment": type(u"")}
+                   "comment": type(u""),
+                   "compilation": bool}
 
     # this is the order fields should be presented to the user
     # to ensure consistency across utilities
@@ -3229,7 +3231,8 @@ class MetaData(object):
                    "year",
                    "date",
                    "copyright",
-                   "comment")
+                   "comment",
+                   "compilation")
 
     # this is the name fields should use when presented to the user
     # also to ensure constency across utilities
@@ -3250,7 +3253,8 @@ class MetaData(object):
                                  METADATA_DATE,
                                  METADATA_ALBUM_NUMBER,
                                  METADATA_ALBUM_TOTAL,
-                                 METADATA_COMMENT)
+                                 METADATA_COMMENT,
+                                 METADATA_COMPILATION)
 
     FIELD_NAMES = {"track_name": METADATA_TRACK_NAME,
                    "track_number": METADATA_TRACK_NUMBER,
@@ -3269,7 +3273,8 @@ class MetaData(object):
                    "date": METADATA_DATE,
                    "album_number": METADATA_ALBUM_NUMBER,
                    "album_total": METADATA_ALBUM_TOTAL,
-                   "comment": METADATA_COMMENT}
+                   "comment": METADATA_COMMENT,
+                   "compilation": METADATA_COMPILATION}
 
     def __init__(self,
                  track_name=None,
@@ -3290,6 +3295,7 @@ class MetaData(object):
                  album_number=None,
                  album_total=None,
                  comment=None,
+                 compilation=None,
                  images=None):
         """
 | field          | type    | meaning                              |
@@ -3312,6 +3318,7 @@ class MetaData(object):
 | album_number   | integer | the disc's volume number             |
 | album_total    | integer | the total number of discs            |
 | comment        | unicode | the track's comment string           |
+| compilation    | boolean | whether track is part of compilation |
 | images         | list    | list of Image objects                |
 |----------------+---------+--------------------------------------|
 """
@@ -3337,6 +3344,7 @@ class MetaData(object):
         MetaData.__setattr__(self, "album_number", album_number)
         MetaData.__setattr__(self, "album_total", album_total)
         MetaData.__setattr__(self, "comment", comment)
+        MetaData.__setattr__(self, "compilation", compilation)
 
         if images is not None:
             MetaData.__setattr__(self, "__images__", list(images))
@@ -3447,7 +3455,15 @@ class MetaData(object):
                 row = table.row()
                 row.add_column(self.FIELD_NAMES[attr], "right")
                 row.add_column(SEPARATOR)
-                row.add_column(getattr(self, attr))
+                if self.FIELD_TYPES[attr] is type(u""):
+                    row.add_column(getattr(self, attr))
+                elif self.FIELD_TYPES[attr] is int:
+                    row.add_column(u"%d" % (getattr(self, attr)))
+                elif self.FIELD_TYPES[attr] is bool:
+                    from audiotools.text import (METADATA_TRUE,
+                                                 METADATA_FALSE)
+                    row.add_column(METADATA_TRUE if getattr(self, attr) else
+                                   METADATA_FALSE)
 
         # append image data, if necessary
         from audiotools.text import LAB_PICTURE
@@ -3494,8 +3510,7 @@ class MetaData(object):
         """
 
         if metadata is not None:
-            fields = {field: getattr(metadata, field)
-                      for field in cls.FIELDS}
+            fields = {field: getattr(metadata, field) for field in cls.FIELDS}
             fields["images"] = metadata.images()
             return MetaData(**fields)
         else:

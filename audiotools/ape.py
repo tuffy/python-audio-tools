@@ -249,8 +249,6 @@ class ApeTag(MetaData):
                      'album_total': b'Media',
                      'album_name': b'Album',
                      'artist_name': b'Artist',
-                     # "Performer" is not a defined APEv2 key
-                     # it would be nice to have, yet would not be standard
                      'performer_name': b'Performer',
                      'composer_name': b'Composer',
                      'conductor_name': b'Conductor',
@@ -260,9 +258,11 @@ class ApeTag(MetaData):
                      'publisher': b'Publisher',
                      'year': b'Year',
                      'date': b'Record Date',
-                     'comment': b'Comment'}
+                     'comment': b'Comment',
+                     'compilation': b'Compilation'}
 
     INTEGER_ITEMS = (b'Track', b'Media')
+    BOOLEAN_ITEMS = (b'Compilation',)
 
     def __init__(self, tags, contains_header=True, contains_footer=True):
         """constructs an ApeTag from a list of ApeTagItem objects"""
@@ -370,6 +370,8 @@ class ApeTag(MetaData):
                     return self[self.ATTRIBUTE_MAP[attr]].number()
                 elif attr in {'track_total', 'album_total'}:
                     return self[self.ATTRIBUTE_MAP[attr]].total()
+                elif attr == 'compilation':
+                    return self[self.ATTRIBUTE_MAP[attr]].__unicode__() == u"1"
                 else:
                     return self[self.ATTRIBUTE_MAP[attr]].__unicode__()
             except KeyError:
@@ -413,6 +415,9 @@ class ApeTag(MetaData):
                     except KeyError:
                         self[key] = self.ITEM.string(
                             key, __number_pair__(None, value))
+                elif attr == 'compilation':
+                    self[key] = self.ITEM.string(key,
+                                                 u"%d" % (1 if value else 1))
                 else:
                     self[key] = self.ITEM.string(key, value)
             else:
