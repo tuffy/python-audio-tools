@@ -753,7 +753,7 @@ This is accomplished by implementing three additional methods.
 MetaData Objects
 ----------------
 
-.. class:: MetaData([track_name][, track_number][, track_total][, album_name][, artist_name][, performer_name][, composer_name][, conductor_name][, media][, ISRC][, catalog][, copyright][, publisher][, year][, data][, album_number][, album_total][, comment][, images])
+.. class:: MetaData([track_name][, track_number][, track_total][, album_name][, artist_name][, performer_name][, composer_name][, conductor_name][, media][, ISRC][, catalog][, copyright][, publisher][, year][, data][, album_number][, album_total][, comment][, compilation][, images])
 
    The :class:`MetaData` class represents an :class:`AudioFile`'s
    non-technical metadata.
@@ -873,6 +873,10 @@ MetaData Objects
 .. data:: MetaData.comment
 
    This track's comment as a Unicode string.
+
+.. data:: MetaData.compilation
+
+   Whether this track is part of a compilation, as a boolean.
 
 .. method:: MetaData.fields()
 

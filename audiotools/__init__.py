@@ -3221,6 +3221,7 @@ class MetaData(object):
                    "track_total",
                    "album_number",
                    "album_total",
+                   "compilation",
                    "performer_name",
                    "composer_name",
                    "conductor_name",
@@ -3231,8 +3232,7 @@ class MetaData(object):
                    "year",
                    "date",
                    "copyright",
-                   "comment",
-                   "compilation")
+                   "comment")
 
     # this is the name fields should use when presented to the user
     # also to ensure constency across utilities

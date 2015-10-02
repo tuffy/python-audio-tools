@@ -62,7 +62,8 @@ class MetaDataTest(unittest.TestCase):
                                  "date",
                                  "album_number",
                                  "album_total",
-                                 "comment"]
+                                 "comment",
+                                 "compilation"]
         self.supported_formats = []
 
     def empty_metadata(self):
@@ -127,7 +128,12 @@ class MetaDataTest(unittest.TestCase):
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), number)
-                    #FIXME - handle boolean type here
+                    elif field_type is bool:
+                        value = random.choice([False, True])
+                        setattr(metadata, field, value)
+                        track.set_metadata(metadata)
+                        metadata = track.get_metadata()
+                        self.assertEqual(getattr(metadata, field), value)
 
                 # check that blanking out the fields works
                 for field in self.supported_fields:
@@ -145,7 +151,12 @@ class MetaDataTest(unittest.TestCase):
                         metadata = track.get_metadata()
                         if metadata is not None:
                             self.assertIsNone(getattr(metadata, field))
-                    #FIXME - handle boolean type here
+                    elif field_type is bool:
+                        setattr(metadata, field, None)
+                        track.set_metadata(metadata)
+                        metadata = track.get_metadata()
+                        if metadata is not None:
+                            self.assertIsNone(getattr(metadata, field))
 
                 # re-set the fields with random values
                 for field in self.supported_fields:
@@ -166,7 +177,12 @@ class MetaDataTest(unittest.TestCase):
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), number)
-                    #FIXME - handle boolean type here
+                    elif field_type is bool:
+                        value = random.choice([False, True])
+                        setattr(metadata, field, value)
+                        track.set_metadata(metadata)
+                        metadata = track.get_metadata()
+                        self.assertEqual(getattr(metadata, field), value)
 
                     # check that deleting the fields works
                     delattr(metadata, field)
@@ -437,7 +453,8 @@ class MetaDataTest(unittest.TestCase):
                 setattr(metadata, field, u"A" * 5)
             elif field_type is int:
                 setattr(metadata, field, 1)
-            #FIXME - handle boolean type here
+            elif field_type is bool:
+                setattr(metadata, field, True)
         raw_info = metadata.raw_info()
         self.assertIsInstance(raw_info, __unicode__)
         self.assertGreater(len(raw_info), 0)
@@ -806,7 +823,8 @@ class WavPackApeTagMetaData(MetaDataTest):
                                  "date",
                                  "album_number",
                                  "album_total",
-                                 "comment"]
+                                 "comment",
+                                 "compilation"]
         self.supported_formats = [audiotools.WavPackAudio]
 
     def empty_metadata(self):
@@ -2099,7 +2117,12 @@ class ID3v1MetaData(MetaDataTest):
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), number)
-                    #FIXME - handle boolean type here
+                    elif field_type is bool:
+                        value = random.choice([False, True])
+                        setattr(metadata, field, value)
+                        track.set_metadata(metadata)
+                        metadata = track.get_metadata()
+                        self.assertEqual(getattr(metadata, field), value)
 
                 # check that overlong fields are truncated
                 for field in self.supported_fields:
@@ -2134,7 +2157,6 @@ class ID3v1MetaData(MetaDataTest):
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertIsNone(getattr(metadata, field))
-                    #FIXME - handle boolean type here
 
                 # re-set the fields with random values
                 for field in self.supported_fields:
@@ -2155,7 +2177,6 @@ class ID3v1MetaData(MetaDataTest):
                         track.set_metadata(metadata)
                         metadata = track.get_metadata()
                         self.assertEqual(getattr(metadata, field), number)
-                    #FIXME - support boolean type here
 
                 # check that deleting the fields works
                 for field in self.supported_fields:
@@ -2246,7 +2267,8 @@ class ID3v22MetaData(MetaDataTest):
                                  "date",
                                  "album_number",
                                  "album_total",
-                                 "comment"]
+                                 "comment",
+                                 "compilation"]
         self.supported_formats = [audiotools.MP3Audio,
                                   audiotools.MP2Audio,
                                   audiotools.AiffAudio]
@@ -2332,10 +2354,11 @@ class ID3v22MetaData(MetaDataTest):
 
         id3_class = self.metadata_class
 
-        INTEGER_ATTRIBS = ('track_number',
+        SPECIAL_ATTRIBS = ('track_number',
                            'track_total',
                            'album_number',
-                           'album_total')
+                           'album_total',
+                           'compilation')
 
         attribs1 = {}  # a dict of attribute -> value pairs
                        # ("track_name":u"foo")
@@ -2343,12 +2366,13 @@ class ID3v22MetaData(MetaDataTest):
                        # ("TT2":u"foo")
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
-            if attribute not in INTEGER_ATTRIBS:
+            if attribute not in SPECIAL_ATTRIBS:
                 attribs1[attribute] = attribs2[key] = u"value %d" % (i)
         attribs1["track_number"] = 2
         attribs1["track_total"] = 10
         attribs1["album_number"] = 1
         attribs1["album_total"] = 3
+        attribs1["compilation"] = True
 
         id3 = id3_class.converted(audiotools.MetaData(**attribs1))
 
@@ -2374,12 +2398,18 @@ class ID3v22MetaData(MetaDataTest):
             id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0].total(),
             attribs1["album_total"])
 
+        # ensure the key for compilation matches up
+        self.assertEqual(
+            id3[id3_class.TEXT_FRAME.BOOLEAN_IDS[0]][0].true(),
+            attribs1["compilation"])
+
         # ensure that changing attributes changes the underlying frame
         # >>> id3.track_name = u"bar"
         # >>> id3['TT2'][0] == u"bar"
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
-            if key not in id3_class.TEXT_FRAME.NUMERICAL_IDS:
+            if ((key not in id3_class.TEXT_FRAME.NUMERICAL_IDS) and
+                (key not in id3_class.TEXT_FRAME.BOOLEAN_IDS)):
                 setattr(id3, attribute, u"new value %d" % (i))
                 self.assertEqual(u"%s" % (id3[key][0],),
                                  u"new value %d" % (i))
@@ -2409,6 +2439,20 @@ class ID3v22MetaData(MetaDataTest):
             id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[1]][0].__unicode__(),
             number_pair(2, 4))
 
+        # ensure that changing boolean attributes changes
+        # the underlying frame:
+        # >>> id3.compilation = True
+        # >>> id3['TCP'][0] == u"1"
+        id3.compilation = False
+        self.assertEqual(
+            id3[id3_class.TEXT_FRAME.BOOLEAN_IDS[0]][0].__unicode__(),
+            u"0")
+
+        id3.compilation = True
+        self.assertEqual(
+            id3[id3_class.TEXT_FRAME.BOOLEAN_IDS[0]][0].__unicode__(),
+            u"1")
+
         # reset and re-check everything for the next round
         id3 = id3_class.converted(audiotools.MetaData(**attribs1))
 
@@ -2427,7 +2471,7 @@ class ID3v22MetaData(MetaDataTest):
         # >>> id3.track_name == u"bar"
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
-            if attribute not in INTEGER_ATTRIBS:
+            if attribute not in SPECIAL_ATTRIBS:
                 id3[key] = [id3_class.TEXT_FRAME(
                     key, 0, (u"new value %d" % (i)).encode("ascii"))]
                 self.assertEqual(getattr(id3, attribute),
@@ -2450,13 +2494,17 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(id3.album_number, 5)
         self.assertEqual(id3.album_total, 6)
 
+        key = id3_class.TEXT_FRAME.BOOLEAN_IDS[0]
+        id3[key] = [id3_class.TEXT_FRAME(key, 0, b"1")]
+        self.assertEqual(id3.compilation, True)
+
         # finally, just for kicks, ensure that explicitly setting
         # frames also changes attributes
         # >>> id3['TT2'] = [id3_class.TEXT_FRAME.from_unicode('TT2',u"foo")]
         # >>> id3.track_name = u"foo"
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
-            if attribute not in INTEGER_ATTRIBS:
+            if attribute not in SPECIAL_ATTRIBS:
                 id3[key] = [id3_class.TEXT_FRAME.converted(key, u"%s" % (i,))]
                 self.assertEqual(getattr(id3, attribute), u"%s" % (i,))
 
@@ -3378,7 +3426,8 @@ class ID3v23MetaData(ID3v22MetaData):
                                  "date",
                                  "album_number",
                                  "album_total",
-                                 "comment"]
+                                 "comment",
+                                 "compilation"]
         self.supported_formats = [audiotools.MP3Audio,
                                   audiotools.MP2Audio]
 
@@ -3572,7 +3621,8 @@ class ID3v24MetaData(ID3v22MetaData):
                                  "date",
                                  "album_number",
                                  "album_total",
-                                 "comment"]
+                                 "comment",
+                                 "compilation"]
         self.supported_formats = [audiotools.MP3Audio,
                                   audiotools.MP2Audio]
 
@@ -3744,7 +3794,8 @@ class ID3CommentPairMetaData(MetaDataTest):
                                  "date",
                                  "album_number",
                                  "album_total",
-                                 "comment"]
+                                 "comment",
+                                 "compilation"]
         self.supported_formats = [audiotools.MP3Audio,
                                   audiotools.MP2Audio]
 
@@ -3775,7 +3826,8 @@ class FlacMetaData(MetaDataTest):
                                  "year",
                                  "album_number",
                                  "album_total",
-                                 "comment"]
+                                 "comment",
+                                 "compilation"]
         self.supported_formats = [audiotools.FlacAudio]
 
     def empty_metadata(self):
@@ -5645,7 +5697,8 @@ class M4AMetaDataTest(MetaDataTest):
                                  "year",
                                  "album_number",
                                  "album_total",
-                                 "comment"]
+                                 "comment",
+                                 "compilation"]
         self.supported_formats = [audiotools.M4AAudio,
                                   audiotools.ALACAudio]
 
@@ -6657,7 +6710,8 @@ class VorbisCommentTest(MetaDataTest):
                                  "year",
                                  "album_number",
                                  "album_total",
-                                 "comment"]
+                                 "comment",
+                                 "compilation"]
         self.supported_formats = [audiotools.VorbisAudio]
 
     def empty_metadata(self):
@@ -7873,7 +7927,8 @@ class OpusTagsTest(MetaDataTest):
                                  "year",
                                  "album_number",
                                  "album_total",
-                                 "comment"]
+                                 "comment",
+                                 "compilation"]
         self.supported_formats = [audiotools.OpusAudio]
 
     def empty_metadata(self):

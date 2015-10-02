@@ -647,7 +647,7 @@ class ID3v22_TXX_Frame(object):
         """returns a human-readable version of this frame as unicode"""
 
         return u"%s = (%s, \"%s\") %s" % \
-            (self.id,
+            (self.id.decode('ascii', 'replace'),
              {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
              self.description,
              self.__unicode__())
@@ -792,7 +792,7 @@ class ID3v22_WXX_Frame(object):
         """returns a human-readable version of this frame as unicode"""
 
         return u"%s = (%s, \"%s\") %s" % \
-            (self.id,
+            (self.id.decode('ascii', 'replace'),
              {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
              self.description,
              self.data.decode('ascii', 'replace'))
@@ -1511,7 +1511,7 @@ class ID3v22Comment(MetaData):
                     frames.append(cls.COMMENT_FRAME.converted(key, value))
                 else:
                     frames.append(cls.TEXT_FRAME.converted(key, value))
-            elif attr == 'compilation':
+            elif (attr == 'compilation') and (value is not None):
                 frames.append(
                     cls.TEXT_FRAME.converted(key, u"%d" % (1 if value else 0)))
 
@@ -1986,7 +1986,7 @@ class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
         """returns a human-readable version of this frame as unicode"""
 
         return u"%s = (%s, \"%s\") %s" % \
-            (self.id,
+            (self.id.decode('ascii', 'replace'),
              {0: u"Latin-1",
               1: u"UTF-16",
               2: u"UTF-16BE",
@@ -2131,7 +2131,7 @@ class ID3v24_WXXX_Frame(ID3v23_WXXX_Frame):
         """returns a human-readable version of this frame as unicode"""
 
         return u"%s = (%s, \"%s\") %s" % \
-            (self.id,
+            (self.id.decode('ascii', 'replace'),
              {0: u'Latin-1',
               1: u'UTF-16',
               2: u'UTF-16BE',

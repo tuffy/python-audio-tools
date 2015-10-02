@@ -417,7 +417,7 @@ class ApeTag(MetaData):
                             key, __number_pair__(None, value))
                 elif attr == 'compilation':
                     self[key] = self.ITEM.string(key,
-                                                 u"%d" % (1 if value else 1))
+                                                 u"%d" % (1 if value else 0))
                 else:
                     self[key] = self.ITEM.string(key, value)
             else:

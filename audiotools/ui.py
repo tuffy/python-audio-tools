@@ -67,6 +67,18 @@ try:
                 return urwid.Edit.keypress(self, size,
                                            self.__key_map__.get(key, key))
 
+    class DownCheckBox(urwid.CheckBox):
+        """a subclass of urwid.CheckBox which performs a down-arrow keypress
+        when the enter key is pressed,
+        typically for moving to the next element in a form"""
+
+        def keypress(self, size, key):
+            if key == "enter":
+                return urwid.CheckBox.keypress(self, size, "down")
+            else:
+                return urwid.CheckBox.keypress(self, size, key)
+
+
     class FocusFrame(urwid.Frame):
         """a special Frame widget which performs callbacks on focus changes"""
 
@@ -579,7 +591,7 @@ try:
                     swivel_type=u"track",
                     left_top_widget=urwid.Text(('label', 'fields')),
                     left_alignment='fixed',
-                    left_width=4 + 14,
+                    left_width=4 + max(len(label) for _,label in field_labels),
                     left_radios=field_radios,
                     left_ids=[field_id for (field_id, label) in field_labels],
                     right_top_widget=urwid.Text(('label', track_label),
@@ -777,14 +789,26 @@ try:
                 # set linked text to whatever the last unlinked text as
                 if ({cb.get_state() for cb in self.checkbox_group
                      if (cb is not checkbox)} == {False}):
-                    self.linked_widget.set_edit_text(
-                        self.unlinked_widget.get_edit_text())
+                    if (hasattr(self.linked_widget, "set_edit_text") and
+                        hasattr(self.unlinked_widget, "get_edit_text")):
+                        self.linked_widget.set_edit_text(
+                            self.unlinked_widget.get_edit_text())
+                    elif (hasattr(self.linked_widget, "set_state") and
+                          hasattr(self.unlinked_widget, "get_state")):
+                        self.linked_widget.set_state(
+                            self.unlinked_widget.get_state())
                 self.widget_list[1] = self.linked_widget
                 self.set_focus(2)
             else:
                 # set unlinked text to whatever the last linked text was
-                self.unlinked_widget.set_edit_text(
-                    self.linked_widget.get_edit_text())
+                if (hasattr(self.unlinked_widget, "set_edit_text") and
+                    hasattr(self.linked_widget, "get_edit_text")):
+                    self.unlinked_widget.set_edit_text(
+                        self.linked_widget.get_edit_text())
+                elif (hasattr(self.unlinked_widget, "set_state") and
+                      hasattr(self.linked_widget, "get_state")):
+                    self.unlinked_widget.set_state(
+                        self.linked_widget.get_state())
                 self.widget_list[1] = self.unlinked_widget
                 self.set_focus(2)
 
@@ -799,6 +823,9 @@ try:
             elif (hasattr(widget, "get_edit_text") and
                   callable(widget.get_edit_text)):
                 return widget.get_edit_text()
+            elif (hasattr(widget, "get_state") and
+                  callable(widget.get_state)):
+                return widget.get_state()
             else:
                 return None
 
@@ -818,7 +845,11 @@ try:
                     value = getattr(metadata, field)
                     widget = DownIntEdit(default=value if value is not None
                                          else 0)
-                #FIXME - handle other types here
+                elif field_type is bool:
+                    value = getattr(metadata, field)
+                    widget = DownCheckBox(u"",
+                                          state=value if value is not None
+                                          else False)
 
                 if on_change is not None:
                     urwid.connect_signal(widget, 'change', on_change)
@@ -842,7 +873,11 @@ try:
                     value = getattr(metadata, field)
                     widget = DownIntEdit(default=value if value is not None
                                          else 0)
-                #FIXME - handle other types here
+                elif field_type is bool:
+                    value = getattr(metadata, field)
+                    widget = DownCheckBox(u"",
+                                          state=value if value is not None
+                                          else False)
 
                 if on_change is not None:
                     urwid.connect_signal(widget, 'change', on_change)
@@ -868,12 +903,13 @@ try:
                     return len(value) > 0
                 elif field_type is int:
                     return value > 0
+                elif field_type is bool:
+                    return value
                 else:
-                    #FIXME - handle boolean types
                     return False
 
             return audiotools.MetaData(
-                **{attr: value for (attr, value) in
+                **{attr: value for (attr, field_type, value) in
                    [(attr, field_type, getattr(self, attr).value())
                     for attr, field_type in
                     audiotools.MetaData.FIELD_TYPES.items()]

@@ -147,7 +147,9 @@ UPDATE_OPTIONS = {"track_name": ("--name",
                   "copyright": ("--copyright",
                                 _.LAB_TRACKTAG_UPDATE_COPYRIGHT),
                   "comment": ("--comment",
-                              _.LAB_TRACKTAG_UPDATE_COMMENT)}
+                              _.LAB_TRACKTAG_UPDATE_COMMENT),
+                  "compilation": ("--compilation",
+                                  _.LAB_TRACKTAG_UPDATE_COMPILATION)}
 
 REMOVE_OPTIONS = {"track_name": ("--remove-name",
                                  _.LAB_TRACKTAG_REMOVE_TRACK_NAME),
@@ -184,7 +186,9 @@ REMOVE_OPTIONS = {"track_name": ("--remove-name",
                   "copyright": ("--remove-copyright",
                                 _.LAB_TRACKTAG_REMOVE_COPYRIGHT),
                   "comment": ("--remove-comment",
-                              _.LAB_TRACKTAG_REMOVE_COMMENT)}
+                              _.LAB_TRACKTAG_REMOVE_COMMENT),
+                  "compilation": ("--remove-compilation",
+                                  _.LAB_TRACKTAG_REMOVE_COMPILATION)}
 
 if (__name__ == '__main__'):
     import argparse
@@ -218,20 +222,25 @@ if (__name__ == '__main__'):
             (option, help_text) = UPDATE_OPTIONS[field]
             field_type = audiotools.MetaData.FIELD_TYPES[field]
             if field_type is type(u""):
-                type_arg = str
-                metavar = "STRING"
+                text_group.add_argument(option,
+                                        type=str,
+                                        dest=variable,
+                                        metavar="STRING",
+                                        help=help_text)
             elif field_type is int:
-                type_arg = field_type
-                metavar = "INT"
+                text_group.add_argument(option,
+                                        type=int,
+                                        dest=variable,
+                                        metavar="INT",
+                                        help=help_text)
+            elif field_type is bool:
+                text_group.add_argument(option,
+                                        dest=variable,
+                                        choices=["no", "yes"],
+                                        default=None,
+                                        help=help_text)
             else:
-                #FIXME - implement other types here as needed
                 assert(False)
-
-            text_group.add_argument(option,
-                                    type=type_arg,
-                                    dest=variable,
-                                    metavar=metavar,
-                                    help=help_text)
 
     text_group.add_argument("--comment-file",
                             dest="comment_file",
@@ -447,6 +456,8 @@ if (__name__ == '__main__'):
                         if ((field_type is type(u"")) and
                             (sys.version_info[0] < 3)):
                             value = value.decode("UTF-8")
+                        elif field_type is bool:
+                            value = {"no": False, "yes": True}[value]
                         setattr(metadata, attr, value)
 
                 # apply comment file across all metadata choices, if any

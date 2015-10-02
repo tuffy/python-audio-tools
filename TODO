@@ -7943,7 +7943,7 @@
    Although the fdk-aac library doesn't have a compatible license,
    there must be *some* way to support AAC without the nasty
    hacks in place now.
-* TODO Add compilation field to metadata
+* DONE Add compilation field to metadata
   This boolean field indicates the track is part of a compilation
   and should round-trip correctly across all metadata types
   that support it.
@@ -7962,8 +7962,11 @@
     - [X] FlacMetaData
 *** DONE Add compilation field to M4A metadata
 *** DONE Add compilation field to APEv2 metadata
-** TODO Update tracktag to support compilation field
-   - [ ] add command-line options
-   - [ ] add UI support
-** TODO Update documentation
-** TODO Update unit tests
+** DONE Update tracktag to support compilation field
+   - [X] add command-line options
+   - [X] add UI support
+*** TODO Update man page
+** DONE Update documentation
+** DONE Update unit tests
+   - [X] format unit tests
+   - [X] tracktag unit tests
