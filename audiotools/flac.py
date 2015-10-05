@@ -1825,7 +1825,11 @@ class FlacAudio(WaveContainer, AiffContainer):
                 try:
                     return read_tocfile_string(vorbiscomment[u"CDTOC"][0])
                 except SheetException:
-                    pass
+                    from audiotools.cdtoc import CDTOC
+                    try:
+                        return CDTOC.from_unicode(vorbiscomment[u"CDTOC"][0])
+                    except ValueError:
+                        pass
         except IndexError:
             pass
 
