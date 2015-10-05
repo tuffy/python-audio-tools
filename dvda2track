@@ -206,6 +206,8 @@ if (__name__ == '__main__'):
     if (options.type == 'help'):
         audiotools.ui.show_available_formats(msg)
         sys.exit(0)
+    elif options.type is None:
+        AudioType = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
     else:
         AudioType = audiotools.TYPE_MAP[options.type]
 
