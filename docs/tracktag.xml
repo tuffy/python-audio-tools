@@ -79,6 +79,9 @@ San Francisco, California, 94105, USA.
     <option long="album-total" arg="number">
       the total number of albums in the set
     </option>
+    <option long="compilation" arg="yes/no">
+      whether the track is part of a compilation
+    </option>
     <option long="ISRC" arg="ISRC">
       the track's ISRC
     </option>
@@ -116,6 +119,7 @@ San Francisco, California, 94105, USA.
     <option long="remove-track-total"/>
     <option long="remove-album-number"/>
     <option long="remove-album-total"/>
+    <option long="remove-compilation"/>
     <option long="remove-ISRC"/>
     <option long="remove-publisher"/>
     <option long="remove-media-type"/>
