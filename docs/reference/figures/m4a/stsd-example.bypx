@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<bytestruct>
-  <field label="length">00000058</field>
-  <field label="name">73747364</field>
-  <field label="ver.">00</field>
-  <field label="flags">000000</field>
-  <field label="descriptions">00000001</field>
-  <field label="description atom₀">00000048616c6163000000000000000100000000000000000002001000000000ac44000000000024616c616300000000000010000010280a0e0200ff00002639000793f20000ac44</field>
-</bytestruct>

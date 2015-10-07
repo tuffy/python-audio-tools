@@ -1,9 +1,0 @@
-<?xml version="1.0" ?>
-<struct endianness="little">
-  <field size="1" value="0" background-color="#0000FF30">read only</field>
-  <field size="2" value="0" background-color="#0000FF30">encoding</field>
-  <field size="26" value="0" background-color="#0000FF30">undefined</field>
-  <field size="1" value="1" background-color="#0000FF30">is header</field>
-  <field size="1" value="0" background-color="#0000FF30">no footer</field>
-  <field size="1" value="1" background-color="#0000FF30">contains header</field>
-</struct>

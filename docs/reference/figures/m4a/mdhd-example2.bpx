@@ -1,7 +1,0 @@
-<?xml version="1.0" ?>
-<struct endianness="big">
-  <field size="1" value="0" background-color="#FF000020">pad</field>
-  <field size="5" value="21" background-color="#FF000020">language₀</field>
-  <field size="5" value="14" background-color="#FF000020">language₁</field>
-  <field size="5" value="4" background-color="#FF000020">language₂</field>
-</struct>

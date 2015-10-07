@@ -56,39 +56,14 @@ trackverify.xml
 .xml.5:
 	$(PYTHON) manpagexml.py -i $< $(MAN_SOURCES) > $@
 
-TARGETS = audioformats-letter.pdf audioformats-a4.pdf \
-audiotools-letter.pdf audiotools-a4.pdf \
-$(MAN_PAGES)
-
-all: $(TARGETS)
+all: $(MAN_PAGES)
 
 clean: .FORCE
-	rm -fv $(TARGETS)
+	rm -fv $(MAN_PAGES)
 	cd programming && make clean
-	cd reference && make clean
 
 .FORCE:
 
 install: $(MAN_PAGES)
 	for m in $(MAN_PAGES); do install -m 644 $$m $(MAN_PATH)/man1/$$m; done
 	install -m 644 audiotools.cfg.5 $(MAN_PATH)/man5/audiotools.cfg.5
-
-audioformats-letter.pdf:
-	cd reference && make audioformats-letter.pdf
-	cp -fv reference/audioformats-letter.pdf .
-
-audioformats-a4.pdf:
-	cd reference && make audioformats-a4.pdf
-	cp -fv reference/audioformats-a4.pdf .
-
-audiotools-letter.pdf:
-	sphinx-build -b latex -d programming/build/doctrees/ -D latex_paper_size=letter programming/source/ programming/build/latex/letter
-	cd programming/build/latex/letter && make PythonAudioTools.pdf
-	cp -fv programming/build/latex/letter/PythonAudioTools.pdf $@
-	python pdftag.py "--title=Python Audio Tools Documentation" "--author=Brian Langenberger" $@
-
-audiotools-a4.pdf:
-	sphinx-build -b latex -d programming/build/doctrees/ -D latex_paper_size=a4 programming/source/ programming/build/latex/a4
-	cd programming/build/latex/a4 && make PythonAudioTools.pdf
-	cp -fv programming/build/latex/a4/PythonAudioTools.pdf $@
-	python pdftag.py "--title=Python Audio Tools Documentation" "--author=Brian Langenberger" $@

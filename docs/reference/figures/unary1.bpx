@@ -1,8 +1,0 @@
-<?xml version="1.0" ?>
-<struct endianness="big">
-  <field size="1" value="1">u₀</field>
-  <field size="2" value="1">u₁</field>
-  <field size="3" value="1">u₂</field>
-  <field size="4" value="1">u₃</field>
-  <field size="5" value="1">u₄</field>
-</struct>

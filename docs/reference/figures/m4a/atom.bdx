@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<diagram>
-  <row>
-    <col start="0" end="31" width=".25">atom length</col>
-    <col start="32" end="63" width=".25">atom type</col>
-    <col start="64" width=".50" style="dashed">atom data</col>
-  </row>
-</diagram>

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<bytestruct>
-  <field label="value size">0a000000</field>
-  <field label="item flags">00000000</field>
-  <field label="item key">5469746c65</field>
-  <field label="NULL">00</field>
-  <field label="item value">547261636b204e616d65</field>
-</bytestruct>

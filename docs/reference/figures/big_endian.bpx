@@ -1,8 +1,0 @@
-<?xml version="1.0" ?>
-<struct endianness="big">
-  <field size="2" value="2" background-color="#0000FF30">a</field>
-  <field size="3" value="6" background-color="#00FF0030">b</field>
-  <field size="5" value="7" background-color="#FF00FF30">c</field>
-  <field size="3" value="5" background-color="#0000FF30">d</field>
-  <field size="19" value="342977" background-color="#FF660030">e</field>
-</struct>
