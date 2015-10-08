@@ -49,11 +49,11 @@ Averager_close(pcmconverter_Averager *self, PyObject *args);
 static PyObject*
 Averager_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
-void
-Averager_dealloc(pcmconverter_Averager *self);
-
 int
 Averager_init(pcmconverter_Averager *self, PyObject *args, PyObject *kwds);
+
+void
+Averager_dealloc(pcmconverter_Averager *self);
 
 PyGetSetDef Averager_getseters[] = {
     {"sample_rate", (getter)Averager_sample_rate, NULL, "sample rate", NULL},
@@ -139,11 +139,11 @@ Downmixer_close(pcmconverter_Downmixer *self, PyObject *args);
 static PyObject*
 Downmixer_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
-void
-Downmixer_dealloc(pcmconverter_Downmixer *self);
-
 int
 Downmixer_init(pcmconverter_Downmixer *self, PyObject *args, PyObject *kwds);
+
+void
+Downmixer_dealloc(pcmconverter_Downmixer *self);
 
 PyGetSetDef Downmixer_getseters[] = {
     {"sample_rate", (getter)Downmixer_sample_rate, NULL, "sample rate", NULL},
@@ -231,11 +231,11 @@ Resampler_close(pcmconverter_Resampler *self, PyObject *args);
 static PyObject*
 Resampler_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
-void
-Resampler_dealloc(pcmconverter_Resampler *self);
-
 int
 Resampler_init(pcmconverter_Resampler *self, PyObject *args, PyObject *kwds);
+
+void
+Resampler_dealloc(pcmconverter_Resampler *self);
 
 PyGetSetDef Resampler_getseters[] = {
     {"sample_rate", (getter)Resampler_sample_rate, NULL, "sample rate", NULL},
@@ -322,12 +322,12 @@ BPSConverter_close(pcmconverter_BPSConverter *self, PyObject *args);
 static PyObject*
 BPSConverter_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
-void
-BPSConverter_dealloc(pcmconverter_BPSConverter *self);
-
 int
 BPSConverter_init(pcmconverter_BPSConverter *self,
                   PyObject *args, PyObject *kwds);
+
+void
+BPSConverter_dealloc(pcmconverter_BPSConverter *self);
 
 PyGetSetDef BPSConverter_getseters[] = {
     {"sample_rate", (getter)BPSConverter_sample_rate,
@@ -450,7 +450,7 @@ PyMethodDef BufferedPCMReader_methods[] = {
 PyTypeObject pcmconverter_BufferedPCMReaderType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "pcmconverter.BufferedPCMReader", /*tp_name*/
-    sizeof(pcmconverter_BufferedPCMReader),/*tp_basicsize*/
+    sizeof(pcmconverter_BufferedPCMReader), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)BufferedPCMReader_dealloc, /*tp_dealloc*/
     0,                         /*tp_print*/
@@ -488,3 +488,210 @@ PyTypeObject pcmconverter_BufferedPCMReaderType = {
     BufferedPCMReader_new,     /* tp_new */
 };
 
+
+typedef struct {
+    PyObject_HEAD
+
+    int closed;
+    struct PCMReader *pcmreader;
+
+    unsigned frame_index;
+    unsigned frame_total;
+
+    PyObject *audiotools_pcm;
+} pcmconverter_FadeInReader;
+
+static PyObject*
+FadeInReader_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+
+int
+FadeInReader_init(pcmconverter_FadeInReader *self,
+                  PyObject *args, PyObject *kwds);
+
+void
+FadeInReader_dealloc(pcmconverter_FadeInReader *self);
+
+static PyObject*
+FadeInReader_sample_rate(pcmconverter_FadeInReader *self,
+                         void *closure);
+
+static PyObject*
+FadeInReader_bits_per_sample(pcmconverter_FadeInReader *self,
+                             void *closure);
+
+static PyObject*
+FadeInReader_channels(pcmconverter_FadeInReader *self,
+                      void *closure);
+
+static PyObject*
+FadeInReader_channel_mask(pcmconverter_FadeInReader *self,
+                          void *closure);
+
+static PyObject*
+FadeInReader_read(pcmconverter_FadeInReader *self, PyObject *args);
+
+static PyObject*
+FadeInReader_close(pcmconverter_FadeInReader *self, PyObject *args);
+
+PyGetSetDef FadeInReader_getseters[] = {
+    {"sample_rate", (getter)FadeInReader_sample_rate,
+     NULL, "sample rate", NULL},
+    {"bits_per_sample", (getter)FadeInReader_bits_per_sample,
+     NULL, "bits per sample", NULL},
+    {"channels", (getter)FadeInReader_channels,
+     NULL, "channels", NULL},
+    {"channel_mask", (getter)FadeInReader_channel_mask,
+     NULL, "channel_mask", NULL},
+    {NULL}
+};
+
+PyMethodDef FadeInReader_methods[] = {
+    {"read", (PyCFunction)FadeInReader_read, METH_VARARGS, ""},
+    {"close", (PyCFunction)FadeInReader_close, METH_NOARGS, ""},
+    {NULL}
+};
+
+PyTypeObject pcmconverter_FadeInReaderType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "pcmconverter.FadeInReader", /*tp_name*/
+    sizeof(pcmconverter_FadeInReader), /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)FadeInReader_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "FadeInReader objects", /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    FadeInReader_methods,      /* tp_methods */
+    0,                         /* tp_members */
+    FadeInReader_getseters,    /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)FadeInReader_init, /* tp_init */
+    0,                         /* tp_alloc */
+    FadeInReader_new,          /* tp_new */
+};
+
+
+typedef struct {
+    PyObject_HEAD
+
+    int closed;
+    struct PCMReader *pcmreader;
+
+    unsigned frame_index;
+    unsigned frame_total;
+
+    PyObject *audiotools_pcm;
+} pcmconverter_FadeOutReader;
+
+static PyObject*
+FadeOutReader_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+
+int
+FadeOutReader_init(pcmconverter_FadeOutReader *self,
+                   PyObject *args, PyObject *kwds);
+
+void
+FadeOutReader_dealloc(pcmconverter_FadeOutReader *self);
+
+static PyObject*
+FadeOutReader_sample_rate(pcmconverter_FadeOutReader *self,
+                          void *closure);
+
+static PyObject*
+FadeOutReader_bits_per_sample(pcmconverter_FadeOutReader *self,
+                              void *closure);
+
+static PyObject*
+FadeOutReader_channels(pcmconverter_FadeOutReader *self,
+                       void *closure);
+
+static PyObject*
+FadeOutReader_channel_mask(pcmconverter_FadeOutReader *self,
+                           void *closure);
+
+static PyObject*
+FadeOutReader_read(pcmconverter_FadeOutReader *self, PyObject *args);
+
+static PyObject*
+FadeOutReader_close(pcmconverter_FadeOutReader *self, PyObject *args);
+
+PyGetSetDef FadeOutReader_getseters[] = {
+    {"sample_rate", (getter)FadeOutReader_sample_rate,
+     NULL, "sample rate", NULL},
+    {"bits_per_sample", (getter)FadeOutReader_bits_per_sample,
+     NULL, "bits per sample", NULL},
+    {"channels", (getter)FadeOutReader_channels,
+     NULL, "channels", NULL},
+    {"channel_mask", (getter)FadeOutReader_channel_mask,
+     NULL, "channel_mask", NULL},
+    {NULL}
+};
+
+PyMethodDef FadeOutReader_methods[] = {
+    {"read", (PyCFunction)FadeOutReader_read, METH_VARARGS, ""},
+    {"close", (PyCFunction)FadeOutReader_close, METH_NOARGS, ""},
+    {NULL}
+};
+
+PyTypeObject pcmconverter_FadeOutReaderType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "pcmconverter.FadeOutReader", /*tp_name*/
+    sizeof(pcmconverter_FadeOutReader), /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)FadeOutReader_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "FadeOutReader objects",   /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    FadeOutReader_methods,     /* tp_methods */
+    0,                         /* tp_members */
+    FadeOutReader_getseters,   /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)FadeOutReader_init, /* tp_init */
+    0,                         /* tp_alloc */
+    FadeOutReader_new,         /* tp_new */
+};
