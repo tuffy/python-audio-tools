@@ -1962,7 +1962,7 @@ try:
             self.output_type = SelectOne(
                 items=sorted([(u"%s - %s" % (t.NAME, t.DESCRIPTION), t)
                               for t in audiotools.AVAILABLE_TYPES
-                              if t.available(audiotools.BIN)],
+                              if t.supports_from_pcm()],
                              key=lambda pair: pair[0]),
                 selected_value=audio_class,
                 on_change=self.select_type,
@@ -2531,7 +2531,7 @@ try:
                 seconds_length = 0
 
             self.progress.current = 0
-            self.progress.done = pcm_frames
+            self.progress.done = max(pcm_frames, 1)
             self.progress.sample_rate = sample_rate
 
         def update_status(self):
