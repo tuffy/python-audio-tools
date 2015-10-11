@@ -597,6 +597,8 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         Raises IOError if a problem occurs when updating the file"""
 
+        from audiotools.ape import ApeTag
+
         metadata = self.get_metadata()
         if ((metadata is not None) and isinstance(metadata, ApeTag)):
             if b"Cuesheet" in metadata.keys():
