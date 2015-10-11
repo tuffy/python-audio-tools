@@ -6468,6 +6468,340 @@
     - [X] tracklength
     - [X] trackplay
     - [X] tracksplit
+* DONE Finish version 3.0
+** DONE Make compatible with Python 2.7 and 3.X
+   Like Urwid and PLY, the same code should work on both versions.
+*** DONE Update setup script
+*** DONE Update C-based extensions
+    Use #ifdefs as needed to support both Python versions.
+
+    - [X] audiotools.pcm
+    - [X] audiotools.pcmconverter
+    - [X] audiotools.replaygain
+    - [X] audiotools.decoders
+    - [X] audiotools.encoders
+    - [X] audiotools.bitstream
+    - [X] audiotools._ogg
+    - [X] audiotools._accuraterip
+    - [X] audiotools.output
+*** DONE Update Python modules
+**** DONE audiotools
+     - [X] __init__
+     - [X] accuraterip
+     - [X] aiff
+     - [X] ape
+     - [X] au
+     - [X] dvda
+     - [X] flac
+     - [X] freedb
+     - [X] id3
+     - [X] id3v1
+     - [X] image
+     - [X] m4a_atoms
+     - [X] m4a
+     - [X] mp3
+     - [X] musicbrainz
+     - [X] ogg
+     - [X] opus
+     - [X] player
+     - [X] shn
+     - [X] text
+     - [X] tta
+     - [X] ui
+     - [X] vorbiscomment
+     - [X] vorbis
+     - [X] wavpack
+     - [X] wav
+**** DONE audiotools.cue
+     - [X] __init__
+     - [X] tokrules
+     - [X] yaccrules
+**** DONE audiotools.toc
+     - [X] __init__
+     - [X] tokrules
+     - [X] yaccrules
+*** DONE Update utilities
+    - [X] audiotools-config
+    - [X] cd2track
+    - [X] cdinfo
+    - [X] cdplay
+    - [X] coverdump
+    - [X] covertag
+    - [X] coverview
+    - [X] dvda2track
+    - [X] dvdainfo
+    - [X] track2cd
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
+*** DONE Update Python-based decoders
+    - [X] alac
+    - [X] flac
+    - [X] shn
+    - [X] tta
+    - [X] wavpack
+*** DONE Update Python-based encoders
+    - [X] alac
+    - [X] flac
+    - [X] shn
+    - [X] tta
+    - [X] wavpack
+*** DONE Update documentation
+*** DONE Update unit tests
+    - [X] test
+    - [X] test_core
+    - [X] test_formats
+    - [X] test_metadata
+    - [X] test_streams
+    - [X] test_utils
+**** TODO Update unit test utilities
+     - [ ] error.py
+     - [ ] test_cdrdao
+     - [ ] test_cdrecord
+*** DONE Ensure unit tests pass
+**** DONE Python 2.7
+***** DONE Lib
+      - [X] core
+      - [X] cuesheet
+      - [X] cdio
+      - [X] freedb
+      - [X] image
+      - [X] musicbrainz
+      - [X] accuraterip
+      - [X] pcm
+      - [X] bitstream
+      - [X] replaygain
+      - [X] resample
+      - [X] tocfile
+      - [X] verify
+      - [X] ogg
+***** DONE Format
+      - [X] audiofile
+      - [X] lossless
+      - [X] lossy
+      - [X] aiff
+      - [X] alac
+      - [X] au
+      - [X] dvda
+      - [X] flac
+      - [X] m4a
+      - [X] mp2
+      - [X] mp3
+      - [X] oggflac
+      - [X] opus
+      - [X] shorten
+      - [X] sines
+      - [X] tta
+      - [X] vorbis
+      - [X] wave
+      - [X] wavpack
+***** DONE Metadata
+      - [X] metadata
+      - [X] flac
+      - [X] wavpack
+      - [X] id3v1
+      - [X] id3v2
+      - [X] vorbis
+      - [X] opus
+      - [X] m4a
+      - [X] tta
+***** DONE Util
+      - [X] audiotools-config
+      - [X] cd2track
+      - [ ] cdinfo
+      - [X] cdplay
+      - [X] coverdump
+      - [X] covertag
+      - [X] coverview
+      - [X] dvda2track
+      - [X] dvdainfo
+      - [X] track2cd
+      - [X] track2track
+      - [X] trackcat
+      - [X] trackcmp
+      - [X] trackinfo
+      - [X] tracklength
+      - [X] tracklint
+      - [X] trackplay
+      - [X] trackrename
+      - [X] tracksplit
+      - [X] tracktag
+      - [X] trackverify
+**** DONE Python 3
+***** DONE Lib
+      - [X] core
+      - [X] cuesheet
+      - [X] cdio
+      - [X] freedb
+      - [X] image
+      - [X] musicbrainz
+      - [X] accuraterip
+      - [X] pcm
+      - [X] bitstream
+      - [X] replaygain
+      - [X] resample
+      - [X] tocfile
+      - [X] verify
+      - [X] ogg
+***** DONE Format
+      - [X] audiofile
+      - [X] lossless
+      - [X] lossy
+      - [X] aiff
+      - [X] alac
+      - [X] au
+      - [X] dvda
+      - [X] flac
+      - [X] m4a
+      - [X] mp2
+      - [X] mp3
+      - [X] oggflac
+      - [X] opus
+      - [X] shorten
+      - [X] sines
+      - [X] tta
+      - [X] vorbis
+      - [X] wave
+      - [X] wavpack
+***** DONE Metadata
+      - [X] metadata
+      - [X] flac
+      - [X] wavpack
+      - [X] id3v1
+      - [X] id3v2
+      - [X] vorbis
+      - [X] opus
+      - [X] m4a
+      - [X] tta
+***** DONE Util
+      - [X] audiotools-config
+      - [X] cd2track
+      - [X] cdinfo
+      - [X] cdplay
+      - [X] coverdump
+      - [X] covertag
+      - [X] coverview
+      - [X] dvda2track
+      - [X] dvdainfo
+      - [X] track2cd
+      - [X] track2track
+      - [X] trackcat
+      - [X] trackcmp
+      - [X] trackinfo
+      - [X] tracklength
+      - [X] tracklint
+      - [X] trackplay
+      - [X] trackrename
+      - [X] tracksplit
+      - [X] tracktag
+      - [X] trackverify
+** DONE Update interactive utilities
+   Ensure they run under Python 2 and 3
+   - [X] audiotools/ui.py
+   - [X] audiotools-config
+   - [X] cd2track
+   - [X] cdplay
+   - [X] dvda2track
+   - [X] track2track
+   - [X] trackcat
+   - [X] trackplay
+   - [X] trackrename
+   - [X] tracksplit
+   - [X] tracktag
+** DONE Calculate ReplayGain at rip-time
+   For utilities that operated single-threaded,
+   calculate ReplayGain during operation rather
+   than put off until ripping is done.
+*** DONE cd2track
+*** DONE dvda2track
+** DONE Re-add DVD-A support using libdvdaudio
+   Supporting DVD-A in an external library should provide a useful decoupling.
+*** DONE Add audiotools.dvda module
+    This contains thin wrappers around libdvdaudio structures and functions.
+**** DONE Add DVDA object
+**** DONE Add Titleset object
+**** DONE Add Title object
+**** DONE Add Track object
+**** DONE Add TrackReader object
+**** DONE Add documentation
+*** DONE Re-add dvda2track script
+**** DONE Re-add dvda2track.1 man page
+*** DONE Re-add dvdainfo script
+**** DONE Re-add dvdainfo.1 man page
+*** DONE Update setup script
+    Probe for libdvdaudio and add module and scripts if present,
+    analagous to libcdio.
+* DONE Finish version 3.1
+** DONE Make AudioFile.available() classmethod finer-grained
+   That is, formats can be readable but not writable, or taggable but
+   not readable or writeable.  This will allow read-only support for
+   some obscure formats like .tak or .ape by porting implementations
+   from ffmpeg but without having to build encoders for them as well.
+*** DONE Add AudioFile.supports_to_pcm()
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Add AudioFile.supports_from_pcm()
+    - [X] AudioFile
+    - [X] ALACAudio
+    - [X] AiffAudio
+    - [X] AuAudio
+    - [X] FlacAudio
+    - [X] M4AAudio
+    - [X] MP2Audio
+    - [X] MP3Audio
+    - [X] OpusAudio
+    - [X] ShortenAudio
+    - [X] TrueAudio
+    - [X] VorbisAudio
+    - [X] WavPackAudio
+    - [X] WaveAudio
+*** DONE Add AudioFile.supports_metadata()
+*** DONE Remove AudioFile.missing_components() ?
+    Leave this job to setup.py and audiotools-config, perhaps.
+*** DONE Utilities
+**** DONE audiotools-config
+     Needs to display format availability in a more fine-grained fashion.
+**** DONE cd2track
+     - [X] output format must supports_from_pcm()
+**** DONE track2cd
+     - [X] input format must supports_to_pcm()
+**** DONE track2track
+     - [X] input format(s) must supports_to_pcm()
+     - [X] output format must supports_from_pcm()
+**** DONE trackcat
+     - [X] input format(s) must supports_to_pcm()
+     - [X] output format must supports_from_pcm()
+**** DONE trackcmp
+     - [X] input format(s) must supports_to_pcm()
+**** DONE trackplay
+     - [X] input format(s) must supports_to_pcm()
+**** DONE tracksplit
+     - [X] input file must supports_to_pcm()
+     - [X] output format must supports_from_pcm()
+**** DONE trackverify
+     - [X] input format must supports_to_pcm()
+*** DONE Update documentation
+*** DONE Update unit tests
 * TODO Add support for genre tag?
   I'm not a big fan of the genre tag.
   Unlike track number, album name, ISRC, etc. in which a value
@@ -6993,82 +7327,6 @@
   More of a long-term plan than anything else.
   It would be best to have as few external program
   dependencies as possible
-** TODO Add internal MP3 codec
-   This is likely the codec people are most interested in
-   and so it should be folded in so it can be used
-   without any external dependencies.
-*** TODO Add C-based MP3 decoder
-*** TODO Add MP3 decoding reference documentation
-*** TODO Add C-based MP3 encoder
-    Unlike lossless codecs where output can be verified automatically,
-    lossy codecs offer no similar guarantees.
-    So like libsamplerate, it would be better to import
-    a known correct implementation like LAME
-    than to reimplement the wheel.
-*** TODO Add MP3 encoding reference documentation
-    A rundown of how LAME operates, in the hope of demystifying
-    the format.
-** TODO Add internal MP2 encoder
-** TODO Add internal Vorbis codec
-*** TODO Add Vorbis decoder
-**** TODO Add VorbisDecoder Python object to decoders
-**** TODO Document Vorbis decoding
-***** DONE identification header packet
-***** DONE comment header packet
-***** TODO setup header packet
-****** TODO codebooks
-****** TODO time domain transforms
-****** TODO floors
-****** TODO residues
-****** TODO mappings
-****** TODO modes
-***** TODO audio packet decoding
-****** TODO decode packet type flag
-****** TODO decode mode number
-****** TODO decode window shape
-****** TODO decode floor
-****** TODO decode residue into residue vectors
-****** TODO inverse channel coupling of reside vectors
-****** TODO generate floor curve from decoded floor data
-****** TODO compute dot product of floor and residue
-       producing audio spectrum vector
-****** TODO inverse monolithic transform of audio spectrum vector
-****** TODO overlap / add left-hand output with right-hand output
-****** TODO store right-hand data from transform of current frame
-       for future lapping
-****** TODO if not first frame, return results of overlap/add as audio
-**** TODO Add VorbisDecoder to VorbisAudio's to_pcm() method
-***** DONE handle identification header packet
-***** DONE skip comment header packet
-***** TODO handle setup header packet
-****** TODO codebooks
-       store result of codebooks decoding somewhere
-****** TODO time domain transforms
-       store result of time domain transforms somewhere?
-****** TODO floors
-****** TODO residues
-****** TODO mappings
-****** TODO modes
-***** TODO perform data decoding
-****** TODO decode packet type flag
-****** TODO decode mode number
-****** TODO decode window shape
-****** TODO decode floor
-****** TODO decode residue into residue vectors
-****** TODO inverse channel coupling of reside vectors
-****** TODO generate floor curve from decoded floor data
-****** TODO compute dot product of floor and residue
-       producing audio spectrum vector
-****** TODO inverse monolithic transform of audio spectrum vector
-****** TODO overlap / add left-hand output with right-hand output
-****** TODO store right-hand data from transform of current frame
-       for future lapping
-****** TODO if not first frame, return results of overlap/add as audio
-***** TODO return FloatFrameList via read_float() method
-***** TODO return FrameList via read() method
-**** TODO Add unit tests for VorbisDecoder
-*** TODO Add Vorbis encoder
-** TODO Add internal Opus codec
 ** TODO Add internal Monkey's Audio codec
    This needs to be assimilated with a native decoder/encoder.
    I've seen these out in the wild, but only rarely.
@@ -7081,241 +7339,6 @@
 *** TODO Add Monkey's Audio-specific unit tests
 *** TODO Test encoder/decoder against reference
 *** TODO Restore AudioFile-compatible Python interface
-* TODO Finish version 3.0
-** DONE Make compatible with Python 2.7 and 3.X
-   Like Urwid and PLY, the same code should work on both versions.
-*** DONE Update setup script
-*** DONE Update C-based extensions
-    Use #ifdefs as needed to support both Python versions.
-
-    - [X] audiotools.pcm
-    - [X] audiotools.pcmconverter
-    - [X] audiotools.replaygain
-    - [X] audiotools.decoders
-    - [X] audiotools.encoders
-    - [X] audiotools.bitstream
-    - [X] audiotools._ogg
-    - [X] audiotools._accuraterip
-    - [X] audiotools.output
-*** DONE Update Python modules
-**** DONE audiotools
-     - [X] __init__
-     - [X] accuraterip
-     - [X] aiff
-     - [X] ape
-     - [X] au
-     - [X] dvda
-     - [X] flac
-     - [X] freedb
-     - [X] id3
-     - [X] id3v1
-     - [X] image
-     - [X] m4a_atoms
-     - [X] m4a
-     - [X] mp3
-     - [X] musicbrainz
-     - [X] ogg
-     - [X] opus
-     - [X] player
-     - [X] shn
-     - [X] text
-     - [X] tta
-     - [X] ui
-     - [X] vorbiscomment
-     - [X] vorbis
-     - [X] wavpack
-     - [X] wav
-**** DONE audiotools.cue
-     - [X] __init__
-     - [X] tokrules
-     - [X] yaccrules
-**** DONE audiotools.toc
-     - [X] __init__
-     - [X] tokrules
-     - [X] yaccrules
-*** DONE Update utilities
-    - [X] audiotools-config
-    - [X] cd2track
-    - [X] cdinfo
-    - [X] cdplay
-    - [X] coverdump
-    - [X] covertag
-    - [X] coverview
-    - [X] dvda2track
-    - [X] dvdainfo
-    - [X] track2cd
-    - [X] track2track
-    - [X] trackcat
-    - [X] trackcmp
-    - [X] trackinfo
-    - [X] tracklength
-    - [X] tracklint
-    - [X] trackplay
-    - [X] trackrename
-    - [X] tracksplit
-    - [X] tracktag
-    - [X] trackverify
-*** DONE Update Python-based decoders
-    - [X] alac
-    - [X] flac
-    - [X] shn
-    - [X] tta
-    - [X] wavpack
-*** DONE Update Python-based encoders
-    - [X] alac
-    - [X] flac
-    - [X] shn
-    - [X] tta
-    - [X] wavpack
-*** DONE Update documentation
-*** DONE Update unit tests
-    - [X] test
-    - [X] test_core
-    - [X] test_formats
-    - [X] test_metadata
-    - [X] test_streams
-    - [X] test_utils
-**** TODO Update unit test utilities
-     - [ ] error.py
-     - [ ] test_cdrdao
-     - [ ] test_cdrecord
-*** DONE Ensure unit tests pass
-**** DONE Python 2.7
-***** DONE Lib
-      - [X] core
-      - [X] cuesheet
-      - [X] cdio
-      - [X] freedb
-      - [X] image
-      - [X] musicbrainz
-      - [X] accuraterip
-      - [X] pcm
-      - [X] bitstream
-      - [X] replaygain
-      - [X] resample
-      - [X] tocfile
-      - [X] verify
-      - [X] ogg
-***** DONE Format
-      - [X] audiofile
-      - [X] lossless
-      - [X] lossy
-      - [X] aiff
-      - [X] alac
-      - [X] au
-      - [X] dvda
-      - [X] flac
-      - [X] m4a
-      - [X] mp2
-      - [X] mp3
-      - [X] oggflac
-      - [X] opus
-      - [X] shorten
-      - [X] sines
-      - [X] tta
-      - [X] vorbis
-      - [X] wave
-      - [X] wavpack
-***** DONE Metadata
-      - [X] metadata
-      - [X] flac
-      - [X] wavpack
-      - [X] id3v1
-      - [X] id3v2
-      - [X] vorbis
-      - [X] opus
-      - [X] m4a
-      - [X] tta
-***** DONE Util
-      - [X] audiotools-config
-      - [X] cd2track
-      - [ ] cdinfo
-      - [X] cdplay
-      - [X] coverdump
-      - [X] covertag
-      - [X] coverview
-      - [X] dvda2track
-      - [X] dvdainfo
-      - [X] track2cd
-      - [X] track2track
-      - [X] trackcat
-      - [X] trackcmp
-      - [X] trackinfo
-      - [X] tracklength
-      - [X] tracklint
-      - [X] trackplay
-      - [X] trackrename
-      - [X] tracksplit
-      - [X] tracktag
-      - [X] trackverify
-**** DONE Python 3
-***** DONE Lib
-      - [X] core
-      - [X] cuesheet
-      - [X] cdio
-      - [X] freedb
-      - [X] image
-      - [X] musicbrainz
-      - [X] accuraterip
-      - [X] pcm
-      - [X] bitstream
-      - [X] replaygain
-      - [X] resample
-      - [X] tocfile
-      - [X] verify
-      - [X] ogg
-***** DONE Format
-      - [X] audiofile
-      - [X] lossless
-      - [X] lossy
-      - [X] aiff
-      - [X] alac
-      - [X] au
-      - [X] dvda
-      - [X] flac
-      - [X] m4a
-      - [X] mp2
-      - [X] mp3
-      - [X] oggflac
-      - [X] opus
-      - [X] shorten
-      - [X] sines
-      - [X] tta
-      - [X] vorbis
-      - [X] wave
-      - [X] wavpack
-***** DONE Metadata
-      - [X] metadata
-      - [X] flac
-      - [X] wavpack
-      - [X] id3v1
-      - [X] id3v2
-      - [X] vorbis
-      - [X] opus
-      - [X] m4a
-      - [X] tta
-***** DONE Util
-      - [X] audiotools-config
-      - [X] cd2track
-      - [X] cdinfo
-      - [X] cdplay
-      - [X] coverdump
-      - [X] covertag
-      - [X] coverview
-      - [X] dvda2track
-      - [X] dvdainfo
-      - [X] track2cd
-      - [X] track2track
-      - [X] trackcat
-      - [X] trackcmp
-      - [X] trackinfo
-      - [X] tracklength
-      - [X] tracklint
-      - [X] trackplay
-      - [X] trackrename
-      - [X] tracksplit
-      - [X] tracktag
-      - [X] trackverify
 ** DONE Add context manager support
    Having file-like objects work with "with" context managers
    should hopefully make file handle management a bit simpler.
@@ -7379,19 +7402,34 @@
     - [X] wav/WaveReader
 **** DONE Add documentation
 **** DONE Add unit tests
-** DONE Update interactive utilities
-   Ensure they run under Python 2 and 3
-   - [X] audiotools/ui.py
-   - [X] audiotools-config
-   - [X] cd2track
-   - [X] cdplay
-   - [X] dvda2track
-   - [X] track2track
-   - [X] trackcat
-   - [X] trackplay
-   - [X] trackrename
-   - [X] tracksplit
-   - [X] tracktag
+* DONE Add compilation field to metadata
+  This boolean field indicates the track is part of a compilation
+  and should round-trip correctly across all metadata types
+  that support it.
+** DONE Replace MetaData.INTEGER_FIELDS with a FIELD_TYPE lookup
+   This allows a field to be either a Unicode string (like track_name)
+   integer field (like track_number) or a boolean (like compilation).
+** DONE Add field to metadata classes
+*** DONE Add compilation field to MetaData class
+*** DONE Add compilation field to ID3v2 classes
+    - [X] ID3v2.2
+    - [X] ID3v2.3
+    - [X] ID3v2.4
+    - [X] ID3CommentPair
+*** DONE Add compilation field to VorbisComment classes
+    - [X] VorbisComment
+    - [X] FlacMetaData
+*** DONE Add compilation field to M4A metadata
+*** DONE Add compilation field to APEv2 metadata
+** DONE Update tracktag to support compilation field
+   - [X] add command-line options
+   - [X] add UI support
+*** TODO Update man page
+** DONE Update documentation
+** DONE Update unit tests
+   - [X] format unit tests
+   - [X] tracktag unit tests
+* TODO Finish version 3.2
 ** TODO Improve test coverage
    - [X] set_metadata(None) to all formats
 *** TODO Check repr on everything
@@ -7835,36 +7873,6 @@
      - [ ] write wave footer
 **** TODO write_block
      - [ ] all samples are 0
-** DONE Calculate ReplayGain at rip-time
-   For utilities that operated single-threaded,
-   calculate ReplayGain during operation rather
-   than put off until ripping is done.
-*** DONE cd2track
-*** DONE dvda2track
-** TODO Improve utility test coverage
-*** TODO Add some basic tests to ensure they still works
-    - [ ] cdinfo
-    - [ ] cdplay
-    - [ ] trackplay
-    - [ ] trackverify
-** DONE Re-add DVD-A support using libdvdaudio
-   Supporting DVD-A in an external library should provide a useful decoupling.
-*** DONE Add audiotools.dvda module
-    This contains thin wrappers around libdvdaudio structures and functions.
-**** DONE Add DVDA object
-**** DONE Add Titleset object
-**** DONE Add Title object
-**** DONE Add Track object
-**** DONE Add TrackReader object
-**** DONE Add documentation
-*** DONE Re-add dvda2track script
-**** DONE Re-add dvda2track.1 man page
-*** DONE Re-add dvdainfo script
-**** DONE Re-add dvdainfo.1 man page
-*** DONE Update setup script
-    Probe for libdvdaudio and add module and scripts if present,
-    analagous to libcdio.
-* TODO Finish version 3.1
 ** TODO Cleanup chunk-based interface (again)
    There needs to be a single-pass approach to encoding chunked files
    that doesn't involve pulling out the chunk data ahead of time.
@@ -7872,70 +7880,6 @@
    Perhaps a simple .to_wave(), .from_wave() approach
    which returns a whole .wav file as a file stream
    would be easiest.
-** DONE Make AudioFile.available() classmethod finer-grained
-   That is, formats can be readable but not writable, or taggable but
-   not readable or writeable.  This will allow read-only support for
-   some obscure formats like .tak or .ape by porting implementations
-   from ffmpeg but without having to build encoders for them as well.
-*** DONE Add AudioFile.supports_to_pcm()
-    - [X] AudioFile
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] AuAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OpusAudio
-    - [X] ShortenAudio
-    - [X] TrueAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-    - [X] WaveAudio
-*** DONE Add AudioFile.supports_from_pcm()
-    - [X] AudioFile
-    - [X] ALACAudio
-    - [X] AiffAudio
-    - [X] AuAudio
-    - [X] FlacAudio
-    - [X] M4AAudio
-    - [X] MP2Audio
-    - [X] MP3Audio
-    - [X] OpusAudio
-    - [X] ShortenAudio
-    - [X] TrueAudio
-    - [X] VorbisAudio
-    - [X] WavPackAudio
-    - [X] WaveAudio
-*** DONE Add AudioFile.supports_metadata()
-*** DONE Remove AudioFile.missing_components() ?
-    Leave this job to setup.py and audiotools-config, perhaps.
-*** DONE Utilities
-**** DONE audiotools-config
-     Needs to display format availability in a more fine-grained fashion.
-**** DONE cd2track
-     - [X] output format must supports_from_pcm()
-**** DONE track2cd
-     - [X] input format must supports_to_pcm()
-**** DONE track2track
-     - [X] input format(s) must supports_to_pcm()
-     - [X] output format must supports_from_pcm()
-**** DONE trackcat
-     - [X] input format(s) must supports_to_pcm()
-     - [X] output format must supports_from_pcm()
-**** DONE trackcmp
-     - [X] input format(s) must supports_to_pcm()
-**** DONE trackplay
-     - [X] input format(s) must supports_to_pcm()
-**** DONE tracksplit
-     - [X] input file must supports_to_pcm()
-     - [X] output format must supports_from_pcm()
-**** DONE trackverify
-     - [X] input format must supports_to_pcm()
-*** DONE Update documentation
-*** DONE Update unit tests
-** TODO Add seeking to Ogg FLAC decoder
-   Might as well make the format consistent
 ** TODO Support building cue sheets from discs
    Find some way of grabbing the index points from a disc
    so cuesheets can be populated.
@@ -7943,30 +7887,9 @@
    Although the fdk-aac library doesn't have a compatible license,
    there must be *some* way to support AAC without the nasty
    hacks in place now.
-* DONE Add compilation field to metadata
-  This boolean field indicates the track is part of a compilation
-  and should round-trip correctly across all metadata types
-  that support it.
-** DONE Replace MetaData.INTEGER_FIELDS with a FIELD_TYPE lookup
-   This allows a field to be either a Unicode string (like track_name)
-   integer field (like track_number) or a boolean (like compilation).
-** DONE Add field to metadata classes
-*** DONE Add compilation field to MetaData class
-*** DONE Add compilation field to ID3v2 classes
-    - [X] ID3v2.2
-    - [X] ID3v2.3
-    - [X] ID3v2.4
-    - [X] ID3CommentPair
-*** DONE Add compilation field to VorbisComment classes
-    - [X] VorbisComment
-    - [X] FlacMetaData
-*** DONE Add compilation field to M4A metadata
-*** DONE Add compilation field to APEv2 metadata
-** DONE Update tracktag to support compilation field
-   - [X] add command-line options
-   - [X] add UI support
-*** TODO Update man page
-** DONE Update documentation
-** DONE Update unit tests
-   - [X] format unit tests
-   - [X] tracktag unit tests
+** TODO Improve utility test coverage
+*** TODO Add some basic tests to ensure they still works
+    - [ ] cdinfo
+    - [ ] cdplay
+    - [ ] trackplay
+    - [ ] trackverify
