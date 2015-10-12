@@ -748,7 +748,7 @@ class Element_TD:
 
     def string(self):
         if self.value is not None:
-            return self.value.encode('ascii')
+            return str(self.value.encode('ascii'))
         else:
             return "\\^"
 
