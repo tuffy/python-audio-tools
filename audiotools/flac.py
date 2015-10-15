@@ -259,6 +259,26 @@ class FlacMetaData(MetaData):
     def __repr__(self):
         return "FlacMetaData(%s)" % (self.block_list)
 
+    def intersection(self, metadata):
+        """given a MetaData-compatible object,
+        returns a new MetaData object which contains
+        all the matching fields and images of this object and 'metadata'
+        """
+
+        #FIXME - update this to handle common image blocks
+
+        if type(metadata) is FlacMetaData:
+            try:
+                vorbis1 = self.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+                vorbis2 = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
+                return FlacMetaData([vorbis1.intersection(vorbis2)])
+            except IndexError:
+                # at least one of the metadatas
+                # is missing a VORBIS_COMMENT block
+                return FlacMetaData([])
+        else:
+            return MetaData.intersection(self, metadata)
+
     @classmethod
     def parse(cls, reader):
         """returns a FlacMetaData object from the given BitstreamReader

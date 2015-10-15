@@ -732,6 +732,27 @@ class ApeTag(MetaData):
                                self.contains_footer),
                 fixes_performed)
 
+    def intersection(self, metadata):
+        """given a MetaData-compatible object,
+        returns a new MetaData object which contains
+        all the matching fields and images of this object and 'metadata'
+        """
+
+        if type(metadata) is ApeTag:
+            matching_keys = {key for key in
+                             set(self.keys()) & set(metadata.keys())
+                             if self[key] == metadata[key]}
+
+            return ApeTag(
+                [tag.copy() for tag in self.tags
+                 if tag.key in matching_keys],
+                contains_header=self.contains_header or
+                                metadata.contains_header,
+                contains_footer=self.contains_footer or
+                                metadata.contains_footer)
+        else:
+            return MetaData.intersection(self, metadata)
+
 
 class ApeTaggedAudio(object):
     """a class for handling audio formats with APEv2 tags

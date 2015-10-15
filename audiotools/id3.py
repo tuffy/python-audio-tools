@@ -1550,6 +1550,21 @@ class ID3v22Comment(MetaData):
 
         return (self.__class__(new_frames, self.total_size), fixes_performed)
 
+    def intersection(self, metadata):
+        """given a MetaData-compatible object,
+        returns a new MetaData object which contains
+        all the matching fields and images of this object and 'metadata'
+        """
+
+        if type(metadata) is type(self):
+            matching_keys = {key for key in
+                             set(self.keys()) & set(metadata.keys())
+                             if self[key] == metadata[key]}
+            return self.__class__([frame for frame in self if
+                                   frame.id in matching_keys])
+        else:
+            return MetaData.intersection(self, metadata)
+
 
 ############################################################
 # ID3v2.3 Comment
@@ -2502,3 +2517,20 @@ class ID3CommentPair(MetaData):
 
         return (ID3CommentPair(new_id3v2, new_id3v1),
                 id3v2_fixes + id3v1_fixes)
+
+    def intersection(self, metadata):
+        """given a MetaData-compatible object,
+        returns a new MetaData object which contains
+        all the matching fields and images of this object and 'metadata'
+        """
+
+        if type(metadata) is ID3CommentPair:
+            return ID3CommentPair(
+                self.id3v2.intersection(metadata.id3v2)
+                if ((self.id3v2 is not None) and (metadata.id3v2 is not None))
+                else None,
+                self.id3v1.intersection(metadata.id3v2)
+                if ((self.id3v1 is not None) and (metadata.id3v1 is not None))
+                else None)
+        else:
+            return MetaData.intersection(self, metadata)

@@ -3600,6 +3600,21 @@ class MetaData(object):
         return (MetaData(**{field: getattr(self, field)
                             for field in MetaData.FIELDS}), [])
 
+    def intersection(self, metadata):
+        """given a MetaData-compatible object,
+        returns a new MetaData object which contains
+        all the matching fields and images of this object and 'metadata'
+        """
+
+        fields1 = {attr: field for attr, field in self.filled_fields()}
+        fields2 = {attr: field for attr, field in metadata.filled_fields()}
+
+        #FIXME - merge matching images also
+
+        return MetaData(**{attr: fields1[attr] for attr in
+                           set(fields1.keys()) & set(fields2.keys())
+                           if fields1[attr] == fields2[attr]})
+
 
 (FRONT_COVER, BACK_COVER, LEAFLET_PAGE, MEDIA, OTHER) = range(5)
 

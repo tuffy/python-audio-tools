@@ -124,6 +124,11 @@ class M4A_Tree_Atom(object):
         else:
             raise KeyError(atom_name)
 
+    def get_children(self, atom_name):
+        """returns all instances of the given child atom as a list"""
+
+        return [leaf for leaf in self if leaf.name == atom_name]
+
     def has_child(self, atom_name):
         """returns True if the given atom name
         is an immediate child of this atom"""
@@ -1522,6 +1527,39 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 [M4A_Tree_Atom(b'ilst',
                                [atom.copy() for atom in self.ilst_atom()])]),
                 [])
+
+    def intersection(self, metadata):
+        """given a MetaData-compatible object,
+        returns a new MetaData object which contains
+        all the matching fields and images of this object and 'metadata'
+        """
+
+        if type(metadata) is M4A_META_Atom:
+            ilst1 = self.ilst_atom()
+            ilst2 = metadata.ilst_atom()
+
+            if (ilst1 is not None) and (ilst2 is not None):
+                common_children = {atom_name for atom_name in
+                                   ({atom.name for atom in ilst1} &
+                                    {atom.name for atom in ilst2})
+                                   if ilst1.get_children(atom_name) ==
+                                      ilst2.get_children(atom_name)}
+
+                merged_ilst = M4A_Tree_Atom(
+                    ilst1.name,
+                    [atom.copy() for atom in ilst1 if
+                     atom.name in common_children])
+            else:
+                # one is missing an "ilst" sub-atom, so no common elements
+                merged_ilst = M4A_Tree_Atom(b"ilst", [])
+
+            return M4A_META_Atom(
+                self.version,
+                self.flags,
+                [merged_ilst if (atom.name == b"ilst") else atom.copy()
+                 for atom in self.leaf_atoms])
+        else:
+            return MetaData.intersection(self, metadata)
 
 
 class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):

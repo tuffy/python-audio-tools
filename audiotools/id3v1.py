@@ -290,3 +290,17 @@ class ID3v1Comment(MetaData):
         return (ID3v1Comment(track_number=self.__track_number__,
                              genre=self.__genre__,
                              **fields), fixes_performed)
+
+    def intersection(self, metadata):
+        """given a MetaData-compatible object,
+        returns a new MetaData object which contains
+        all the matching fields and images of this object and 'metadata'
+        """
+
+        if type(metadata) is ID3v1Comment:
+            return ID3v1Comment(
+                **{arg: getattr(self, field)
+                   for arg, field in ID3v1Comment.ID3v1_FIELDS.items()
+                   if getattr(self, field) == getattr(metadata, field)})
+        else:
+            return MetaData.intersection(self, metadata)

@@ -803,6 +803,94 @@ class MetaDataTest(unittest.TestCase):
     def test_converted_none(self):
         self.assertIsNone(self.metadata_class.converted(None))
 
+    #@METADATA_METADATA
+    @LIB_CUSTOM
+    def test_intersection(self):
+        # get metadata in our class and set some fields
+        base = self.empty_metadata()
+        base.track_name = u"Name 1"
+        base.track_number = 1
+        self.assertEqual(base.track_name, u"Name 1")
+        self.assertEqual(base.track_number, 1)
+
+        # test against no intersecting fields
+        no_matches = audiotools.MetaData(album_name=u"Name 2",
+                                         artist_name=u"Name 3")
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), audiotools.MetaData)
+        self.assertEqual(set(test.filled_fields()), set())
+
+        no_matches = self.empty_metadata()
+        no_matches.album_name = u"Name 2"
+        no_matches.artist_name = u"Name 3"
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), type(base))
+        self.assertEqual(set(test.filled_fields()), set())
+
+        no_matches = audiotools.MetaData(track_name=u"Name 2",
+                                         track_number=2)
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), audiotools.MetaData)
+        self.assertEqual(set(test.filled_fields()), set())
+
+        no_matches = self.empty_metadata()
+        no_matches.track_name = u"Name 2"
+        no_matches.track_number = 2
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), type(base))
+        self.assertEqual(set(test.filled_fields()), set())
+
+        # test against some intersecting fields
+        some_matches = audiotools.MetaData(track_name=u"Name 1",
+                                           album_name=u"Name 2")
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), audiotools.MetaData)
+        self.assertEqual(set(test.filled_fields()),
+                         {("track_name", u"Name 1")})
+
+        some_matches = self.empty_metadata()
+        some_matches.track_name = u"Name 1"
+        some_matches.album_name = u"Name 2"
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), type(base))
+        self.assertEqual(set(test.filled_fields()),
+                         {("track_name", u"Name 1")})
+
+        some_matches = audiotools.MetaData(track_name=u"Name 2",
+                                           track_number=1)
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), audiotools.MetaData)
+        self.assertEqual(set(test.filled_fields()),
+                         {("track_number", 1)})
+
+        some_matches = self.empty_metadata()
+        some_matches.track_name = u"Name 2"
+        some_matches.track_number = 1
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), type(base))
+        self.assertEqual(set(test.filled_fields()),
+                         {("track_number", 1)})
+
+        # test against all intersecting fields
+        all_matches = audiotools.MetaData(track_name=u"Name 1",
+                                          track_number=1)
+        test = base.intersection(all_matches)
+        self.assertIs(type(test), audiotools.MetaData)
+        self.assertEqual(set(test.filled_fields()),
+                         {("track_name", u"Name 1"),
+                          ("track_number", 1)})
+
+        test = base.intersection(base)
+        self.assertIs(type(test), type(base))
+        self.assertTrue(test is not base)
+        self.assertEqual(set(test.filled_fields()),
+                         {("track_name", u"Name 1"),
+                          ("track_number", 1)})
+
+        # test against intersecting images (if applicable)
+        #FIXME
+        #FIXME - check our own metadata class
+
 
 class WavPackApeTagMetaData(MetaDataTest):
     def setUp(self):

@@ -586,3 +586,22 @@ class VorbisComment(MetaData):
 
         return (self.__class__(cleaned_fields, self.vendor_string),
                 fixes_performed)
+
+    def intersection(self, metadata):
+        """given a MetaData-compatible object,
+        returns a new MetaData object which contains
+        all the matching fields and images of this object and 'metadata'
+        """
+
+        if isinstance(metadata, VorbisComment):
+            matching_keys = {key for key in
+                             set(self.keys()) & set(metadata.keys())
+                             if self[key] == metadata[key]}
+
+            return self.__class__([comment
+                                  for comment in self.comment_strings
+                                  if (u"=" in comment) and
+                                  (comment.split(u"=", 1)[0] in matching_keys)],
+                                  self.vendor_string)
+        else:
+            return MetaData.intersection(self, metadata)

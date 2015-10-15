@@ -7430,6 +7430,44 @@
    - [X] format unit tests
    - [X] tracktag unit tests
 * TODO Finish version 3.2
+** TODO Add better metadata merge strategies
+   These could be used by trackcat and others to combine MetaData objects
+   in a useful way.
+*** TODO Add metadata1.intersection(metadata2) -> metadata3 method
+    metadata3 contains fields that are in both metadata1 and metadata2
+    and contain the same values
+
+    if both metadata objects are the same type, returns metadata in that type
+    and optimize the merge to handle low-level metadata fields
+    otherwise returns a generic MetaData object
+**** TODO Update metadata implementations
+     - [ ] MetaData
+     - [ ] ApeTag
+     - [ ] FlacMetaData
+     - [ ] OggFlacMetaData
+     - [ ] ID3v22Comment
+     - [ ] ID3v23Comment
+     - [ ] ID3v24Comment
+     - [ ] ID3CommentPair
+     - [ ] ID3v1Comment
+     - [ ] M4A_META_Atom
+     - [ ] VorbisComment
+**** TODO Add unit tests
+     These should check that foreign fields are merged correctly,
+     if applicable.
+     - [ ] MetaData
+     - [ ] ApeTag
+     - [ ] FlacMetaData
+     - [ ] OggFlacMetaData
+     - [ ] ID3v22Comment
+     - [ ] ID3v23Comment
+     - [ ] ID3v24Comment
+     - [ ] ID3CommentPair
+     - [ ] ID3v1Comment
+     - [ ] M4A_META_Atom
+     - [ ] VorbisComment
+**** TODO Update documentation
+**** TODO Update trackcat to use .intersection() method
 ** TODO Improve test coverage
    - [X] set_metadata(None) to all formats
 *** TODO Check repr on everything
