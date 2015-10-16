@@ -3606,6 +3606,9 @@ class MetaData(object):
         all the matching fields and images of this object and 'metadata'
         """
 
+        if metadata is None:
+            return None
+
         fields1 = {attr: field for attr, field in self.filled_fields()}
         fields2 = {attr: field for attr, field in metadata.filled_fields()}
 

@@ -996,6 +996,19 @@ MetaData Objects
    with as little filtering as possible.
    This is meant to be useful for debugging purposes.
 
+.. method:: MetaData.intersection(metadata)
+
+   Given a :class:`MetaData` object, this returns a new :class:`MetaData`
+   object containing only the fields which match those in this object.
+   It is analagous to a :class:`set` intersection in that
+   only common fields are preserved.
+
+   If both objects are of the same class, an object of the same
+   class will be returned.
+
+   If ``metadata`` is ``None``, returns ``None``.
+
+
 Image Objects
 -------------
 

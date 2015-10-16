@@ -7452,22 +7452,21 @@
      - [X] ID3v1Comment
      - [X] M4A_META_Atom
      - [X] VorbisComment
-**** TODO Add unit tests
+**** DONE Add unit tests
      These should check that foreign fields are merged correctly,
      if applicable.
      - [X] MetaData
-     - [ ] ApeTag
-     - [ ] FlacMetaData
-     - [ ] OggFlacMetaData
-     - [ ] ID3v22Comment
-     - [ ] ID3v23Comment
-     - [ ] ID3v24Comment
-     - [ ] ID3CommentPair
-     - [ ] ID3v1Comment
-     - [ ] M4A_META_Atom
-     - [ ] VorbisComment
-**** TODO Update documentation
+     - [X] ApeTag
+     - [X] FlacMetaData
+     - [X] ID3v22Comment
+     - [X] ID3v23Comment
+     - [X] ID3v24Comment
+     - [X] ID3v1Comment
+     - [X] M4A_META_Atom
+     - [X] VorbisComment
+**** DONE Update documentation
 **** TODO Update trackcat to use .intersection() method
+***** TODO Add unit tests
 ** TODO Improve test coverage
    - [X] set_metadata(None) to all formats
 *** TODO Check repr on everything

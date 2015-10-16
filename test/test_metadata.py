@@ -812,6 +812,9 @@ class MetaDataTest(unittest.TestCase):
         self.assertEqual(base.track_name, u"Name 1")
         self.assertEqual(base.track_number, 1)
 
+        # test against None
+        self.assertIsNone(base.intersection(None))
+
         # test against no intersecting fields
         no_matches = audiotools.MetaData(album_name=u"Name 2",
                                          artist_name=u"Name 3")
@@ -2182,6 +2185,36 @@ class WavPackApeTagMetaData(MetaDataTest):
                         self.assertEqual(track2.get_replay_gain(),
                                          old_replay_gain)
 
+    @METADATA_WAVPACK
+    def test_intersection2(self):
+        from audiotools.ape import ApeTag, ApeTagItem
+
+        base = ApeTag([ApeTagItem.string(b"Foo", u"A"),
+                       ApeTagItem.string(b"Bar", u"B")])
+
+        # test no matches
+        no_matches = ApeTag([ApeTagItem.string(b"Bar", u"C"),
+                             ApeTagItem.string(b"Baz", u"D")])
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), ApeTag)
+        self.assertEqual(test.tags, [])
+
+        # test some matches
+        some_matches = ApeTag([ApeTagItem.string(b"Bar", u"B"),
+                               ApeTagItem.string(b"Baz", u"D")])
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), ApeTag)
+        self.assertEqual(test.tags, [ApeTagItem.string(b"Bar", u"B")])
+
+        # test all matches
+        some_matches = ApeTag([ApeTagItem.string(b"Bar", u"B"),
+                               ApeTagItem.string(b"Foo", u"A")])
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), ApeTag)
+        self.assertEqual(test.tags,
+                         [ApeTagItem.string(b"Foo", u"A"),
+                          ApeTagItem.string(b"Bar", u"B")])
+
 
 class ID3v1MetaData(MetaDataTest):
     def setUp(self):
@@ -2412,6 +2445,43 @@ class ID3v1MetaData(MetaDataTest):
 
         # ID3v1 has no empty fields, image data or leading zeroes
         # so those can be safely ignored
+
+    @METADATA_ID3V1
+    def test_intersection2(self):
+        from audiotools.id3v1 import ID3v1Comment
+
+        base = ID3v1Comment(track_name=u"A", genre=1)
+        self.assertEqual(base.track_name, u"A")
+        self.assertEqual(base.__genre__, 1)
+
+        # test no matches
+        no_matches = ID3v1Comment(track_name=u"B", album_name=u"C")
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), ID3v1Comment)
+        self.assertIsNone(test.track_name)
+        self.assertIsNone(test.album_name)
+        self.assertEqual(test.__genre__, 0)
+
+        # test some matches
+        some_matches = ID3v1Comment(track_name=u"B", genre=1)
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), ID3v1Comment)
+        self.assertIsNone(test.track_name)
+        self.assertEqual(test.__genre__, 1)
+
+        some_matches = ID3v1Comment(artist_name=u"B", genre=1)
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), ID3v1Comment)
+        self.assertIsNone(test.track_name)
+        self.assertIsNone(test.artist_name)
+        self.assertEqual(test.__genre__, 1)
+
+        # test all matches
+        all_matches = ID3v1Comment(track_name=u"A", genre=1)
+        test = base.intersection(all_matches)
+        self.assertIs(type(test), ID3v1Comment)
+        self.assertEqual(test.track_name, u"A")
+        self.assertEqual(test.__genre__, 1)
 
 
 class ID3v22MetaData(MetaDataTest):
@@ -3572,6 +3642,43 @@ class ID3v22MetaData(MetaDataTest):
         finally:
             audiotools.config.set_default("ID3", "pad", id3_pad)
 
+    @METADATA_ID3V2
+    def test_intersection2(self):
+        from audiotools.id3 import ID3v22Comment
+        from audiotools.id3 import ID3v22_T__Frame
+        from audiotools.id3 import ID3v22_TXX_Frame
+
+        base = ID3v22Comment(
+            [ID3v22_T__Frame.converted(b"TT2", u"Foo"),
+             ID3v22_TXX_Frame(0, b"Bar", b"Baz")])
+        self.assertEqual(base.track_name, u"Foo")
+
+        # test no matches
+        no_matches = ID3v22Comment(
+            [ID3v22_T__Frame.converted(b"TT2", u"Bar"),
+             ID3v22_T__Frame.converted(b"TAL", u"Baz")])
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), ID3v22Comment)
+        self.assertEqual(test.frames, [])
+
+        # test some matches
+        some_matches = ID3v22Comment(
+            [ID3v22_T__Frame.converted(b"TT2", u"Bar"),
+             ID3v22_TXX_Frame(0, b"Bar", u"Baz")])
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), ID3v22Comment)
+        self.assertEqual(test.frames, [ID3v22_TXX_Frame(0, b"Bar", u"Baz")])
+
+        # test all matches
+        all_matches = ID3v22Comment(
+            [ID3v22_TXX_Frame(0, b"Bar", b"Baz"),
+             ID3v22_T__Frame.converted(b"TT2", u"Foo")])
+        test = base.intersection(all_matches)
+        self.assertIs(type(test), ID3v22Comment)
+        self.assertEqual(test.frames,
+                         [ID3v22_T__Frame.converted(b"TT2", u"Foo"),
+                          ID3v22_TXX_Frame(0, b"Bar", b"Baz")])
+
 
 class ID3v23MetaData(ID3v22MetaData):
     def setUp(self):
@@ -3767,6 +3874,43 @@ class ID3v23MetaData(ID3v22MetaData):
         finally:
             audiotools.config.set_default("ID3", "pad", id3_pad)
 
+    @METADATA_ID3V2
+    def test_intersection2(self):
+        from audiotools.id3 import ID3v23Comment
+        from audiotools.id3 import ID3v23_T___Frame
+        from audiotools.id3 import ID3v23_TXXX_Frame
+
+        base = ID3v23Comment(
+            [ID3v23_T___Frame.converted(b"TIT2", u"Foo"),
+             ID3v23_TXXX_Frame(0, b"Bar", b"Baz")])
+        self.assertEqual(base.track_name, u"Foo")
+
+        # test no matches
+        no_matches = ID3v23Comment(
+            [ID3v23_T___Frame.converted(b"TIT2", u"Bar"),
+             ID3v23_T___Frame.converted(b"TALB", u"Baz")])
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), ID3v23Comment)
+        self.assertEqual(test.frames, [])
+
+        # test some matches
+        some_matches = ID3v23Comment(
+            [ID3v23_T___Frame.converted(b"TIT2", u"Bar"),
+             ID3v23_TXXX_Frame(0, b"Bar", u"Baz")])
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), ID3v23Comment)
+        self.assertEqual(test.frames, [ID3v23_TXXX_Frame(0, b"Bar", u"Baz")])
+
+        # test all matches
+        all_matches = ID3v23Comment(
+            [ID3v23_TXXX_Frame(0, b"Bar", b"Baz"),
+             ID3v23_T___Frame.converted(b"TIT2", u"Foo")])
+        test = base.intersection(all_matches)
+        self.assertIs(type(test), ID3v23Comment)
+        self.assertEqual(test.frames,
+                         [ID3v23_T___Frame.converted(b"TIT2", u"Foo"),
+                          ID3v23_TXXX_Frame(0, b"Bar", b"Baz")])
+
 
 class ID3v24MetaData(ID3v22MetaData):
     def setUp(self):
@@ -3939,6 +4083,43 @@ class ID3v24MetaData(ID3v22MetaData):
             self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
         finally:
             audiotools.config.set_default("ID3", "pad", id3_pad)
+
+    @METADATA_ID3V2
+    def test_intersection2(self):
+        from audiotools.id3 import ID3v24Comment
+        from audiotools.id3 import ID3v24_T___Frame
+        from audiotools.id3 import ID3v24_TXXX_Frame
+
+        base = ID3v24Comment(
+            [ID3v24_T___Frame.converted(b"TIT2", u"Foo"),
+             ID3v24_TXXX_Frame(0, b"Bar", b"Baz")])
+        self.assertEqual(base.track_name, u"Foo")
+
+        # test no matches
+        no_matches = ID3v24Comment(
+            [ID3v24_T___Frame.converted(b"TIT2", u"Bar"),
+             ID3v24_T___Frame.converted(b"TALB", u"Baz")])
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), ID3v24Comment)
+        self.assertEqual(test.frames, [])
+
+        # test some matches
+        some_matches = ID3v24Comment(
+            [ID3v24_T___Frame.converted(b"TIT2", u"Bar"),
+             ID3v24_TXXX_Frame(0, b"Bar", u"Baz")])
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), ID3v24Comment)
+        self.assertEqual(test.frames, [ID3v24_TXXX_Frame(0, b"Bar", u"Baz")])
+
+        # test all matches
+        all_matches = ID3v24Comment(
+            [ID3v24_TXXX_Frame(0, b"Bar", b"Baz"),
+             ID3v24_T___Frame.converted(b"TIT2", u"Foo")])
+        test = base.intersection(all_matches)
+        self.assertIs(type(test), ID3v24Comment)
+        self.assertEqual(test.frames,
+                         [ID3v24_T___Frame.converted(b"TIT2", u"Foo"),
+                          ID3v24_TXXX_Frame(0, b"Bar", b"Baz")])
 
 
 class ID3CommentPairMetaData(MetaDataTest):
@@ -5848,6 +6029,57 @@ class FlacMetaData(MetaDataTest):
             dummy_flac.close()
             dummy_id3flac.close()
 
+    @METADATA_FLAC
+    def test_intersection2(self):
+        from audiotools.flac import FlacMetaData
+        from audiotools.flac import Flac_STREAMINFO
+        from audiotools.flac import Flac_APPLICATION
+        from audiotools.flac import Flac_PADDING
+
+        base = FlacMetaData([Flac_STREAMINFO(0, 1, 2, 3, 4, 5, 6, 7,
+                                             b"\00" * 16),
+                             Flac_APPLICATION(b"test", b"data"),
+                             Flac_PADDING(1234)])
+
+        # test no matches
+        no_matches = FlacMetaData([Flac_STREAMINFO(7, 6, 5, 4, 3, 2, 1, 0,
+                                                   b"\x01" * 16),
+                                   Flac_PADDING(1235)])
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), FlacMetaData)
+        self.assertEqual(test.block_list, [])
+
+        # test some matches
+        some_matches = FlacMetaData([Flac_PADDING(1235),
+                                     Flac_STREAMINFO(0, 1, 2, 3, 4, 5, 6, 7,
+                                                     b"\00" * 16)])
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), FlacMetaData)
+        self.assertEqual(test.block_list,
+                         [Flac_STREAMINFO(0, 1, 2, 3, 4, 5, 6, 7, b"\00" * 16)])
+
+        some_matches = FlacMetaData([Flac_PADDING(1235),
+                                     Flac_APPLICATION(b"test", b"data"),
+                                     Flac_PADDING(1234)])
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), FlacMetaData)
+        self.assertEqual(test.block_list,
+                         [Flac_APPLICATION(b"test", b"data"),
+                          Flac_PADDING(1234)])
+
+        # test all matches
+        all_matches = FlacMetaData([Flac_PADDING(1234),
+                                    Flac_STREAMINFO(0, 1, 2, 3, 4, 5, 6, 7,
+                                                    b"\00" * 16),
+                                    Flac_APPLICATION(b"test", b"data")])
+        test = base.intersection(all_matches)
+        self.assertIs(type(test), FlacMetaData)
+        self.assertEqual(test.block_list,
+                         [Flac_STREAMINFO(0, 1, 2, 3, 4, 5, 6, 7,
+                                          b"\00" * 16),
+                          Flac_APPLICATION(b"test", b"data"),
+                          Flac_PADDING(1234)])
+
 
 class M4AMetaDataTest(MetaDataTest):
     def setUp(self):
@@ -6855,6 +7087,78 @@ class M4AMetaDataTest(MetaDataTest):
         # numerical fields can't have whitespace
         # and images aren't stored with metadata
         # so there's no need to check those
+
+    @METADATA_M4A
+    def test_intersection2(self):
+        from audiotools.m4a_atoms import M4A_META_Atom as META_Atom
+        from audiotools.m4a_atoms import M4A_Tree_Atom as Tree_Atom
+        from audiotools.m4a_atoms import M4A_ILST_Leaf_Atom as Leaf_Atom
+        from audiotools.m4a_atoms import M4A_ILST_Unicode_Data_Atom as Data_Atom
+        from audiotools.m4a_atoms import M4A_ILST_TRKN_Data_Atom as TRKN_Atom
+
+        base = META_Atom(
+            0,
+            0,
+            [Tree_Atom(b'ilst',
+                       [Leaf_Atom(b"\xa9nam", [Data_Atom(0, 1, b"Name")]),
+                        Leaf_Atom(b"trkn", [TRKN_Atom(2, 3)]),
+                        Leaf_Atom(b"fooz", [Data_Atom(0, 1, b"Bar")])])])
+
+        self.assertEqual(base.track_name, u"Name")
+        self.assertEqual(base.track_number, 2)
+        self.assertEqual(base.track_total, 3)
+
+        # test no matches
+        no_matches = META_Atom(
+            0,
+            0,
+            [Tree_Atom(b'ilst',
+                       [Leaf_Atom(b"\xa9nam", [Data_Atom(0, 1, b"Name 2")]),
+                        Leaf_Atom(b"trkn", [TRKN_Atom(3, 4)]),
+                        Leaf_Atom(b"barz", [Data_Atom(0, 1, b"Kelp")])])])
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), META_Atom)
+        self.assertEqual(test, META_Atom(0, 0, []))
+
+        # test some matches
+        some_matches = META_Atom(
+            0,
+            0,
+            [Tree_Atom(b'ilst',
+                       [Leaf_Atom(b"barz", [Data_Atom(0, 1, "Blah")]),
+                        Leaf_Atom(b"trkn", [TRKN_Atom(2, 3)]),
+                        Leaf_Atom(b"fooz", [Data_Atom(0, 1, b"Kelp")]),
+                        Leaf_Atom(b"fooz", [Data_Atom(0, 1, b"Bar")])])])
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), META_Atom)
+        self.assertEqual(
+            test,
+            META_Atom(
+                0,
+                0,
+                [Tree_Atom(b'ilst',
+                           [Leaf_Atom(b"trkn", [TRKN_Atom(2, 3)]),
+                            Leaf_Atom(b"fooz", [Data_Atom(0, 1, b"Bar")])])]))
+
+        # test all matches
+        all_matches = META_Atom(
+            0,
+            0,
+            [Tree_Atom(b'ilst',
+                       [Leaf_Atom(b"fooz", [Data_Atom(0, 1, b"Bar")]),
+                        Leaf_Atom(b"trkn", [TRKN_Atom(2, 3)]),
+                        Leaf_Atom(b"\xa9nam", [Data_Atom(0, 1, b"Name")])])])
+        test = base.intersection(all_matches)
+        self.assertIs(type(test), META_Atom)
+        self.assertEqual(
+            test,
+            META_Atom(
+                0,
+                0,
+               [Tree_Atom(b'ilst',
+                          [Leaf_Atom(b"\xa9nam", [Data_Atom(0, 1, b"Name")]),
+                           Leaf_Atom(b"trkn", [TRKN_Atom(2, 3)]),
+                           Leaf_Atom(b"fooz", [Data_Atom(0, 1, b"Bar")])])]))
 
 
 class VorbisCommentTest(MetaDataTest):
@@ -8072,6 +8376,63 @@ class VorbisCommentTest(MetaDataTest):
                         temp2.close()
             finally:
                 temp1.close()
+
+    @METADATA_VORBIS
+    def test_intersection2(self):
+        from audiotools.vorbiscomment import VorbisComment
+
+        base = VorbisComment([u"TITLE=Title",
+                              u"PERFORMER=Performer",
+                              u"FOO=Bar"],
+                             u"vendor 1")
+        self.assertEqual(base.track_name, u"Title")
+        self.assertEqual(base.performer_name, u"Performer")
+
+        # test no matches
+        no_matches = VorbisComment([u"TITLE=Bar",
+                                    u"FOO=Baz",
+                                    u"KELP=Spam"],
+                                   u"vendor 2")
+        test = base.intersection(no_matches)
+        self.assertIs(type(test), VorbisComment)
+        self.assertEqual(test.comment_strings, [])
+        self.assertEqual(test.vendor_string, u"vendor 1")
+
+        # test some matches
+        some_matches = VorbisComment([u"TITLE=Bar",
+                                      u"ALBUM ARTIST=Performer",
+                                      u"FOO=Baz",
+                                      u"KELP=Spam"],
+                                     u"vendor 2")
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), VorbisComment)
+        self.assertEqual(test.performer_name, u"Performer")
+        self.assertEqual(test.comment_strings, [u"PERFORMER=Performer"])
+        self.assertEqual(test.vendor_string, u"vendor 1")
+
+        some_matches = VorbisComment([u"TITLE=Bar",
+                                      u"FOO=Baz",
+                                      u"FOO=Bar",
+                                      u"KELP=Spam"],
+                                     u"vendor 2")
+        test = base.intersection(some_matches)
+        self.assertIs(type(test), VorbisComment)
+        self.assertEqual(test.comment_strings, [u"FOO=Bar"])
+        self.assertEqual(test.vendor_string, u"vendor 1")
+
+        # test all matches
+        all_matches = VorbisComment([u"FOO=Bar",
+                                     u"ALBUM ARTIST=Performer",
+                                     u"TITLE=Title"],
+                                    u"vendor 2")
+        test = base.intersection(all_matches)
+        self.assertIs(type(test), VorbisComment)
+        self.assertEqual(test.track_name, u"Title")
+        self.assertEqual(test.performer_name, u"Performer")
+        self.assertEqual(test.comment_strings, [u"TITLE=Title",
+                                                u"PERFORMER=Performer",
+                                                u"FOO=Bar"])
+        self.assertEqual(test.vendor_string, u"vendor 1")
 
 
 class OpusTagsTest(MetaDataTest):

@@ -593,15 +593,28 @@ class VorbisComment(MetaData):
         all the matching fields and images of this object and 'metadata'
         """
 
-        if isinstance(metadata, VorbisComment):
-            matching_keys = {key for key in
-                             set(self.keys()) & set(metadata.keys())
-                             if self[key] == metadata[key]}
+        def comment_present(comment):
+            if u"=" in comment:
+                key, value = comment.split(u"=", 1)
+                try:
+                    for other_value in metadata[key]:
+                        if value == other_value:
+                            return True
+                    else:
+                        return False
+                except KeyError:
+                    return False
+            else:
+                for other_comment in metadata.comment_strings:
+                    if comment == other_comment:
+                        return True
+                else:
+                    return False
 
+        if isinstance(metadata, VorbisComment):
             return self.__class__([comment
-                                  for comment in self.comment_strings
-                                  if (u"=" in comment) and
-                                  (comment.split(u"=", 1)[0] in matching_keys)],
+                                   for comment in self.comment_strings
+                                   if comment_present(comment)],
                                   self.vendor_string)
         else:
             return MetaData.intersection(self, metadata)

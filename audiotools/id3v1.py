@@ -299,6 +299,8 @@ class ID3v1Comment(MetaData):
 
         if type(metadata) is ID3v1Comment:
             return ID3v1Comment(
+                genre=(self.__genre__ if
+                       self.__genre__ == metadata.__genre__ else 0),
                 **{arg: getattr(self, field)
                    for arg, field in ID3v1Comment.ID3v1_FIELDS.items()
                    if getattr(self, field) == getattr(metadata, field)})

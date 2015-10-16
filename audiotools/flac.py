@@ -490,6 +490,12 @@ class Flac_PADDING(object):
 
         return Flac_PADDING(self.length)
 
+    def __eq__(self, block):
+        if hasattr(block, "length"):
+            return self.length == block.length
+        else:
+            return False
+
     def __repr__(self):
         return "Flac_PADDING(%d)" % (self.length)
 

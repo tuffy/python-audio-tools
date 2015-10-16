@@ -1534,21 +1534,22 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         all the matching fields and images of this object and 'metadata'
         """
 
+        def atom_present(atom, ilst):
+            for other_atom in ilst:
+                if atom == other_atom:
+                    return True
+            else:
+                return False
+
         if type(metadata) is M4A_META_Atom:
             ilst1 = self.ilst_atom()
             ilst2 = metadata.ilst_atom()
 
             if (ilst1 is not None) and (ilst2 is not None):
-                common_children = {atom_name for atom_name in
-                                   ({atom.name for atom in ilst1} &
-                                    {atom.name for atom in ilst2})
-                                   if ilst1.get_children(atom_name) ==
-                                      ilst2.get_children(atom_name)}
-
                 merged_ilst = M4A_Tree_Atom(
                     ilst1.name,
                     [atom.copy() for atom in ilst1 if
-                     atom.name in common_children])
+                     atom_present(atom, ilst2)])
             else:
                 # one is missing an "ilst" sub-atom, so no common elements
                 merged_ilst = M4A_Tree_Atom(b"ilst", [])

@@ -653,7 +653,8 @@ class ID3v22_TXX_Frame(object):
              self.__unicode__())
 
     def __eq__(self, frame):
-        return __attrib_equals__(["id", "encoding", "description", "data"])
+        return __attrib_equals__(["id", "encoding", "description", "data"],
+                                 self, frame)
 
     if sys.version_info[0] >= 3:
         def __str__(self):
