@@ -40,21 +40,11 @@ def merge_metadatas(metadatas):
     elif len(track_metadatas) == 1:
         return track_metadatas[0]
     else:
-        metadata = audiotools.MetaData(
-            **{field: getattr(track_metadatas[0], field)
-               for field in audiotools.MetaData.FIELDS
-               if (len({getattr(m, field) for m in track_metadatas}) == 1)})
+        merged = track_metadatas[0]
+        for to_merge in track_metadatas[1:]:
+            merged = merged.intersection(to_merge)
 
-        # port over non-duplicate images
-        images = []
-        for m in track_metadatas:
-            for i in m.images():
-                if i not in images:
-                    images.append(i)
-        for i in images:
-            metadata.add_image(i)
-
-        return metadata
+        return merged
 
 
 if (__name__ == '__main__'):

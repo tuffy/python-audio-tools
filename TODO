@@ -7465,8 +7465,8 @@
      - [X] M4A_META_Atom
      - [X] VorbisComment
 **** DONE Update documentation
-**** TODO Update trackcat to use .intersection() method
-***** TODO Add unit tests
+*** TODO Update trackcat to use .intersection() method
+**** TODO Add unit tests
 ** TODO Improve test coverage
    - [X] set_metadata(None) to all formats
 *** TODO Check repr on everything
