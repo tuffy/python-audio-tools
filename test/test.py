@@ -328,17 +328,21 @@ SHORT_PCM_COMBINATIONS = \
                          back_left=True,
                          back_right=True)), 24))
 
+with open("test_cover1.jpg", "rb") as c:
+    TEST_COVER1 = c.read()
 
-TEST_COVER1 = open("test_cover1.jpg", "rb").read()
+with open("test_cover2.png", "rb") as c:
+    TEST_COVER2 = c.read()
 
-TEST_COVER2 = open("test_cover2.png", "rb").read()
+with open("test_cover3.jpg", "rb") as c:
+    TEST_COVER3 = c.read()
 
-TEST_COVER3 = open("test_cover3.jpg", "rb").read()
-
-TEST_COVER4 = open("test_cover4.png", "rb").read()
+with open("test_cover4.png", "rb") as c:
+    TEST_COVER4 = c.read()
 
 # this is a very large, plain BMP encoded as bz2
-HUGE_BMP = open("huge.bmp.bz2", "rb").read()
+with open("huge.bmp.bz2", "rb") as c:
+    HUGE_BMP = c.read()
 
 
 from test_formats import *

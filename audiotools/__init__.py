@@ -3609,9 +3609,12 @@ class MetaData(object):
         fields1 = {attr: field for attr, field in self.filled_fields()}
         fields2 = {attr: field for attr, field in metadata.filled_fields()}
 
-        #FIXME - merge matching images also
+        common_images = ({(img.type, img.data) for img in self.images()} &
+                         {(img.type, img.data) for img in metadata.images()})
 
-        return MetaData(**{attr: fields1[attr] for attr in
+        return MetaData(images=[img for img in self.images() if
+                        (img.type, img.data) in common_images],
+                        **{attr: fields1[attr] for attr in
                            set(fields1.keys()) & set(fields2.keys())
                            if fields1[attr] == fields2[attr]})
 

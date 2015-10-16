@@ -1556,12 +1556,16 @@ class ID3v22Comment(MetaData):
         all the matching fields and images of this object and 'metadata'
         """
 
+        def frame_present(frame):
+            for other_frame in metadata:
+                if frame == other_frame:
+                    return True
+            else:
+                return False
+
         if type(metadata) is type(self):
-            matching_keys = {key for key in
-                             set(self.keys()) & set(metadata.keys())
-                             if self[key] == metadata[key]}
             return self.__class__([frame for frame in self if
-                                   frame.id in matching_keys])
+                                   frame_present(frame)])
         else:
             return MetaData.intersection(self, metadata)
 

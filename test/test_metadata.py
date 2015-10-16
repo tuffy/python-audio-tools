@@ -803,8 +803,7 @@ class MetaDataTest(unittest.TestCase):
     def test_converted_none(self):
         self.assertIsNone(self.metadata_class.converted(None))
 
-    #@METADATA_METADATA
-    @LIB_CUSTOM
+    @METADATA_METADATA
     def test_intersection(self):
         # get metadata in our class and set some fields
         base = self.empty_metadata()
@@ -888,8 +887,87 @@ class MetaDataTest(unittest.TestCase):
                           ("track_number", 1)})
 
         # test against intersecting images (if applicable)
-        #FIXME
-        #FIXME - check our own metadata class
+        if self.metadata_class.supports_images():
+            img1 = audiotools.Image.new(TEST_COVER1,
+                                        u"",
+                                        audiotools.FRONT_COVER)
+
+            img2 = audiotools.Image.new(TEST_COVER2,
+                                        u"",
+                                        audiotools.FRONT_COVER)
+
+            img3 = audiotools.Image.new(TEST_COVER3,
+                                        u"",
+                                        audiotools.BACK_COVER)
+
+            base = self.empty_metadata()
+            base.add_image(img1)
+            self.assertEqual(base.images(), [img1])
+
+            # test against no matching images
+            no_matches = audiotools.MetaData()
+            self.assertEqual(no_matches.images(), [])
+            test = base.intersection(no_matches)
+            self.assertIs(type(test), audiotools.MetaData)
+            self.assertEqual(test.images(), [])
+
+            no_matches = self.empty_metadata()
+            self.assertEqual(no_matches.images(), [])
+            test = base.intersection(no_matches)
+            self.assertIs(type(test), type(base))
+            self.assertEqual(test.images(), [])
+
+            no_matches = audiotools.MetaData()
+            no_matches.add_image(img2)
+            self.assertEqual(no_matches.images(), [img2])
+            test = base.intersection(no_matches)
+            self.assertIs(type(test), audiotools.MetaData)
+            self.assertEqual(test.images(), [])
+
+            no_matches = self.empty_metadata()
+            no_matches.add_image(img2)
+            self.assertEqual(no_matches.images(), [img2])
+            test = base.intersection(no_matches)
+            self.assertIs(type(test), type(base))
+            self.assertEqual(test.images(), [])
+
+            # test against some matching images (if possible)
+            base2 = self.empty_metadata()
+            base2.add_image(img1)
+            base2.add_image(img2)
+            if len(base2.images()) > 1:
+                self.assertEqual(base2.images(), [img1, img2])
+
+                some_matches = audiotools.MetaData()
+                some_matches.add_image(img2)
+                some_matches.add_image(img3)
+                self.assertEqual(some_matches.images(), [img2, img3])
+                test = base2.intersection(some_matches)
+                self.assertIs(type(test), audiotools.MetaData)
+                self.assertEqual(test.images(), [img2])
+
+                some_matches = self.empty_metadata()
+                some_matches.add_image(img2)
+                some_matches.add_image(img3)
+                self.assertEqual(some_matches.images(), [img2, img3])
+                test = base2.intersection(some_matches)
+                self.assertIs(type(test), type(base2))
+                self.assertEqual(test.images(), [img2])
+
+            # test against all matching images
+            all_matches = audiotools.MetaData()
+            all_matches.add_image(img1)
+            self.assertEqual(all_matches.images(), [img1])
+            test = base.intersection(all_matches)
+            self.assertIs(type(test), audiotools.MetaData)
+            self.assertEqual(test.images(), [img1])
+
+            all_matches = self.empty_metadata()
+            all_matches.add_image(img1)
+            self.assertEqual(all_matches.images(), [img1])
+            test = base.intersection(all_matches)
+            self.assertIs(type(test), type(base))
+            self.assertEqual(test.images(), [img1])
 
 
 class WavPackApeTagMetaData(MetaDataTest):

@@ -265,17 +265,26 @@ class FlacMetaData(MetaData):
         all the matching fields and images of this object and 'metadata'
         """
 
-        #FIXME - update this to handle common image blocks
+        def block_present(block):
+            for other_block in metadata.get_blocks(block.BLOCK_ID):
+                if block == other_block:
+                    return True
+            else:
+                return False
 
         if type(metadata) is FlacMetaData:
-            try:
-                vorbis1 = self.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
-                vorbis2 = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
-                return FlacMetaData([vorbis1.intersection(vorbis2)])
-            except IndexError:
-                # at least one of the metadatas
-                # is missing a VORBIS_COMMENT block
-                return FlacMetaData([])
+            blocks = []
+
+            for block in self.block_list:
+                if ((block.BLOCK_ID == Flac_VORBISCOMMENT.BLOCK_ID) and
+                    metadata.has_block(block.BLOCK_ID)):
+                    # merge VORBIS blocks seperately, if present
+                    blocks.append(
+                        block.intersection(metadata.get_block(block.BLOCK_ID)))
+                elif block_present(block):
+                    blocks.append(block.copy())
+
+            return FlacMetaData(blocks)
         else:
             return MetaData.intersection(self, metadata)
 
