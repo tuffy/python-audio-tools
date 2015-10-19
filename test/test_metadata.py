@@ -3667,7 +3667,7 @@ class ID3v22MetaData(MetaDataTest):
              ID3v22_TXX_Frame(0, b"Bar", u"Baz")])
         test = base.intersection(some_matches)
         self.assertIs(type(test), ID3v22Comment)
-        self.assertEqual(test.frames, [ID3v22_TXX_Frame(0, b"Bar", u"Baz")])
+        self.assertEqual(test.frames, [ID3v22_TXX_Frame(0, b"Bar", b"Baz")])
 
         # test all matches
         all_matches = ID3v22Comment(

@@ -6802,6 +6802,33 @@
      - [X] input format must supports_to_pcm()
 *** DONE Update documentation
 *** DONE Update unit tests
+* DONE Add compilation field to metadata
+  This boolean field indicates the track is part of a compilation
+  and should round-trip correctly across all metadata types
+  that support it.
+** DONE Replace MetaData.INTEGER_FIELDS with a FIELD_TYPE lookup
+   This allows a field to be either a Unicode string (like track_name)
+   integer field (like track_number) or a boolean (like compilation).
+** DONE Add field to metadata classes
+*** DONE Add compilation field to MetaData class
+*** DONE Add compilation field to ID3v2 classes
+    - [X] ID3v2.2
+    - [X] ID3v2.3
+    - [X] ID3v2.4
+    - [X] ID3CommentPair
+*** DONE Add compilation field to VorbisComment classes
+    - [X] VorbisComment
+    - [X] FlacMetaData
+*** DONE Add compilation field to M4A metadata
+*** DONE Add compilation field to APEv2 metadata
+** DONE Update tracktag to support compilation field
+   - [X] add command-line options
+   - [X] add UI support
+*** TODO Update man page
+** DONE Update documentation
+** DONE Update unit tests
+   - [X] format unit tests
+   - [X] tracktag unit tests
 * TODO Add support for genre tag?
   I'm not a big fan of the genre tag.
   Unlike track number, album name, ISRC, etc. in which a value
@@ -7402,33 +7429,6 @@
     - [X] wav/WaveReader
 **** DONE Add documentation
 **** DONE Add unit tests
-* DONE Add compilation field to metadata
-  This boolean field indicates the track is part of a compilation
-  and should round-trip correctly across all metadata types
-  that support it.
-** DONE Replace MetaData.INTEGER_FIELDS with a FIELD_TYPE lookup
-   This allows a field to be either a Unicode string (like track_name)
-   integer field (like track_number) or a boolean (like compilation).
-** DONE Add field to metadata classes
-*** DONE Add compilation field to MetaData class
-*** DONE Add compilation field to ID3v2 classes
-    - [X] ID3v2.2
-    - [X] ID3v2.3
-    - [X] ID3v2.4
-    - [X] ID3CommentPair
-*** DONE Add compilation field to VorbisComment classes
-    - [X] VorbisComment
-    - [X] FlacMetaData
-*** DONE Add compilation field to M4A metadata
-*** DONE Add compilation field to APEv2 metadata
-** DONE Update tracktag to support compilation field
-   - [X] add command-line options
-   - [X] add UI support
-*** TODO Update man page
-** DONE Update documentation
-** DONE Update unit tests
-   - [X] format unit tests
-   - [X] tracktag unit tests
 * TODO Finish version 3.2
 ** TODO Add better metadata merge strategies
    These could be used by trackcat and others to combine MetaData objects
@@ -7467,6 +7467,83 @@
 **** DONE Update documentation
 *** TODO Update trackcat to use .intersection() method
 **** TODO Add unit tests
+** TODO Handle pre-gaps that contain audio data
+*** TODO Update cd2track
+    If pre-gap is present, check it for data.
+
+    If data is present, dump data to a "track 0" file
+    with as much metadata as possible.
+
+    If data is not present, skip it.
+**** TODO Add unit tests
+*** TODO Update track2cd
+    If pre-gap is present, check for a "track 0" file of the same length.
+
+    If track is present, prepend is to stream before writing to disc.
+
+    If track is not present, prepend empty data to disc.
+**** TODO Add unit tests
+*** TODO Update tracksplit
+    If pre-gap is present, check it for data.
+
+    If data is present, dump data to a "track 0" file
+    with as much metadata as possible.
+
+    If data is not present, skip it.
+**** TODO Add unit tests
+*** TODO Update trackcat
+    If pre-gap is present, check for a "track 0" file of the same length.
+
+    If track is present, prepend is to stream before writing to image.
+
+    If track is not present, prepend empty data to image.
+**** TODO Add unit tests
+** TODO Support MBID tags
+   These are basically direct MusicBrainz links rather than using
+   calculated disc IDs to perform lookups.
+*** TODO Update MetaData formats to perform MBID lookups, if possible
+    - [ ] ApeTag
+    - [ ] FlacMetaData
+    - [ ] ID3CommentPair
+    - [ ] ID3v1Comment
+    - [ ] ID3v22Comment
+    - [ ] ID3v23Comment
+    - [ ] ID3v24Comment
+    - [ ] M4A
+    - [ ] VorbisComment
+**** TODO Add unit tests
+*** TODO Update musicbrainz module to handle MBID lookup
+    Given an ID, returns a list of MetaData objects
+**** TODO Add unit tests
+*** TODO Update utilities to support MBID lookup
+    Basically anything that takes tracks and performs a lookup may benefit.
+    - [ ] tracksplit
+    - [ ] trackcat
+    - [ ] track2track
+    - [ ] tracktag
+**** TODO Add unit tests
+** TODO Add pre-emphasis support
+*** TODO Add de-emphasis filter to pcmconverters
+**** TODO Add unit test
+*** TODO Add pre-emphasis filter to pcmconverters
+**** TODO Add unit test
+*** TODO Update cd2track
+    If disc contains pre-emphasis, remove it during extraction
+**** TODO Add unit test
+*** TODO Update tracksplit
+    If CD image contains pre-emphasis, remove it during extraction
+**** TODO Add unit test
+*** TODO Update track2cd
+    If cuesheet is given and indicates pre-emphasis,
+    re-add it when creating disc image for writing
+**** TODO Add unit test
+*** TODO Update trackcat
+    If cuesheet is given an indicates pre-emphasis,
+    re-add it when concatenating files to image
+**** TODO Add unit test
+** TODO Add CTDB support
+   Need to figure out how the cuetools client interface actually works.
+   Then attempt to use it wherever AccurateRip is used, if possible.
 ** TODO Improve test coverage
    - [X] set_metadata(None) to all formats
 *** TODO Check repr on everything
