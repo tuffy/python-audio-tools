@@ -4840,6 +4840,68 @@ class tracksplit_pre_gap(UtilTest):
         temp_track_f.close()
         temp_cue_f.close()
 
+    @UTIL_TRACKSPLIT
+    def test_populated_pre_gap(self):
+        pre_gap_size = 19404
+        track_lengths = [21741300, 13847400, 22402800, 14420700,
+                         10760400, 17904600, 13715100, 17022600,
+                         30781800, 28312200]
+        with open("trackcat_pre_gap.cue", "rb") as f:
+            cuesheet_data = f.read()
+
+        # write whole track to disk as image-type file
+        temp_track_f = tempfile.NamedTemporaryFile(suffix=".wav")
+        temp_track = audiotools.WaveAudio.from_pcm(
+            temp_track_f.name,
+            EXACT_RANDOM_PCM_Reader(pre_gap_size + sum(track_lengths)),
+            total_pcm_frames=pre_gap_size + sum(track_lengths))
+
+        # write cuesheet to disk
+        temp_cue_f = tempfile.NamedTemporaryFile(suffix=".cue")
+        temp_cue_f.write(cuesheet_data)
+        temp_cue_f.flush()
+
+        # split image to directory using cuesheet
+        self.assertEqual(
+            self.__run_app__(["tracksplit",
+                              "-d", self.outdir,
+                              "--cue", temp_cue_f.name,
+                              temp_track_f.name,
+                              "--no-musicbrainz", "--no-freedb",
+                              "-t", "wav",
+                              "--format=%(track_number)2.2d.wav"]), 0)
+
+        # ensure tracks in directory match expected lengths and data
+        tracks = [audiotools.open(
+                  os.path.join(self.outdir,
+                               "%(track_number)2.2d.wav" %
+                               {"track_number": i}))
+                  for i in range(0, len(track_lengths) + 1)]
+
+        track = tracks[0]
+        self.assertEqual(track.total_frames(), pre_gap_size)
+        pcmreader = temp_track.to_pcm()
+        self.assertTrue(
+            audiotools.pcm_cmp(
+                track.to_pcm(),
+                audiotools.PCMReaderHead(pcmreader, pre_gap_size)))
+
+        for (i, track, expected_length) in zip(range(len(tracks)),
+                                               tracks[1:],
+                                               track_lengths):
+            self.assertEqual(track.total_frames(), expected_length)
+            offset = pre_gap_size + sum(track_lengths[0:i])
+            pcmreader = temp_track.to_pcm()
+            self.assertEqual(pcmreader.seek(offset), offset)
+            self.assertTrue(
+                audiotools.pcm_cmp(
+                    track.to_pcm(),
+                    audiotools.PCMReaderHead(pcmreader, expected_length)))
+
+        # cleanup temporary files
+        temp_track_f.close()
+        temp_cue_f.close()
+
 
 class tracktag(UtilTest):
     @UTIL_TRACKTAG

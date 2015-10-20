@@ -768,6 +768,24 @@ BufferedPCMReader_close(pcmconverter_BufferedPCMReader *self, PyObject *args)
     return Py_None;
 }
 
+static PyObject*
+BufferedPCMReader_enter(pcmconverter_BufferedPCMReader *self, PyObject *args)
+{
+    Py_INCREF(self);
+    return (PyObject *)self;
+}
+
+static PyObject*
+BufferedPCMReader_exit(pcmconverter_BufferedPCMReader *self, PyObject *args)
+{
+    if (!self->closed) {
+        self->closed = 1;
+        self->pcmreader->close(self->pcmreader);
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 
 static PyObject*
 FadeInReader_new(PyTypeObject *type, PyObject *args, PyObject *kwds)

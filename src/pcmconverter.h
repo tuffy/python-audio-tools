@@ -429,6 +429,12 @@ BufferedPCMReader_read(pcmconverter_BufferedPCMReader *self, PyObject *args);
 static PyObject*
 BufferedPCMReader_close(pcmconverter_BufferedPCMReader *self, PyObject *args);
 
+static PyObject*
+BufferedPCMReader_enter(pcmconverter_BufferedPCMReader *self, PyObject *args);
+
+static PyObject*
+BufferedPCMReader_exit(pcmconverter_BufferedPCMReader *self, PyObject *args);
+
 PyGetSetDef BufferedPCMReader_getseters[] = {
     {"sample_rate", (getter)BufferedPCMReader_sample_rate,
      NULL, "sample rate", NULL},
@@ -444,6 +450,10 @@ PyGetSetDef BufferedPCMReader_getseters[] = {
 PyMethodDef BufferedPCMReader_methods[] = {
     {"read", (PyCFunction)BufferedPCMReader_read, METH_VARARGS, ""},
     {"close", (PyCFunction)BufferedPCMReader_close, METH_NOARGS, ""},
+    {"__enter__", (PyCFunction)BufferedPCMReader_enter,
+     METH_NOARGS, "enter() -> self"},
+    {"__exit__", (PyCFunction)BufferedPCMReader_exit,
+     METH_VARARGS, "exit(exc_type, exc_value, traceback) -> None"},
     {NULL}
 };
 

@@ -28,6 +28,18 @@ import termios
 from fractions import Fraction
 
 
+def merge_metadatas(metadatas):
+    if len(metadatas) == 0:
+        return audiotools.MetaData()
+    elif len(metadatas) == 1:
+        return metadatas[0]
+    else:
+        merged = metadatas[0]
+        for to_merge in metadatas[1:]:
+            merged = merged.intersection(to_merge)
+        return merged
+
+
 def split(progress, source_audiofile, destination_filename,
           destination_class, compression, metadata,
           pcm_frames_offset, total_pcm_frames):
@@ -323,6 +335,20 @@ if (__name__ == '__main__'):
 
     output_track_count = len(cuesheet)
 
+    # check whether pre-gap data should be preserved, if any
+    if cuesheet.pre_gap() > 0:
+        with audiotools.BufferedPCMReader(audiofile.to_pcm()) as r:
+            # this could be optimized better
+            # but it is a rare and unusual case
+            preserve_pre_gap = set(r.read(int(cuesheet.pre_gap() *
+                                              audiofile.sample_rate()))) != {0}
+
+            if preserve_pre_gap:
+                cuesheet_offsets.insert(0, Fraction(0, 1))
+                cuesheet_lengths.insert(0, cuesheet.pre_gap())
+    else:
+        preserve_pre_gap = False
+
     # use cuesheet to query metadata services for metadata choices
     try:
         metadata_choices = audiotools.sheet_metadata_lookup(
@@ -339,6 +365,13 @@ if (__name__ == '__main__'):
         msg.ansi_clearline()
         msg.error(_.ERR_CANCELLED)
         sys.exit(1)
+
+    if preserve_pre_gap:
+        # prepend "track 0" track to start of list for each choice
+        for choice in metadata_choices:
+            track_0 = merge_metadatas(choice)
+            track_0.track_number = 0
+            choice.insert(0, track_0)
 
     # populate any empty Album-level metadata fields
     # with those from original file, if any
@@ -371,7 +404,8 @@ if (__name__ == '__main__'):
     # with those from cuesheet, if any
     cuesheet_metadata = cuesheet.get_metadata()
     for c in metadata_choices:
-        for (track_metadata, sheet_track) in zip(c, cuesheet):
+        for (track_metadata,
+             sheet_track) in zip(c[1:] if preserve_pre_gap else c, cuesheet):
             sheet_track_metadata = sheet_track.get_metadata()
             for (attr, field) in track_metadata.empty_fields():
                 if ((sheet_track_metadata is not None) and
@@ -396,15 +430,20 @@ if (__name__ == '__main__'):
             for m in c:
                 m.album_total = options.album_total
 
+    input_filenames = \
+        [input_filename] * (output_track_count + (1 if preserve_pre_gap else 0))
+
     # decide which metadata and output options to use when splitting tracks
     if options.interactive:
+        track_labels = [_.LAB_TRACK_X_OF_Y % (i, output_track_count)
+                        for i in range(0 if preserve_pre_gap else 1,
+                                       output_track_count + 1)]
+
         # pick choice using interactive widget
         output_widget = audiotools.ui.OutputFiller(
-            track_labels=[_.LAB_TRACK_X_OF_Y % (i + 1, output_track_count)
-                          for i in range(output_track_count)],
+            track_labels=track_labels,
             metadata_choices=metadata_choices,
-            input_filenames=[input_filename for i in
-                             range(output_track_count)],
+            input_filenames=input_filenames,
             output_directory=options.dir,
             format_string=(options.format if
                            (options.format is not None) else
@@ -438,8 +477,7 @@ if (__name__ == '__main__'):
             output_tracks = list(
                 audiotools.ui.process_output_options(
                     metadata_choices=metadata_choices,
-                    input_filenames=[input_filename for i in
-                                     range(output_track_count)],
+                    input_filenames=input_filenames,
                     output_directory=options.dir,
                     format_string=options.format,
                     output_class=AudioType,

@@ -5080,12 +5080,7 @@ def metadata_lookup(musicbrainz_disc_id,
                     freedb_port=80,
                     use_musicbrainz=True,
                     use_freedb=True):
-    """generates a set of MetaData objects from CD
-
-    first_track_number and last_track_number are positive ints
-    offsets is a list of track offsets, in CD frames
-    lead_out_offset is the offset of the "lead-out" track, in CD frames
-    total_length is the total length of the disc, in CD frames
+    """generates set of MetaData objects from a pair of disc IDs
 
     returns a metadata[c][t] list of lists
     where 'c' is a possible choice
@@ -5093,7 +5088,7 @@ def metadata_lookup(musicbrainz_disc_id,
 
     this will always return at least one choice,
     which may be a list of largely empty MetaData objects
-    if no match can be found for the CD
+    if no match can be found for the disc IDs
     """
 
     assert(musicbrainz_disc_id.offsets == freedb_disc_id.offsets)

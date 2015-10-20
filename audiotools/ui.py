@@ -818,14 +818,21 @@ try:
             else:
                 widget = self.unlinked_widget
 
-            if hasattr(widget, "value") and callable(widget.value):
-                return widget.value()
-            elif (hasattr(widget, "get_edit_text") and
-                  callable(widget.get_edit_text)):
-                return widget.get_edit_text()
-            elif (hasattr(widget, "get_state") and
-                  callable(widget.get_state)):
-                return widget.get_state()
+            if type(widget) is DownIntEdit:
+                if len(widget.edit_text) > 0:
+                    return widget.value()
+                else:
+                    return None
+            elif type(widget) is DownEdit:
+                if len(widget.get_edit_text()) > 0:
+                    return widget.get_edit_text()
+                else:
+                    return None
+            elif type(widget) is DownCheckBox:
+                if widget.get_state():
+                    return True
+                else:
+                    return None
             else:
                 return None
 
@@ -844,7 +851,7 @@ try:
                 elif field_type is int:
                     value = getattr(metadata, field)
                     widget = DownIntEdit(default=value if value is not None
-                                         else 0)
+                                         else None)
                 elif field_type is bool:
                     value = getattr(metadata, field)
                     widget = DownCheckBox(u"",
@@ -872,7 +879,7 @@ try:
                 elif field_type is int:
                     value = getattr(metadata, field)
                     widget = DownIntEdit(default=value if value is not None
-                                         else 0)
+                                         else None)
                 elif field_type is bool:
                     value = getattr(metadata, field)
                     widget = DownCheckBox(u"",
@@ -898,22 +905,11 @@ try:
             """returns a new MetaData object of the track's
             current value based on its widgets' values"""
 
-            def is_set(field_type, value):
-                if field_type is type(u""):
-                    return len(value) > 0
-                elif field_type is int:
-                    return value > 0
-                elif field_type is bool:
-                    return value
-                else:
-                    return False
-
             return audiotools.MetaData(
-                **{attr: value for (attr, field_type, value) in
-                   [(attr, field_type, getattr(self, attr).value())
-                    for attr, field_type in
-                    audiotools.MetaData.FIELD_TYPES.items()]
-                    if is_set(field_type, value)})
+                **{attr: value for (attr, value) in
+                   [(attr, getattr(self, attr).value())
+                    for attr in audiotools.MetaData.FIELDS]
+                    if value is not None})
 
     class Swivel(object):
         """this is a container for the objects of a swiveling operation"""
