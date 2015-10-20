@@ -3664,7 +3664,7 @@ class ID3v22MetaData(MetaDataTest):
         # test some matches
         some_matches = ID3v22Comment(
             [ID3v22_T__Frame.converted(b"TT2", u"Bar"),
-             ID3v22_TXX_Frame(0, b"Bar", u"Baz")])
+             ID3v22_TXX_Frame(0, b"Bar", b"Baz")])
         test = base.intersection(some_matches)
         self.assertIs(type(test), ID3v22Comment)
         self.assertEqual(test.frames, [ID3v22_TXX_Frame(0, b"Bar", b"Baz")])
@@ -3896,10 +3896,10 @@ class ID3v23MetaData(ID3v22MetaData):
         # test some matches
         some_matches = ID3v23Comment(
             [ID3v23_T___Frame.converted(b"TIT2", u"Bar"),
-             ID3v23_TXXX_Frame(0, b"Bar", u"Baz")])
+             ID3v23_TXXX_Frame(0, b"Bar", b"Baz")])
         test = base.intersection(some_matches)
         self.assertIs(type(test), ID3v23Comment)
-        self.assertEqual(test.frames, [ID3v23_TXXX_Frame(0, b"Bar", u"Baz")])
+        self.assertEqual(test.frames, [ID3v23_TXXX_Frame(0, b"Bar", b"Baz")])
 
         # test all matches
         all_matches = ID3v23Comment(
@@ -4106,10 +4106,10 @@ class ID3v24MetaData(ID3v22MetaData):
         # test some matches
         some_matches = ID3v24Comment(
             [ID3v24_T___Frame.converted(b"TIT2", u"Bar"),
-             ID3v24_TXXX_Frame(0, b"Bar", u"Baz")])
+             ID3v24_TXXX_Frame(0, b"Bar", b"Baz")])
         test = base.intersection(some_matches)
         self.assertIs(type(test), ID3v24Comment)
-        self.assertEqual(test.frames, [ID3v24_TXXX_Frame(0, b"Bar", u"Baz")])
+        self.assertEqual(test.frames, [ID3v24_TXXX_Frame(0, b"Bar", b"Baz")])
 
         # test all matches
         all_matches = ID3v24Comment(

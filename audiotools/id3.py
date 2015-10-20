@@ -1565,7 +1565,7 @@ class ID3v22Comment(MetaData):
                 return False
 
         if type(metadata) is type(self):
-            return self.__class__([frame for frame in self if
+            return self.__class__([frame.copy() for frame in self if
                                    frame_present(frame)])
         else:
             return MetaData.intersection(self, metadata)
