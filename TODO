@@ -7491,13 +7491,13 @@
 
     If data is not present, skip it.
 **** DONE Add unit tests
-*** TODO Update trackcat
+*** DONE Update trackcat
     If pre-gap is present, check for a "track 0" file of the same length.
 
     If track is present, prepend is to stream before writing to image.
 
     If track is not present, prepend empty data to image.
-**** TODO Add unit tests
+**** DONE Add unit tests
 ** TODO Support MBID tags
    These are basically direct MusicBrainz links rather than using
    calculated disc IDs to perform lookups.

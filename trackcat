@@ -248,12 +248,32 @@ if (__name__ == '__main__'):
     if options.cuesheet is not None:
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
+        except audiotools.SheetException as err:
+            msg.error(err)
+            sys.exit(1)
 
-            # ensure cuesheet will embed properly
-            if not cuesheet.image_formatted():
-                msg.error(_.ERR_CUE_INVALID_FORMAT)
+        # ensure cuesheet will embed properly
+        if not cuesheet.image_formatted():
+            msg.error(_.ERR_CUE_INVALID_FORMAT)
+            sys.exit(1)
+
+        if ((cuesheet.pre_gap() > 0) and
+            (audiofiles[0].seconds_length() == cuesheet.pre_gap())):
+
+            if len(cuesheet) != (len(audiofiles) - 1):
+                msg.error(_.ERR_CUE_INSUFFICIENT_TRACKS)
                 sys.exit(1)
 
+            for (input_track, cuesheet_track) in zip(audiofiles[1:],
+                                                     cuesheet.track_numbers()):
+                track_length = cuesheet.track_length(cuesheet_track)
+                if ((track_length is not None) and
+                    (track_length != input_track.seconds_length())):
+                    msg.error(_.ERR_CUE_LENGTH_MISMATCH % (cuesheet_track))
+                    sys.exit(1)
+
+            preserving_pre_gap = True
+        else:
             if len(cuesheet) != len(audiofiles):
                 msg.error(_.ERR_CUE_INSUFFICIENT_TRACKS)
                 sys.exit(1)
@@ -266,10 +286,9 @@ if (__name__ == '__main__'):
                     msg.error(_.ERR_CUE_LENGTH_MISMATCH % (cuesheet_track))
                     sys.exit(1)
 
-            input_filenames.add(audiotools.Filename(options.cuesheet))
-        except audiotools.SheetException as err:
-            msg.error(err)
-            sys.exit(1)
+            preserving_pre_gap = False
+
+        input_filenames.add(audiotools.Filename(options.cuesheet))
     elif options.add_cuesheet is not None:
         if len(audiofiles) <= (99 if AudioType is not audiotools.FlacAudio
                                else 254):
@@ -293,7 +312,7 @@ if (__name__ == '__main__'):
         metadata_choices = [
             merge_metadatas(choice) for choice in
             audiotools.track_metadata_lookup(
-                audiofiles=audiofiles,
+                audiofiles=audiofiles[1:] if preserving_pre_gap else audiofiles,
                 musicbrainz_server=options.musicbrainz_server,
                 musicbrainz_port=options.musicbrainz_port,
                 freedb_server=options.freedb_server,
@@ -355,23 +374,38 @@ if (__name__ == '__main__'):
             # prepend null pre-gap samples to start of stream
             # if indicated by cuesheet
 
-            from audiotools.decoders import SameSample
+            if preserving_pre_gap:
+                pcmreader = \
+                    audiotools.PCMCat([af.to_pcm() for af in audiofiles])
 
-            pre_gap_frames = int(cuesheet.pre_gap() *
-                                 audiofiles[0].sample_rate())
-            pcmreader = audiotools.PCMCat(
-                [SameSample(sample=0,
-                            total_pcm_frames=pre_gap_frames,
-                            sample_rate=audiofiles[0].sample_rate(),
-                            channels=audiofiles[0].channels(),
-                            channel_mask=int(audiofiles[0].channel_mask()),
-                            bits_per_sample=audiofiles[0].bits_per_sample())] +
-                [af.to_pcm() for af in audiofiles])
-            total_pcm_frames = (pre_gap_frames +
-                                sum([af.total_frames() for af in audiofiles]))
+                total_pcm_frames = sum(af.total_frames() for af in audiofiles)
+            else:
+                from audiotools.decoders import SameSample
+
+                pre_gap_frames = int(cuesheet.pre_gap() *
+                                     audiofiles[0].sample_rate())
+
+                sample_rate = audiofiles[0].sample_rate()
+                channels = audiofiles[0].channels()
+                channel_mask = int(audiofiles[0].channel_mask())
+                bits_per_sample = audiofiles[0].bits_per_sample()
+
+                pcmreader = audiotools.PCMCat(
+                    [SameSample(sample=0,
+                                total_pcm_frames=pre_gap_frames,
+                                sample_rate=sample_rate,
+                                channels=channels,
+                                channel_mask=channel_mask,
+                                bits_per_sample=bits_per_sample)] +
+                    [af.to_pcm() for af in audiofiles])
+
+                total_pcm_frames = \
+                    (pre_gap_frames +
+                     sum(af.total_frames() for af in audiofiles))
         else:
             pcmreader = audiotools.PCMCat([af.to_pcm() for af in audiofiles])
-            total_pcm_frames = sum([af.total_frames() for af in audiofiles])
+
+            total_pcm_frames = sum(af.total_frames() for af in audiofiles)
 
         encoded = output_class.from_pcm(
             str(output_filename),
