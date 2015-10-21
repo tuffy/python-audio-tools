@@ -7468,14 +7468,14 @@
 *** TODO Update trackcat to use .intersection() method
 **** TODO Add unit tests
 ** TODO Handle pre-gaps that contain audio data
-*** TODO Update cd2track
+*** DONE Update cd2track
     If pre-gap is present, check it for data.
 
     If data is present, dump data to a "track 0" file
     with as much metadata as possible.
 
     If data is not present, skip it.
-**** TODO Add unit tests
+**** DONE Add unit tests
 *** TODO Update track2cd
     If pre-gap is present, check for a "track 0" file of the same length.
 

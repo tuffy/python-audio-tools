@@ -31,6 +31,18 @@ PREVIOUS_TRACK_FRAMES = (5880 // 2)
 NEXT_TRACK_FRAMES = (5880 // 2)
 
 
+def merge_metadatas(metadatas):
+    if len(metadatas) == 0:
+        return audiotools.MetaData()
+    elif len(metadatas) == 1:
+        return metadatas[0]
+    else:
+        merged = metadatas[0]
+        for to_merge in metadatas[1:]:
+            merged = merged.intersection(to_merge)
+        return merged
+
+
 class AccurateRipReader(object):
     def __init__(self, pcmreader, total_pcm_frames, is_first, is_last):
         """pcmreader is a PCMReader object to wrap around
@@ -262,6 +274,24 @@ if (__name__ == '__main__'):
     if options.speed is not None:
         cddareader.set_speed(options.speed)
 
+    pre_gap_length = cddareader.track_offsets[1]
+
+    # check whether pre-gap data should be preserved, if any
+    if pre_gap_length > 0:
+        with audiotools.BufferedPCMReader(
+            audiotools.PCMReaderWindow(cddareader,
+                                       read_offset,
+                                       pre_gap_length,
+                                       forward_close=False)) as r:
+            # this could be optimized better
+            # but it is a rare and unusual case
+            preserve_pre_gap = set(r.read(pre_gap_length)) != {0}
+            if preserve_pre_gap:
+                track_offsets[0] = 0
+                track_lengths[0] = pre_gap_length
+    else:
+        preserve_pre_gap = False
+
     # use CDDA object to query metadata services for metadata choices
     try:
         metadata_choices = audiotools.cddareader_metadata_lookup(
@@ -276,6 +306,13 @@ if (__name__ == '__main__'):
         msg.ansi_clearscreen()
         msg.error(_.ERR_CANCELLED)
         sys.exit(1)
+
+    if preserve_pre_gap:
+        # prepend "track 0" track to start of list for each choice
+        for choice in metadata_choices:
+            track_0 = merge_metadatas(choice)
+            track_0.track_number = 0
+            choice.insert(0, track_0)
 
     # update MetaData with command-line album-number/total, if given
     if options.album_number != 0:
@@ -314,8 +351,10 @@ if (__name__ == '__main__'):
         output_widget = audiotools.ui.OutputFiller(
             track_labels=[_.LAB_TRACK_X_OF_Y % (i, max(track_offsets.keys()))
                           for i in tracks_to_rip],
-            metadata_choices=[[c[i - 1] for i in tracks_to_rip]
-                              for c in metadata_choices],
+            metadata_choices=[[c for i, c in
+                              enumerate(choices, 0 if preserve_pre_gap else 1)
+                               if i in tracks_to_rip]
+                              for choices in metadata_choices],
             input_filenames=[audiotools.Filename("track%2.2d.cdda.wav" % (i))
                              for i in tracks_to_rip],
             output_directory=options.dir,
@@ -350,8 +389,11 @@ if (__name__ == '__main__'):
         try:
             output_tracks = list(
                 audiotools.ui.process_output_options(
-                    metadata_choices=[[c[i - 1] for i in tracks_to_rip]
-                                      for c in metadata_choices],
+                    metadata_choices=[
+                        [c for i, c in
+                         enumerate(choices, 0 if preserve_pre_gap else 1)
+                          if i in tracks_to_rip]
+                         for choices in metadata_choices],
                     input_filenames=[
                         audiotools.Filename("track%2.2d.cdda.wav" % (i))
                         for i in tracks_to_rip],

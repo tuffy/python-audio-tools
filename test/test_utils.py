@@ -481,6 +481,131 @@ class cd2track(UtilTest):
                     continue
 
 
+class cd2track_pregap(UtilTest):
+    def setUp(self):
+        self.cuesheet = 'FILE "usandthem.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    INDEX 00 00:00:00\r\n    INDEX 01 00:00:33\r\n  TRACK 02 AUDIO\r\n    INDEX 01 08:13:33\r\n  TRACK 03 AUDIO\r\n    INDEX 00 13:24:33\r\n    INDEX 01 13:27:33\r\n  TRACK 04 AUDIO\r\n    INDEX 00 21:53:34\r\n    INDEX 01 21:55:33\r\n  TRACK 05 AUDIO\r\n    INDEX 00 27:20:35\r\n    INDEX 01 27:22:33\r\n  TRACK 06 AUDIO\r\n    INDEX 00 31:24:34\r\n    INDEX 01 31:26:33\r\n  TRACK 07 AUDIO\r\n    INDEX 00 38:09:33\r\n    INDEX 01 38:12:33\r\n  TRACK 08 AUDIO\r\n    INDEX 00 43:21:33\r\n    INDEX 01 43:23:33\r\n  TRACK 09 AUDIO\r\n    INDEX 00 49:47:33\r\n    INDEX 01 49:49:33\r\n  TRACK 10 AUDIO\r\n    INDEX 00 61:23:33\r\n    INDEX 01 61:27:33\r\n'
+        self.pre_gap_length = 19404
+        self.track_lengths = [21741300,
+                              13847400,
+                              22402800,
+                              14420700,
+                              10760400,
+                              17904600,
+                              13715100,
+                              17022600,
+                              30781800,
+                              28312200]
+
+    @UTIL_CD2TRACK
+    def test_empty_pre_gap(self):
+        from shutil import rmtree
+
+        input_dir = tempfile.mkdtemp()
+        output_dir = tempfile.mkdtemp()
+        try:
+            # populate cuesheet and bin file with empty pre-gap
+            cue_file = os.path.join(input_dir, "CDImage.cue")
+            bin_file = os.path.join(input_dir, "CDImage.bin")
+            with open(cue_file, "wb") as f:
+                f.write(self.cuesheet)
+            with open(bin_file, "wb") as f:
+                f.write(b"\x00" * self.pre_gap_length * 2 * 2)
+                for track_length in self.track_lengths:
+                    f.write(os.urandom(track_length * 2 * 2))
+
+            # extract tracks with cd2track
+            self.assertEqual(
+                self.__run_app__(["cd2track", "-V", "quiet",
+                                  "--no-musicbrainz",
+                                  "--no-freedb",
+                                  "-d", output_dir,
+                                  "-c", cue_file,
+                                  "-t", "wav",
+                                  "--format=%(track_number)2.2d.wav"]),
+                0)
+
+            with audiotools.PCMFileReader(file=open(bin_file, "rb"),
+                                          sample_rate=44100,
+                                          channels=2,
+                                          channel_mask=0x3,
+                                          bits_per_sample=16) as binreader:
+
+                # ensure there is no pre-gap
+                self.assertFalse(
+                    os.path.isfile(os.path.join(output_dir, "00.wav")))
+
+                binreader.read(self.pre_gap_length)
+
+                # ensure tracks match data in bin file
+                for i, length in enumerate(self.track_lengths, 1):
+                    output_track = audiotools.open(
+                        os.path.join(output_dir, "%2.2d.wav" % (i))).to_pcm()
+
+                    self.assertIsNone(audiotools.pcm_frame_cmp(
+                        audiotools.LimitedPCMReader(binreader, length),
+                        output_track))
+        finally:
+            rmtree(input_dir)
+            rmtree(output_dir)
+
+    @UTIL_CD2TRACK
+    def test_popualated_pre_gap(self):
+        from shutil import rmtree
+
+        input_dir = tempfile.mkdtemp()
+        output_dir = tempfile.mkdtemp()
+        try:
+            # populate cuesheet and bin file with empty pre-gap
+            cue_file = os.path.join(input_dir, "CDImage.cue")
+            bin_file = os.path.join(input_dir, "CDImage.bin")
+            with open(cue_file, "wb") as f:
+                f.write(self.cuesheet)
+            with open(bin_file, "wb") as f:
+                f.write(os.urandom(self.pre_gap_length * 2 * 2))
+                for track_length in self.track_lengths:
+                    f.write(os.urandom(track_length * 2 * 2))
+
+            # extract tracks with cd2track
+            self.assertEqual(
+                self.__run_app__(["cd2track", "-V", "quiet",
+                                  "--no-musicbrainz",
+                                  "--no-freedb",
+                                  "-d", output_dir,
+                                  "-c", cue_file,
+                                  "-t", "wav",
+                                  "--format=%(track_number)2.2d.wav"]),
+                0)
+
+            with audiotools.PCMFileReader(file=open(bin_file, "rb"),
+                                          sample_rate=44100,
+                                          channels=2,
+                                          channel_mask=0x3,
+                                          bits_per_sample=16) as binreader:
+
+                # ensure there is a pre-gap
+                self.assertTrue(
+                    os.path.isfile(os.path.join(output_dir, "00.wav")))
+
+                output_track = audiotools.open(
+                    os.path.join(output_dir, "00.wav")).to_pcm()
+
+                self.assertIsNone(audiotools.pcm_frame_cmp(
+                    audiotools.LimitedPCMReader(binreader, self.pre_gap_length),
+                    output_track))
+
+                # ensure tracks match data in bin file
+                for i, length in enumerate(self.track_lengths, 1):
+                    output_track = audiotools.open(
+                        os.path.join(output_dir, "%2.2d.wav" % (i))).to_pcm()
+
+                    self.assertIsNone(audiotools.pcm_frame_cmp(
+                        audiotools.LimitedPCMReader(binreader, length),
+                        output_track))
+        finally:
+            rmtree(input_dir)
+            rmtree(output_dir)
+
+
 class cdinfo(UtilTest):
     @UTIL_CDINFO
     def test_version(self):
