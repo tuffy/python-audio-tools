@@ -15,9 +15,34 @@ int
 MPCDecoder_init(decoders_MPCDecoder *self,
                 PyObject *args, PyObject *kwds)
 {
+    char *filename;
+
+    self->reader = NULL;
+    self->demux = NULL;
+    self->streaminfo = NULL;
+
     self->closed = 0;
 
     self->audiotools_pcm = NULL;
+
+    if (!PyArg_ParseTuple(args, "s", &filename))
+        return -1;
+
+    self->reader = (mpc_reader*) malloc(sizeof(mpc_reader));
+
+    if (mpc_reader_init_stdio(self->reader, filename) == MPC_STATUS_FAIL) {
+        PyErr_SetString(PyExc_ValueError, "error opening file");
+        return -1;
+    }
+
+    if ((self->demux = mpc_demux_init(self->reader)) == NULL) {
+        PyErr_SetString(PyExc_ValueError, "error initializing demuxer");
+        return -1;
+    }
+
+    self->streaminfo = (mpc_streaminfo*) malloc(sizeof(mpc_streaminfo));
+
+    mpc_demux_get_info(self->demux, self->streaminfo);
 
     return 0;
 }
