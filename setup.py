@@ -653,6 +653,14 @@ class audiotools_decoders(Extension):
                    "src/decoders/alac.c",
                    "src/decoders/tta.c",
                    "src/decoders/mpc.c",
+                   "src/libmpcdec/huffman.c",
+                   "src/libmpcdec/mpc_bits_reader.c",
+                   "src/libmpcdec/mpc_decoder.c",
+                   "src/libmpcdec/mpc_demux.c",
+                   "src/libmpcdec/mpc_reader.c",
+                   "src/libmpcdec/requant.c",
+                   "src/libmpcdec/streaminfo.c",
+                   "src/libmpcdec/synth_filter.c",
                    "src/decoders/sine.c",
                    "src/decoders.c"]
         libraries = set()
