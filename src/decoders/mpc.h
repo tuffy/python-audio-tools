@@ -67,7 +67,7 @@ PyMethodDef MPCDecoder_methods[] = {
     {NULL}
 };
 
-PyTypeObject decoders_FooDecoderType = {
+PyTypeObject decoders_MPCDecoderType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "decoders.MPCDecoder",     /* tp_name */
     sizeof(decoders_MPCDecoder), /* tp_basicsize */
