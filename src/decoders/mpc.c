@@ -1,4 +1,5 @@
 #include "mpc.h"
+#include "../framelist.h"
 
 static PyObject*
 MPCDecoder_new(PyTypeObject *type,
@@ -44,6 +45,9 @@ MPCDecoder_init(decoders_MPCDecoder *self,
 
     mpc_demux_get_info(self->demux, self->streaminfo);
 
+    if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
+        return -1;
+
     return 0;
 }
 
@@ -56,19 +60,19 @@ MPCDecoder_dealloc(decoders_MPCDecoder *self)
 static PyObject*
 MPCDecoder_sample_rate(decoders_MPCDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", 0);
+    return Py_BuildValue("i", self->streaminfo->sample_freq);
 }
 
 static PyObject*
 MPCDecoder_bits_per_sample(decoders_MPCDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", 0);
+    return Py_BuildValue("i", 32);
 }
 
 static PyObject*
 MPCDecoder_channels(decoders_MPCDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", 0);
+    return Py_BuildValue("i", self->streaminfo->channels);
 }
 
 static PyObject*
