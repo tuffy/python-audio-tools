@@ -54,6 +54,21 @@ MPCDecoder_init(decoders_MPCDecoder *self,
 void
 MPCDecoder_dealloc(decoders_MPCDecoder *self)
 {
+    Py_XDECREF(self->audiotools_pcm);
+
+    if (self->streaminfo) {
+        free(self->streaminfo);
+    }
+
+    if (self->demux) {
+        mpc_demux_exit(self->demux);
+    }
+
+    if (self->reader) {
+        mpc_reader_exit_stdio(self->reader);
+        free(self->reader);
+    }
+
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
