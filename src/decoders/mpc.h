@@ -3,6 +3,8 @@
 typedef struct {
     PyObject_HEAD
 
+    int closed;
+
     PyObject *audiotools_pcm;
 } decoders_MPCDecoder;
 
