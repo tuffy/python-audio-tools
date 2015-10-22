@@ -4,9 +4,11 @@
 typedef struct {
     PyObject_HEAD
 
-    mpc_reader *reader;
+    mpc_reader reader;
     mpc_demux *demux;
-    mpc_streaminfo *streaminfo;
+    mpc_streaminfo streaminfo;
+    mpc_frame_info frameinfo;
+    MPC_SAMPLE_FORMAT framebuffer[MPC_DECODER_BUFFER_LENGTH];
 
     int closed;
 

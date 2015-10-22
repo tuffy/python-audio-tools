@@ -18,9 +18,11 @@ MPCDecoder_init(decoders_MPCDecoder *self,
 {
     char *filename;
 
-    self->reader = NULL;
+    memset(&self->reader, 0, sizeof(self->reader));
     self->demux = NULL;
-    self->streaminfo = NULL;
+    memset(&self->streaminfo, 0, sizeof(self->streaminfo));
+    memset(&self->frameinfo, 0, sizeof(self->frameinfo));
+    memset(&self->framebuffer, 0, sizeof(self->framebuffer));
 
     self->closed = 0;
 
@@ -29,21 +31,19 @@ MPCDecoder_init(decoders_MPCDecoder *self,
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
 
-    self->reader = (mpc_reader*) malloc(sizeof(mpc_reader));
-
-    if (mpc_reader_init_stdio(self->reader, filename) == MPC_STATUS_FAIL) {
+    if (mpc_reader_init_stdio(&self->reader, filename) == MPC_STATUS_FAIL) {
         PyErr_SetString(PyExc_ValueError, "error opening file");
         return -1;
     }
 
-    if ((self->demux = mpc_demux_init(self->reader)) == NULL) {
+    if ((self->demux = mpc_demux_init(&self->reader)) == NULL) {
         PyErr_SetString(PyExc_ValueError, "error initializing demuxer");
         return -1;
     }
 
-    self->streaminfo = (mpc_streaminfo*) malloc(sizeof(mpc_streaminfo));
+    mpc_demux_get_info(self->demux, &self->streaminfo);
 
-    mpc_demux_get_info(self->demux, self->streaminfo);
+    self->frameinfo.buffer = self->framebuffer;
 
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
@@ -56,17 +56,12 @@ MPCDecoder_dealloc(decoders_MPCDecoder *self)
 {
     Py_XDECREF(self->audiotools_pcm);
 
-    if (self->streaminfo) {
-        free(self->streaminfo);
-    }
-
     if (self->demux) {
         mpc_demux_exit(self->demux);
     }
 
-    if (self->reader) {
-        mpc_reader_exit_stdio(self->reader);
-        free(self->reader);
+    if (self->reader.data) {
+        mpc_reader_exit_stdio(&self->reader);
     }
 
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -75,7 +70,7 @@ MPCDecoder_dealloc(decoders_MPCDecoder *self)
 static PyObject*
 MPCDecoder_sample_rate(decoders_MPCDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->streaminfo->sample_freq);
+    return Py_BuildValue("i", self->streaminfo.sample_freq);
 }
 
 static PyObject*
@@ -87,7 +82,7 @@ MPCDecoder_bits_per_sample(decoders_MPCDecoder *self, void *closure)
 static PyObject*
 MPCDecoder_channels(decoders_MPCDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->streaminfo->channels);
+    return Py_BuildValue("i", self->streaminfo.channels);
 }
 
 static PyObject*
