@@ -94,8 +94,15 @@ MPCDecoder_channel_mask(decoders_MPCDecoder *self, void *closure)
 static PyObject*
 MPCDecoder_read(decoders_MPCDecoder* self, PyObject *args)
 {
+    pcm_FrameList *frames;
+
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "stream is closed");
+        return NULL;
+    }
+
+    if (mpc_demux_decode(self->demux, &self->frameinfo) == MPC_STATUS_FAIL) {
+        PyErr_SetString(PyExc_ValueError, "error decoding MPC frame");
         return NULL;
     }
 
