@@ -1,6 +1,8 @@
 #include "mpc.h"
 #include "../framelist.h"
 
+#define BITS_PER_SAMPLE 16
+
 static PyObject*
 MPCDecoder_new(PyTypeObject *type,
                PyObject *args, PyObject *kwds)
@@ -76,7 +78,7 @@ MPCDecoder_sample_rate(decoders_MPCDecoder *self, void *closure)
 static PyObject*
 MPCDecoder_bits_per_sample(decoders_MPCDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", 32);
+    return Py_BuildValue("i", BITS_PER_SAMPLE);
 }
 
 static PyObject*
@@ -104,6 +106,12 @@ MPCDecoder_read(decoders_MPCDecoder* self, PyObject *args)
     if (mpc_demux_decode(self->demux, &self->frameinfo) == MPC_STATUS_FAIL) {
         PyErr_SetString(PyExc_ValueError, "error decoding MPC frame");
         return NULL;
+    }
+
+    if (self->frameinfo.bits == -1) {
+        return empty_FrameList(self->audiotools_pcm,
+                               self->streaminfo.channels,
+                               BITS_PER_SAMPLE);
     }
 
     return NULL;
