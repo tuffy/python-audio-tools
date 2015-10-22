@@ -96,7 +96,7 @@ MPCDecoder_channel_mask(decoders_MPCDecoder *self, void *closure)
 static PyObject*
 MPCDecoder_read(decoders_MPCDecoder* self, PyObject *args)
 {
-    pcm_FrameList *frames;
+    pcm_FrameList *frame;
 
     if (self->closed) {
         PyErr_SetString(PyExc_ValueError, "stream is closed");
@@ -114,7 +114,23 @@ MPCDecoder_read(decoders_MPCDecoder* self, PyObject *args)
                                BITS_PER_SAMPLE);
     }
 
-    return NULL;
+    frame = new_FrameList(self->audiotools_pcm,
+                          self->streaminfo.channels,
+                          BITS_PER_SAMPLE,
+                          self->frameinfo.samples);
+
+#ifdef MPC_FIXED_POINT
+    memcpy(frame->samples,
+           self->frameinfo.buffer,
+           sizeof(int) * self->frameinfo.samples * self->frameinfo.channels);
+#else
+    float_to_int_converter(BITS_PER_SAMPLE)(self->frameinfo.samples *
+                                            self->streaminfo.channels,
+                                            self->frameinfo.buffer,
+                                            frame->samples);
+#endif
+
+    return (PyObject*)frame;
 }
 
 static PyObject*
