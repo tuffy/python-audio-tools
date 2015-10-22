@@ -652,6 +652,7 @@ class audiotools_decoders(Extension):
                    "src/common/md5.c",
                    "src/decoders/alac.c",
                    "src/decoders/tta.c",
+                   "src/decoders/mpc.c",
                    "src/decoders/sine.c",
                    "src/decoders.c"]
         libraries = set()
