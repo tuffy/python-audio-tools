@@ -19,13 +19,13 @@ MPCDecoder_init(decoders_MPCDecoder *self,
                 PyObject *args, PyObject *kwds)
 {
     char *filename;
+    mpc_streaminfo si;
 
-    memset(&self->reader, 0, sizeof(self->reader));
+    self->reader.data = NULL;
     self->demux = NULL;
-    memset(&self->streaminfo, 0, sizeof(self->streaminfo));
-    memset(&self->frameinfo, 0, sizeof(self->frameinfo));
-    memset(&self->framebuffer, 0, sizeof(self->framebuffer));
 
+    self->channels = 0;
+    self->sample_rate = 0;
     self->closed = 0;
 
     self->audiotools_pcm = NULL;
@@ -43,9 +43,9 @@ MPCDecoder_init(decoders_MPCDecoder *self,
         return -1;
     }
 
-    mpc_demux_get_info(self->demux, &self->streaminfo);
-
-    self->frameinfo.buffer = self->framebuffer;
+    mpc_demux_get_info(self->demux, &si);
+    self->channels = si.channels;
+    self->sample_rate = si.sample_freq;
 
     if ((self->audiotools_pcm = open_audiotools_pcm()) == NULL)
         return -1;
@@ -72,7 +72,7 @@ MPCDecoder_dealloc(decoders_MPCDecoder *self)
 static PyObject*
 MPCDecoder_sample_rate(decoders_MPCDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->streaminfo.sample_freq);
+    return Py_BuildValue("i", self->sample_rate);
 }
 
 static PyObject*
@@ -84,7 +84,7 @@ MPCDecoder_bits_per_sample(decoders_MPCDecoder *self, void *closure)
 static PyObject*
 MPCDecoder_channels(decoders_MPCDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", self->streaminfo.channels);
+    return Py_BuildValue("i", self->channels);
 }
 
 static PyObject*
@@ -96,6 +96,8 @@ MPCDecoder_channel_mask(decoders_MPCDecoder *self, void *closure)
 static PyObject*
 MPCDecoder_read(decoders_MPCDecoder* self, PyObject *args)
 {
+    MPC_SAMPLE_FORMAT buffer[MPC_FRAME_LENGTH * self->channels];
+    mpc_frame_info fi = { .buffer = buffer };
     pcm_FrameList *frame;
 
     if (self->closed) {
@@ -103,30 +105,30 @@ MPCDecoder_read(decoders_MPCDecoder* self, PyObject *args)
         return NULL;
     }
 
-    if (mpc_demux_decode(self->demux, &self->frameinfo) == MPC_STATUS_FAIL) {
+    if (mpc_demux_decode(self->demux, &fi) == MPC_STATUS_FAIL) {
         PyErr_SetString(PyExc_ValueError, "error decoding MPC frame");
         return NULL;
     }
 
-    if (self->frameinfo.bits == -1) {
+    if (fi.bits == -1) {
         return empty_FrameList(self->audiotools_pcm,
-                               self->streaminfo.channels,
+                               self->channels,
                                BITS_PER_SAMPLE);
     }
 
     frame = new_FrameList(self->audiotools_pcm,
-                          self->streaminfo.channels,
+                          self->channels,
                           BITS_PER_SAMPLE,
-                          self->frameinfo.samples);
+                          fi.samples);
 
 #ifdef MPC_FIXED_POINT
     memcpy(frame->samples,
-           self->frameinfo.buffer,
-           sizeof(int) * self->frameinfo.samples * self->frameinfo.channels);
+           buffer,
+           sizeof(int) * fi.samples * self->channels);
 #else
-    float_to_int_converter(BITS_PER_SAMPLE)(self->frameinfo.samples *
-                                            self->streaminfo.channels,
-                                            self->frameinfo.buffer,
+    float_to_int_converter(BITS_PER_SAMPLE)(fi.samples *
+                                            self->channels,
+                                            buffer,
                                             frame->samples);
 #endif
 
