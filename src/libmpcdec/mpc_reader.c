@@ -67,7 +67,7 @@ tell_stdio(mpc_reader *p_reader)
 {
     mpc_reader_stdio *p_stdio = (mpc_reader_stdio*) p_reader->data;
     if(p_stdio->magic != STDIO_MAGIC) return MPC_STATUS_FAIL;
-    return ftell(p_stdio->p_file);
+    return (mpc_int32_t)ftell(p_stdio->p_file);
 }
 
 static mpc_int32_t
@@ -89,7 +89,9 @@ canseek_stdio(mpc_reader *p_reader)
 mpc_status
 mpc_reader_init_stdio_stream(mpc_reader * p_reader, FILE * p_file)
 {
-    mpc_reader tmp_reader; mpc_reader_stdio *p_stdio; int err;
+    mpc_reader tmp_reader;
+    mpc_reader_stdio *p_stdio;
+    long err;
 
     p_stdio = NULL;
     memset(&tmp_reader, 0, sizeof tmp_reader);
@@ -104,7 +106,7 @@ mpc_reader_init_stdio_stream(mpc_reader * p_reader, FILE * p_file)
     if(err < 0) goto clean;
     err = ftell(p_stdio->p_file);
     if(err < 0) goto clean;
-    p_stdio->file_size = err;
+    p_stdio->file_size = (int)err;
     err = fseek(p_stdio->p_file, 0, SEEK_SET);
     if(err < 0) goto clean;
 
