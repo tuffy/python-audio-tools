@@ -25,3 +25,28 @@ MPCDecoder_dealloc(decoders_MPCDecoder *self)
 {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
+
+static PyObject*
+MPCDecoder_sample_rate(decoders_MPCDecoder *self, void *closure)
+{
+    return Py_BuildValue("i", 0);
+}
+
+static PyObject*
+MPCDecoder_bits_per_sample(decoders_MPCDecoder *self, void *closure)
+{
+    return Py_BuildValue("i", 0);
+}
+
+static PyObject*
+MPCDecoder_channels(decoders_MPCDecoder *self, void *closure)
+{
+    return Py_BuildValue("i", 0);
+}
+
+static PyObject*
+MPCDecoder_channel_mask(decoders_MPCDecoder *self, void *closure)
+{
+    return Py_BuildValue("i", 0);
+}
+
