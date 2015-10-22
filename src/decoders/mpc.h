@@ -1,7 +1,12 @@
 #include <Python.h>
+#include "../libmpcdec/mpcdec.h"
 
 typedef struct {
     PyObject_HEAD
+
+    mpc_reader *reader;
+    mpc_demux *demux;
+    mpc_streaminfo *streaminfo;
 
     int closed;
 
