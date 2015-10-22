@@ -648,11 +648,9 @@ class audiotools_decoders(Extension):
                    "src/ogg_crc.c",
                    "src/common/flac_crc.c",
                    "src/common/tta_crc.c",
+                   "src/common/mpc_crc32.c",
                    "src/common/m4a_atoms.c",
                    "src/common/md5.c",
-                   "src/decoders/alac.c",
-                   "src/decoders/tta.c",
-                   "src/decoders/mpc.c",
                    "src/libmpcdec/huffman.c",
                    "src/libmpcdec/mpc_bits_reader.c",
                    "src/libmpcdec/mpc_decoder.c",
@@ -661,6 +659,9 @@ class audiotools_decoders(Extension):
                    "src/libmpcdec/requant.c",
                    "src/libmpcdec/streaminfo.c",
                    "src/libmpcdec/synth_filter.c",
+                   "src/decoders/alac.c",
+                   "src/decoders/tta.c",
+                   "src/decoders/mpc.c",
                    "src/decoders/sine.c",
                    "src/decoders.c"]
         libraries = set()
