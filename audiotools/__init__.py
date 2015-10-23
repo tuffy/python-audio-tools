@@ -1753,6 +1753,8 @@ def file_type(file):
             return None
     elif header[0:4] == b"TTA1":
         return TrueAudio
+    elif header[0:4] == b"MPCK":
+        return MPCAudio
     else:
         return None
 
@@ -5753,6 +5755,7 @@ from audiotools.m4a import M4AAudio
 from audiotools.m4a import ALACAudio
 from audiotools.opus import OpusAudio
 from audiotools.tta import TrueAudio
+from audiotools.mpc import MPCAudio
 
 from audiotools.ape import ApeTag
 from audiotools.flac import FlacMetaData
@@ -5775,7 +5778,8 @@ AVAILABLE_TYPES = (FlacAudio,
                    ALACAudio,
                    WavPackAudio,
                    OpusAudio,
-                   TrueAudio)
+                   TrueAudio,
+                   MPCAudio)
 
 TYPE_MAP = {track_type.NAME: track_type for track_type in AVAILABLE_TYPES}
 
