@@ -90,7 +90,11 @@ MPCDecoder_channels(decoders_MPCDecoder *self, void *closure)
 static PyObject*
 MPCDecoder_channel_mask(decoders_MPCDecoder *self, void *closure)
 {
-    return Py_BuildValue("i", 0);
+    switch(self->channels) {
+        case 1: return Py_BuildValue("i", 0x4);
+        case 2: return Py_BuildValue("i", 0x3);
+        default: return Py_BuildValue("i", 0);
+    }
 }
 
 static PyObject*
