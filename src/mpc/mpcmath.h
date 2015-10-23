@@ -18,7 +18,7 @@
 
 #include <math.h>
 
-#include <mpc/mpc_types.h>
+#include "mpc_types.h"
 
 typedef union mpc_floatint
 {

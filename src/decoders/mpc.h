@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "../libmpcdec/mpcdec.h"
+#include "../mpc/mpcdec.h"
 
 typedef struct {
     PyObject_HEAD
