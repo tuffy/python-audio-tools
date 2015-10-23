@@ -38,7 +38,7 @@
 #pragma once
 #endif
 
-#include "reader.h"
+#include <mpc/reader.h>
 
 #ifdef __cplusplus
 extern "C" {

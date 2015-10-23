@@ -35,8 +35,8 @@
 /// Core decoding routines and logic.
 
 #include <string.h>
-#include "mpcdec.h"
-#include "minimax.h"
+#include <mpc/mpcdec.h>
+#include <mpc/minimax.h>
 #include "decoder.h"
 #include "huffman.h"
 #include "internal.h"
@@ -58,10 +58,6 @@ extern const mpc_can_data mpc_can_Res [2];
 extern const mpc_can_data mpc_can_Q [8][2];
 extern const mpc_can_data mpc_can_Q1;
 extern const mpc_can_data mpc_can_Q9up;
-
-extern const mpc_uint8_t       Res_bit[18];
-extern const MPC_SAMPLE_FORMAT __Cc[1 + 18];
-extern const mpc_int16_t       __Dc[1 + 18];
 
 //------------------------------------------------------------------------------
 // types
@@ -109,7 +105,7 @@ void mpc_decoder_set_streaminfo(mpc_decoder *d, mpc_streaminfo *si)
 	d->ms                 = si->ms;
 	d->max_band           = si->max_band;
 	d->channels           = si->channels;
-	d->samples_to_skip    = MPC_DECODER_SYNTH_DELAY + (mpc_uint32_t)si->beg_silence;
+	d->samples_to_skip    = MPC_DECODER_SYNTH_DELAY + si->beg_silence;
 
 	if (si->stream_version == 7 && si->is_true_gapless)
 		d->samples = ((si->samples + MPC_FRAME_LENGTH - 1) / MPC_FRAME_LENGTH) * MPC_FRAME_LENGTH;
