@@ -76,7 +76,7 @@ class MPCAudio(ApeTaggedAudio, AudioFile):
         self.__samples__ = int(MPC_Size.parse(block))
         beg_silence = int(MPC_Size.parse(block))
         self.__sample_rate__ = \
-            [44100, 4800, 37800, 3200][block.read(3)]
+            [44100, 48000, 37800, 32000][block.read(3)]
         max_band = block.read(5) + 1
         self.__channels__ = block.read(4) + 1
         ms = block.read(1)
