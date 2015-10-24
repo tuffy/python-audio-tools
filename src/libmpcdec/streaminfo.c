@@ -109,6 +109,7 @@ mpc_status
 streaminfo_read_header_sv7(mpc_streaminfo* si, mpc_bits_reader * r)
 {
     mpc_uint16_t Estimatedpeak_title = 0;
+    (void) Estimatedpeak_title;
 	mpc_uint32_t frames, last_frame_samples;
 
 	si->bitrate            = 0;
