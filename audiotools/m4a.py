@@ -232,10 +232,10 @@ class M4ATaggedAudio(object):
             else:
                 moov = m4a_tree[b"moov"]
             if not moov.has_child(b"udta"):
-                moov.append_child(M4A_Tree_Atom(b"udta", []))
+                moov.add_child(M4A_Tree_Atom(b"udta", []))
             udta = moov[b"udta"]
             if not udta.has_child(b"meta"):
-                udta.append_child(metadata)
+                udta.add_child(metadata)
             else:
                 udta.replace_child(metadata)
 

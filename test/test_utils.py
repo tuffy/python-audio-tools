@@ -483,7 +483,7 @@ class cd2track(UtilTest):
 
 class cd2track_pregap(UtilTest):
     def setUp(self):
-        self.cuesheet = 'FILE "usandthem.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    INDEX 00 00:00:00\r\n    INDEX 01 00:00:33\r\n  TRACK 02 AUDIO\r\n    INDEX 01 08:13:33\r\n  TRACK 03 AUDIO\r\n    INDEX 00 13:24:33\r\n    INDEX 01 13:27:33\r\n  TRACK 04 AUDIO\r\n    INDEX 00 21:53:34\r\n    INDEX 01 21:55:33\r\n  TRACK 05 AUDIO\r\n    INDEX 00 27:20:35\r\n    INDEX 01 27:22:33\r\n  TRACK 06 AUDIO\r\n    INDEX 00 31:24:34\r\n    INDEX 01 31:26:33\r\n  TRACK 07 AUDIO\r\n    INDEX 00 38:09:33\r\n    INDEX 01 38:12:33\r\n  TRACK 08 AUDIO\r\n    INDEX 00 43:21:33\r\n    INDEX 01 43:23:33\r\n  TRACK 09 AUDIO\r\n    INDEX 00 49:47:33\r\n    INDEX 01 49:49:33\r\n  TRACK 10 AUDIO\r\n    INDEX 00 61:23:33\r\n    INDEX 01 61:27:33\r\n'
+        self.cuesheet = b'FILE "usandthem.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    INDEX 00 00:00:00\r\n    INDEX 01 00:00:33\r\n  TRACK 02 AUDIO\r\n    INDEX 01 08:13:33\r\n  TRACK 03 AUDIO\r\n    INDEX 00 13:24:33\r\n    INDEX 01 13:27:33\r\n  TRACK 04 AUDIO\r\n    INDEX 00 21:53:34\r\n    INDEX 01 21:55:33\r\n  TRACK 05 AUDIO\r\n    INDEX 00 27:20:35\r\n    INDEX 01 27:22:33\r\n  TRACK 06 AUDIO\r\n    INDEX 00 31:24:34\r\n    INDEX 01 31:26:33\r\n  TRACK 07 AUDIO\r\n    INDEX 00 38:09:33\r\n    INDEX 01 38:12:33\r\n  TRACK 08 AUDIO\r\n    INDEX 00 43:21:33\r\n    INDEX 01 43:23:33\r\n  TRACK 09 AUDIO\r\n    INDEX 00 49:47:33\r\n    INDEX 01 49:49:33\r\n  TRACK 10 AUDIO\r\n    INDEX 00 61:23:33\r\n    INDEX 01 61:27:33\r\n'
         self.pre_gap_length = 19404
         self.track_lengths = [21741300,
                               13847400,
