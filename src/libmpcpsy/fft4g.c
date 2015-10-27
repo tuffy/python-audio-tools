@@ -19,7 +19,7 @@
  */
 
 #include "libmpcpsy.h"
-#include <mpc/mpcmath.h>
+#include "../mpc/mpcmath.h"
 
 /* F U N C T I O N S */
 static          void  makewt       ( const int nw, int* ip, float* w );

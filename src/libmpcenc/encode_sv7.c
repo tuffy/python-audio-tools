@@ -22,7 +22,7 @@
 #include <stdio.h>
 
 #include "libmpcenc.h"
-#include <mpc/minimax.h>
+#include "../mpc/minimax.h"
 
 void Klemm ( void );
 void Init_Skalenfaktoren ( void );

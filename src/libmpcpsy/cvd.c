@@ -20,8 +20,8 @@
 
 #include <string.h>
 
-#include "mpc/mpc_types.h"
-#include "mpc/mpcmath.h"
+#include "../mpc/mpc_types.h"
+#include "../mpc/mpcmath.h"
 #include "libmpcpsy.h"
 
 void   Cepstrum2048  ( float* cep, const int );

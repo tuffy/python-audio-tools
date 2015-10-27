@@ -19,8 +19,8 @@
  */
 
 #include "libmpcpsy.h"
-#include <mpc/minimax.h>
-#include <mpc/mpcmath.h>
+#include "../mpc/minimax.h"
+#include "../mpc/mpcmath.h"
 
 /*
  *  Klemm 1994 and 1997. Experimental data. Sorry, data looks a little bit

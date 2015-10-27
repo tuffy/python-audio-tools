@@ -19,7 +19,7 @@
  */
 
 #include "libmpcpsy.h"
-#include <mpc/minimax.h>
+#include "../mpc/minimax.h"
 
 
 typedef struct {

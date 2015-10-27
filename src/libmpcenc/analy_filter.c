@@ -20,8 +20,8 @@
 
 #include <string.h>
 
-#include <mpc/mpcmath.h>
-#include <mpc/datatypes.h>
+#include "../mpc/mpcmath.h"
+#include "../mpc/datatypes.h"
 
 #define FASTER
 

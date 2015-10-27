@@ -31,7 +31,7 @@
 #include <string.h>
 
 #include "libmpcpsy.h"
-#include <mpc/mpcmath.h>
+#include "../mpc/mpcmath.h"
 
 
 static float  InvFourier [MAX_NS_ORDER + 1] [16];

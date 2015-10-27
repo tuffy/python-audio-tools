@@ -21,7 +21,7 @@
 #include <string.h>
 
 #include "libmpcpsy.h"
-#include <mpc/mpcmath.h>
+#include "../mpc/mpcmath.h"
 
 #define CX0     -1.
 #define CX1      0.5

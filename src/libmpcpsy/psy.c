@@ -55,9 +55,9 @@ CVS+
 #include <stdio.h>
 
 #include "libmpcpsy.h"
-#include <mpc/datatypes.h>
-#include <mpc/minimax.h>
-#include <mpc/mpcmath.h>
+#include "../mpc/datatypes.h"
+#include "../mpc/minimax.h"
+#include "../mpc/mpcmath.h"
 
 // psy_tab.c
 extern const float  iw        [PART_LONG];      // inverse partition-width for long
