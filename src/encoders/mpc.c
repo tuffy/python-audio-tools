@@ -112,6 +112,10 @@ encode_mpc_file(char *filename,
     SubbandFloatTyp X[32];
     int old_silence;
     unsigned N;
+    SMRTyp SMR;
+    int TransientL [PART_SHORT];
+    int TransientR [PART_SHORT];
+    int Transient [32];
 
     // check arguments
     if(filename == NULL    ||
@@ -227,6 +231,17 @@ encode_mpc_file(char *filename,
 
         memset(e.Res_L, 0, sizeof(e.Res_L));
         memset(e.Res_R, 0, sizeof(e.Res_R));
+
+        if(!silence || !old_silence) {
+            Analyse_Filter(&Main, X, m.Max_Band);
+            SMR = Psychoakustisches_Modell(&m, m.Max_Band*0+31, &Main, TransientL, TransientR);
+            if(m.minSMR > 0) {
+                RaiseSMR(&m, m.Max_Band, &SMR);
+            }
+            if(m.MS_Channelmode > 0) {
+                MS_LR_Entscheidung(m.Max_Band, e.MS_Flag, &SMR, X);
+            }
+        }
     }
 
     return ENCODE_OK;
