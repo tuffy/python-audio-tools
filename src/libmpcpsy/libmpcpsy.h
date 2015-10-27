@@ -91,3 +91,4 @@ typedef struct {
 
 } PsyModel;
 
+void Init_Psychoakustik ( PsyModel* m);
