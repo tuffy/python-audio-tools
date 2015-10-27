@@ -1,4 +1,5 @@
 #include "../mpc/datatypes.h"
+#include "../mpc/mpcdec.h"
 #include "../libmpcpsy/libmpcpsy.h"
 #include "../libmpcenc/libmpcenc.h"
 #include "../pcmreader.h"
@@ -218,10 +219,10 @@ encode_mpc_file(char *filename,
 
     for( N = 0 ; N < total_pcm_samples + MPC_DECODER_SYNTH_DELAY ; N += BLOCK ) {
         if(samples_read < BLOCK && N > 0) {
-            fill_float(Main.L[CENTER + samples_read], Main.L[CENTER + samples_read - 1], BLOCK - samples_read);
-            fill_float(Main.R[CENTER + samples_read], Main.R[CENTER + samples_read - 1], BLOCK - samples_read);
-            fill_float(Main.M[CENTER + samples_read], Main.M[CENTER + samples_read - 1], BLOCK - samples_read);
-            fill_float(Main.S[CENTER + samples_read], Main.S[CENTER + samples_read - 1], BLOCK - samples_read);
+            fill_float(&Main.L[CENTER + samples_read], Main.L[CENTER + samples_read - 1], BLOCK - samples_read);
+            fill_float(&Main.R[CENTER + samples_read], Main.R[CENTER + samples_read - 1], BLOCK - samples_read);
+            fill_float(&Main.M[CENTER + samples_read], Main.M[CENTER + samples_read - 1], BLOCK - samples_read);
+            fill_float(&Main.S[CENTER + samples_read], Main.S[CENTER + samples_read - 1], BLOCK - samples_read);
         }
 
         memset(e.Res_L, 0, sizeof(e.Res_L));

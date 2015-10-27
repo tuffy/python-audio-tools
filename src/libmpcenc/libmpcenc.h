@@ -19,6 +19,7 @@
 #pragma once
 
 #include "../mpc/mpc_types.h"
+#include "../mpc/datatypes.h"
 #include <stdio.h>
 
 // FIXME : define this somewhere else

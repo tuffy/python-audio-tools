@@ -16,6 +16,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "../mpc/datatypes.h"
+
 // psy_tab.h
 #define PART_LONG          57                   // number of partitions for long
 #define PART_SHORT     (PART_LONG / 3)          // number of partitions for short
