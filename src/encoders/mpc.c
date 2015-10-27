@@ -1,3 +1,4 @@
+#include "../mpc/datatypes.h"
 #include "../libmpcpsy/libmpcpsy.h"
 #include "../libmpcenc/libmpcenc.h"
 #include "../pcmreader.h"
@@ -15,6 +16,23 @@ typedef enum {
     ERR_UNSUPPORTED_BITS_PER_SAMPLE,
     ERR_FILE_OPEN
 } result_t;
+
+static int
+read_pcm_samples(struct PCMReader *pcmreader,
+                 PCMDataTyp *out,
+                 unsigned samples,
+                 int *silence) {
+    int buffer[samples * pcmreader->channels];
+    unsigned samples_read;
+    unsigned i;
+
+    // read PCM samples.
+    if((samples_read = pcmreader->read(pcmreader, samples, buffer)) == 0) {
+        return -1;
+    }
+
+    return -1;
+}
 
 static result_t
 encode_mpc_file(char *filename,
