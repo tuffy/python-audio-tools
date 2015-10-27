@@ -3,6 +3,11 @@
 #include "../libmpcenc/libmpcenc.h"
 #include "../pcmreader.h"
 
+// Utility macros
+#ifndef MIN
+#define MIN(X,Y) (((X) < (Y)) ? (X) : (Y))
+#endif
+
 // Version macros for encoder info block
 #define MPCENC_MAJOR 1
 #define MPCENC_MINOR 30
@@ -14,7 +19,8 @@ typedef enum {
     ERR_UNSUPPORTED_SAMPLE_RATE,
     ERR_UNSUPPORTED_CHANNELS,
     ERR_UNSUPPORTED_BITS_PER_SAMPLE,
-    ERR_FILE_OPEN
+    ERR_FILE_OPEN,
+    ERR_FILE_READ
 } result_t;
 
 static int
@@ -81,7 +87,7 @@ static result_t
 encode_mpc_file(char *filename,
                 struct PCMReader *pcmreader,
                 float quality,
-                long long total_pcm_frames)
+                unsigned total_pcm_samples)
 {
     // Constant configuration values (same defaults as reference encoder)
     const unsigned int FramesBlockPwr = 6;
@@ -91,6 +97,10 @@ encode_mpc_file(char *filename,
     PsyModel m;
     mpc_encoder_t e;
     int si_size;
+    PCMDataTyp buffer;
+    unsigned samples_read;
+    int silence;
+    unsigned total_samples_read;
 
     // check arguments
     if(filename == NULL    ||
@@ -98,7 +108,7 @@ encode_mpc_file(char *filename,
        pcmreader == NULL   ||
        quality < 00.0f     ||
        quality > 10.0f     ||
-       total_pcm_frames < 1) {
+       total_pcm_samples < 1) {
         return ERR_INVALID_ARGUMENT;
     }
 
@@ -136,7 +146,7 @@ encode_mpc_file(char *filename,
     Init_Psychoakustik(&m);
     m.SampleFreq = pcmreader->sample_rate;
     SetQualityParams(&m, quality);
-    mpc_encoder_init(&e, total_pcm_frames, FramesBlockPwr, SeekDistance);
+    mpc_encoder_init(&e, total_pcm_samples, FramesBlockPwr, SeekDistance);
     Init_Psychoakustiktabellen(&m);
     e.outputFile = f;
     e.MS_Channelmode = m.MS_Channelmode;
@@ -147,7 +157,7 @@ encode_mpc_file(char *filename,
     writeStreamInfo(&e,
                     m.Max_Band,
                     m.MS_Channelmode > 0,
-                    total_pcm_frames,
+                    total_pcm_samples,
                     0,
                     m.SampleFreq,
                     pcmreader->channels);
@@ -172,6 +182,18 @@ encode_mpc_file(char *filename,
     writeBits(&e, 0, 24);
     writeBlock(&e, "SO", MPC_FALSE, 0);
 
+    // Read the first audio block. At least one will be read.
+    memset(&buffer, 0, sizeof(buffer));
+    samples_read = read_pcm_samples(pcmreader,
+                                    &buffer,
+                                    MIN(BLOCK, total_pcm_samples),
+                                    &silence);
+    total_samples_read = samples_read;
+
+    // Check for read error.
+    if(samples_read == -1) {
+        return ERR_FILE_READ;
+    }
 
     return ENCODE_OK;
 }
