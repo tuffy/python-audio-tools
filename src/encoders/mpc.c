@@ -4,9 +4,11 @@
 
 typedef enum {
     ENCODE_OK,
+    ERR_INVALID_ARGUMENT,
     ERR_UNSUPPORTED_SAMPLE_RATE,
     ERR_UNSUPPORTED_CHANNELS,
-    ERR_UNSUPPORTED_BITS_PER_SAMPLE
+    ERR_UNSUPPORTED_BITS_PER_SAMPLE,
+    ERR_FILE_OPEN
 } result_t;
 
 static result_t
@@ -19,8 +21,18 @@ encode_mpc_file(char *filename,
     const unsigned int FramesBlockPwr = 6;
     const unsigned int SeekDistance = 1;
 
+    FILE *f;
     PsyModel m;
     mpc_encoder_t e;
+
+    if(filename == NULL    ||
+       filename[0] == '\0' ||
+       pcmreader == NULL   ||
+       quality < 00.0f     ||
+       quality > 10.0f     ||
+       total_pcm_frames < 1) {
+        return ERR_INVALID_ARGUMENT;
+    }
 
     // Check for supported sample rates.
     switch(pcmreader->sample_rate) {
@@ -43,6 +55,10 @@ encode_mpc_file(char *filename,
     switch(pcmreader->bits_per_sample) {
         case 16: break;
         default: return ERR_UNSUPPORTED_BITS_PER_SAMPLE;
+    }
+
+    if((f = fopen(filename, "wb")) == NULL) {
+        return ERR_FILE_OPEN;
     }
 
     // Initialize encoder objects.
