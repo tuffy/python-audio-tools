@@ -31,6 +31,15 @@ read_pcm_samples(struct PCMReader *pcmreader,
         return -1;
     }
 
+    // check for silence (all null samples)
+    silence[0] = 1;
+    for( i = 0 ; i < samples_read * pcmreader->channels ; ++i ) {
+        if(buffer[i]) {
+            silence[0] = 0;
+            break;
+        }
+    }
+
     return -1;
 }
 
