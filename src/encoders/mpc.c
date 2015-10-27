@@ -49,6 +49,209 @@ static const unsigned char  Penalty [256] = {
 };
 
 static void
+SCF_Extraktion ( PsyModel*m, mpc_encoder_t* e, const int MaxBand, SubbandFloatTyp* x )
+{
+    int    Band;
+    int    n;
+    int    d01;
+    int    d12;
+    int    d02;
+    int    warnL;
+    int    warnR;
+    int*   scfL;
+    int*   scfR;
+    int    comp_L [3];
+    int    comp_R [3];
+    float  tmp_L  [3];
+    float  tmp_R  [3];
+    float  facL;
+    float  facR;
+    float  L;
+    float  R;
+    float  SL;
+    float  SR;
+
+    for ( Band = 0; Band <= MaxBand; Band++ ) {         // Suche nach Maxima
+        L  = FABS (x[Band].L[ 0]);
+        R  = FABS (x[Band].R[ 0]);
+        SL = x[Band].L[ 0] * x[Band].L[ 0];
+        SR = x[Band].R[ 0] * x[Band].R[ 0];
+        for ( n = 1; n < 12; n++ ) {
+            if (L < FABS (x[Band].L[n])) L = FABS (x[Band].L[n]);
+            if (R < FABS (x[Band].R[n])) R = FABS (x[Band].R[n]);
+            SL += x[Band].L[n] * x[Band].L[n];
+            SR += x[Band].R[n] * x[Band].R[n];
+        }
+        Power_L [Band][0] = SL;
+        Power_R [Band][0] = SR;
+        tmp_L [0] = L;
+        tmp_R [0] = R;
+
+        L  = FABS (x[Band].L[12]);
+        R  = FABS (x[Band].R[12]);
+        SL = x[Band].L[12] * x[Band].L[12];
+        SR = x[Band].R[12] * x[Band].R[12];
+        for ( n = 13; n < 24; n++ ) {
+            if (L < FABS (x[Band].L[n])) L = FABS (x[Band].L[n]);
+            if (R < FABS (x[Band].R[n])) R = FABS (x[Band].R[n]);
+            SL += x[Band].L[n] * x[Band].L[n];
+            SR += x[Band].R[n] * x[Band].R[n];
+        }
+        Power_L [Band][1] = SL;
+        Power_R [Band][1] = SR;
+        tmp_L [1] = L;
+        tmp_R [1] = R;
+
+        L  = FABS (x[Band].L[24]);
+        R  = FABS (x[Band].R[24]);
+        SL = x[Band].L[24] * x[Band].L[24];
+        SR = x[Band].R[24] * x[Band].R[24];
+        for ( n = 25; n < 36; n++ ) {
+            if (L < FABS (x[Band].L[n])) L = FABS (x[Band].L[n]);
+            if (R < FABS (x[Band].R[n])) R = FABS (x[Band].R[n]);
+            SL += x[Band].L[n] * x[Band].L[n];
+            SR += x[Band].R[n] * x[Band].R[n];
+        }
+        Power_L [Band][2] = SL;
+        Power_R [Band][2] = SR;
+        tmp_L [2] = L;
+        tmp_R [2] = R;
+
+        // calculation of the scalefactor-indexes
+        // -12.6f*log10(x)+57.8945021823f = -10*log10(x/32767)*1.26+1
+        // normalize maximum of +/- 32767 to prevent quantizer overflow
+        // It can stand a maximum of +/- 32768 ...
+
+        // Where is scf{R,L} [0...2] initialized ???
+        scfL = e->SCF_Index_L [Band];
+		scfR = e->SCF_Index_R [Band];
+        if (tmp_L [0] > 0.) scfL [0] = IFLOORF (-12.6f * LOG10 (tmp_L [0]) + 57.8945021823f );
+        if (tmp_L [1] > 0.) scfL [1] = IFLOORF (-12.6f * LOG10 (tmp_L [1]) + 57.8945021823f );
+        if (tmp_L [2] > 0.) scfL [2] = IFLOORF (-12.6f * LOG10 (tmp_L [2]) + 57.8945021823f );
+        if (tmp_R [0] > 0.) scfR [0] = IFLOORF (-12.6f * LOG10 (tmp_R [0]) + 57.8945021823f );
+        if (tmp_R [1] > 0.) scfR [1] = IFLOORF (-12.6f * LOG10 (tmp_R [1]) + 57.8945021823f );
+        if (tmp_R [2] > 0.) scfR [2] = IFLOORF (-12.6f * LOG10 (tmp_R [2]) + 57.8945021823f );
+
+        // restriction to SCF_Index = -6...121, make note of the internal overflow
+        warnL = warnR = 0;
+		for( n = 0; n < 3; n++){
+			if (scfL[n] < -6) scfL[n] = -6, warnL = 1;
+			if (scfL[n] > 121) scfL[n] = 121, warnL = 1;
+			if (scfR[n] < -6) scfR[n] = -6, warnR = 1;
+			if (scfR[n] > 121) scfR[n] = 121, warnR = 1;
+		}
+
+        // save old values for compensation calculation
+        comp_L[0] = scfL[0]; comp_L[1] = scfL[1]; comp_L[2] = scfL[2];
+        comp_R[0] = scfR[0]; comp_R[1] = scfR[1]; comp_R[2] = scfR[2];
+
+        // determination and replacement of scalefactors of minor differences with the smaller one???
+        // a smaller one is quantized more roughly, i.e. the noise gets amplified???
+
+        if ( m->CombPenalities >= 0 ) {
+            if      ( P(scfL[0],scfL[1]) + P(scfL[0],scfL[2]) <= m->CombPenalities ) scfL[2] = scfL[1] = scfL[0];
+            else if ( P(scfL[1],scfL[0]) + P(scfL[1],scfL[2]) <= m->CombPenalities ) scfL[0] = scfL[2] = scfL[1];
+            else if ( P(scfL[2],scfL[0]) + P(scfL[2],scfL[1]) <= m->CombPenalities ) scfL[0] = scfL[1] = scfL[2];
+            else if ( P(scfL[0],scfL[1])                      <= m->CombPenalities ) scfL[1] = scfL[0];
+            else if ( P(scfL[1],scfL[0])                      <= m->CombPenalities ) scfL[0] = scfL[1];
+            else if ( P(scfL[1],scfL[2])                      <= m->CombPenalities ) scfL[2] = scfL[1];
+            else if ( P(scfL[2],scfL[1])                      <= m->CombPenalities ) scfL[1] = scfL[2];
+
+            if      ( P(scfR[0],scfR[1]) + P(scfR[0],scfR[2]) <= m->CombPenalities ) scfR[2] = scfR[1] = scfR[0];
+            else if ( P(scfR[1],scfR[0]) + P(scfR[1],scfR[2]) <= m->CombPenalities ) scfR[0] = scfR[2] = scfR[1];
+            else if ( P(scfR[2],scfR[0]) + P(scfR[2],scfR[1]) <= m->CombPenalities ) scfR[0] = scfR[1] = scfR[2];
+            else if ( P(scfR[0],scfR[1])                      <= m->CombPenalities ) scfR[1] = scfR[0];
+            else if ( P(scfR[1],scfR[0])                      <= m->CombPenalities ) scfR[0] = scfR[1];
+            else if ( P(scfR[1],scfR[2])                      <= m->CombPenalities ) scfR[2] = scfR[1];
+            else if ( P(scfR[2],scfR[1])                      <= m->CombPenalities ) scfR[1] = scfR[2];
+        }
+        else {
+
+            d12  = scfL [2] - scfL [1];
+            d01  = scfL [1] - scfL [0];
+            d02  = scfL [2] - scfL [0];
+
+            if      ( 0 < d12  &&  d12 < 5 ) scfL [2] = scfL [1];
+            else if (-3 < d12  &&  d12 < 0 ) scfL [1] = scfL [2];
+            else if ( 0 < d01  &&  d01 < 5 ) scfL [1] = scfL [0];
+            else if (-3 < d01  &&  d01 < 0 ) scfL [0] = scfL [1];
+            else if ( 0 < d02  &&  d02 < 4 ) scfL [2] = scfL [0];
+            else if (-2 < d02  &&  d02 < 0 ) scfL [0] = scfL [2];
+
+            d12  = scfR [2] - scfR [1];
+            d01  = scfR [1] - scfR [0];
+            d02  = scfR [2] - scfR [0];
+
+            if      ( 0 < d12  &&  d12 < 5 ) scfR [2] = scfR [1];
+            else if (-3 < d12  &&  d12 < 0 ) scfR [1] = scfR [2];
+            else if ( 0 < d01  &&  d01 < 5 ) scfR [1] = scfR [0];
+            else if (-3 < d01  &&  d01 < 0 ) scfR [0] = scfR [1];
+            else if ( 0 < d02  &&  d02 < 4 ) scfR [2] = scfR [0];
+            else if (-2 < d02  &&  d02 < 0 ) scfR [0] = scfR [2];
+        }
+
+        // calculate SNR-compensation
+        tmp_L [0]         = invSCF [comp_L[0] - scfL[0]];
+        tmp_L [1]         = invSCF [comp_L[1] - scfL[1]];
+        tmp_L [2]         = invSCF [comp_L[2] - scfL[2]];
+        tmp_R [0]         = invSCF [comp_R[0] - scfR[0]];
+        tmp_R [1]         = invSCF [comp_R[1] - scfR[1]];
+        tmp_R [2]         = invSCF [comp_R[2] - scfR[2]];
+        m->SNR_comp_L [Band] = (tmp_L[0]*tmp_L[0] + tmp_L[1]*tmp_L[1] + tmp_L[2]*tmp_L[2]) * 0.3333333333f;
+        m->SNR_comp_R [Band] = (tmp_R[0]*tmp_R[0] + tmp_R[1]*tmp_R[1] + tmp_R[2]*tmp_R[2]) * 0.3333333333f;
+
+        // normalize the subband samples
+        facL = invSCF[scfL[0]];
+        facR = invSCF[scfR[0]];
+        for ( n = 0; n < 12; n++ ) {
+            x[Band].L[n] *= facL;
+            x[Band].R[n] *= facR;
+        }
+        facL = invSCF[scfL[1]];
+        facR = invSCF[scfR[1]];
+        for ( n = 12; n < 24; n++ ) {
+            x[Band].L[n] *= facL;
+            x[Band].R[n] *= facR;
+        }
+        facL = invSCF[scfL[2]];
+        facR = invSCF[scfR[2]];
+        for ( n = 24; n < 36; n++ ) {
+            x[Band].L[n] *= facL;
+            x[Band].R[n] *= facR;
+        }
+
+        // limit to +/-32767 if internal clipping
+        if ( warnL )
+            for ( n = 0; n < 36; n++ ) {
+                if      (x[Band].L[n] > +32767.f) {
+                    e->Overflows++;
+                    MaxOverFlow = maxf (MaxOverFlow,  x[Band].L[n]);
+                    x[Band].L[n] = 32767.f;
+                }
+                else if (x[Band].L[n] < -32767.f) {
+					e->Overflows++;
+                    MaxOverFlow = maxf (MaxOverFlow, -x[Band].L[n]);
+                    x[Band].L[n] = -32767.f;
+                }
+            }
+        if ( warnR )
+            for ( n = 0; n < 36; n++ ) {
+                if      (x[Band].R[n] > +32767.f) {
+					e->Overflows++;
+                    MaxOverFlow = maxf (MaxOverFlow,  x[Band].R[n]);
+                    x[Band].R[n] = 32767.f;
+                }
+                else if (x[Band].R[n] < -32767.f) {
+					e->Overflows++;
+                    MaxOverFlow = maxf (MaxOverFlow, -x[Band].R[n]);
+                    x[Band].R[n] = -32767.f;
+                }
+            }
+    }
+    return;
+}
+
+static void
 Quantisierung ( PsyModel * m,
 				const int               MaxBand,
                 const int*              resL,
