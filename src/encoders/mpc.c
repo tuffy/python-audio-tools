@@ -1,5 +1,6 @@
 #include "../mpc/datatypes.h"
 #include "../mpc/mpcdec.h"
+#include "../mpc/mpcmath.h"
 #include "../libmpcpsy/libmpcpsy.h"
 #include "../libmpcenc/libmpcenc.h"
 #include "../pcmreader.h"
@@ -13,6 +14,8 @@
 #define MPCENC_MAJOR 1
 #define MPCENC_MINOR 30
 #define MPCENC_BUILD 1
+
+typedef float SCFTriple[3];
 
 typedef enum {
     ENCODE_OK,
@@ -58,6 +61,100 @@ Quantisierung ( PsyModel * m,
                 memcpy ( errorR [Band], errorR [Band] + 36, MAX_NS_ORDER * sizeof (**errorL) );
             }
         }
+    }
+    return;
+}
+
+static int
+PNS_SCF ( int* scf, float S0, float S1, float S2 )
+{
+//    printf ("%7.1f %7.1f %7.1f  ", sqrt(S0/12), sqrt(S1/12), sqrt(S2/12) );
+
+#if 1
+    if ( S0 < 0.5 * S1  ||  S1 < 0.5 * S2  ||  S0 < 0.5 * S2 )
+        return 0;
+
+    if ( S1 < 0.25 * S0  ||  S2 < 0.25 * S1  ||  S2 < 0.25 * S0 )
+        return 0;
+#endif
+
+
+    if ( S0 >= 0.8 * S1 ) {
+        if ( S0 >= 0.8 * S2  &&  S1 > 0.8 * S2 )
+            S0 = S1 = S2 = 0.33333333333f * (S0 + S1 + S2);
+        else
+            S0 = S1 = 0.5f * (S0 + S1);
+    }
+    else {
+        if ( S1 >= 0.8 * S2 )
+            S1 = S2 = 0.5f * (S1 + S2);
+    }
+
+    scf [0] = scf [1] = scf [2] = 63;
+    S0 = sqrt (S0/12 * 4/1.2005080577484075047860806747022);
+    S1 = sqrt (S1/12 * 4/1.2005080577484075047860806747022);
+    S2 = sqrt (S2/12 * 4/1.2005080577484075047860806747022);
+    if (S0 > 0.) scf [0] = IFLOORF (-12.6f * LOG10 (S0) + 57.8945021823f );
+    if (S1 > 0.) scf [1] = IFLOORF (-12.6f * LOG10 (S1) + 57.8945021823f );
+    if (S2 > 0.) scf [2] = IFLOORF (-12.6f * LOG10 (S2) + 57.8945021823f );
+
+    if ( scf[0] & ~63 ) scf[0] = scf[0] > 63 ? 63 : 0;
+    if ( scf[1] & ~63 ) scf[1] = scf[1] > 63 ? 63 : 0;
+    if ( scf[2] & ~63 ) scf[2] = scf[2] > 63 ? 63 : 0;
+
+    return 1;
+}
+
+static void
+Allocate ( const int MaxBand, int* res, float* x, int* scf, const float* comp, const float* smr, const SCFTriple* Pow, const int* Transient, const float PNS )
+{
+    const unsigned int LAST_HUFFMAN = 7;
+    const float SCFfac = 0.832980664785f;
+
+    int    Band;
+    int    k;
+    float  tmpMNR;      // to adjust the scalefactors
+    float  save [36];   // to adjust the scalefactors
+    float  MNR;         // Mask-to-Noise ratio
+
+    for ( Band = 0; Band <= MaxBand; Band++, res++, comp++, smr++, scf += 3, x += 72 ) {
+        // printf ( "%2u: %u\n", Band, Transient[Band] );
+
+        // Find out needed quantization resolution Res to fulfill the calculated MNR
+        // This is done by exactly measuring the quantization residuals against the signal itself
+        // Starting with Res=1  Res in increased until MNR becomes less than 1.
+        if ( Band > 0  &&  res[-1] < 3  &&  *smr >= 1. &&  *smr < Band * PNS  &&
+             PNS_SCF ( scf, Pow [Band][0], Pow [Band][1], Pow [Band][2] ) ) {
+            *res = -1;
+        } else {
+            for ( MNR = *smr * 1.; MNR > 1.  &&  *res != 15; )
+                MNR = *smr * (Transient[Band] ? ISNR_Schaetzer_Trans : ISNR_Schaetzer) ( x, *comp, ++*res );
+        }
+
+        // Fine adapt SCF's (MNR > 0 prevents adaption of zero samples, which is nonsense)
+        // only apply to Huffman-coded samples (otherwise no savings in bitrate)
+        if ( *res > 0  &&  *res <= LAST_HUFFMAN  &&  MNR < 1.  &&  MNR > 0.  &&  !Transient[Band] ) {
+            while ( scf[0] > 0  &&  scf[1] > 0  &&  scf[2] > 0 ) {
+
+                --scf[2]; --scf[1]; --scf[0];                   // adapt scalefactors and samples
+                memcpy ( save, x, sizeof save );
+                for (k = 0; k < 36; k++ )
+                    x[k] *= SCFfac;
+
+                tmpMNR = *smr * (Transient[Band] ? ISNR_Schaetzer_Trans : ISNR_Schaetzer) ( x, *comp, *res );// recalculate MNR
+
+                // FK: if ( tmpMNR > MNR  &&  tmpMNR <= 1 ) {          // check for MNR
+                if ( tmpMNR <= 1 ) {                            // check for MNR
+                    MNR = tmpMNR;
+                }
+                else {
+                    ++scf[0]; ++scf[1]; ++scf[2];               // restore scalefactors and samples
+                    memcpy ( x, save, sizeof save );
+                    break;
+                }
+            }
+        }
+
     }
     return;
 }
