@@ -119,4 +119,4 @@ typedef struct {
  void encodeEnum(mpc_encoder_t * e, const mpc_uint32_t bits, const mpc_uint_t N);
  void encodeLog(mpc_encoder_t * e, mpc_uint32_t value, mpc_uint32_t max);
 
-
+void Analyse_Init ( float Left, float Right, SubbandFloatTyp* out, const int MaxBand );

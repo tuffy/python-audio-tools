@@ -23,6 +23,13 @@ typedef enum {
     ERR_FILE_READ
 } result_t;
 
+static void fill_float(float *p, float f, unsigned n) {
+    unsigned i;
+    for( i = 0 ; i < n ; ++i ) {
+        p[i] = f;
+    }
+}
+
 static int
 read_pcm_samples(struct PCMReader *pcmreader,
                  PCMDataTyp *out,
@@ -97,10 +104,11 @@ encode_mpc_file(char *filename,
     PsyModel m;
     mpc_encoder_t e;
     int si_size;
-    PCMDataTyp buffer;
+    PCMDataTyp Main;
     unsigned samples_read;
     int silence;
     unsigned total_samples_read;
+    SubbandFloatTyp X[32];
 
     // check arguments
     if(filename == NULL    ||
@@ -183,9 +191,9 @@ encode_mpc_file(char *filename,
     writeBlock(&e, "SO", MPC_FALSE, 0);
 
     // Read the first audio block. At least one will be read.
-    memset(&buffer, 0, sizeof(buffer));
+    memset(&Main, 0, sizeof(Main));
     samples_read = read_pcm_samples(pcmreader,
-                                    &buffer,
+                                    &Main,
                                     MIN(BLOCK, total_pcm_samples),
                                     &silence);
     total_samples_read = samples_read;
@@ -194,6 +202,15 @@ encode_mpc_file(char *filename,
     if(samples_read == -1) {
         return ERR_FILE_READ;
     }
+
+    if(samples_read > 0) {
+        fill_float(Main.L, Main.L[CENTER], CENTER);
+        fill_float(Main.R, Main.R[CENTER], CENTER);
+        fill_float(Main.M, Main.M[CENTER], CENTER);
+        fill_float(Main.S, Main.S[CENTER], CENTER);
+    }
+
+    Analyse_Init(Main.L[CENTER], Main.R[CENTER], X, m.Max_Band);
 
     return ENCODE_OK;
 }
