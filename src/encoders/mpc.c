@@ -12,7 +12,8 @@ typedef enum {
 static result_t
 encode_mpc_file(char *filename,
                 struct PCMReader *pcmreader,
-                float quality)
+                float quality,
+                long long total_pcm_frames)
 {
     // Constant configuration values (same defaults as reference encoder)
     const unsigned int FramesBlockPwr = 6;
@@ -44,13 +45,13 @@ encode_mpc_file(char *filename,
         default: return ERR_UNSUPPORTED_BITS_PER_SAMPLE;
     }
 
-    // initialize tables
+    // Initialize encoder objects.
     m.SCF_Index_L = e.SCF_Index_L;
     m.SCF_Index_R = e.SCF_Index_R;
     Init_Psychoakustik(&m);
-
-    // set quality profile
     SetQualityParams(&m, quality);
+    mpc_encoder_init(&e, total_pcm_frames, FramesBlockPwr, SeekDistance);
+    Init_Psychoakustiktabellen(&m);
 
     return ENCODE_OK;
 }
