@@ -14,6 +14,10 @@ encode_mpc_file(char *filename,
                 struct PCMReader *pcmreader,
                 float quality)
 {
+    // Constant configuration values (same defaults as reference encoder)
+    const unsigned int FramesBlockPwr = 6;
+    const unsigned int SeekDistance = 1;
+
     PsyModel m;
     mpc_encoder_t e;
 
