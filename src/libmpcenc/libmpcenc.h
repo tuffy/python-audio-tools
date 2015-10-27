@@ -120,3 +120,4 @@ typedef struct {
  void encodeLog(mpc_encoder_t * e, mpc_uint32_t value, mpc_uint32_t max);
 
 void Analyse_Init ( float Left, float Right, SubbandFloatTyp* out, const int MaxBand );
+void Analyse_Filter ( const PCMDataTyp* in, SubbandFloatTyp* out, const int MaxBand );

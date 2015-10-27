@@ -109,6 +109,8 @@ encode_mpc_file(char *filename,
     int silence;
     unsigned total_samples_read;
     SubbandFloatTyp X[32];
+    int old_silence;
+    unsigned N;
 
     // check arguments
     if(filename == NULL    ||
@@ -211,6 +213,20 @@ encode_mpc_file(char *filename,
     }
 
     Analyse_Init(Main.L[CENTER], Main.R[CENTER], X, m.Max_Band);
+
+    old_silence = 0;
+
+    for( N = 0 ; N < total_pcm_samples + MPC_DECODER_SYNTH_DELAY ; N += BLOCK ) {
+        if(samples_read < BLOCK && N > 0) {
+            fill_float(Main.L[CENTER + samples_read], Main.L[CENTER + samples_read - 1], BLOCK - samples_read);
+            fill_float(Main.R[CENTER + samples_read], Main.R[CENTER + samples_read - 1], BLOCK - samples_read);
+            fill_float(Main.M[CENTER + samples_read], Main.M[CENTER + samples_read - 1], BLOCK - samples_read);
+            fill_float(Main.S[CENTER + samples_read], Main.S[CENTER + samples_read - 1], BLOCK - samples_read);
+        }
+
+        memset(e.Res_L, 0, sizeof(e.Res_L));
+        memset(e.Res_R, 0, sizeof(e.Res_R));
+    }
 
     return ENCODE_OK;
 }

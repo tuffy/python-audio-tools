@@ -94,3 +94,7 @@ typedef struct {
 void Init_Psychoakustik ( PsyModel* m);
 void Init_Psychoakustiktabellen ( PsyModel* m );
 void SetQualityParams (PsyModel * m, float qual );
+SMRTyp Psychoakustisches_Modell ( PsyModel* m, const int MaxBand, const PCMDataTyp* data, int* TransientL, int* TransientR );
+void RaiseSMR (PsyModel* m, const int MaxBand, SMRTyp* smr );
+void MS_LR_Entscheidung ( const int MaxBand, unsigned char* ms, SMRTyp* smr, SubbandFloatTyp* x );
+void TransientenCalc ( int*       T, const int* TL, const int* TR );
