@@ -126,3 +126,6 @@ void QuantizeSubband ( mpc_int16_t* qu_output, const float* input, const int res
 void QuantizeSubbandWithNoiseShaping ( mpc_int16_t* qu_output, const float* input, const int res, float* errors, const float* FIR );
 float ISNR_Schaetzer ( const float* input, const float SNRcomp, const int res );
 float ISNR_Schaetzer_Trans ( const float* input, const float SNRcomp, const int res );
+
+extern float __invSCF [128 + 6];
+#define invSCF  (__invSCF + 6)
