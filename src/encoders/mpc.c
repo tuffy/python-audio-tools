@@ -24,6 +24,44 @@ typedef enum {
     ERR_FILE_READ
 } result_t;
 
+static void
+Quantisierung ( PsyModel * m,
+				const int               MaxBand,
+                const int*              resL,
+                const int*              resR,
+                const SubbandFloatTyp*  subx,
+				mpc_quantizer*          subq )
+{
+    static float  errorL [32] [36 + MAX_NS_ORDER];
+    static float  errorR [32] [36 + MAX_NS_ORDER];
+    int           Band;
+
+    // quantize Subband- and Subframe-samples
+    for ( Band = 0; Band <= MaxBand; Band++, resL++, resR++ ) {
+
+        if ( *resL > 0 ) {
+            if ( m->NS_Order_L [Band] > 0 ) {
+                QuantizeSubbandWithNoiseShaping ( subq[Band].L, subx[Band].L, *resL, errorL [Band], m->FIR_L [Band] );
+                memcpy ( errorL [Band], errorL[Band] + 36, MAX_NS_ORDER * sizeof (**errorL) );
+            } else {
+				QuantizeSubband                 ( subq[Band].L, subx[Band].L, *resL, errorL [Band], MAX_NS_ORDER );
+                memcpy ( errorL [Band], errorL[Band] + 36, MAX_NS_ORDER * sizeof (**errorL) );
+            }
+        }
+
+        if ( *resR > 0 ) {
+            if ( m->NS_Order_R [Band] > 0 ) {
+                QuantizeSubbandWithNoiseShaping ( subq[Band].R, subx[Band].R, *resR, errorR [Band], m->FIR_R [Band] );
+                memcpy ( errorR [Band], errorR [Band] + 36, MAX_NS_ORDER * sizeof (**errorL) );
+            } else {
+				QuantizeSubband                 ( subq[Band].R, subx[Band].R, *resR, errorL [Band], MAX_NS_ORDER);
+                memcpy ( errorR [Band], errorR [Band] + 36, MAX_NS_ORDER * sizeof (**errorL) );
+            }
+        }
+    }
+    return;
+}
+
 static void fill_float(float *p, float f, unsigned n) {
     unsigned i;
     for( i = 0 ; i < n ; ++i ) {

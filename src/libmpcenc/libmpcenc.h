@@ -122,3 +122,5 @@ typedef struct {
 
 void Analyse_Init ( float Left, float Right, SubbandFloatTyp* out, const int MaxBand );
 void Analyse_Filter ( const PCMDataTyp* in, SubbandFloatTyp* out, const int MaxBand );
+void QuantizeSubband ( mpc_int16_t* qu_output, const float* input, const int res, float* errors, const int maxNsOrder );
+void QuantizeSubbandWithNoiseShaping ( mpc_int16_t* qu_output, const float* input, const int res, float* errors, const float* FIR );
