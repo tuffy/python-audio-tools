@@ -39,6 +39,9 @@ encoders_encode_wavpack(PyObject *dummy, PyObject *args, PyObject *keywds);
 PyObject*
 encoders_encode_tta(PyObject *dummy, PyObject *args, PyObject *keywds);
 
+PyObject*
+encoders_encode_mpc(PyObject *dummy, PyObject *args, PyObject *keywds);
+
 #ifdef HAS_MP3
 PyObject*
 encoders_encode_mp3(PyObject *dummy, PyObject *args, PyObject *keywds);
@@ -70,6 +73,8 @@ PyMethodDef module_methods[] = {
 #endif
     {"encode_tta", (PyCFunction)encoders_encode_tta,
      METH_VARARGS | METH_KEYWORDS, "Encode TTA file from PCMReader"},
+    {"encode_mpc", (PyCFunction)encoders_encode_mpc,
+     METH_VARARGS | METH_KEYWORDS, "Encode MPC file from PCMReader"},
 #ifdef HAS_MP3
     {"encode_mp3", (PyCFunction)encoders_encode_mp3,
      METH_VARARGS | METH_KEYWORDS, "Encode MP3 file from PCMReader"},

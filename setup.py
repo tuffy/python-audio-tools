@@ -775,6 +775,7 @@ class audiotools_encoders(Extension):
                    "src/libmpcpsy/profile.c",
                    "src/libmpcpsy/psy.c",
                    "src/libmpcpsy/psy_tab.c",
+                   "src/encoders/mpc.c",
                    "src/mpc/mpc_crc32.c",
                    "src/mini-gmp.c",
                    "src/common/md5.c",
