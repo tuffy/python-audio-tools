@@ -11,7 +11,8 @@ typedef enum {
 
 static result_t
 encode_mpc_file(char *filename,
-                struct PCMReader *pcmreader)
+                struct PCMReader *pcmreader,
+                float quality)
 {
     PsyModel m;
     mpc_encoder_t e;
@@ -43,6 +44,9 @@ encode_mpc_file(char *filename,
     m.SCF_Index_L = e.SCF_Index_L;
     m.SCF_Index_R = e.SCF_Index_R;
     Init_Psychoakustik(&m);
+
+    // set quality profile
+    SetQualityParams(&m, quality);
 
     return ENCODE_OK;
 }

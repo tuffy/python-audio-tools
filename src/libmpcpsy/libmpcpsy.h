@@ -92,3 +92,4 @@ typedef struct {
 } PsyModel;
 
 void Init_Psychoakustik ( PsyModel* m);
+void SetQualityParams (PsyModel * m, float qual );
