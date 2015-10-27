@@ -40,6 +40,11 @@ read_pcm_samples(struct PCMReader *pcmreader,
         }
     }
 
+    // pad buffer with null samples if it wasn't filled completely
+    memset(&buffer[samples_read * pcmreader->channels],
+           0,
+           (samples - samples_read) * pcmreader->channels * sizeof(int));
+
     return -1;
 }
 
@@ -58,6 +63,7 @@ encode_mpc_file(char *filename,
     mpc_encoder_t e;
     int si_size;
 
+    // check arguments
     if(filename == NULL    ||
        filename[0] == '\0' ||
        pcmreader == NULL   ||
@@ -90,6 +96,7 @@ encode_mpc_file(char *filename,
         default: return ERR_UNSUPPORTED_BITS_PER_SAMPLE;
     }
 
+    // open output file for writing
     if((f = fopen(filename, "wb")) == NULL) {
         return ERR_FILE_OPEN;
     }
