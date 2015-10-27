@@ -22,9 +22,17 @@ read_pcm_samples(struct PCMReader *pcmreader,
                  PCMDataTyp *out,
                  unsigned samples,
                  int *silence) {
+    // Special multipliers used to adjust left / right.
+    const float DENORMAL_FIX_LEFT = 32.0f * 1024.0f / 16777216.0f;
+    const float DENORMAL_FIX_RIGHT = DENORMAL_FIX_LEFT * 0.5f;
+
     int buffer[samples * pcmreader->channels];
     unsigned samples_read;
     unsigned i;
+    float *l = out->L + CENTER;
+    float *r = out->R + CENTER;
+    float *m = out->M + CENTER;
+    float *s = out->S + CENTER;
 
     // read PCM samples.
     if((samples_read = pcmreader->read(pcmreader, samples, buffer)) == 0) {
@@ -45,7 +53,28 @@ read_pcm_samples(struct PCMReader *pcmreader,
            0,
            (samples - samples_read) * pcmreader->channels * sizeof(int));
 
-    return -1;
+    // TODO: support conversion from bits_per_samples other than 16?
+    switch(pcmreader->channels) {
+        case 1:
+            for( i = 0 ; i < samples ; ++i ) {
+                l[i] = buffer[i] * DENORMAL_FIX_LEFT;
+                l[i] = buffer[i] * DENORMAL_FIX_RIGHT;
+                m[i] = (l[i] + r[i]) * 0.5f;
+                s[i] = (l[i] - r[i]) * 0.5f;
+            }
+            break;
+
+        case 2:
+            for( i = 0 ; i < samples ; ++i ) {
+                l[i] = buffer[i * 2 + 0] * DENORMAL_FIX_LEFT;
+                r[i] = buffer[i * 2 + 1] * DENORMAL_FIX_RIGHT;
+                m[i] = (l[i] + r[i]) * 0.5f;
+                s[i] = (l[i] - r[i]) * 0.5f;
+            }
+            break;
+    }
+
+    return samples_read;
 }
 
 static result_t
