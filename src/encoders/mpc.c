@@ -2,6 +2,11 @@
 #include "../libmpcenc/libmpcenc.h"
 #include "../pcmreader.h"
 
+// Version macros for encoder info block
+#define MPCENC_MAJOR 1
+#define MPCENC_MINOR 30
+#define MPCENC_BUILD 1
+
 typedef enum {
     ENCODE_OK,
     ERR_INVALID_ARGUMENT,
@@ -24,6 +29,7 @@ encode_mpc_file(char *filename,
     FILE *f;
     PsyModel m;
     mpc_encoder_t e;
+    int si_size;
 
     if(filename == NULL    ||
        filename[0] == '\0' ||
@@ -65,9 +71,44 @@ encode_mpc_file(char *filename,
     m.SCF_Index_L = e.SCF_Index_L;
     m.SCF_Index_R = e.SCF_Index_R;
     Init_Psychoakustik(&m);
+    m.SampleFreq = pcmreader->sample_rate;
     SetQualityParams(&m, quality);
     mpc_encoder_init(&e, total_pcm_frames, FramesBlockPwr, SeekDistance);
     Init_Psychoakustiktabellen(&m);
+    e.outputFile = f;
+    e.MS_Channelmode = m.MS_Channelmode;
+    e.seek_ref = ftell(f);
+
+    // write stream header block
+    writeMagic(&e);
+    writeStreamInfo(&e,
+                    m.Max_Band,
+                    m.MS_Channelmode > 0,
+                    total_pcm_frames,
+                    0,
+                    m.SampleFreq,
+                    pcmreader->channels);
+    si_size = writeBlock(&e, "SH", MPC_TRUE, 0);
+
+    // write replay gain block
+    writeGainInfo(&e, 0, 0, 0, 0);
+    writeBlock(&e, "RG", MPC_FALSE, 0);
+
+    // write encoder information block
+    writeEncoderInfo(&e,
+                     m.FullQual,
+                     m.PNS > 0,
+                     MPCENC_MAJOR,
+                     MPCENC_MINOR,
+                     MPCENC_BUILD);
+    writeBlock(&e, "EI", MPC_FALSE, 0);
+
+    // reserve space for seek offset.
+    e.seek_ptr = ftell(f);
+    writeBits(&e, 0, 16);
+    writeBits(&e, 0, 24);
+    writeBlock(&e, "SO", MPC_FALSE, 0);
+
 
     return ENCODE_OK;
 }
