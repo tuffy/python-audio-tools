@@ -124,3 +124,5 @@ void Analyse_Init ( float Left, float Right, SubbandFloatTyp* out, const int Max
 void Analyse_Filter ( const PCMDataTyp* in, SubbandFloatTyp* out, const int MaxBand );
 void QuantizeSubband ( mpc_int16_t* qu_output, const float* input, const int res, float* errors, const int maxNsOrder );
 void QuantizeSubbandWithNoiseShaping ( mpc_int16_t* qu_output, const float* input, const int res, float* errors, const float* FIR );
+float ISNR_Schaetzer ( const float* input, const float SNRcomp, const int res );
+float ISNR_Schaetzer_Trans ( const float* input, const float SNRcomp, const int res );

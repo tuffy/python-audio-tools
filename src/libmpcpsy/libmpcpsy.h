@@ -100,3 +100,4 @@ SMRTyp Psychoakustisches_Modell ( PsyModel* m, const int MaxBand, const PCMDataT
 void RaiseSMR (PsyModel* m, const int MaxBand, SMRTyp* smr );
 void MS_LR_Entscheidung ( const int MaxBand, unsigned char* ms, SMRTyp* smr, SubbandFloatTyp* x );
 void TransientenCalc ( int*       T, const int* TL, const int* TR );
+void NS_Analyse ( PsyModel* m, const int             MaxBand, const unsigned char*  MSflag, const SMRTyp          smr, const int*            Transient );
