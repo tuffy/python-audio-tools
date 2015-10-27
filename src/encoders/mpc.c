@@ -49,7 +49,7 @@ static const unsigned char  Penalty [256] = {
 };
 
 static void
-SCF_Extraktion ( PsyModel*m, mpc_encoder_t* e, const int MaxBand, SubbandFloatTyp* x )
+SCF_Extraktion ( PsyModel*m, mpc_encoder_t* e, const int MaxBand, SubbandFloatTyp* x, float Power_L [32][3], float Power_R [32][3], float *MaxOverFlow )
 {
     int    Band;
     int    n;
@@ -225,12 +225,12 @@ SCF_Extraktion ( PsyModel*m, mpc_encoder_t* e, const int MaxBand, SubbandFloatTy
             for ( n = 0; n < 36; n++ ) {
                 if      (x[Band].L[n] > +32767.f) {
                     e->Overflows++;
-                    MaxOverFlow = maxf (MaxOverFlow,  x[Band].L[n]);
+                    MaxOverFlow[0] = maxf (MaxOverFlow[0],  x[Band].L[n]);
                     x[Band].L[n] = 32767.f;
                 }
                 else if (x[Band].L[n] < -32767.f) {
 					e->Overflows++;
-                    MaxOverFlow = maxf (MaxOverFlow, -x[Band].L[n]);
+                    MaxOverFlow[0] = maxf (MaxOverFlow[0], -x[Band].L[n]);
                     x[Band].L[n] = -32767.f;
                 }
             }
@@ -238,12 +238,12 @@ SCF_Extraktion ( PsyModel*m, mpc_encoder_t* e, const int MaxBand, SubbandFloatTy
             for ( n = 0; n < 36; n++ ) {
                 if      (x[Band].R[n] > +32767.f) {
 					e->Overflows++;
-                    MaxOverFlow = maxf (MaxOverFlow,  x[Band].R[n]);
+                    MaxOverFlow[0] = maxf (MaxOverFlow[0],  x[Band].R[n]);
                     x[Band].R[n] = 32767.f;
                 }
                 else if (x[Band].R[n] < -32767.f) {
 					e->Overflows++;
-                    MaxOverFlow = maxf (MaxOverFlow, -x[Band].R[n]);
+                    MaxOverFlow[0] = maxf (MaxOverFlow[0], -x[Band].R[n]);
                     x[Band].R[n] = -32767.f;
                 }
             }
