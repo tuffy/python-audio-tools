@@ -534,6 +534,12 @@ encode_mpc_file(char *filename,
     MaxOverFlow = 0.0f;
     N = 0;
 
+    // Total samples unknown, use a default
+    // value used by reference encoder.
+    if(total_samples == 0) {
+        total_samples = 24 * 60 * 60 * pcmreader->sample_rate;
+    }
+
     // Initialize encoder stuff.
     m.SCF_Index_L = e.SCF_Index_L;
     m.SCF_Index_R = e.SCF_Index_R;
@@ -739,18 +745,8 @@ encode_mpc_file(char *filename,
         return ERR_FILE_WRITE;
     }
 
-    // If total samples is non-zero and it does not match
-    // the total read samples, we have a read error. The
-    // data stream was not of the expected size.
-    if(total_samples != 0 &&
-       total_samples != total_read_samples) {
-        mpc_encoder_exit(&e);
-        fclose(f);
-        return ERR_FILE_READ;
-    }
-
     // Update the stream info block, if necessary.
-    if(total_samples == 0) {
+    if(total_samples != total_read_samples) {
         fseek(e.outputFile, e.seek_ref + 4, SEEK_SET);
         writeStreamInfo(&e,
                         m.Max_Band,
@@ -1000,11 +996,6 @@ int main(int argc, char *argv[])
 
     if(channels != 1 && channels != 2) {
         printf("Channels must be 1 or 2.\n");
-        return 1;
-    }
-
-    if(samples == 0) {
-        printf("Samples must be greater than 0.\n");
         return 1;
     }
 
