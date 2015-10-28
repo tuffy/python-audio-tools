@@ -17,6 +17,7 @@ typedef float SCFTriple[3];
 typedef enum {
     ENCODE_OK,
     ERR_INVALID_ARGUMENT,
+    ERR_UNSUPPORTED_QUALITY,
     ERR_UNSUPPORTED_SAMPLE_RATE,
     ERR_UNSUPPORTED_CHANNELS,
     ERR_UNSUPPORTED_BITS_PER_SAMPLE,
@@ -481,10 +482,12 @@ encode_mpc_file(char *filename,
     // check arguments
     if(filename == NULL    ||
        filename[0] == '\0' ||
-       pcmreader == NULL   ||
-       quality < 00.0f     ||
-       quality > 10.0f) {
+       pcmreader == NULL) {
         return ERR_INVALID_ARGUMENT;
+    }
+
+    if(quality < 0.0f || quality > 10.0f) {
+        return ERR_UNSUPPORTED_QUALITY;
     }
 
     // Check for supported sample rates.
@@ -782,8 +785,68 @@ encode_mpc_file(char *filename,
 PyObject*
 encoders_encode_mpc(PyObject *dummy, PyObject *args, PyObject *keywds)
 {
-    Py_INCREF(Py_None);
-    return Py_None;
+    char *filename;
+    struct PCMReader *pcmreader = NULL;
+    float quality;
+    unsigned total_pcm_frames;
+    static char *kwlist[] = {"filename",
+                             "pcmreader",
+                             "quality",
+                             "total_pcm_frames",
+                             NULL};
+    result_t result;
+
+    if(!PyArg_ParseTupleAndKeywords(args,
+                                    keywds,
+                                    "sO&fI",
+                                    kwlist,
+                                    &filename,
+                                    py_obj_to_pcmreader,
+                                    &pcmreader,
+                                    &quality,
+                                    &total_pcm_frames)) {
+        if(pcmreader != NULL) {
+            pcmreader->del(pcmreader);
+        }
+        return NULL;
+    }
+
+    result = encode_mpc_file(filename,
+                             pcmreader,
+                             quality,
+                             total_pcm_frames);
+
+    pcmreader->del(pcmreader);
+
+    switch(result) {
+        case ERR_INVALID_ARGUMENT:
+            PyErr_SetString(PyExc_ValueError, "invalid argument");
+            return NULL;
+        case ERR_UNSUPPORTED_QUALITY:
+            PyErr_SetString(PyExc_ValueError, "quality must be 0.0 to 10.0");
+            return NULL;
+        case ERR_UNSUPPORTED_SAMPLE_RATE:
+            PyErr_SetString(PyExc_ValueError, "sample rate must be 32000, 37800, 44100, or 48000");
+            return NULL;
+        case ERR_UNSUPPORTED_CHANNELS:
+            PyErr_SetString(PyExc_ValueError, "channels must be 1 or 2");
+            return NULL;
+        case ERR_UNSUPPORTED_BITS_PER_SAMPLE:
+            PyErr_SetString(PyExc_ValueError, "bits per sample must be 16");
+            return NULL;
+        case ERR_FILE_OPEN:
+            PyErr_SetString(PyExc_ValueError, "error opening output file");
+            return NULL;
+        case ERR_FILE_WRITE:
+            PyErr_SetString(PyExc_ValueError, "error writing output file");
+            return NULL;
+        case ERR_FILE_READ:
+            PyErr_SetString(PyExc_ValueError, "error reading input file");
+            return NULL;
+        case ENCODE_OK:
+            Py_INCREF(Py_None);
+            return Py_None;
+    }
 }
 #endif
 
@@ -877,6 +940,10 @@ int main(int argc, char *argv[])
     switch(result) {
         case ERR_INVALID_ARGUMENT:
             printf("Invalid argument to encode_mpc_file\n");
+            break;
+
+        case ERR_UNSUPPORTED_QUALITY:
+            printf("Unsupported quality passed to encode_mpc_file\n");
             break;
 
         case ERR_UNSUPPORTED_SAMPLE_RATE:
