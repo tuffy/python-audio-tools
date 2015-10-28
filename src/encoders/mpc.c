@@ -716,6 +716,44 @@ int main(int argc, char *argv[])
         }
     }
 
+    if(in_name == NULL) {
+        printf("An input file name must be given.\n");
+        return 1;
+    }
+
+    if(out_name == NULL) {
+        printf("An output file name must be given.\n");
+        return 1;
+    }
+
+    if(quality < 0.0f || quality > 10.0f) {
+        printf("A quality profile must be given between 0 and 10 inclusive.\n");
+        return 1;
+    }
+
+    if(channels != 1 && channels != 2) {
+        printf("Channels must be 1 or 2.\n");
+        return 1;
+    }
+
+    if(samples == 0) {
+        printf("Samples must be greater than 0.\n");
+        return 1;
+    }
+
+    if(bits_per_sample != 16) {
+        printf("Bits per sample must be 16.\n");
+        return 1;
+    }
+
+    if(sample_rate != 32000 &&
+       sample_rate != 37800 &&
+       sample_rate != 44100 &&
+       sample_rate != 48000) {
+       printf("Sample rate must be 32000, 37800, 44100, or 48000.\n");
+       return 1;
+    }
+
     return 0;
 }
 #endif
