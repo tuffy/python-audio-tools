@@ -386,7 +386,7 @@ static void fill_float(float *p, float f, unsigned n) {
     }
 }
 
-static int
+static unsigned
 read_pcm_samples(struct PCMReader *pcmreader,
                  PCMDataTyp *out,
                  unsigned samples,
@@ -405,7 +405,7 @@ read_pcm_samples(struct PCMReader *pcmreader,
 
     // read PCM samples.
     if((samples_read = pcmreader->read(pcmreader, samples, buffer)) == 0) {
-        return -1;
+        return 0;
     }
 
     // check for silence (all null samples)
@@ -450,7 +450,7 @@ static result_t
 encode_mpc_file(char *filename,
                 struct PCMReader *pcmreader,
                 float quality,
-                unsigned total_pcm_samples)
+                unsigned total_samples)
 {
     // Constant configuration values (same defaults as reference encoder)
     const unsigned int FramesBlockPwr = 6;
@@ -464,6 +464,8 @@ encode_mpc_file(char *filename,
     mpc_encoder_t e;
     PCMDataTyp Main;
     unsigned si_size;
+    unsigned read_samples;
+    int silence;
 
     // check arguments
     if(filename == NULL    ||
@@ -507,6 +509,8 @@ encode_mpc_file(char *filename,
     memset(&e, 0, sizeof(e));
     memset(&Main, 0, sizeof(Main));
     si_size = 0;
+    read_samples = 0;
+    silence = 0;
 
     // ?
     m.SCF_Index_L = e.SCF_Index_L;
@@ -514,7 +518,7 @@ encode_mpc_file(char *filename,
     Init_Psychoakustik(&m);
     m.SampleFreq = pcmreader->sample_rate;
     SetQualityParams (&m, quality);
-    mpc_encoder_init(&e, total_pcm_samples, FramesBlockPwr, SeekDistance);
+    mpc_encoder_init(&e, total_samples, FramesBlockPwr, SeekDistance);
     Init_Psychoakustiktabellen(&m);
     e.outputFile = f;
     e.MS_Channelmode = m.MS_Channelmode;
@@ -525,7 +529,7 @@ encode_mpc_file(char *filename,
     writeStreamInfo(&e,
                     m.Max_Band,
                     m.MS_Channelmode > 0,
-                    total_pcm_samples,
+                    total_samples,
                     0,
                     m.SampleFreq,
                     pcmreader->channels);
@@ -572,6 +576,18 @@ encode_mpc_file(char *filename,
         mpc_encoder_exit(&e);
         fclose(f);
         return ERR_FILE_WRITE;
+    }
+
+    // Read first audio block.
+    read_samples = read_pcm_samples(pcmreader,
+                                    &Main,
+                                    BLOCK,
+                                    &silence);
+
+    if(read_samples == 0) {
+        mpc_encoder_exit(&e);
+        fclose(f);
+        return ERR_FILE_READ;
     }
 
 #if 0
