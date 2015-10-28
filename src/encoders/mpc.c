@@ -468,6 +468,7 @@ encode_mpc_file(char *filename,
     unsigned total_read_samples;
     int silence;
     SubbandFloatTyp X[32];
+    int old_silence;
 
     // check arguments
     if(filename == NULL    ||
@@ -515,6 +516,7 @@ encode_mpc_file(char *filename,
     silence = 0;
     total_read_samples = 0;
     memset(X, 0, sizeof(X));
+    old_silence = 0;
 
     // ?
     m.SCF_Index_L = e.SCF_Index_L;
@@ -602,6 +604,83 @@ encode_mpc_file(char *filename,
     fill_float(Main.S, Main.S[CENTER], CENTER);
 
     Analyse_Init(Main.L[CENTER], Main.R[CENTER], X, m.Max_Band);
+
+    do {
+        memset(e.Res_L, 0, sizeof(e.Res_L));
+        memset(e.Res_R, 0, sizeof(e.Res_R));
+
+        if(!silence || !old_silence) {
+            Analyse_Filter(&Main, X, m.Max_Band);
+            SMR = Psychoakustisches_Modell(&m,
+                                           m.Max_Band * 0 + 31,
+                                           &Main,
+                                           TransientL,
+                                           TransientR);
+            if(m.minSMR > 0) {
+                RaiseSMR (&m, m.Max_Band, &SMR );
+            }
+            if(m.MS_Channelmode > 0) {
+                MS_LR_Entscheidung(m.Max_Band, e.MS_Flag, &SMR, X);
+            }
+            SCF_Extraktion(&m, &e, m.Max_Band, X);
+            TransientenCalc(Transient, TransientL, TransientR);
+            if(m.NS_Order > 0) {
+                NS_Analyse(&m, m.Max_Band, e.MS_Flag, SMR, Transient);
+            }
+            Allocate(m.Max_Band,
+                     e.Res_L,
+                     X[0].L,
+                     e.SCF_Index_L[0],
+                     m.SNR_comp_L,
+                     SMR.L,
+                     (const SCFTriple *) Power_L,
+                     Transient,
+                     m.PNS);
+
+             Allocate(m.Max_Band,
+                      e.Res_R,
+                      X[0].R,
+                      e.SCF_Index_R[0],
+                      m.SNR_comp_R,
+                      SMR.R,
+                      (const SCFTriple *) Power_R,
+                      Transient,
+                      m.PNS);
+
+             Quantisierung(&m, m.Max_Band, e.Res_L, e.Res_R, X, e.Q);
+        }
+
+        old_silence = silence;
+
+        writeBitstream_SV8(&e, m.Max_Band);
+
+        memmove(Main.L, &Main.L[BLOCK], CENTER * sizeof(float));
+        memmove(Main.R, &Main.R[BLOCK], CENTER * sizeof(float));
+        memmove(Main.M, &Main.M[BLOCK], CENTER * sizeof(float));
+        memmove(Main.S, &Main.S[BLOCK], CENTER * sizeof(float));
+
+        read_samples = read_pcm_samples(pcmreader,
+                                        &Main,
+                                        BLOCK,
+                                        &silence);
+
+        // Have we reached the end of the stream?
+        if(read_samples == 0) {
+            break;
+        }
+
+        total_read_samples += read_samples;
+
+        if(read_samples < BLOCK) {
+            const unsigned int OFFSET = CENTER + read_samples;
+            fill_float(&Main.L[OFFSET], Main.L[OFFSET - 1], BLOCK - read_samples);
+            fill_float(&Main.R[OFFSET], Main.R[OFFSET - 1], BLOCK - read_samples);
+            fill_float(&Main.M[OFFSET], Main.M[OFFSET - 1], BLOCK - read_samples);
+            fill_float(&Main.S[OFFSET], Main.S[OFFSET - 1], BLOCK - read_samples);
+        }
+
+    } while(1);
+
 #if 0
     // Initialize encoder objects.
     m.SCF_Index_L = e.SCF_Index_L;
