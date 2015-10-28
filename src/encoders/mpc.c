@@ -395,7 +395,7 @@ read_pcm_samples(struct PCMReader *pcmreader,
                  PCMDataTyp *out,
                  unsigned samples,
                  int *silence) {
-    // Special multipliers used to adjust left / right.
+    // Special adjustments for left / right.
     const float DENORMAL_FIX_LEFT = 32.0f * 1024.0f / 16777216.0f;
     const float DENORMAL_FIX_RIGHT = DENORMAL_FIX_LEFT * 0.5f;
 
@@ -430,8 +430,8 @@ read_pcm_samples(struct PCMReader *pcmreader,
     switch(pcmreader->channels) {
         case 1:
             for( i = 0 ; i < samples ; ++i ) {
-                l[i] = buffer[i] * DENORMAL_FIX_LEFT;
-                l[i] = buffer[i] * DENORMAL_FIX_RIGHT;
+                l[i] = buffer[i] + DENORMAL_FIX_LEFT;
+                r[i] = buffer[i] + DENORMAL_FIX_RIGHT;
                 m[i] = (l[i] + r[i]) * 0.5f;
                 s[i] = (l[i] - r[i]) * 0.5f;
             }
@@ -439,8 +439,8 @@ read_pcm_samples(struct PCMReader *pcmreader,
 
         case 2:
             for( i = 0 ; i < samples ; ++i ) {
-                l[i] = buffer[i * 2 + 0] * DENORMAL_FIX_LEFT;
-                r[i] = buffer[i * 2 + 1] * DENORMAL_FIX_RIGHT;
+                l[i] = buffer[i * 2 + 0] + DENORMAL_FIX_LEFT;
+                r[i] = buffer[i * 2 + 1] + DENORMAL_FIX_RIGHT;
                 m[i] = (l[i] + r[i]) * 0.5f;
                 s[i] = (l[i] - r[i]) * 0.5f;
             }
