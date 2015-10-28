@@ -476,6 +476,7 @@ encode_mpc_file(char *filename,
     float Power_L [32][3];
     float Power_R [32][3];
     float MaxOverFlow;
+    unsigned N;
 
     // check arguments
     if(filename == NULL    ||
@@ -531,8 +532,9 @@ encode_mpc_file(char *filename,
     memset(&Power_L, 0, sizeof(Power_L));
     memset(&Power_R, 0, sizeof(Power_R));
     MaxOverFlow = 0.0f;
+    N = 0;
 
-    // ?
+    // Initialize encoder stuff.
     m.SCF_Index_L = e.SCF_Index_L;
     m.SCF_Index_R = e.SCF_Index_R;
     Init_Psychoakustik(&m);
@@ -690,11 +692,6 @@ encode_mpc_file(char *filename,
                                         BLOCK,
                                         &silence);
 
-        // Have we reached the end of the stream?
-        if(read_samples == 0) {
-            break;
-        }
-
         total_read_samples += read_samples;
 
         if(read_samples < BLOCK) {
@@ -705,7 +702,8 @@ encode_mpc_file(char *filename,
             fill_float(&Main.S[OFFSET], Main.S[OFFSET - 1], BLOCK - read_samples);
         }
 
-    } while(1);
+        N += BLOCK;
+    } while(N < total_read_samples + MPC_DECODER_SYNTH_DELAY);
 
     // Write the final audio block.
     if(e.framesInBlock != 0) {
