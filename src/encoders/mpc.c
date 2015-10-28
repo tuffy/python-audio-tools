@@ -473,6 +473,8 @@ encode_mpc_file(char *filename,
     int TransientL[PART_SHORT];
     int TransientR[PART_SHORT];
     int Transient[32];
+    float Power_L [32][3];
+    float Power_R [32][3];
 
     // check arguments
     if(filename == NULL    ||
@@ -525,6 +527,8 @@ encode_mpc_file(char *filename,
     memset(&TransientL, 0, sizeof(TransientL));
     memset(&TransientR, 0, sizeof(TransientR));
     memset(&Transient, 0, sizeof(Transient));
+    memset(&Power_L, 0, sizeof(Power_L));
+    memset(&Power_R, 0, sizeof(Power_R));
 
     // ?
     m.SCF_Index_L = e.SCF_Index_L;
