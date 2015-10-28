@@ -336,7 +336,7 @@ Allocate ( const int MaxBand, int* res, float* x, int* scf, const float* comp, c
     int    k;
     float  tmpMNR;      // to adjust the scalefactors
     float  save [36];   // to adjust the scalefactors
-    float  MNR;         // Mask-to-Noise ratio
+    float  MNR = 0.0f;  // Mask-to-Noise ratio
 
     for ( Band = 0; Band <= MaxBand; Band++, res++, comp++, smr++, scf += 3, x += 72 ) {
         // printf ( "%2u: %u\n", Band, Transient[Band] );
@@ -844,6 +844,7 @@ encoders_encode_mpc(PyObject *dummy, PyObject *args, PyObject *keywds)
             PyErr_SetString(PyExc_ValueError, "error reading input file");
             return NULL;
         case ENCODE_OK:
+        default:
             Py_INCREF(Py_None);
             return Py_None;
     }
