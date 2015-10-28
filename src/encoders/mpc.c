@@ -465,7 +465,9 @@ encode_mpc_file(char *filename,
     PCMDataTyp Main;
     unsigned si_size;
     unsigned read_samples;
+    unsigned total_read_samples;
     int silence;
+    SubbandFloatTyp X[32];
 
     // check arguments
     if(filename == NULL    ||
@@ -511,6 +513,8 @@ encode_mpc_file(char *filename,
     si_size = 0;
     read_samples = 0;
     silence = 0;
+    total_read_samples = 0;
+    memset(X, 0, sizeof(X));
 
     // ?
     m.SCF_Index_L = e.SCF_Index_L;
@@ -590,6 +594,14 @@ encode_mpc_file(char *filename,
         return ERR_FILE_READ;
     }
 
+    total_read_samples += read_samples;
+
+    fill_float(Main.L, Main.L[CENTER], CENTER);
+    fill_float(Main.R, Main.R[CENTER], CENTER);
+    fill_float(Main.M, Main.M[CENTER], CENTER);
+    fill_float(Main.S, Main.S[CENTER], CENTER);
+
+    Analyse_Init(Main.L[CENTER], Main.R[CENTER], X, m.Max_Band);
 #if 0
     // Initialize encoder objects.
     m.SCF_Index_L = e.SCF_Index_L;
