@@ -12,11 +12,6 @@
 #endif
 #define P(new,old)  Penalty [128 + (old) - (new)]
 
-// Version macros for encoder info block
-#define MPCENC_MAJOR 1
-#define MPCENC_MINOR 30
-#define MPCENC_BUILD 1
-
 typedef float SCFTriple[3];
 
 typedef enum {
@@ -26,6 +21,7 @@ typedef enum {
     ERR_UNSUPPORTED_CHANNELS,
     ERR_UNSUPPORTED_BITS_PER_SAMPLE,
     ERR_FILE_OPEN,
+    ERR_FILE_WRITE,
     ERR_FILE_READ
 } result_t;
 
@@ -459,33 +455,22 @@ encode_mpc_file(char *filename,
     // Constant configuration values (same defaults as reference encoder)
     const unsigned int FramesBlockPwr = 6;
     const unsigned int SeekDistance = 1;
+    const unsigned int MPCENC_MAJOR = 1;
+    const unsigned int MPCENC_MINOR = 30;
+    const unsigned int MPCENC_BUILD = 1;
 
     FILE *f;
     PsyModel m;
     mpc_encoder_t e;
-    int si_size;
     PCMDataTyp Main;
-    unsigned samples_read;
-    int silence;
-    unsigned total_samples_read;
-    SubbandFloatTyp X[32];
-    float Power_L [32][3];
-    float Power_R [32][3];
-    float MaxOverFlow;
-    int old_silence;
-    unsigned N;
-    SMRTyp SMR;
-    int TransientL [PART_SHORT];
-    int TransientR [PART_SHORT];
-    int Transient [32];
+    unsigned si_size;
 
     // check arguments
     if(filename == NULL    ||
        filename[0] == '\0' ||
        pcmreader == NULL   ||
        quality < 00.0f     ||
-       quality > 10.0f     ||
-       total_pcm_samples < 1) {
+       quality > 10.0f) {
         return ERR_INVALID_ARGUMENT;
     }
 
@@ -517,6 +502,79 @@ encode_mpc_file(char *filename,
         return ERR_FILE_OPEN;
     }
 
+    // Null initialize all values before moving on.
+    memset(&m, 0, sizeof(m));
+    memset(&e, 0, sizeof(e));
+    memset(&Main, 0, sizeof(Main));
+    si_size = 0;
+
+    // ?
+    m.SCF_Index_L = e.SCF_Index_L;
+    m.SCF_Index_R = e.SCF_Index_R;
+    Init_Psychoakustik(&m);
+    m.SampleFreq = pcmreader->sample_rate;
+    SetQualityParams (&m, quality);
+    mpc_encoder_init(&e, total_pcm_samples, FramesBlockPwr, SeekDistance);
+    Init_Psychoakustiktabellen(&m);
+    e.outputFile = f;
+    e.MS_Channelmode = m.MS_Channelmode;
+    e.seek_ref = ftell(e.outputFile);
+
+    // Write stream header block
+    writeMagic(&e);
+    writeStreamInfo(&e,
+                    m.Max_Band,
+                    m.MS_Channelmode > 0,
+                    total_pcm_samples,
+                    0,
+                    m.SampleFreq,
+                    pcmreader->channels);
+    si_size = writeBlock(&e, "SH", MPC_TRUE, 0);
+
+    if(ferror(f)) {
+        mpc_encoder_exit(&e);
+        fclose(f);
+        return ERR_FILE_WRITE;
+    }
+
+    // Write replay gain block
+    writeGainInfo(&e, 0, 0, 0, 0);
+    writeBlock(&e, "RG", MPC_FALSE, 0);
+
+    if(ferror(f)) {
+        mpc_encoder_exit(&e);
+        fclose(f);
+        return ERR_FILE_WRITE;
+    }
+
+    // Write encoder info block
+    writeEncoderInfo(&e,
+                     m.FullQual,
+                     m.PNS > 0,
+                     MPCENC_MAJOR,
+                     MPCENC_MINOR,
+                     MPCENC_BUILD);
+    writeBlock(&e, "EI", MPC_FALSE, 0);
+
+    if(ferror(f)) {
+        mpc_encoder_exit(&e);
+        fclose(f);
+        return ERR_FILE_WRITE;
+    }
+
+    // Write seek table offset block
+    e.seek_ptr = ftell(e.outputFile);
+    writeBits(&e, 0, 16);
+    writeBits(&e, 0, 24);
+    writeBlock(&e, "SO", MPC_FALSE, 0);
+
+    if(ferror(f)) {
+        mpc_encoder_exit(&e);
+        fclose(f);
+        return ERR_FILE_WRITE;
+    }
+
+#if 0
     // Initialize encoder objects.
     m.SCF_Index_L = e.SCF_Index_L;
     m.SCF_Index_R = e.SCF_Index_R;
@@ -670,6 +728,7 @@ encode_mpc_file(char *filename,
 
     mpc_encoder_exit(&e);
     fclose(f);
+#endif
 
     return ENCODE_OK;
 }
