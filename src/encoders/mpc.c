@@ -770,6 +770,17 @@ encode_mpc_file(char *filename,
         fseek(e.outputFile, 0, SEEK_END);
     }
 
+    // Final flush of the file buffer.
+    if(fflush(f)) {
+        mpc_encoder_exit(&e);
+        fclose(f);
+        return ERR_FILE_WRITE;
+    }
+
+    // Clean up before returning.
+    mpc_encoder_exit(&e);
+    fclose(f);
+
 #if 0
     // Initialize encoder objects.
     m.SCF_Index_L = e.SCF_Index_L;
@@ -1053,6 +1064,10 @@ int main(int argc, char *argv[])
 
         case ERR_FILE_READ:
             printf("Read error from input file %s\n", in_name);
+            break;
+
+        case ERR_FILE_WRITE:
+            printf("Write error from output file %s\n", out_name);
             break;
 
         case ENCODE_OK:
