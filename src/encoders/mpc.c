@@ -667,12 +667,18 @@ encode_mpc_file(char *filename,
                       Transient,
                       m.PNS);
 
-             Quantisierung(&m, m.Max_Band, e.Res_L, e.Res_R, X, e.Q);
+            Quantisierung(&m, m.Max_Band, e.Res_L, e.Res_R, X, e.Q);
         }
 
         old_silence = silence;
 
         writeBitstream_SV8(&e, m.Max_Band);
+
+        if(ferror(f)) {
+            mpc_encoder_exit(&e);
+            fclose(f);
+            return ERR_FILE_WRITE;
+        }
 
         memmove(Main.L, &Main.L[BLOCK], CENTER * sizeof(float));
         memmove(Main.R, &Main.R[BLOCK], CENTER * sizeof(float));
@@ -700,6 +706,40 @@ encode_mpc_file(char *filename,
         }
 
     } while(1);
+
+    // Write the final audio block.
+    if(e.framesInBlock != 0) {
+        if((e.block_cnt & ((1 << e.seek_pwr) - 1)) == 0) {
+            e.seek_table[e.seek_pos] = ftell(e.outputFile);
+            e.seek_pos++;
+        }
+        e.block_cnt++;
+        writeBlock(&e, "AP", MPC_FALSE, 0);
+        if(ferror(f)) {
+            mpc_encoder_exit(&e);
+            fclose(f);
+            return ERR_FILE_WRITE;
+        }
+    }
+
+    // Write the seek table block.
+    writeSeekTable(&e);
+    writeBlock(&e, "ST", MPC_FALSE, 0);
+
+    if(ferror(f)) {
+        mpc_encoder_exit(&e);
+        fclose(f);
+        return ERR_FILE_WRITE;
+    }
+
+    // Write the stream end block.
+    writeBlock(&e, "SE", MPC_FALSE, 0);
+
+    if(ferror(f)) {
+        mpc_encoder_exit(&e);
+        fclose(f);
+        return ERR_FILE_WRITE;
+    }
 
 #if 0
     // Initialize encoder objects.
