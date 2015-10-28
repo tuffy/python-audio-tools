@@ -741,6 +741,35 @@ encode_mpc_file(char *filename,
         return ERR_FILE_WRITE;
     }
 
+    // If total samples is non-zero and it does not match
+    // the total read samples, we have a read error. The
+    // data stream was not of the expected size.
+    if(total_samples != 0 &&
+       total_samples != total_read_samples) {
+        mpc_encoder_exit(&e);
+        fclose(f);
+        return ERR_FILE_READ;
+    }
+
+    // Update the stream info block, if necessary.
+    if(total_samples == 0) {
+        fseek(e.outputFile, e.seek_ref + 4, SEEK_SET);
+        writeStreamInfo(&e,
+                        m.Max_Band,
+                        m.MS_Channelmode > 0,
+                        total_read_samples,
+                        0,
+                        m.SampleFreq,
+                        pcmreader->channels);
+        writeBlock(&e, "SH", MPC_TRUE, si_size);
+        if(ferror(f)) {
+            mpc_encoder_exit(&e);
+            fclose(f);
+            return ERR_FILE_WRITE;
+        }
+        fseek(e.outputFile, 0, SEEK_END);
+    }
+
 #if 0
     // Initialize encoder objects.
     m.SCF_Index_L = e.SCF_Index_L;
