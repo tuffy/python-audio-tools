@@ -684,8 +684,38 @@ encoders_encode_mpc(PyObject *dummy, PyObject *args, PyObject *keywds)
 #endif
 
 #ifdef STANDALONE
+#include <unistd.h>
+
 int main(int argc, char *argv[])
 {
+    const char options[] = ":i:o:q:s:c:b:r:";
+    char *in_name = NULL;
+    char *out_name = NULL;
+    float quality = -1.0;
+    unsigned samples = 0;
+    unsigned channels = 0;
+    unsigned bits_per_sample = 0;
+    unsigned sample_rate = 0;
+    int opt;
+
+    while((opt = getopt(argc, argv, options)) != -1) {
+        switch(opt) {
+            case 'i': in_name = optarg;                           break;
+            case 'o': out_name = optarg;                          break;
+            case 'q': quality = strtof(optarg, NULL);             break;
+            case 's': samples = strtoul(optarg, NULL, 0);         break;
+            case 'c': channels = strtoul(optarg, NULL, 0);        break;
+            case 'b': bits_per_sample = strtoul(optarg, NULL, 0); break;
+            case 'r': sample_rate = strtoul(optarg, NULL, 0);     break;
+            case ':':
+                printf("Missing argument: %c\n", optopt);
+                return 1;
+            case '?':
+                printf("Unknown option: %c\n", optopt);
+                return 1;
+        }
+    }
+
     return 0;
 }
 #endif
