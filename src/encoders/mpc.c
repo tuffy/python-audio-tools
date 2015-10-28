@@ -469,6 +469,10 @@ encode_mpc_file(char *filename,
     int silence;
     SubbandFloatTyp X[32];
     int old_silence;
+    SMRTyp SMR;
+    int TransientL[PART_SHORT];
+    int TransientR[PART_SHORT];
+    int Transient[32];
 
     // check arguments
     if(filename == NULL    ||
@@ -517,6 +521,10 @@ encode_mpc_file(char *filename,
     total_read_samples = 0;
     memset(X, 0, sizeof(X));
     old_silence = 0;
+    memset(&SMR, 0, sizeof(SMR));
+    memset(&TransientL, 0, sizeof(TransientL));
+    memset(&TransientR, 0, sizeof(TransientR));
+    memset(&Transient, 0, sizeof(Transient));
 
     // ?
     m.SCF_Index_L = e.SCF_Index_L;
