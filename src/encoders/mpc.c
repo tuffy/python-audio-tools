@@ -697,6 +697,9 @@ int main(int argc, char *argv[])
     unsigned bits_per_sample = 0;
     unsigned sample_rate = 0;
     int opt;
+    FILE *fin;
+    struct PCMReader *pcmreader;
+    result_t result;
 
     while((opt = getopt(argc, argv, options)) != -1) {
         switch(opt) {
@@ -754,6 +757,56 @@ int main(int argc, char *argv[])
        return 1;
     }
 
-    return 0;
+    if((fin = fopen(in_name, "rb")) == NULL) {
+       printf("Could not open input file %s\n", in_name);
+       return 1;
+    }
+
+    pcmreader = pcmreader_open_raw(fin,
+                                   sample_rate,
+                                   channels,
+                                   0,
+                                   bits_per_sample,
+                                   1,
+                                   1);
+
+    result = encode_mpc_file(out_name,
+                             pcmreader,
+                             quality,
+                             samples);
+
+    switch(result) {
+        case ERR_INVALID_ARGUMENT:
+            printf("Invalid argument to encode_mpc_file\n");
+            break;
+
+        case ERR_UNSUPPORTED_SAMPLE_RATE:
+            printf("Unsupported sample rate passed to encode_mpc_file\n");
+            break;
+
+        case ERR_UNSUPPORTED_CHANNELS:
+            printf("Unsupported channels passed to encode_mpc_file\n");
+            break;
+
+        case ERR_UNSUPPORTED_BITS_PER_SAMPLE:
+            printf("Unsupported bits per sample passed to encode_mpc_file\n");
+            break;
+
+        case ERR_FILE_OPEN:
+            printf("Could not open output file %s\n", out_name);
+            break;
+
+        case ERR_FILE_READ:
+            printf("Read error from input file %s\n", in_name);
+            break;
+
+        case ENCODE_OK:
+            break;
+    }
+
+    pcmreader->close(pcmreader);
+    pcmreader->del(pcmreader);
+
+    return (result != ENCODE_OK);
 }
 #endif
