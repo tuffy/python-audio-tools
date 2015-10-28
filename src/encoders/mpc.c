@@ -469,6 +469,9 @@ encode_mpc_file(char *filename,
     int silence;
     unsigned total_samples_read;
     SubbandFloatTyp X[32];
+    float Power_L [32][3];
+    float Power_R [32][3];
+    float MaxOverFlow;
     int old_silence;
     unsigned N;
     SMRTyp SMR;
@@ -578,6 +581,10 @@ encode_mpc_file(char *filename,
 
     Analyse_Init(Main.L[CENTER], Main.R[CENTER], X, m.Max_Band);
 
+    memset(Power_L, 0, sizeof(Power_L));
+    memset(Power_R, 0, sizeof(Power_R));
+    MaxOverFlow = 0.0f;
+
     old_silence = 0;
 
     for( N = 0 ; N < total_pcm_samples + MPC_DECODER_SYNTH_DELAY ; N += BLOCK ) {
@@ -600,8 +607,69 @@ encode_mpc_file(char *filename,
             if(m.MS_Channelmode > 0) {
                 MS_LR_Entscheidung(m.Max_Band, e.MS_Flag, &SMR, X);
             }
+            SCF_Extraktion(&m, &e, m.Max_Band, X, Power_L, Power_R, &MaxOverFlow);
+            TransientenCalc(Transient, TransientL, TransientR);
+            if(m.NS_Order > 0) {
+                NS_Analyse(&m, m.Max_Band, e.MS_Flag, SMR, Transient);
+            }
+            Allocate(m.Max_Band, e.Res_L, X[0].L, e.SCF_Index_L[0], m.SNR_comp_L, SMR.L, (const SCFTriple *) Power_L, Transient, m.PNS);
+            Allocate(m.Max_Band, e.Res_R, X[0].R, e.SCF_Index_R[0], m.SNR_comp_R, SMR.R, (const SCFTriple *) Power_R, Transient, m.PNS);
+            Quantisierung(&m, m.Max_Band, e.Res_L, e.Res_R, X, e.Q);
         }
+
+        old_silence = silence;
+
+        writeBitstream_SV8(&e, m.Max_Band);
+
+        memmove(Main.L, &Main.L[BLOCK], CENTER * sizeof(float));
+        memmove(Main.R, &Main.R[BLOCK], CENTER * sizeof(float));
+        memmove(Main.M, &Main.M[BLOCK], CENTER * sizeof(float));
+        memmove(Main.S, &Main.S[BLOCK], CENTER * sizeof(float));
+
+        samples_read = read_pcm_samples(pcmreader,
+                                        &Main,
+                                        MIN(BLOCK, total_pcm_samples - total_samples_read),
+                                        &silence);
+
+        if(samples_read == -1) {
+            return ERR_FILE_READ;
+        }
+
+        total_samples_read += samples_read;
     }
+
+    // write the last incomplete block
+    if(e.framesInBlock != 0) {
+        if((e.block_cnt & ((1 << e.seek_pwr) - 1)) == 0) {
+            e.seek_table[e.seek_pos] = ftell(e.outputFile);
+            e.seek_pos++;
+        }
+        e.block_cnt++;
+        writeBlock(&e, "AP", MPC_FALSE, 0);
+    }
+
+    // finalize the seek table
+    writeSeekTable(&e);
+    writeBlock(&e, "ST", MPC_FALSE, 0);
+
+    // write the stream end
+    writeBlock(&e, "SE", MPC_FALSE, 0);
+
+    if(total_pcm_samples != total_samples_read) {
+        fseek(e.outputFile, e.seek_ref + 4, SEEK_SET);
+        writeStreamInfo(&e,
+                        m.Max_Band,
+                        m.MS_Channelmode > 0,
+                        total_pcm_samples,
+                        0,
+                        m.SampleFreq,
+                        pcmreader->channels);
+        writeBlock(&e, "SH", MPC_TRUE, si_size);
+        fseek(e.outputFile, 0, SEEK_END);
+    }
+
+    mpc_encoder_exit(&e);
+    fclose(f);
 
     return ENCODE_OK;
 }
