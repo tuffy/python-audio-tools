@@ -475,6 +475,7 @@ encode_mpc_file(char *filename,
     int Transient[32];
     float Power_L [32][3];
     float Power_R [32][3];
+    float MaxOverFlow;
 
     // check arguments
     if(filename == NULL    ||
@@ -529,6 +530,7 @@ encode_mpc_file(char *filename,
     memset(&Transient, 0, sizeof(Transient));
     memset(&Power_L, 0, sizeof(Power_L));
     memset(&Power_R, 0, sizeof(Power_R));
+    MaxOverFlow = 0.0f;
 
     // ?
     m.SCF_Index_L = e.SCF_Index_L;
@@ -634,7 +636,13 @@ encode_mpc_file(char *filename,
             if(m.MS_Channelmode > 0) {
                 MS_LR_Entscheidung(m.Max_Band, e.MS_Flag, &SMR, X);
             }
-            SCF_Extraktion(&m, &e, m.Max_Band, X);
+            SCF_Extraktion(&m,
+                           &e,
+                           m.Max_Band,
+                           X,
+                           Power_L,
+                           Power_R,
+                           &MaxOverFlow);
             TransientenCalc(Transient, TransientL, TransientR);
             if(m.NS_Order > 0) {
                 NS_Analyse(&m, m.Max_Band, e.MS_Flag, SMR, Transient);
