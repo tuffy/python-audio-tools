@@ -1247,8 +1247,8 @@ class coverview(UtilTest):
                 u"Python Audio Tools %s" % (audiotools.VERSION))
 
 
-class track2cd(UtilTest):
-    @UTIL_TRACK2CD
+class track2cdda(UtilTest):
+    @UTIL_TRACK2CDDA
     def setUp(self):
         # if the user has an ~/.audiotools.cfg file, save it and its mode
         self.audiotools_cfg_path = os.path.expanduser("~/.audiotools.cfg")
@@ -1291,7 +1291,7 @@ class track2cd(UtilTest):
         self.cuesheet.write(b'FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 04:36:50\n    INDEX 01 04:41:10\n')
         self.cuesheet.flush()
 
-    @UTIL_TRACK2CD
+    @UTIL_TRACK2CDDA
     def tearDown(self):
         if ((self.audiotools_cfg is not None) and
             (self.audiotools_cfg_mode is not None)):
@@ -1309,9 +1309,9 @@ class track2cd(UtilTest):
         self.track2.close()
         self.cuesheet.close()
 
-    @UTIL_TRACK2CD
+    @UTIL_TRACK2CDDA
     def test_version(self):
-        self.assertEqual(self.__run_app__(["track2cd",
+        self.assertEqual(self.__run_app__(["track2cdda",
                                            "--version"]), 0)
         if PY3:
             self.__check_output__(
@@ -1320,7 +1320,7 @@ class track2cd(UtilTest):
             self.__check_info__(
                 u"Python Audio Tools %s" % (audiotools.VERSION))
 
-    @UTIL_TRACK2CD
+    @UTIL_TRACK2CDDA
     def test_tracks_nocue(self):
         try:
             from pickle import load
@@ -1337,7 +1337,7 @@ class track2cd(UtilTest):
             config.write(f)
 
         with tempfile.NamedTemporaryFile(suffix=".bin") as results_file:
-            self.assertEqual(self.__run_app__(["track2cd",
+            self.assertEqual(self.__run_app__(["track2cdda",
                                                "--cdrom",
                                                results_file.name,
                                                self.track1.name,
@@ -1354,7 +1354,7 @@ class track2cd(UtilTest):
             config.write(f)
 
         with tempfile.NamedTemporaryFile(suffix=".bin") as results_file:
-            self.assertEqual(self.__run_app__(["track2cd",
+            self.assertEqual(self.__run_app__(["track2cdda",
                                                "--cdrom",
                                                results_file.name,
                                                self.track1.name,
@@ -1371,7 +1371,7 @@ class track2cd(UtilTest):
             config.write(f)
 
         with tempfile.NamedTemporaryFile(suffix=".bin") as results_file:
-            self.assertEqual(self.__run_app__(["track2cd",
+            self.assertEqual(self.__run_app__(["track2cdda",
                                                "--cdrom",
                                                results_file.name,
                                                self.track1.name,
@@ -1382,7 +1382,7 @@ class track2cd(UtilTest):
                 self.assertIsNone(load(f))
                 self.assertIsNone(load(f))
 
-    @UTIL_TRACK2CD
+    @UTIL_TRACK2CDDA
     def test_tracks_cue(self):
         try:
             from pickle import load
@@ -1399,7 +1399,7 @@ class track2cd(UtilTest):
             config.write(f)
 
         with tempfile.NamedTemporaryFile(suffix=".bin") as results_file:
-            self.assertEqual(self.__run_app__(["track2cd",
+            self.assertEqual(self.__run_app__(["track2cdda",
                                                "--cdrom",
                                                results_file.name,
                                                "--cue",
@@ -1417,7 +1417,7 @@ class track2cd(UtilTest):
             config.write(f)
 
         with tempfile.NamedTemporaryFile(suffix=".bin") as results_file:
-            self.assertEqual(self.__run_app__(["track2cd",
+            self.assertEqual(self.__run_app__(["track2cdda",
                                                "--cdrom",
                                                results_file.name,
                                                "--cue",
@@ -1435,7 +1435,7 @@ class track2cd(UtilTest):
             config.write(f)
 
         with tempfile.NamedTemporaryFile(suffix=".bin") as results_file:
-            self.assertEqual(self.__run_app__(["track2cd",
+            self.assertEqual(self.__run_app__(["track2cdda",
                                                "--cdrom",
                                                results_file.name,
                                                "--cue",
@@ -1447,7 +1447,7 @@ class track2cd(UtilTest):
             with open(results_file.name, "rb") as f:
                 self.assertIsNone(load(f))
 
-    @UTIL_TRACK2CD
+    @UTIL_TRACK2CDDA
     def test_embedded_cuesheet(self):
         try:
             from pickle import load
@@ -1476,7 +1476,7 @@ class track2cd(UtilTest):
                 config.write(f)
 
             with tempfile.NamedTemporaryFile(suffix=".bin") as results_file:
-                self.assertEqual(self.__run_app__(["track2cd",
+                self.assertEqual(self.__run_app__(["track2cdda",
                                                    "--cdrom",
                                                    results_file.name,
                                                    combined_track.filename]),
@@ -1492,7 +1492,7 @@ class track2cd(UtilTest):
                 config.write(f)
 
             with tempfile.NamedTemporaryFile(suffix=".bin") as results_file:
-                self.assertEqual(self.__run_app__(["track2cd",
+                self.assertEqual(self.__run_app__(["track2cdda",
                                                    "--cdrom",
                                                    results_file.name,
                                                    combined_track.filename]),
@@ -1508,7 +1508,7 @@ class track2cd(UtilTest):
                 config.write(f)
 
             with tempfile.NamedTemporaryFile(suffix=".bin") as results_file:
-                self.assertEqual(self.__run_app__(["track2cd",
+                self.assertEqual(self.__run_app__(["track2cdda",
                                                    "--cdrom",
                                                    results_file.name,
                                                    combined_track.filename]),

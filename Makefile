@@ -40,7 +40,7 @@ coverdump \
 coverview \
 dvda2track \
 dvdainfo \
-track2cd \
+track2cdda \
 track2track \
 trackcat \
 trackcmp \

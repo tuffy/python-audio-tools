@@ -10,14 +10,14 @@ Creative Commons,
 San Francisco, California, 94105, USA.
 -->
 <manpage>
-  <utility>track2cd</utility>
+  <utility>track2cdda</utility>
   <author>Brian Langenberger</author>
   <section>1</section>
   <name>records audio compact disc from tracks</name>
   <title>CD Writer</title>
   <synopsis>[OPTIONS] &lt;track 1&gt; [track 2] ...</synopsis>
   <description>
-    track2cd takes a list of audio tracks and writes
+    track2cdda takes a list of audio tracks and writes
     their contents to an audio compact disc.
   </description>
   <options>
@@ -37,7 +37,7 @@ San Francisco, California, 94105, USA.
     <option short="j" long="joint" arg="processes">
       The maximum number of tracks to convert to temporary files at one time.
       If one has multiple CPUs or CPU cores, allowing
-      track2cd(1)
+      track2cdda(1)
       to use all of them simultaneously can reduce the time needed
       to decode tracks prior to CD burning.
     </option>
@@ -52,7 +52,7 @@ San Francisco, California, 94105, USA.
         Write all of the WAVEs in the current directory to /dev/cdrom:
       </description>
       <command>
-        track2cd -c /dev/cdrom *.wav
+        track2cdda -c /dev/cdrom *.wav
       </command>
     </example>
   </examples>

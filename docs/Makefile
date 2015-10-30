@@ -11,7 +11,7 @@ covertag.1 \
 coverview.1 \
 dvdainfo.1 \
 dvda2track.1 \
-track2cd.1 \
+track2cdda.1 \
 track2track.1 \
 trackcat.1 \
 trackcmp.1 \
@@ -35,7 +35,7 @@ covertag.xml \
 coverview.xml \
 dvdainfo.xml \
 dvda2track.xml \
-track2cd.xml \
+track2cdda.xml \
 track2track.xml \
 trackcat.xml \
 trackcmp.xml \

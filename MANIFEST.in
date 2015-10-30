@@ -15,7 +15,7 @@ include INSTALL
 include Makefile
 include setup.py
 include TODO
-include track2cd
+include track2cdda
 include track2track
 include trackcat
 include trackcmp
