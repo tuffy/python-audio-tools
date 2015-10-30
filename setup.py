@@ -1016,7 +1016,7 @@ scripts = ["audiotools-config",
 
 if ext_audiotools_cdio.libraries_present():
     ext_modules.append(ext_audiotools_cdio)
-    scripts.extend(["cd2track", "cdinfo", "cdplay"])
+    scripts.extend(["cdda2track", "cddainfo", "cddaplay"])
 
 if ext_audiotools_dvdaudio.libraries_present():
     ext_modules.append(ext_audiotools_dvdaudio)

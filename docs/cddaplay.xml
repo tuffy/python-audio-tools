@@ -10,14 +10,14 @@ Creative Commons,
 San Francisco, California, 94105, USA.
 -->
 <manpage>
-  <utility>cdplay</utility>
+  <utility>cddaplay</utility>
   <author>Brian Langenberger</author>
   <section>1</section>
   <name>plays compact discs to speakers</name>
   <title>Play Compact Discs</title>
   <synopsis>[OPTIONS]</synopsis>
   <description>
-    cdplay takes a CD-ROM device and plays its tracks to an
+    cddaplay takes a CD-ROM device and plays its tracks to an
     available audio output device such as PulseAudio or the Open Sound System.
   </description>
   <options>

@@ -10,14 +10,14 @@ Creative Commons,
 San Francisco, California, 94105, USA.
 -->
 <manpage>
-  <utility>cd2track</utility>
+  <utility>cdda2track</utility>
   <author>Brian Langenberger</author>
   <section>1</section>
   <name>extract audio files</name>
   <title>Compact Disc Extractor</title>
   <synopsis>[OPTIONS] [track 1] [track 2] ...</synopsis>
   <description>
-    cd2track extracts audio files from a compact disc and
+    cdda2track extracts audio files from a compact disc and
     encodes them to tracks.
     If track numbers are given, extracts only those tracks.
     Otherwise, extracts the entire disc.
@@ -121,7 +121,7 @@ San Francisco, California, 94105, USA.
         at the default quality:
       </description>
       <command>
-        cd2track -t flac -c /dev/cdrom
+        cdda2track -t flac -c /dev/cdrom
       </command>
     </example>
   </examples>

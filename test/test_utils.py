@@ -151,8 +151,8 @@ class audiotools_config(UtilTest):
         self.assertEqual(self.__run_app__(["audiotools-config"]), 0)
 
 
-class cd2track(UtilTest):
-    @UTIL_CD2TRACK
+class cdda2track(UtilTest):
+    @UTIL_CDDA2TRACK
     def setUp(self):
         self.type = audiotools.FlacAudio
         self.quality = "1"
@@ -182,7 +182,7 @@ class cd2track(UtilTest):
         self.unwritable_dir = tempfile.mkdtemp()
         os.chmod(self.unwritable_dir, 0)
 
-    @UTIL_CD2TRACK
+    @UTIL_CDDA2TRACK
     def tearDown(self):
         from shutil import rmtree
 
@@ -194,9 +194,9 @@ class cd2track(UtilTest):
         os.chmod(self.unwritable_dir, 0o700)
         rmtree(self.unwritable_dir)
 
-    @UTIL_CD2TRACK
+    @UTIL_CDDA2TRACK
     def test_version(self):
-        self.assertEqual(self.__run_app__(["cd2track",
+        self.assertEqual(self.__run_app__(["cdda2track",
                                            "--version"]), 0)
         if PY3:
             self.__check_output__(
@@ -237,7 +237,7 @@ class cd2track(UtilTest):
         for f in os.listdir(self.cwd_dir):
             os.unlink(os.path.join(self.cwd_dir, f))
 
-    @UTIL_CD2TRACK
+    @UTIL_CDDA2TRACK
     def test_options(self):
         from audiotools.text import (ERR_UNSUPPORTED_COMPRESSION_MODE,
                                      LAB_CD2TRACK_PROGRESS)
@@ -257,7 +257,7 @@ class cd2track(UtilTest):
                 if (("-q" in options) and
                     ("1" not in output_type.COMPRESSION_MODES)):
                     self.assertEqual(
-                        self.__run_app__(["cd2track", "-V", "normal",
+                        self.__run_app__(["cdda2track", "-V", "normal",
                                           "-c", self.cue_file] +
                                          options), 1)
                     self.__check_error__(
@@ -267,7 +267,7 @@ class cd2track(UtilTest):
                     continue
 
                 self.assertEqual(
-                    self.__run_app__(["cd2track", "-V", "normal",
+                    self.__run_app__(["cdda2track", "-V", "normal",
                                       "-c", self.cue_file] +
                                      options), 0)
 
@@ -342,7 +342,7 @@ class cd2track(UtilTest):
                         else:
                             self.assertEqual(metadata.album_total, None)
 
-    @UTIL_CD2TRACK
+    @UTIL_CDDA2TRACK
     def test_unicode(self):
         from shutil import rmtree
 
@@ -360,7 +360,7 @@ class cd2track(UtilTest):
 
             self.assertEqual(
                 self.__run_app__(
-                    ["cd2track", "-c", self.cue_file,
+                    ["cdda2track", "-c", self.cue_file,
                      "--type", "flac",
                      "--format", format_string,
                      "--dir", output_directory]), 0)
@@ -404,7 +404,7 @@ class cd2track(UtilTest):
 
         return populated
 
-    @UTIL_CD2TRACK
+    @UTIL_CDDA2TRACK
     def test_errors(self):
         from audiotools.text import (ERR_DUPLICATE_OUTPUT_FILE,
                                      ERR_UNSUPPORTED_COMPRESSION_MODE,
@@ -414,7 +414,7 @@ class cd2track(UtilTest):
                                      )
 
         self.assertEqual(
-            self.__run_app__(["cd2track", "-c", self.cue_file,
+            self.__run_app__(["cdda2track", "-c", self.cue_file,
                               "--format=foo"]), 1)
         self.__check_error__(ERR_DUPLICATE_OUTPUT_FILE %
                              (audiotools.Filename("foo"),))
@@ -428,7 +428,7 @@ class cd2track(UtilTest):
 
                 if "-t" in options:
                     self.assertEqual(
-                        self.__run_app__(["cd2track", "-c", self.cue_file] +
+                        self.__run_app__(["cdda2track", "-c", self.cue_file] +
                                          options),
                         2)
                     continue
@@ -438,13 +438,13 @@ class cd2track(UtilTest):
                 if (("--album-number" in options) or
                     ("--album-total" in options)):
                     self.assertEqual(
-                        self.__run_app__(["cd2track", "-c", self.cue_file] +
+                        self.__run_app__(["cdda2track", "-c", self.cue_file] +
                                          options),
                         2)
                     continue
 
                 self.assertEqual(
-                    self.__run_app__(["cd2track", "-c", self.cue_file] +
+                    self.__run_app__(["cdda2track", "-c", self.cue_file] +
                                      options),
                     1)
 
@@ -481,7 +481,7 @@ class cd2track(UtilTest):
                     continue
 
 
-class cd2track_pregap(UtilTest):
+class cdda2track_pregap(UtilTest):
     def setUp(self):
         self.cuesheet = b'FILE "usandthem.wav" WAVE\r\n  TRACK 01 AUDIO\r\n    INDEX 00 00:00:00\r\n    INDEX 01 00:00:33\r\n  TRACK 02 AUDIO\r\n    INDEX 01 08:13:33\r\n  TRACK 03 AUDIO\r\n    INDEX 00 13:24:33\r\n    INDEX 01 13:27:33\r\n  TRACK 04 AUDIO\r\n    INDEX 00 21:53:34\r\n    INDEX 01 21:55:33\r\n  TRACK 05 AUDIO\r\n    INDEX 00 27:20:35\r\n    INDEX 01 27:22:33\r\n  TRACK 06 AUDIO\r\n    INDEX 00 31:24:34\r\n    INDEX 01 31:26:33\r\n  TRACK 07 AUDIO\r\n    INDEX 00 38:09:33\r\n    INDEX 01 38:12:33\r\n  TRACK 08 AUDIO\r\n    INDEX 00 43:21:33\r\n    INDEX 01 43:23:33\r\n  TRACK 09 AUDIO\r\n    INDEX 00 49:47:33\r\n    INDEX 01 49:49:33\r\n  TRACK 10 AUDIO\r\n    INDEX 00 61:23:33\r\n    INDEX 01 61:27:33\r\n'
         self.pre_gap_length = 19404
@@ -496,7 +496,7 @@ class cd2track_pregap(UtilTest):
                               30781800,
                               28312200]
 
-    @UTIL_CD2TRACK
+    @UTIL_CDDA2TRACK
     def test_empty_pre_gap(self):
         from shutil import rmtree
 
@@ -513,9 +513,9 @@ class cd2track_pregap(UtilTest):
                 for track_length in self.track_lengths:
                     f.write(os.urandom(track_length * 2 * 2))
 
-            # extract tracks with cd2track
+            # extract tracks with cdda2track
             self.assertEqual(
-                self.__run_app__(["cd2track", "-V", "quiet",
+                self.__run_app__(["cdda2track", "-V", "quiet",
                                   "--no-musicbrainz",
                                   "--no-freedb",
                                   "-d", output_dir,
@@ -548,7 +548,7 @@ class cd2track_pregap(UtilTest):
             rmtree(input_dir)
             rmtree(output_dir)
 
-    @UTIL_CD2TRACK
+    @UTIL_CDDA2TRACK
     def test_popualated_pre_gap(self):
         from shutil import rmtree
 
@@ -565,9 +565,9 @@ class cd2track_pregap(UtilTest):
                 for track_length in self.track_lengths:
                     f.write(os.urandom(track_length * 2 * 2))
 
-            # extract tracks with cd2track
+            # extract tracks with cdda2track
             self.assertEqual(
-                self.__run_app__(["cd2track", "-V", "quiet",
+                self.__run_app__(["cdda2track", "-V", "quiet",
                                   "--no-musicbrainz",
                                   "--no-freedb",
                                   "-d", output_dir,
@@ -606,10 +606,10 @@ class cd2track_pregap(UtilTest):
             rmtree(output_dir)
 
 
-class cdinfo(UtilTest):
-    @UTIL_CDINFO
+class cddainfo(UtilTest):
+    @UTIL_CDDAINFO
     def test_version(self):
-        self.assertEqual(self.__run_app__(["cdinfo",
+        self.assertEqual(self.__run_app__(["cddainfo",
                                            "--version"]), 0)
         if PY3:
             self.__check_output__(
@@ -619,10 +619,10 @@ class cdinfo(UtilTest):
                 u"Python Audio Tools %s" % (audiotools.VERSION))
 
 
-class cdplay(UtilTest):
-    @UTIL_CDPLAY
+class cddaplay(UtilTest):
+    @UTIL_CDDAPLAY
     def test_version(self):
-        self.assertEqual(self.__run_app__(["cdplay",
+        self.assertEqual(self.__run_app__(["cddaplay",
                                            "--version"]), 0)
         if PY3:
             self.__check_output__(

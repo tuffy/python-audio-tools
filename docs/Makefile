@@ -3,9 +3,9 @@ MAN_PATH = /usr/share/man
 MAN_PAGES = \
 audiotools-config.1 \
 audiotools.cfg.5 \
-cd2track.1 \
-cdinfo.1 \
-cdplay.1 \
+cdda2track.1 \
+cddainfo.1 \
+cddaplay.1 \
 coverdump.1 \
 covertag.1 \
 coverview.1 \
@@ -27,9 +27,9 @@ trackverify.1
 MAN_SOURCES = \
 audiotools-config.xml \
 audiotools.cfg.xml \
-cd2track.xml \
-cdinfo.xml \
-cdplay.xml \
+cdda2track.xml \
+cddainfo.xml \
+cddaplay.xml \
 coverdump.xml \
 covertag.xml \
 coverview.xml \

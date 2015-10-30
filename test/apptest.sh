@@ -19,7 +19,7 @@
 
 echo "Extracting CD"
 mkdir -v testdisc1
-cd2track -t flac -D -d testdisc1
+cdda2track -t flac -D -d testdisc1
 
 echo "Transcoding CD"
 mkdir -v testdisc2
