@@ -553,7 +553,7 @@ encode_mpc_file(char *filename,
     Init_Psychoakustiktabellen(&m);
     e.outputFile = f;
     e.MS_Channelmode = m.MS_Channelmode;
-    e.seek_ref = ftell(e.outputFile);
+    e.seek_ref = (mpc_uint32_t)ftell(e.outputFile);
 
     // Write stream header block
     writeMagic(&e);
@@ -598,7 +598,7 @@ encode_mpc_file(char *filename,
     }
 
     // Write seek table offset block
-    e.seek_ptr = ftell(e.outputFile);
+    e.seek_ptr = (mpc_uint32_t)ftell(e.outputFile);
     writeBits(&e, 0, 16);
     writeBits(&e, 0, 24);
     writeBlock(&e, "SO", MPC_FALSE, 0);
@@ -717,7 +717,7 @@ encode_mpc_file(char *filename,
     // Write the final audio block.
     if(e.framesInBlock != 0) {
         if((e.block_cnt & ((1 << e.seek_pwr) - 1)) == 0) {
-            e.seek_table[e.seek_pos] = ftell(e.outputFile);
+            e.seek_table[e.seek_pos] = (mpc_uint32_t)ftell(e.outputFile);
             e.seek_pos++;
         }
         e.block_cnt++;

@@ -217,7 +217,7 @@ mpc_uint32_t writeBlock ( mpc_encoder_t * e, const char * key, const mpc_bool_t 
 
 	// write datas
 	while ( e->pos != 0 ) {
-		written = fwrite ( datas, sizeof(*e->buffer), e->pos, fp );
+		written = (mpc_uint32_t)fwrite ( datas, sizeof(*e->buffer), e->pos, fp );
 		if ( written == 0 ) {
 			fprintf(stderr, "\b\n WARNING: Disk full?, retry after 10 sec ...\a");
             sleep (10);
@@ -239,7 +239,7 @@ void writeSeekTable (mpc_encoder_t * e)
 	mpc_uint8_t tmp[10];
 
 	// write the position to header
-	i = ftell(e->outputFile); // get the seek table position
+	i = (mpc_uint32_t)ftell(e->outputFile); // get the seek table position
 	len = encodeSize(i - e->seek_ptr, (char*)tmp, MPC_FALSE);
 	fseek(e->outputFile, e->seek_ptr + 3, SEEK_SET);
 	fwrite(tmp, sizeof(mpc_uint8_t), len, e->outputFile);

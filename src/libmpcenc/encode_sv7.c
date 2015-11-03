@@ -384,7 +384,7 @@ writeBitstream_SV8 ( mpc_encoder_t* e, int MaxBand)
 	e->framesInBlock++;
 	if (e->framesInBlock == (1 << e->frames_per_block_pwr)) {
 		if ((e->block_cnt & ((1 << e->seek_pwr) - 1)) == 0) {
-			e->seek_table[e->seek_pos] = ftell(e->outputFile);
+			e->seek_table[e->seek_pos] = (mpc_uint32_t)ftell(e->outputFile);
 			e->seek_pos++;
 		}
 		e->block_cnt++;
