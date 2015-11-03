@@ -1614,17 +1614,21 @@ class FlacAudio(WaveContainer, AiffContainer):
             from audiotools.text import ERR_FOREIGN_METADATA
             raise ValueError(ERR_FOREIGN_METADATA)
 
+        old_metadata = self.get_metadata()
         padding_blocks = metadata.get_blocks(Flac_PADDING.BLOCK_ID)
         has_padding = len(padding_blocks) > 0
+        padding_unchanged = (old_metadata.get_blocks(Flac_PADDING.BLOCK_ID) ==
+                             padding_blocks)
         total_padding_size = sum(b.size() for b in padding_blocks)
 
-        metadata_delta = metadata.size() - self.get_metadata().size()
+        metadata_delta = metadata.size() - old_metadata.size()
 
-        if has_padding and (metadata_delta <= total_padding_size):
+        if (has_padding and padding_unchanged and
+            (metadata_delta <= total_padding_size)):
             # if padding size is larger than change in metadata
             # shrink padding blocks so that new size matches old size
             # (if metadata_delta is negative,
-            # this will enlarge padding blocks as necessary)
+            #  this will enlarge padding blocks as necessary)
 
             for padding in padding_blocks:
                 if metadata_delta > 0:
