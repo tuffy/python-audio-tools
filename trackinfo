@@ -115,19 +115,23 @@ if (__name__ == '__main__'):
                     row = table.row()
                     row.add_column(_.LAB_TRACKINFO_TRACK_GAIN, "right")
                     row.add_column(u" : ")
-                    row.add_column(u"%s dB" % (replay_gain.track_gain,))
+                    row.add_column(
+                        u"{0:.2f} dB".format(replay_gain.track_gain))
                     row = table.row()
                     row.add_column(_.LAB_TRACKINFO_TRACK_PEAK, "right")
                     row.add_column(u" : ")
-                    row.add_column(u"%f" % (replay_gain.track_peak))
+                    row.add_column(
+                        u"{0:.6f}".format(replay_gain.track_peak))
                     row = table.row()
                     row.add_column(_.LAB_TRACKINFO_ALBUM_GAIN, "right")
                     row.add_column(u" : ")
-                    row.add_column(u"%s dB" % (replay_gain.album_gain,))
+                    row.add_column(
+                        u"{0:.2f} dB".format(replay_gain.album_gain))
                     row = table.row()
                     row.add_column(_.LAB_TRACKINFO_ALBUM_PEAK, "right")
                     row.add_column(u" : ")
-                    row.add_column(u"%f" % (replay_gain.album_peak))
+                    row.add_column(
+                        u"{0:.6f}".format(replay_gain.album_peak))
 
                     for row in table.format(msg.output_isatty()):
                         msg.output(row)
