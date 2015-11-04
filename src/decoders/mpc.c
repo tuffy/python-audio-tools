@@ -27,6 +27,7 @@ MPCDecoder_init(decoders_MPCDecoder *self,
     self->channels = 0;
     self->sample_rate = 0;
     self->closed = 0;
+    self->stream_finished = 0;
 
     self->audiotools_pcm = NULL;
 
@@ -109,12 +110,19 @@ MPCDecoder_read(decoders_MPCDecoder* self, PyObject *args)
         return NULL;
     }
 
+    if (self->stream_finished) {
+        return empty_FrameList(self->audiotools_pcm,
+                               self->channels,
+                               BITS_PER_SAMPLE);
+    }
+
     if (mpc_demux_decode(self->demux, &fi) == MPC_STATUS_FAIL) {
         PyErr_SetString(PyExc_ValueError, "error decoding MPC frame");
         return NULL;
     }
 
     if (fi.bits == -1) {
+        self->stream_finished = 1;
         return empty_FrameList(self->audiotools_pcm,
                                self->channels,
                                BITS_PER_SAMPLE);

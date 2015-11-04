@@ -51,7 +51,7 @@ class MPCAudio(ApeTaggedAudio, AudioFile):
 
     # Ranges from 0 to 10. Lower levels mean lower kbps, and therefore
     # lower quality.
-    COMPRESSION_MODE = tuple(map(str, range(0, 11)))
+    COMPRESSION_MODES = tuple(map(str, range(0, 11)))
     COMPRESSION_DESCRIPTIONS = {"0": u"poor quality (~20 kbps)",
                                 "1": u"poor quality (~30 kbps)",
                                 "2": u"low quality (~60 kbps)",
@@ -68,32 +68,36 @@ class MPCAudio(ApeTaggedAudio, AudioFile):
         """filename is a plain string"""
 
         AudioFile.__init__(self, filename)
-        block = BitstreamReader(self.get_block(b"SH"), False)
-        crc = block.read(32)
-        if block.read(8) != 8:
-            from audiotools.text import ERR_MPC_INVALID_VERSION
-            raise InvalidMPC(ERR_MPC_INVALID_VERSION)
-        self.__samples__ = int(MPC_Size.parse(block))
-        beg_silence = int(MPC_Size.parse(block))
-        self.__sample_rate__ = \
-            [44100, 48000, 37800, 32000][block.read(3)]
-        max_band = block.read(5) + 1
-        self.__channels__ = block.read(4) + 1
-        ms = block.read(1)
-        block_pwr = block.read(3) * 2
+        try:
+            block = BitstreamReader(self.get_block(b"SH"), False)
+            crc = block.read(32)
+            if block.read(8) != 8:
+                from audiotools.text import ERR_MPC_INVALID_VERSION
+                raise InvalidMPC(ERR_MPC_INVALID_VERSION)
+            self.__samples__ = int(MPC_Size.parse(block))
+            beg_silence = int(MPC_Size.parse(block))
+            self.__sample_rate__ = \
+                [44100, 48000, 37800, 32000][block.read(3)]
+            max_band = block.read(5) + 1
+            self.__channels__ = block.read(4) + 1
+            ms = block.read(1)
+            block_pwr = block.read(3) * 2
+        except IOError as err:
+            raise InvalidMPC(str(err))
 
     def blocks(self):
         with BitstreamReader(open(self.filename, "rb"), False) as r:
             if r.read_bytes(4) != b"MPCK":
+                from audiotools.text import ERR_MPC_INVALID_ID
                 raise InvalidMPC(ERR_MPC_INVALID_ID)
 
-            try:
-                while True:
-                    key = r.read_bytes(2)
-                    size = MPC_Size.parse(r)
-                    yield key, size, r.read_bytes(int(size) - len(size) - 2)
-            except IOError:
-                return
+            key = r.read_bytes(2)
+            size = MPC_Size.parse(r)
+            while key != b"SE":
+                yield key, size, r.read_bytes(int(size) - len(size) - 2)
+                key = r.read_bytes(2)
+                size = MPC_Size.parse(r)
+            yield key, size, r.read_bytes(int(size) - len(size) - 2)
 
     def get_block(self, block_id):
         for key, size, block in self.blocks():
@@ -161,8 +165,57 @@ class MPCAudio(ApeTaggedAudio, AudioFile):
         """returns True if all necessary components are available
         to support the .from_pcm() classmethod"""
 
-        # FIXME - update this once encoder is implemented
-        return False
+        try:
+            from audiotools.encoders import encode_mpc
+            return True
+        except ImportError:
+            return False
+
+    @classmethod
+    def from_pcm(cls, filename, pcmreader,
+                 compression=None,
+                 total_pcm_frames=None):
+        from audiotools import __default_quality__
+        from audiotools import PCMConverter
+        from audiotools import ChannelMask
+        from audiotools.encoders import encode_mpc
+
+        if (compression is None) or (compression not in cls.COMPRESSION_MODES):
+            compression = __default_quality__(cls.NAME)
+
+        if total_pcm_frames is not None:
+            from audiotools import CounterPCMReader
+            pcmreader = CounterPCMReader(pcmreader)
+
+        try:
+            encode_mpc(
+                filename,
+                PCMConverter(pcmreader,
+                             sample_rate=pcmreader.sample_rate,
+                             channels=min(pcmreader.channels, 2),
+                             channel_mask=int(ChannelMask.from_channels(
+                                min(pcmreader.channels, 2))),
+                             bits_per_sample=16),
+                float(compression),
+                total_pcm_frames if (total_pcm_frames is not None) else 0)
+
+            # ensure PCM frames match, if indicated
+            if ((total_pcm_frames is not None) and
+                (total_pcm_frames != pcmreader.frames_written)):
+                from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
+                from audiotools import EncodingError
+                raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
+
+            return MPCAudio(filename)
+        except (IOError, ValueError) as err:
+            from audiotools import EncodingError
+            cls.__unlink__(filename)
+            raise EncodingError(str(err))
+        except Exception:
+            cls.__unlink__(filename)
+            raise
+        finally:
+            pcmreader.close()
 
     @classmethod
     def supports_replay_gain(cls):
@@ -212,11 +265,19 @@ class MPCAudio(ApeTaggedAudio, AudioFile):
         from audiotools import TemporaryFile
 
         gain_title = int(round((64.82 - replaygain.track_gain) * 256))
-        peak_title = int(log10(replaygain.track_peak * 2 ** 15) * 20 * 256)
+        if replaygain.track_peak > 0.0:
+            peak_title = int(log10(replaygain.track_peak * 2 ** 15) * 20 * 256)
+        else:
+            peak_title = 0
         gain_album = int(round((64.82 - replaygain.album_gain) * 256))
-        peak_album = int(log10(replaygain.album_peak * 2 ** 15) * 20 * 256)
+        if replaygain.album_peak > 0.0:
+            peak_album = int(log10(replaygain.album_peak * 2 ** 15) * 20 * 256)
+        else:
+            peak_album = 0
 
         #FIXME - check for missing "RG" block and add one if not present
+
+        metadata = self.get_metadata()
 
         writer = BitstreamWriter(TemporaryFile(self.filename), False)
         writer.write_bytes(b"MPCK")
@@ -233,6 +294,11 @@ class MPCAudio(ApeTaggedAudio, AudioFile):
                 writer.write(16, peak_title)
                 writer.write(16, gain_album)
                 writer.write(16, peak_album)
+
+        if metadata is not None:
+            writer.set_endianness(True)
+            metadata.build(writer)
+
         writer.close()
 
     def delete_replay_gain(self):

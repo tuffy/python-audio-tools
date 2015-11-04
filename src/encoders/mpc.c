@@ -701,6 +701,12 @@ encode_mpc_file(char *filename,
                                         BLOCK,
                                         &silence);
 
+        if ((read_samples == 0) && (pcmreader->status != PCM_OK)) {
+            mpc_encoder_exit(&e);
+            fclose(f);
+            return ERR_FILE_WRITE;
+        }
+
         total_read_samples += read_samples;
 
         if(read_samples < BLOCK) {

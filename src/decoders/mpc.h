@@ -10,6 +10,7 @@ typedef struct {
     int channels;
     int sample_rate;
     int closed;
+    int stream_finished;
 
     PyObject *audiotools_pcm;
 } decoders_MPCDecoder;
