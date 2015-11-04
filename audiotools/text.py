@@ -641,6 +641,8 @@ ERR_WAVPACK_INVALID_HEADER = u"WavPack header ID invalid"
 ERR_WAVPACK_UNSUPPORTED_FMT = u"unsupported FMT compression"
 ERR_WAVPACK_INVALID_FMT = u"invalid FMT chunk"
 ERR_WAVPACK_NO_FMT = u"FMT chunk not found in WavPack"
+ERR_MPC_INVALID_ID = u"invalid Musepack stream ID"
+ERR_MPC_INVALID_VERSION = u"invalid Musepack version"
 ERR_NO_COMPRESSION_MODES = u"Audio type \"%s\" has no quality modes"
 ERR_UNSUPPORTED_COMPRESSION_MODE = \
     u"\"%(quality)s\" is not a supported compression mode " + \

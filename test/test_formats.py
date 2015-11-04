@@ -4838,6 +4838,69 @@ class MP2FileTest(MP3FileTest):
         self.suffix = "." + self.audio_class.SUFFIX
 
 
+class MPCFileTest(LossyFileTest):
+    def setUp(self):
+        self.audio_class = audiotools.MPCAudio
+        self.suffix = "." + self.audio_class.SUFFIX
+
+    @FORMAT_MPC
+    def test_replay_gain(self):
+        # make test file
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        track = self.audio_class.from_pcm(
+            temp_file.name,
+            test_streams.Sine16_Stereo(44100, 44100,
+                                       441.0, 0.50,
+                                       4410.0, 0.49, 1.0))
+
+        # ensure get_replay_gain() returns None
+        self.assertEqual(track.get_replay_gain(), None)
+
+        # set dummy gain with set_replay_gain()
+        dummy_gain = audiotools.ReplayGain(
+            track_gain=0.25,
+            track_peak=0.125,
+            album_gain=0.50,
+            album_peak=1.0)
+        track.set_replay_gain(dummy_gain)
+
+        # ensure get_replay_gain() returns dummy gain
+        track_replay_gain = track.get_replay_gain()
+        self.assertAlmostEqual(track_replay_gain.track_gain,
+                               dummy_gain.track_gain,
+                               places=3)
+        self.assertAlmostEqual(track_replay_gain.track_peak,
+                               dummy_gain.track_peak,
+                               places=3)
+        self.assertAlmostEqual(track_replay_gain.album_gain,
+                               dummy_gain.album_gain,
+                               places=3)
+        self.assertAlmostEqual(track_replay_gain.album_peak,
+                               dummy_gain.album_peak,
+                               places=3)
+
+        # delete gain with delete_replay_gain()
+        track.delete_replay_gain()
+
+        # ensure get_replay_gain() returns None again
+        self.assertEqual(track.get_replay_gain(), None)
+
+        # calling delete_replay_gain() again is okay
+        track.delete_replay_gain()
+        self.assertEqual(track.get_replay_gain(), None)
+
+        # ensure setting replay_gain on unwritable file
+        # raises IOError
+        # FIXME
+
+        # ensure getting replay_gain on unreadable file
+        # raises IOError
+        # FIXME
+
+        temp_file.close()
+
+
 class OggVerify:
     @FORMAT_VORBIS
     @FORMAT_OPUS

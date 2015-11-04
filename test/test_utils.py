@@ -5304,27 +5304,38 @@ class tracktag(UtilTest):
                                      RG_REPLAYGAIN_APPLIED_TO_ALBUM)
 
         for audio_class in audiotools.AVAILABLE_TYPES:
-            if audio_class.supports_replay_gain():
-                track_file = tempfile.NamedTemporaryFile(
+            def temp_file():
+                return tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX)
 
-                # try a track with no metadata
+            if not audio_class.supports_replay_gain():
+                continue
+
+            # try a track with no metadata
+            with temp_file() as f:
                 track = audio_class.from_pcm(
-                    track_file.name,
-                    BLANK_PCM_Reader(5))
+                    f.name,
+                    test_streams.Sine16_Stereo(44100 * 5,
+                                               44100,
+                                               8820.0, 0.70,
+                                               4410.0, 0.29, 1.0))
 
                 self.assertEqual(
                     self.__run_app__(["tracktag",
                                       "-V", "normal",
                                       "--replay-gain", track.filename]), 0)
                 self.__check_output__(RG_REPLAYGAIN_ADDED)
-                track2 = audiotools.open(track_file.name)
+                track2 = audiotools.open(f.name)
                 self.assertIsNotNone(track2.get_replay_gain())
 
-                # try a track with track number metadata
+            # try a track with track number metadata
+            with temp_file() as f:
                 track = audio_class.from_pcm(
-                    track_file.name,
-                    BLANK_PCM_Reader(5))
+                    f.name,
+                    test_streams.Sine16_Stereo(44100 * 5,
+                                               44100,
+                                               8820.0, 0.70,
+                                               4410.0, 0.29, 1.0))
                 metadata = audiotools.MetaData(track_name=u"Track Name",
                                                track_number=1,
                                                track_total=2)
@@ -5337,13 +5348,17 @@ class tracktag(UtilTest):
                                       "-V", "normal",
                                       "--replay-gain", track.filename]), 0)
                 self.__check_output__(RG_REPLAYGAIN_ADDED)
-                track2 = audiotools.open(track_file.name)
+                track2 = audiotools.open(f.name)
                 self.assertIsNotNone(track2.get_replay_gain())
 
-                # try a track with album number metadata
+            # try a track with album number metadata
+            with temp_file() as f:
                 track = audio_class.from_pcm(
-                    track_file.name,
-                    BLANK_PCM_Reader(5))
+                    f.name,
+                    test_streams.Sine16_Stereo(44100 * 5,
+                                               44100,
+                                               8820.0, 0.70,
+                                               4410.0, 0.29, 1.0))
                 metadata = audiotools.MetaData(track_name=u"Track Name",
                                                track_number=1,
                                                track_total=2,
@@ -5356,10 +5371,8 @@ class tracktag(UtilTest):
                                       "-V", "normal",
                                       "--replay-gain", track.filename]), 0)
                 self.__check_output__(RG_REPLAYGAIN_ADDED_TO_ALBUM % (3))
-                track2 = audiotools.open(track_file.name)
+                track2 = audiotools.open(f.name)
                 self.assertIsNotNone(track2.get_replay_gain())
-
-                track_file.close()
 
     @UTIL_TRACKTAG
     def test_unicode(self):
