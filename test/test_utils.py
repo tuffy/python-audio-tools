@@ -2676,6 +2676,8 @@ class trackcat(UtilTest):
 class trackcat_pre_gap(UtilTest):
     @UTIL_TRACKCAT
     def test_pre_gap(self):
+        from fractions import Fraction
+
         pre_gap_size = 19404
         track_lengths = [21741300, 13847400, 22402800, 14420700,
                          10760400, 17904600, 13715100, 17022600,
@@ -2701,30 +2703,81 @@ class trackcat_pre_gap(UtilTest):
         temp_cue_f.write(cuesheet_data)
         temp_cue_f.flush()
 
-        temp_output_f = tempfile.NamedTemporaryFile(suffix=".wav")
+        with tempfile.NamedTemporaryFile(suffix=".flac") as temp_output_f:
+            # concatenate files to image using cuesheet
+            self.assertEqual(
+                self.__run_app__(["trackcat",
+                                  "--cue", temp_cue_f.name,
+                                  "-q", "0",
+                                  "-o", temp_output_f.name] +
+                                 [temp_track_f.name for temp_track_f in
+                                  temp_tracks_f] +
+                                 ["--no-musicbrainz", "--no-freedb"]), 0)
 
-        # concatenate files to image using cuesheet
-        self.assertEqual(
-            self.__run_app__(["trackcat",
-                              "--cue", temp_cue_f.name,
-                              "-o", temp_output_f.name] +
-                             [temp_track_f.name for temp_track_f in
-                              temp_tracks_f] +
-                             ["--no-musicbrainz", "--no-freedb"]), 0)
+            output_track = audiotools.open(temp_output_f.name)
 
-        output_track = audiotools.open(temp_output_f.name)
+            # ensure embedded cuesheet matches file lengths
+            track_sheet = audiotools.open(temp_output_f.name).get_cuesheet()
+            self.assertIsNotNone(track_sheet)
+            self.assertEqual(track_sheet.pre_gap(),
+                             Fraction(pre_gap_size, 44100))
+            for (i, length) in enumerate(track_lengths, 1):
+                self.assertEqual(track_sheet.track_length(i),
+                                 Fraction(length, 44100))
 
-        # ensure tracks in image match expected offset and data
-        for (i, track, expected_length) in zip(range(len(track_lengths)),
-                                               temp_tracks,
-                                               track_lengths):
-            offset = pre_gap_size + sum(track_lengths[0:i])
-            pcmreader = output_track.to_pcm()
-            self.assertEqual(pcmreader.seek(offset), offset)
-            self.assertTrue(
-                audiotools.pcm_cmp(
-                    track.to_pcm(),
-                    audiotools.PCMReaderHead(pcmreader, expected_length)))
+            # ensure tracks in image match expected offset and data
+            for (i, track, expected_length) in zip(range(len(track_lengths)),
+                                                   temp_tracks,
+                                                   track_lengths):
+                offset = pre_gap_size + sum(track_lengths[0:i])
+                pcmreader = output_track.to_pcm()
+                seeked_offset = pcmreader.seek(offset)
+                offset -= seeked_offset
+                self.assertTrue(
+                    audiotools.pcm_cmp(
+                        track.to_pcm(),
+                        audiotools.PCMReaderWindow(pcmreader,
+                                                   offset,
+                                                   expected_length)))
+
+        temp_cue_f.close()
+
+        # concatenate files to image without using cuesheet
+        with tempfile.NamedTemporaryFile(suffix=".flac") as temp_output_f:
+            # concatenate files to image using cuesheet
+            self.assertEqual(
+                self.__run_app__(["trackcat",
+                                  "-q", "0",
+                                  "-o", temp_output_f.name] +
+                                 [temp_track_f.name for temp_track_f in
+                                  temp_tracks_f] +
+                                 ["--no-musicbrainz", "--no-freedb"]), 0)
+
+            output_track = audiotools.open(temp_output_f.name)
+
+            # ensure embedded cuesheet matches file lengths
+            track_sheet = audiotools.open(temp_output_f.name).get_cuesheet()
+            self.assertIsNotNone(track_sheet)
+            self.assertEqual(track_sheet.pre_gap(),
+                             Fraction(0, 44100))
+            for (i, length) in enumerate(track_lengths, 1):
+                self.assertEqual(track_sheet.track_length(i),
+                                 Fraction(length, 44100))
+
+            # ensure tracks in image match expected offset and data
+            for (i, track, expected_length) in zip(range(len(track_lengths)),
+                                                   temp_tracks,
+                                                   track_lengths):
+                offset = sum(track_lengths[0:i])
+                pcmreader = output_track.to_pcm()
+                seeked_offset = pcmreader.seek(offset)
+                offset -= seeked_offset
+                self.assertTrue(
+                    audiotools.pcm_cmp(
+                        track.to_pcm(),
+                        audiotools.PCMReaderWindow(pcmreader,
+                                                   offset,
+                                                   expected_length)))
 
         # cleanup temporary files
         for temp_track_f in temp_tracks_f:
@@ -2733,6 +2786,8 @@ class trackcat_pre_gap(UtilTest):
 
     @UTIL_TRACKCAT
     def test_populated_pre_gap(self):
+        from fractions import Fraction
+
         track_lengths = [19404,
                          21741300, 13847400, 22402800, 14420700,
                          10760400, 17904600, 13715100, 17022600,
@@ -2759,35 +2814,84 @@ class trackcat_pre_gap(UtilTest):
         temp_cue_f.write(cuesheet_data)
         temp_cue_f.flush()
 
-        temp_output_f = tempfile.NamedTemporaryFile(suffix=".wav")
+        with tempfile.NamedTemporaryFile(suffix=".flac") as temp_output_f:
+            # concatenate files to image using cuesheet
+            self.assertEqual(
+                self.__run_app__(["trackcat",
+                                  "--cue", temp_cue_f.name,
+                                  "-q", "0",
+                                  "-o", temp_output_f.name] +
+                                 [temp_track_f.name for temp_track_f in
+                                  temp_tracks_f] +
+                                 ["--no-musicbrainz", "--no-freedb"]), 0)
 
-        # concatenate files to image using cuesheet
-        self.assertEqual(
-            self.__run_app__(["trackcat",
-                              "--cue", temp_cue_f.name,
-                              "-o", temp_output_f.name] +
-                             [temp_track_f.name for temp_track_f in
-                              temp_tracks_f] +
-                             ["--no-musicbrainz", "--no-freedb"]), 0)
+            output_track = audiotools.open(temp_output_f.name)
 
-        output_track = audiotools.open(temp_output_f.name)
+            # ensure embedded cuesheet matches file lengths
+            track_sheet = audiotools.open(temp_output_f.name).get_cuesheet()
+            self.assertIsNotNone(track_sheet)
+            self.assertEqual(track_sheet.pre_gap(),
+                             Fraction(track_lengths[0], 44100))
+            for (i, length) in enumerate(track_lengths[1:], 1):
+                self.assertEqual(track_sheet.track_length(i),
+                                 Fraction(length, 44100))
 
-        # ensure tracks in image match expected offset and data
-        for (i, track, expected_length) in zip(range(len(track_lengths)),
-                                               temp_tracks,
-                                               track_lengths):
-            offset = sum(track_lengths[0:i])
-            pcmreader = output_track.to_pcm()
-            self.assertEqual(pcmreader.seek(offset), offset)
-            self.assertTrue(
-                audiotools.pcm_cmp(
-                    track.to_pcm(),
-                    audiotools.PCMReaderHead(pcmreader, expected_length)))
+            # ensure tracks in image match expected offset and data
+            for (i, track, expected_length) in zip(range(len(track_lengths)),
+                                                   temp_tracks,
+                                                   track_lengths):
+                offset = sum(track_lengths[0:i])
+                pcmreader = output_track.to_pcm()
+                seeked_offset = pcmreader.seek(offset)
+                offset -= seeked_offset
+                self.assertTrue(
+                    audiotools.pcm_cmp(
+                        track.to_pcm(),
+                        audiotools.PCMReaderWindow(pcmreader,
+                                                   offset,
+                                                   expected_length)))
+
+        temp_cue_f.close()
+
+        with tempfile.NamedTemporaryFile(suffix=".flac") as temp_output_f:
+            # concatenate files to image without using cuesheet
+            self.assertEqual(
+                self.__run_app__(["trackcat",
+                                  "-q", "0",
+                                  "-o", temp_output_f.name] +
+                                 [temp_track_f.name for temp_track_f in
+                                  temp_tracks_f] +
+                                 ["--no-musicbrainz", "--no-freedb"]), 0)
+
+            output_track = audiotools.open(temp_output_f.name)
+
+            # ensure embedded cuesheet matches file lengths
+            track_sheet = audiotools.open(temp_output_f.name).get_cuesheet()
+            self.assertIsNotNone(track_sheet)
+            self.assertEqual(track_sheet.pre_gap(),
+                             Fraction(track_lengths[0], 44100))
+            for (i, length) in enumerate(track_lengths[1:], 1):
+                self.assertEqual(track_sheet.track_length(i),
+                                 Fraction(length, 44100))
+
+            # ensure tracks in image match expected offset and data
+            for (i, track, expected_length) in zip(range(len(track_lengths)),
+                                                   temp_tracks,
+                                                   track_lengths):
+                offset = sum(track_lengths[0:i])
+                pcmreader = output_track.to_pcm()
+                seeked_offset = pcmreader.seek(offset)
+                offset -= seeked_offset
+                self.assertTrue(
+                    audiotools.pcm_cmp(
+                        track.to_pcm(),
+                        audiotools.PCMReaderWindow(pcmreader,
+                                                   offset,
+                                                   expected_length)))
 
         # cleanup temporary files
         for temp_track_f in temp_tracks_f:
             temp_track_f.close()
-        temp_cue_f.close()
 
 
 class trackcmp(UtilTest):

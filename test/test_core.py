@@ -4543,6 +4543,172 @@ class TestReplayGain(unittest.TestCase):
             dummy2.close()
 
 
+class testsheet(unittest.TestCase):
+    @LIB_CORE
+    def test_from_tracks_no_pre_gap(self):
+        from audiotools import Sheet
+        from audiotools import SheetTrack
+        from audiotools import SheetIndex
+        from fractions import Fraction
+
+        test_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
+                       for i in range(7)]
+        try:
+            # build a lot of blank test tracks
+            tracks = [audiotools.FlacAudio.from_pcm(
+                          file.name,
+                          EXACT_BLANK_PCM_Reader(pcm_frames),
+                          total_pcm_frames=pcm_frames)
+                      for (file, pcm_frames) in
+                      zip(test_tracks,
+                          [15945972, 8390172, 5201448, 3831408,
+                           18602556, 4631088, 6714372])]
+
+            for track_number, track in enumerate(tracks, 1):
+                track.set_metadata(
+                    audiotools.MetaData(track_number=track_number))
+
+            # build Sheet object from tracks
+            track_sheet = Sheet.from_tracks(tracks)
+
+            # ensure Sheet object matches reference
+            reference_sheet = Sheet(
+                [SheetTrack(
+                    number=1,
+                    track_indexes=[SheetIndex(number=1,
+                                              offset=Fraction(0, 1))]),
+                SheetTrack(
+                    number=2,
+                    track_indexes=[SheetIndex(number=1,
+                                              offset=Fraction(27119, 75))]),
+                SheetTrack(
+                    number=3,
+                    track_indexes=[SheetIndex(number=1,
+                                              offset=Fraction(13796, 25))]),
+                SheetTrack(
+                    number=4,
+                    track_indexes=[SheetIndex(number=1,
+                                              offset=Fraction(50234, 75))]),
+                SheetTrack(
+                    number=5,
+                    track_indexes=[SheetIndex(number=1,
+                                              offset=Fraction(2270, 3))]),
+                SheetTrack(
+                    number=6,
+                    track_indexes=[SheetIndex(number=1,
+                                              offset=Fraction(88387, 75))]),
+                SheetTrack(
+                    number=7,
+                    track_indexes=[SheetIndex(number=1,
+                                              offset=Fraction(96263, 75))])])
+
+            for track1, track2 in zip(track_sheet, reference_sheet):
+                for index1, index2 in zip(track1, track2):
+                    self.assertEqual(index1, index2)
+        finally:
+            for t in test_tracks:
+                t.close()
+
+    @LIB_CORE
+    def test_from_tracks_pre_gap(self):
+        from audiotools import Sheet
+        from audiotools import SheetTrack
+        from audiotools import SheetIndex
+        from fractions import Fraction
+
+        test_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
+                       for i in range(11)]
+
+        try:
+            # build a lot of blank test tracks
+            tracks = [audiotools.FlacAudio.from_pcm(
+                          file.name,
+                          EXACT_BLANK_PCM_Reader(pcm_frames),
+                          total_pcm_frames=pcm_frames)
+                      for (file, pcm_frames) in
+                      zip(test_tracks,
+                          [19404,
+                           21741300, 13847400, 22402800, 14420700,
+                           10760400, 17904600, 13715100, 17022600,
+                           30781800, 28312200])]
+
+            for track_number, track in enumerate(tracks, 0):
+                track.set_metadata(
+                    audiotools.MetaData(track_number=track_number))
+
+            # build Sheet object with populated track 0 pre-gap
+            track_sheet = Sheet.from_tracks(tracks)
+
+            # ensure Sheet object matches reference
+            reference_sheet = Sheet(
+                [SheetTrack(
+                    number=1,
+                    track_indexes=[SheetIndex(number=0,
+                                              offset=Fraction(0, 1)),
+                                   SheetIndex(number=1,
+                                              offset=Fraction(11, 25))]),
+                 SheetTrack(
+                    number=2,
+                    track_indexes=[SheetIndex(number=1,
+                                              offset=Fraction(12336, 25))]),
+                 SheetTrack(
+                    number=3,
+                    track_indexes=[#SheetIndex(number=0,
+                                   #           offset=Fraction(20111, 25)),
+                                   SheetIndex(number=1,
+                                              offset=Fraction(20186, 25))]),
+                 SheetTrack(
+                    number=4,
+                    track_indexes=[#SheetIndex(number=0,
+                                   #           offset=Fraction(98509, 75)),
+                                   SheetIndex(number=1,
+                                              offset=Fraction(32886, 25))]),
+                 SheetTrack(
+                    number=5,
+                    track_indexes=[#SheetIndex(number=0,
+                                   #           offset=Fraction(24607, 15)),
+                                   SheetIndex(number=1,
+                                              offset=Fraction(41061, 25))]),
+                 SheetTrack(
+                    number=6,
+                    track_indexes=[#SheetIndex(number=0,
+                                   #           offset=Fraction(141334, 75)),
+                                   SheetIndex(number=1,
+                                              offset=Fraction(47161, 25))]),
+                 SheetTrack(
+                    number=7,
+                    track_indexes=[#SheetIndex(number=0,
+                                   #           offset=Fraction(57236, 25)),
+                                   SheetIndex(number=1,
+                                              offset=Fraction(57311, 25))]),
+                 SheetTrack(
+                    number=8,
+                    track_indexes=[#SheetIndex(number=0,
+                                   #           offset=Fraction(65036, 25)),
+                                   SheetIndex(number=1,
+                                              offset=Fraction(65086, 25))]),
+                 SheetTrack(
+                    number=9,
+                    track_indexes=[#SheetIndex(number=0,
+                                   #           offset=Fraction(74686, 25)),
+                                   SheetIndex(number=1,
+                                              offset=Fraction(74736, 25))]),
+                 SheetTrack(
+                    number=10,
+                    track_indexes=[#SheetIndex(number=0,
+                                   #           offset=Fraction(92086, 25)),
+                                   SheetIndex(number=1,
+                                              offset=Fraction(92186, 25))])])
+
+            for track1, track2 in zip(track_sheet, reference_sheet):
+                for index1, index2 in zip(track1, track2):
+                    self.assertEqual(index1, index2)
+        finally:
+            for t in test_tracks:
+                t.close()
+
+
+
 class testcuesheet(unittest.TestCase):
     def setUp(self):
         from audiotools.cue import Cuesheet, read_cuesheet, write_cuesheet

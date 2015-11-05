@@ -1900,15 +1900,23 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         try:
             flac = open(self.filename, "rb")
+        except (IOError, ValueError) as err:
+            return PCMReaderError(error_message=str(err),
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
+
+        try:
             if self.__stream_offset__ > 0:
                 flac.seek(self.__stream_offset__)
             return FlacDecoder(flac)
-        except (IOError, ValueError) as msg:
+        except (IOError, ValueError) as err:
             # The only time this is likely to occur is
             # if the FLAC is modified between when FlacAudio
             # is initialized and when to_pcm() is called.
             flac.close()
-            return PCMReaderError(error_message=str(msg),
+            return PCMReaderError(error_message=str(err),
                                   sample_rate=self.sample_rate(),
                                   channels=self.channels(),
                                   channel_mask=int(self.channel_mask()),

@@ -4553,19 +4553,54 @@ class Sheet(object):
 
         from fractions import Fraction
 
-        sheet_tracks = []
-        offset = Fraction(0, 1)
+        if len(audiofiles) == 0:
+            # no tracks, so sheet is empty
+            return cls(sheet_tracks=[], metadata=None)
+        elif ((audiofiles[0].get_metadata() is not None) and
+              (audiofiles[0].get_metadata().track_number == 0)):
+            # prepend track 0 to start of cuesheet
 
-        for (number, audiofile) in enumerate(audiofiles, 1):
-            sheet_tracks.append(
-                SheetTrack(number=number,
-                           track_indexes=[SheetIndex(number=1,
-                                                     offset=offset)],
-                           metadata=audiofile.get_metadata(),
-                           filename=filename))
-            offset += audiofile.seconds_length()
+            if len(audiofiles) == 1:
+                # nothing but pre-gap track, so nothing to do
+                return cls(sheet_tracks=[], metadata=None)
 
-        return cls(sheet_tracks=sheet_tracks, metadata=None)
+            pre_gap_length = audiofiles[0].seconds_length()
+
+            sheet_tracks = [
+                SheetTrack(number=1,
+                           track_indexes=[SheetIndex(number=0,
+                                                     offset=Fraction(0, 1)),
+                                          SheetIndex(number=1,
+                                                     offset=pre_gap_length)],
+                           metadata=audiofiles[1].get_metadata(),
+                           filename=filename)]
+            offset = pre_gap_length + audiofiles[1].seconds_length()
+
+            for (number, audiofile) in enumerate(audiofiles[2:], 2):
+                sheet_tracks.append(
+                    SheetTrack(number=number,
+                               track_indexes=[SheetIndex(number=1,
+                                                         offset=offset)],
+                               metadata=audiofile.get_metadata(),
+                               filename=filename))
+                offset += audiofile.seconds_length()
+
+            return cls(sheet_tracks=sheet_tracks, metadata=None)
+        else:
+            # treat first track as track 1
+            sheet_tracks = []
+            offset = Fraction(0, 1)
+
+            for (number, audiofile) in enumerate(audiofiles, 1):
+                sheet_tracks.append(
+                    SheetTrack(number=number,
+                               track_indexes=[SheetIndex(number=1,
+                                                         offset=offset)],
+                               metadata=audiofile.get_metadata(),
+                               filename=filename))
+                offset += audiofile.seconds_length()
+
+            return cls(sheet_tracks=sheet_tracks, metadata=None)
 
     def __repr__(self):
         return "Sheet(sheet_tracks=%s, metadata=%s)" % \

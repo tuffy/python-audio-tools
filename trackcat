@@ -295,11 +295,17 @@ if (__name__ == '__main__'):
             cuesheet = audiotools.Sheet.from_tracks(
                 audiofiles,
                 filename=output_filename.__unicode__())
+
+            preserving_pre_gap = \
+               ((len(audiofiles) > 1) and
+                (audiofiles[0].get_metadata() is not None) and
+                (audiofiles[0].get_metadata().track_number == 0))
         else:
             msg.error(_.ERR_TOO_MANY_CUESHEET_FILES)
             sys.exit(1)
     else:
         cuesheet = None
+        preserving_pre_gap = False
 
     # constuct a MetaData object from our audiofiles
     # which may be None if there is no metadata
