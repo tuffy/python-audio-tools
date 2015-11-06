@@ -185,16 +185,27 @@ class DiscID(object):
         """given a sorted list of AudioFile objects,
         returns DiscID for those tracks as if they were a CD"""
 
+        from audiotools import has_pre_gap_track
         from audiotools.freedb import DiscID as FDiscID
 
-        offsets = [0]
-        for track in tracks[0:-1]:
-            offsets.append(offsets[-1] + track.cd_frames())
+        if not has_pre_gap_track(tracks):
+            offsets = [0]
+            for track in tracks[0:-1]:
+                offsets.append(offsets[-1] + track.cd_frames())
 
-        return cls(track_numbers=range(1, len(tracks) + 1),
-                   track_offsets=offsets,
-                   lead_out_offset=sum([t.cd_frames() for t in tracks]),
-                   freedb_disc_id=FDiscID.from_tracks(tracks))
+            return cls(track_numbers=range(1, len(tracks) + 1),
+                       track_offsets=offsets,
+                       lead_out_offset=sum(t.cd_frames() for t in tracks),
+                       freedb_disc_id=FDiscID.from_tracks(tracks))
+        else:
+            offsets = [tracks[0].cd_frames()]
+            for track in tracks[1:-1]:
+                offsets.append(offsets[-1] + track.cd_frames())
+
+            return cls(track_numbers=range(1, len(tracks)),
+                       track_offsets=offsets,
+                       lead_out_offset=sum(t.cd_frames() for t in tracks),
+                       freedb_disc_id=FDiscID.from_tracks(tracks))
 
     @classmethod
     def from_sheet(cls, sheet, total_pcm_frames, sample_rate):

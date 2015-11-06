@@ -4556,14 +4556,8 @@ class Sheet(object):
         if len(audiofiles) == 0:
             # no tracks, so sheet is empty
             return cls(sheet_tracks=[], metadata=None)
-        elif ((audiofiles[0].get_metadata() is not None) and
-              (audiofiles[0].get_metadata().track_number == 0)):
+        elif has_pre_gap_track(audiofiles):
             # prepend track 0 to start of cuesheet
-
-            if len(audiofiles) == 1:
-                # nothing but pre-gap track, so nothing to do
-                return cls(sheet_tracks=[], metadata=None)
-
             pre_gap_length = audiofiles[0].seconds_length()
 
             sheet_tracks = [
@@ -4873,6 +4867,40 @@ class SheetIndex(object):
 
     def offset(self):
         return self.__offset__
+
+
+def has_pre_gap_track(audiofiles):
+    """given a list of AudioFile objects of a single disc in order,
+    returns True if audiofiles[0] appears to be a pre-gap track
+    based on track numbers in metadata
+
+    lists shorter than 2 entries will never have a pre-gap track
+    """
+
+    if len(audiofiles) < 2:
+        # either 0 or 1 file, so not enough for one to be a pre-gap
+        return False
+
+    metadatas = [f.get_metadata() for f in audiofiles]
+
+    if None in metadatas:
+        # all metadata must be populated
+        return False
+
+    if len({m.track_total for m in metadatas}) > 1:
+        # track total should be identical (or None)
+        return False
+
+    if metadatas[0].track_number not in {0, None}:
+        # initial track should be numbered 0, or None
+        return False
+
+    if ([m.track_number for m in metadatas[1:]] !=
+        list(range(1, len(metadatas)))):
+        # the remainder should be in ascending order with no gaps
+        return False
+
+    return True
 
 
 def iter_first(iterator):
@@ -5227,15 +5255,46 @@ def track_metadata_lookup(audiofiles,
     from audiotools.freedb import DiscID as FDiscID
     from audiotools.musicbrainz import DiscID as MDiscID
 
-    return metadata_lookup(
-        freedb_disc_id=FDiscID.from_tracks(audiofiles),
-        musicbrainz_disc_id=MDiscID.from_tracks(audiofiles),
-        musicbrainz_server=musicbrainz_server,
-        musicbrainz_port=musicbrainz_port,
-        freedb_server=freedb_server,
-        freedb_port=freedb_port,
-        use_musicbrainz=use_musicbrainz,
-        use_freedb=use_freedb)
+    if not has_pre_gap_track(audiofiles):
+        return metadata_lookup(
+            freedb_disc_id=FDiscID.from_tracks(audiofiles),
+            musicbrainz_disc_id=MDiscID.from_tracks(audiofiles),
+            musicbrainz_server=musicbrainz_server,
+            musicbrainz_port=musicbrainz_port,
+            freedb_server=freedb_server,
+            freedb_port=freedb_port,
+            use_musicbrainz=use_musicbrainz,
+            use_freedb=use_freedb)
+    else:
+        def merge_metadatas(metadatas):
+            if len(metadatas) == 0:
+                return None
+            elif len(metadatas) == 1:
+                return metadatas[0]
+            else:
+                merged = metadatas[0]
+                for to_merge in metadatas[1:]:
+                    merged = merged.intersection(to_merge)
+                return merged
+
+        # prepend "track 0" pre-gap data to start of list for each choice
+        choices = []
+
+        for choice in metadata_lookup(
+            freedb_disc_id=FDiscID.from_tracks(audiofiles),
+            musicbrainz_disc_id=MDiscID.from_tracks(audiofiles),
+            musicbrainz_server=musicbrainz_server,
+            musicbrainz_port=musicbrainz_port,
+            freedb_server=freedb_server,
+            freedb_port=freedb_port,
+            use_musicbrainz=use_musicbrainz,
+            use_freedb=use_freedb):
+
+            track_0 = merge_metadatas(choice)
+            track_0.track_number = 0
+            choices.append([track_0] + choice)
+
+        return choices
 
 
 def sheet_metadata_lookup(sheet,

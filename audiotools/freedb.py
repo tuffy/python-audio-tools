@@ -70,16 +70,32 @@ class DiscID(object):
         """given a sorted list of tracks,
         returns DiscID for those tracks as if they were a CD"""
 
-        offsets = [150]
-        for track in tracks[0:-1]:
-            offsets.append(offsets[-1] + track.cd_frames())
+        from audiotools import has_pre_gap_track
 
-        track_lengths = sum([t.cd_frames() for t in tracks]) // 75
+        if not has_pre_gap_track(tracks):
+            offsets = [150]
+            for track in tracks[0:-1]:
+                offsets.append(offsets[-1] + track.cd_frames())
 
-        return cls(offsets=offsets,
-                   total_length=track_lengths,
-                   track_count=len(tracks),
-                   playable_length=track_lengths)
+            #track_lengths = sum(t.cd_frames() for t in tracks) // 75
+            total_length = sum(t.seconds_length() for t in tracks)
+
+            return cls(offsets=offsets,
+                       total_length=int(total_length),
+                       track_count=len(tracks),
+                       playable_length=int(total_length + 2))
+        else:
+            offsets = [150 + tracks[0].cd_frames()]
+            for track in tracks[1:-1]:
+                offsets.append(offsets[-1] + track.cd_frames())
+
+            total_length = sum(t.seconds_length() for t in tracks[1:])
+
+            return cls(
+                offsets=offsets,
+                total_length=int(total_length),
+                track_count=len(tracks) - 1,
+                playable_length=int(total_length + 2))
 
     @classmethod
     def from_sheet(cls, sheet, total_pcm_frames, sample_rate):
