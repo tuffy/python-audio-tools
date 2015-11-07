@@ -7507,18 +7507,18 @@
     If first track number is 0, assume it's a pre-gap with data
     when building disc ID
 **** DONE Add unit tests
-*** TODO Update musicbrainz.DiscID.from_tracks()
+*** DONE Update musicbrainz.DiscID.from_tracks()
     If first track number is 0, assume it's a pre-gap with data
     when building disc ID
-**** TODO Add unit tests
-*** TODO Update freedb.DiscID.from_tracks()
+**** DONE Add unit tests
+*** DONE Update freedb.DiscID.from_tracks()
     If first track number is 0, assume it's a pre-gap with data
     when building disc ID
-**** TODO Add unit tests
-*** TODO Update accuraterip.DiscID.from_tracks()
+**** DONE Add unit tests
+*** DONE Update accuraterip.DiscID.from_tracks()
     If first track number is 0, assume it's a pre-gap with data
     when building disc ID
-**** TODO Add unit tests
+**** DONE Add unit tests
 *** TODO Update trackverify
 **** TODO Add unit tests
 ** TODO Support MBID tags

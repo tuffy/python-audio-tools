@@ -5800,7 +5800,7 @@ class Test_FreeDB(unittest.TestCase):
                 self.assertEqual(length, track_lengths[i - 1])
                 self.assertEqual(cddareader.seek(offset), offset)
                 tracks.append(audiotools.WaveAudio.from_pcm(
-                    os.path.join(dir, "track%d.wav"),
+                    os.path.join(dir, "track%d.wav" % (i)),
                     audiotools.PCMReaderHead(cddareader, length, False),
                     total_pcm_frames=length))
 
@@ -5831,14 +5831,12 @@ class Test_FreeDB(unittest.TestCase):
         dir = tempfile.mkdtemp()
         try:
             # dump cuesheet to temporary directory
-            f = open(os.path.join(dir, "CDImage.cue"), "wb")
-            f.write(cuesheet)
-            f.close()
+            with open(os.path.join(dir, "CDImage.cue"), "wb") as f:
+                f.write(cuesheet)
 
             # build CD image from total length
-            f = open(os.path.join(dir, "CDImage.bin"), "wb")
-            f.write(b"\x00" * 2 * 2 * total_length)
-            f.close()
+            with open(os.path.join(dir, "CDImage.bin"), "wb") as f:
+                f.write(b"\x00" * 2 * 2 * total_length)
 
             # open disc image with CDDAReader
             cddareader = CDDAReader(os.path.join(dir, "CDImage.cue"))
@@ -5947,6 +5945,101 @@ class Test_FreeDB(unittest.TestCase):
                 cuesheet=cue.read(),
                 disc_id="FC0A9E14")
 
+    def __test_populated_pre_gap__(self,
+                                   discid_class,
+                                   cuesheet_name,
+                                   pre_gap_length,
+                                   track_lengths,
+                                   disc_id):
+        from audiotools.cdio import CDDAReader
+        from shutil import rmtree
+
+        total_length = pre_gap_length + sum(track_lengths)
+
+        with open(cuesheet_name, "rb") as f:
+            cuesheet = f.read()
+
+        self.assertTrue(isinstance(cuesheet, bytes))
+
+        dir = tempfile.mkdtemp()
+        try:
+            # dump cuesheet to temporary directory
+            with open(os.path.join(dir, "CDImage.cue"), "wb") as f:
+                f.write(cuesheet)
+
+            # build CD image from track lengths
+            with open(os.path.join(dir, "CDImage.bin"), "wb") as f:
+                f.write(b"\00" * 2 * 2 * total_length)
+
+            # open disc image with CDDAReader
+            cddareader = CDDAReader(os.path.join(dir, "CDImage.cue"))
+
+            # ensure DiscID from CDDAReader matches
+            self.assertEqual(str(discid_class.from_cddareader(cddareader)),
+                             disc_id)
+
+            # dump entire contents of CDDAReader to individual tracks
+            tracks = []
+            track = audiotools.FlacAudio.from_pcm(
+                os.path.join(dir, "00.flac"),
+                audiotools.PCMReaderHead(cddareader, pre_gap_length, False),
+                total_pcm_frames=pre_gap_length)
+            track.set_metadata(
+                audiotools.MetaData(track_number=0,
+                                    track_total=len(track_lengths)))
+            tracks.append(track)
+
+            for i in sorted(cddareader.track_offsets.keys()):
+                offset = cddareader.track_offsets[i]
+                length = cddareader.track_lengths[i]
+                self.assertEqual(length, track_lengths[i - 1])
+                self.assertEqual(cddareader.seek(offset), offset)
+                track = audiotools.FlacAudio.from_pcm(
+                    os.path.join(dir, "%2.2d.flac" % (i)),
+                    audiotools.PCMReaderHead(cddareader, length, False),
+                    total_pcm_frames=length)
+                track.set_metadata(
+                    audiotools.MetaData(track_number=i,
+                                        track_total=len(track_lengths)))
+                tracks.append(track)
+
+            # ensure DiscID from tracks matches
+            self.assertEqual(str(discid_class.from_tracks(tracks)), disc_id)
+
+            # open cuesheet as Sheet object
+            sheet = audiotools.read_sheet(os.path.join(dir, "CDImage.cue"))
+
+            # ensure DiscID from sheet matches
+            self.assertEqual(
+                str(discid_class.from_sheet(sheet, total_length, 44100)),
+                disc_id)
+        finally:
+            rmtree(dir)
+
+
+    @LIB_FREEDB
+    def test_populated_pre_gap(self):
+        from audiotools.freedb import DiscID
+
+        self.__test_populated_pre_gap__(
+            discid_class=DiscID,
+            cuesheet_name="trackcat_pre_gap.cue",
+            pre_gap_length=19404,
+            track_lengths=[21741300, 13847400, 22402800, 14420700,
+                           10760400, 17904600, 13715100, 17022600,
+                           30781800, 28312200],
+            disc_id="A610E90A")
+
+        self.__test_populated_pre_gap__(
+            discid_class=DiscID,
+            cuesheet_name="trackcat_pre_gap2.cue",
+            pre_gap_length=5733000,
+            track_lengths=[9305100, 10601640, 8627136, 5202624,
+                           8252580, 7399980, 9741396, 7187124,
+                           6636756, 9581460, 11120844, 9499140,
+                           9472680, 9575580],
+            disc_id="CE0AD30E")
+
 
 class Test_MusicBrainz(Test_FreeDB):
     @LIB_MUSICBRAINZ
@@ -6044,6 +6137,29 @@ class Test_MusicBrainz(Test_FreeDB):
                 total_length=119882616,
                 cuesheet=cue.read(),
                 disc_id="aS0RfXDrxs718yypC2AlgpNEIE0-")
+
+    @LIB_MUSICBRAINZ
+    def test_populated_pre_gap(self):
+        from audiotools.musicbrainz import DiscID
+
+        self.__test_populated_pre_gap__(
+            discid_class=DiscID,
+            cuesheet_name="trackcat_pre_gap.cue",
+            pre_gap_length=19404,
+            track_lengths=[21741300, 13847400, 22402800, 14420700,
+                           10760400, 17904600, 13715100, 17022600,
+                           30781800, 28312200],
+            disc_id="naJ8mpfbMHx_qQnJbyRx4lE_h4E-")
+
+        self.__test_populated_pre_gap__(
+            discid_class=DiscID,
+            cuesheet_name="trackcat_pre_gap2.cue",
+            pre_gap_length=5733000,
+            track_lengths=[9305100, 10601640, 8627136, 5202624,
+                           8252580, 7399980, 9741396, 7187124,
+                           6636756, 9581460, 11120844, 9499140,
+                           9472680, 9575580],
+            disc_id="1o5aDeltYCEwCecU1cMMi1cvees-")
 
 
 class Test_Accuraterip(Test_FreeDB):
@@ -6591,6 +6707,29 @@ class Test_Accuraterip(Test_FreeDB):
         self.assertEqual(checksum, 2)
         self.assertEqual(confidence, 2)
         self.assertEqual(offset, 1)
+
+    @LIB_ACCURATERIP
+    def test_populated_pre_gap(self):
+        from audiotools.accuraterip import DiscID
+
+        self.__test_populated_pre_gap__(
+            discid_class=DiscID,
+            cuesheet_name="trackcat_pre_gap.cue",
+            pre_gap_length=19404,
+            track_lengths=[21741300, 13847400, 22402800, 14420700,
+                           10760400, 17904600, 13715100, 17022600,
+                           30781800, 28312200],
+            disc_id="dBAR-010-00193b54-00c9f723-a610e90a.bin")
+
+        self.__test_populated_pre_gap__(
+            discid_class=DiscID,
+            cuesheet_name="trackcat_pre_gap2.cue",
+            pre_gap_length=5733000,
+            track_lengths=[9305100, 10601640, 8627136, 5202624,
+                           8252580, 7399980, 9741396, 7187124,
+                           6636756, 9581460, 11120844, 9499140,
+                           9472680, 9575580],
+            disc_id="dBAR-014-001977f9-01097144-ce0ad30e.bin")
 
 
 class Test_Lookup(unittest.TestCase):
