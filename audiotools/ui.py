@@ -23,6 +23,32 @@ from audiotools import PY3, PY2
 if PY3:
     raw_input = input
 
+
+def choice_selection_unicode(metadata):
+    """given a MetaData object, returns a choice selection Unicode string"""
+
+    if metadata is not None:
+        if metadata.album_name is not None:
+            if metadata.catalog is not None:
+                # both album name and catalog number
+                return u"{album} (catalog #: {catalog})".format(
+                    album=metadata.album_name,
+                    catalog=metadata.catalog)
+            else:
+                # only album name
+                return metadata.album_name
+        else:
+            if metadata.catalog is not None:
+                # only catalog number
+                return u"catalog #: {catalog}".format(
+                    catalog=metadata.catalog)
+            else:
+                # neither album name or catalog number
+                return u""
+    else:
+        return u""
+
+
 try:
     import urwid
 
@@ -434,13 +460,11 @@ try:
             if len(metadata_choices) > 1:
                 # setup radio button for each possible match
                 matches = []
-                radios = [urwid.RadioButton(matches,
-                                            (choice[0].album_name
-                                             if (choice[0].album_name
-                                                 is not None)
-                                             else u""),
-                                            on_state_change=self.select_match,
-                                            user_data=i)
+                radios = [urwid.RadioButton(
+                    matches,
+                    choice_selection_unicode(choice[0]),
+                    on_state_change=self.select_match,
+                    user_data=i)
                           for (i, choice) in enumerate(metadata_choices)]
                 for radio in radios:
                     radio._label.set_wrap_mode(urwid.CLIP)
@@ -2697,9 +2721,12 @@ def select_metadata(metadata_choices, msg, use_default=False):
     else:
         choice = None
         while choice not in range(0, len(metadata_choices)):
-            from audiotools.text import (LAB_SELECT_BEST_MATCH)
+            from audiotools.text import LAB_SELECT_BEST_MATCH
+
             for (i, choice) in enumerate(metadata_choices):
-                msg.output(u"%d) %s" % (i + 1, choice[0].album_name))
+                msg.output(u"{choice} {selection}".format(
+                    choice=i + 1,
+                    selection=choice_selection_unicode(choice[0])))
             try:
                 choice = int(raw_input(u"%s (1-%d) : " %
                                        (LAB_SELECT_BEST_MATCH,
