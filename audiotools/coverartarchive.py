@@ -37,7 +37,7 @@ def perform_lookup(mbid,
         from urllib2 import urlopen
         from urllib2 import URLError
 
-    from json import load
+    from json import loads
 
     # query server for JSON data about MBID release
     try:
@@ -48,7 +48,7 @@ def perform_lookup(mbid,
     except URLError:
         return []
 
-    json_data = load(j)
+    json_data = loads(j.read().decode("utf-8", "replace"))
     j.close()
 
     images = []

@@ -249,12 +249,12 @@ class TOCTrack(SheetTrack):
         cd_text = self.first_flag(CDText)
         if (isrc is not None) and (cd_text is not None):
             metadata = cd_text.to_track_metadata()
-            metadata.ISRC = decode_string(isrc.isrc())
+            metadata.ISRC = isrc.isrc()
             return metadata
         elif cd_text is not None:
             return cd_text.to_track_metadata()
         elif isrc is not None:
-            return MetaData(ISRC=decode_string(isrc.isrc()))
+            return MetaData(ISRC=isrc.isrc())
         else:
             return None
 

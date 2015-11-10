@@ -528,7 +528,7 @@ try:
 
         def populated_metadata(self):
             """yields a new, populated MetaData object per track,
-            depending on the current selection and its values."""
+            depending on the current selection and its values"""
 
             for (track_id, metadata) in self.selected_match.metadata():
                 yield metadata
@@ -895,6 +895,8 @@ try:
             base_metadata is a BaseMetaData object to link against
             on_change is a callback for when the text field is modified"""
 
+            self.images = metadata.images()
+
             for field, field_type in metadata.FIELD_TYPES.items():
                 if field_type is type(u""):
                     value = getattr(metadata, field)
@@ -930,6 +932,7 @@ try:
             current value based on its widgets' values"""
 
             return audiotools.MetaData(
+                images=self.images,
                 **{attr: value for (attr, value) in
                    [(attr, getattr(self, attr).value())
                     for attr in audiotools.MetaData.FIELDS]

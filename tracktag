@@ -502,7 +502,7 @@ if (__name__ == '__main__'):
 
     # once all final output metadata is set,
     # perform actual tagging
-    for (album_tracks, old_metadatas, new_metadatas) in to_tag:
+    for album_tracks, old_metadatas, new_metadatas in to_tag:
         if not options.replace:
             # apply final metadata to tracks using update_metadata
             # if no full replacement
@@ -519,6 +519,10 @@ if (__name__ == '__main__'):
                                                      attr)):
                             setattr(old_metadata, attr, value)
                             field_updated = True
+
+                    for image in new_metadata.images():
+                        old_metadata.add_image(image)
+                        field_updated = True
 
                     if field_updated:
                         # update track if at least one field has changed
@@ -539,7 +543,7 @@ if (__name__ == '__main__'):
         else:
             # apply final metadata to tracks
             # using set_metadata() if replacement
-            for (track, metadata) in zip(album_tracks, new_metadatas):
+            for track, metadata in zip(album_tracks, new_metadatas):
                 try:
                     track.set_metadata(metadata)
                 except IOError as err:
