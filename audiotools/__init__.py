@@ -3719,7 +3719,7 @@ class Image(object):
     def new(cls, image_data, description, type):
         """builds a new Image object from raw data
 
-        image_data is a plain string of binary image data
+        image_data is a binary string of image data
         description is a unicode string
         type as an image type integer
 

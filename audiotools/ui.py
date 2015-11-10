@@ -2724,7 +2724,7 @@ def select_metadata(metadata_choices, msg, use_default=False):
             from audiotools.text import LAB_SELECT_BEST_MATCH
 
             for (i, choice) in enumerate(metadata_choices):
-                msg.output(u"{choice} {selection}".format(
+                msg.output(u"{choice}) {selection}".format(
                     choice=i + 1,
                     selection=choice_selection_unicode(choice[0])))
             try:

@@ -137,21 +137,31 @@ def perform_lookup(disc_id, musicbrainz_server, musicbrainz_port):
         from urllib import urlencode
     import xml.dom.minidom
 
+    from audiotools.coverartarchive import perform_lookup as image_lookup
+
     # query MusicBrainz web service (version 2) for <metadata>
     m = urlopen("http://%s:%d/ws/2/discid/%s?%s" %
                 (musicbrainz_server,
                  musicbrainz_port,
                  disc_id,
                  urlencode({"inc": "artists labels recordings"})))
-
     xml = xml.dom.minidom.parse(m)
+    m.close()
 
     # for each <release>s in <release-list>
     # yield a list of MetaData objects
     try:
         release_list = get_node(xml, u"metadata", u"disc", u"release-list")
         for release in get_nodes(release_list, u"release"):
-            yield list(parse_release(release, disc_id))
+            release_metadata = list(parse_release(release, disc_id))
+
+            if release.hasAttribute("id"):
+                release_id = release.getAttribute("id")
+                for image in image_lookup(release_id):
+                    for track_metadata in release_metadata:
+                        track_metadata.add_image(image)
+
+            yield release_metadata
     except KeyError:
         # no releases found, so return nothing
         return
