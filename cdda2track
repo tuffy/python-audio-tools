@@ -97,6 +97,11 @@ if (__name__ == '__main__'):
                         dest="interactive",
                         help=_.OPT_INTERACTIVE_OPTIONS)
 
+    parser.add_argument("--cue",
+                        dest="cuesheet",
+                        metavar="FILENAME",
+                        help=_.OPT_CUESHEET_CDDA2TRACK)
+
     parser.add_argument("-V", "--verbose",
                         dest="verbosity",
                         choices=audiotools.VERBOSITY_LEVELS,
@@ -524,6 +529,24 @@ if (__name__ == '__main__'):
                                       album_peak=album_peak))
         else:
             msg.info(_.RG_REPLAYGAIN_ADDED)
+
+    # write cuesheet from CD reader, if requested and if possible
+    if options.cuesheet:
+        if options.cuesheet.lower().endswith("toc"):
+            from audiotools.toc import TOCFile as Cuesheet
+        else:
+            from audiotools.cue import Cuesheet
+        from audiotools import Sheet
+
+        try:
+            with open(options.cuesheet, "w") as cuesheet:
+                cuesheet.write(
+                    Cuesheet.converted(
+                        Sheet.from_cddareader(cddareader)).build())
+            msg.info(_.LAB_CDDA2TRACK_WROTE_CUESHEET % (options.cuesheet))
+        except IOError:
+            msg.error(_.ERR_OPEN_IOERROR % (options.cuesheet))
+            sys.exit(1)
 
     # display ripping log
     msg.output(_.LAB_CD2TRACK_LOG)

@@ -6850,11 +6850,6 @@
   If a disc is not found on FreeDB or MusicBrainz,
   there should be some mechanism to submit user-defined data
   to those services.
-* TODO build track2cover utility
-  It would be helpful to have tools that could query
-  online cover databases and retrieve images for tagging purposes.
-  track2cover can replace coverdump, functioning like trac2xmcd
-  which allows it to pull from existing metadata or from online sources.
 * TODO build trackverify utility
   Much like flac(1)'s --verify option, this should check
   a file for correctness and, if possible, verify its output
@@ -7317,14 +7312,6 @@
    If it's too much work, there's little point in having it.
 ** TODO Add tool support for lyrics
 ** TODO Add unit testing to tools
-* TODO Convert format reference to HTML
-  Not only would it be more accessible,
-  but I could better integrate examples and give it basic interactivity.
-  All of the diagrams and formulas must be kept as vector art
-  so that they'll remain crisp when scaled.
-
-  Unfortunately, Chrome doesn't do MathML and IE doesn't do SVG
-  which makes it non-viable right now.
 * TODO Add a dvdaplay utility
 ** TODO Unify trackplay/cdplay/dvdaplay widgets into audiotools.ui
 ** TODO Unify non-Urwid player into audiotools.ui
@@ -7564,6 +7551,25 @@
     If cuesheet is given an indicates pre-emphasis,
     re-add it when concatenating files to image
 **** TODO Add unit test
+** TODO Add wider --cue support
+*** DONE Add Sheet.from_cddareader() method
+    this won't account for all index points just yet,
+    but should should handle disc pre-gap and round-trip correctly
+**** DONE update documentation
+**** DONE update unit tests
+*** DONE cdda2track
+    build simple cuesheet from disc information and dump it to file
+    so things like disc pre-gap can be accounted for
+**** DONE update man page
+**** DONE update unit tests
+*** TODO trackverify
+    take cuesheet for DiscID calculations when verifying AccurateRip
+**** TODO update man page
+**** TODO update unit tests
+*** TODO trackcmp
+    detect if largest file is a CD image and accomodate
+    its internal cuesheet (if any)
+**** TODO update unit tests
 ** TODO Add CTDB support
    Need to figure out how the cuetools client interface actually works.
    Then attempt to use it wherever AccurateRip is used, if possible.
@@ -8017,9 +8023,6 @@
    Perhaps a simple .to_wave(), .from_wave() approach
    which returns a whole .wav file as a file stream
    would be easiest.
-** TODO Support building cue sheets from discs
-   Find some way of grabbing the index points from a disc
-   so cuesheets can be populated.
 ** TODO Cleanup AAC support
    Although the fdk-aac library doesn't have a compatible license,
    there must be *some* way to support AAC without the nasty

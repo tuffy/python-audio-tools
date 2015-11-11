@@ -4653,51 +4653,35 @@ class testsheet(unittest.TestCase):
                                               offset=Fraction(12336, 25))]),
                  SheetTrack(
                     number=3,
-                    track_indexes=[#SheetIndex(number=0,
-                                   #           offset=Fraction(20111, 25)),
-                                   SheetIndex(number=1,
+                    track_indexes=[SheetIndex(number=1,
                                               offset=Fraction(20186, 25))]),
                  SheetTrack(
                     number=4,
-                    track_indexes=[#SheetIndex(number=0,
-                                   #           offset=Fraction(98509, 75)),
-                                   SheetIndex(number=1,
+                    track_indexes=[SheetIndex(number=1,
                                               offset=Fraction(32886, 25))]),
                  SheetTrack(
                     number=5,
-                    track_indexes=[#SheetIndex(number=0,
-                                   #           offset=Fraction(24607, 15)),
-                                   SheetIndex(number=1,
+                    track_indexes=[SheetIndex(number=1,
                                               offset=Fraction(41061, 25))]),
                  SheetTrack(
                     number=6,
-                    track_indexes=[#SheetIndex(number=0,
-                                   #           offset=Fraction(141334, 75)),
-                                   SheetIndex(number=1,
+                    track_indexes=[SheetIndex(number=1,
                                               offset=Fraction(47161, 25))]),
                  SheetTrack(
                     number=7,
-                    track_indexes=[#SheetIndex(number=0,
-                                   #           offset=Fraction(57236, 25)),
-                                   SheetIndex(number=1,
+                    track_indexes=[SheetIndex(number=1,
                                               offset=Fraction(57311, 25))]),
                  SheetTrack(
                     number=8,
-                    track_indexes=[#SheetIndex(number=0,
-                                   #           offset=Fraction(65036, 25)),
-                                   SheetIndex(number=1,
+                    track_indexes=[SheetIndex(number=1,
                                               offset=Fraction(65086, 25))]),
                  SheetTrack(
                     number=9,
-                    track_indexes=[#SheetIndex(number=0,
-                                   #           offset=Fraction(74686, 25)),
-                                   SheetIndex(number=1,
+                    track_indexes=[SheetIndex(number=1,
                                               offset=Fraction(74736, 25))]),
                  SheetTrack(
                     number=10,
-                    track_indexes=[#SheetIndex(number=0,
-                                   #           offset=Fraction(92086, 25)),
-                                   SheetIndex(number=1,
+                    track_indexes=[SheetIndex(number=1,
                                               offset=Fraction(92186, 25))])])
 
             for track1, track2 in zip(track_sheet, reference_sheet):
@@ -4707,6 +4691,64 @@ class testsheet(unittest.TestCase):
             for t in test_tracks:
                 t.close()
 
+    @LIB_CORE
+    def test_from_cddareader(self):
+        from audiotools.cdio import CDDAReader
+        from audiotools import read_sheet
+        from audiotools import Sheet
+        from fractions import Fraction
+
+        for cuesheet_name, length in [("freedb_test_discid-1.cue", 39731748),
+                                      ("freedb_test_discid-2.cue", 153599124),
+                                      ("freedb_test_discid-3.cue", 190928304),
+                                      ("freedb_test_discid-4.cue", 127937040),
+                                      ("freedb_test_discid-5.cue", 119882616)]:
+            temp_dir = tempfile.mkdtemp()
+            try:
+                cue_path = os.path.join(temp_dir, "CDImage.cue")
+                bin_path = os.path.join(temp_dir, "CDImage.bin")
+
+                # build CD image from cuesheet
+                with open(cue_path, "wb") as w:
+                    with open(cuesheet_name, "rb") as r:
+                        w.write(r.read())
+
+                with open(bin_path, "wb") as w:
+                    w.write(b"\00" * 2 * 2 * length)
+
+                # open CD image with CDDAReader
+                cddareader = CDDAReader(cue_path)
+
+                # build Sheet from CDDAReader
+                sheet = Sheet.from_cddareader(cddareader)
+
+                cuesheet = read_sheet(cue_path)
+
+                # ensure disc pre-gap matches
+                self.assertEqual(sheet.pre_gap(), cuesheet.pre_gap())
+
+                # ensure Sheet's track offsets and lengths
+                # match those in cuesheet
+                for sheet_track in sheet:
+                    number = sheet_track.number()
+
+                    self.assertEqual(sheet.track_offset(number),
+                                     cuesheet.track_offset(number))
+
+                    self.assertEqual(sheet.track_length(number),
+                                     cuesheet.track_length(number))
+
+                # ensure track lengths in Sheet match those in CDDAReader
+                for i, length in sorted(cddareader.track_lengths.items(),
+                                        key=lambda pair: pair[0]):
+                    track_length = sheet.track_length(i)
+                    if track_length is not None:
+                        self.assertEqual(
+                            Fraction(length, cddareader.sample_rate),
+                            track_length)
+            finally:
+                from shutil import rmtree
+                rmtree(temp_dir)
 
 
 class testcuesheet(unittest.TestCase):

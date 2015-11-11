@@ -1621,6 +1621,11 @@ when burning a set of tracks back to CD.
    Given a :class:`Sheet`-compatible object,
    returns a :class:`Sheet` object.
 
+.. classmethod:: Sheet.from_cddareader(cddareader, [filename])
+
+   Given a :class:`cdio.CDDAReader` object,
+   returns a :class:`Sheet` object.
+
 .. method:: Sheet.__len__()
 
    Returns the number of tracks in the sheet.

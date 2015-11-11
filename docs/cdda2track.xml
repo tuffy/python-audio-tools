@@ -28,6 +28,9 @@ San Francisco, California, 94105, USA.
       edit metadata and encoding options in interactive mode
       prior to extracting disc
     </option>
+    <option long="cue" arg="filename">
+      minimal cuesheet to generate from CD contents
+    </option>
     <option short="c" long="cdrom" arg="cdrom">
       the CD-ROM device to extract audio from
     </option>

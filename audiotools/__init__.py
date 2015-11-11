@@ -4547,6 +4547,28 @@ class Sheet(object):
                    metadata=sheet.get_metadata())
 
     @classmethod
+    def from_cddareader(cls, cddareader, filename=u"CDImage.wav"):
+        """given a CDDAReader object, returns a Sheet
+        filename is an optional name for the sheet as a Unicode object"""
+
+        from fractions import Fraction
+
+        tracks = []
+        for number, offset in sorted(cddareader.track_offsets.items(),
+                                     key=lambda pair: pair[0]):
+            seconds_offset = Fraction(offset, cddareader.sample_rate)
+
+            if (number == 1) and (seconds_offset > 0):
+                track = SheetTrack(number, [SheetIndex(0, Fraction(0, 1)),
+                                            SheetIndex(1, seconds_offset)])
+            else:
+                track = SheetTrack(number, [SheetIndex(1, seconds_offset)])
+
+            tracks.append(track)
+
+        return cls(tracks)
+
+    @classmethod
     def from_tracks(cls, audiofiles, filename=u"CDImage.wav"):
         """given an iterable of AudioFile objects, returns a Sheet
         filename is an optional name for the sheet as a Unicode object"""

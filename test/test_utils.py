@@ -182,6 +182,10 @@ class cdda2track(UtilTest):
         self.unwritable_dir = tempfile.mkdtemp()
         os.chmod(self.unwritable_dir, 0)
 
+        self.output_cue = os.path.join(self.output_dir, "CDImage.cue")
+        self.unwritable_output_cue = os.path.join(self.unwritable_dir,
+                                                  "CDImage.cue")
+
     @UTIL_CDDA2TRACK
     def tearDown(self):
         from shutil import rmtree
@@ -217,6 +221,9 @@ class cdda2track(UtilTest):
             elif option == '-d':
                 populated.append(option)
                 populated.append(self.output_dir)
+            elif option == '--cue':
+                populated.append(option)
+                populated.append(self.output_cue)
             elif option == '--format':
                 populated.append(option)
                 populated.append(self.format)
@@ -240,10 +247,12 @@ class cdda2track(UtilTest):
     @UTIL_CDDA2TRACK
     def test_options(self):
         from audiotools.text import (ERR_UNSUPPORTED_COMPRESSION_MODE,
-                                     LAB_CD2TRACK_PROGRESS)
+                                     LAB_CD2TRACK_PROGRESS,
+                                     RG_REPLAYGAIN_ADDED,
+                                     LAB_CDDA2TRACK_WROTE_CUESHEET)
 
         all_options = ["-t", "-q", "-d", "--format",
-                       "--album-number", "--album-total"]
+                       "--album-number", "--album-total", "--cue"]
         for count in range(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
                 self.clean_output_dirs()
@@ -306,6 +315,32 @@ class cdda2track(UtilTest):
                              audiotools.Filename(
                                  os.path.join(output_dir, path))},
                             i + 1, len(output_filenames)))
+
+                # check that ReplayGain was written, if necessary
+                if "-t" in options:
+                    self.__check_info__(RG_REPLAYGAIN_ADDED)
+                elif (output_type.supports_replay_gain() and
+                      audiotools.ADD_REPLAYGAIN):
+                    self.__check_info__(RG_REPLAYGAIN_ADDED)
+
+                # check that cuesheet was generated correctly, if necessary
+                if "--cue" in options:
+                    self.__check_info__(LAB_CDDA2TRACK_WROTE_CUESHEET %
+                        (self.output_cue))
+
+                    sheet = audiotools.read_sheet(self.cue_file)
+                    cue = audiotools.read_sheet(self.output_cue)
+
+                    self.assertEqual(sheet.pre_gap(), cue.pre_gap())
+
+                    for track in sheet:
+                        track_number = track.number()
+
+                        self.assertEqual(sheet.track_offset(track_number),
+                                         cue.track_offset(track_number))
+
+                        self.assertEqual(sheet.track_length(track_number),
+                                         cue.track_length(track_number))
 
                 # rip log is generated afterward as a table
                 # FIXME - check table of rip log?
@@ -390,6 +425,9 @@ class cdda2track(UtilTest):
             elif option == '-d':
                 populated.append(option)
                 populated.append(self.unwritable_dir)
+            elif option == '--cue':
+                populated.append(option)
+                populated.append(self.unwritable_output_cue)
             elif option == '--format':
                 populated.append(option)
                 populated.append("%(foo)s.%(suffix)s")
@@ -411,7 +449,9 @@ class cdda2track(UtilTest):
                                      ERR_UNKNOWN_FIELD,
                                      LAB_SUPPORTED_FIELDS,
                                      ERR_ENCODING_ERROR,
-                                     )
+                                     ERR_OPEN_IOERROR,
+                                     LAB_CD2TRACK_PROGRESS,
+                                     RG_REPLAYGAIN_ADDED)
 
         self.assertEqual(
             self.__run_app__(["cdda2track", "-c", self.cue_file,
@@ -420,7 +460,7 @@ class cdda2track(UtilTest):
                              (audiotools.Filename("foo"),))
 
         all_options = ["-t", "-q", "-d", "--format",
-                       "--album-number", "--album-total"]
+                       "--album-number", "--album-total", "--cue"]
         for count in range(1, len(all_options) + 1):
             for options in Combinations(all_options, count):
 
@@ -478,6 +518,56 @@ class cdda2track(UtilTest):
                     self.__check_error__(
                         ERR_ENCODING_ERROR %
                         (audiotools.Filename(output_path),))
+                    continue
+
+                if "--cue" in options:
+                    # files encode correctly
+                    if "--format" in options:
+                        output_format = self.format
+                    else:
+                        output_format = None
+
+                    if "-d" in options:
+                        output_dir = self.output_dir
+                    else:
+                        output_dir = "."
+
+                    base_metadata = audiotools.MetaData(track_total=3)
+                    if "--album-number" in options:
+                        base_metadata.album_number = 8
+                    if "--album-total" in options:
+                        base_metadata.album_total = 9
+
+                    output_filenames = []
+                    for i in range(3):
+                        base_metadata.track_number = i + 1
+                        output_filenames.append(
+                            output_type.track_name(
+                                "",
+                                base_metadata,
+                                output_format))
+
+                    for (i, path) in enumerate(output_filenames):
+                        self.__check_info__(
+                            audiotools.output_progress(
+                                LAB_CD2TRACK_PROGRESS %
+                                {"track_number": i + 1,
+                                 "filename":
+                                 audiotools.Filename(
+                                     os.path.join(output_dir, path))},
+                                i + 1, len(output_filenames)))
+
+                    # ReplayGain applied correctly
+                    if "-t" in options:
+                        self.__check_info__(RG_REPLAYGAIN_ADDED)
+                    elif (output_type.supports_replay_gain() and
+                          audiotools.ADD_REPLAYGAIN):
+                        self.__check_info__(RG_REPLAYGAIN_ADDED)
+
+                    # cuesheet error comes up afterward
+                    self.__check_error__(
+                        ERR_OPEN_IOERROR % (self.unwritable_output_cue))
+
                     continue
 
 
