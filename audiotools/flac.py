@@ -859,8 +859,10 @@ class Flac_CUESHEET(Sheet):
         # don't include lead-out track
         return self.__tracks__[0:-1][index]
 
-    def track_length(self, track_number):
+    def track_length(self, track_number, total_length=None):
         """given a track_number (typically starting from 1)
+        and optional total length as a Fraction number of seconds
+        (including the disc's pre-gap, if any),
         returns the length of the track as a Fraction number of seconds
         or None if the length is to the remainder of the stream
         (typically for the last track in the album)

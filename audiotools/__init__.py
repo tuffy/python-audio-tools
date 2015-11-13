@@ -4677,8 +4677,10 @@ class Sheet(object):
 
         return self.track(track_number).index(1).offset()
 
-    def track_length(self, track_number):
+    def track_length(self, track_number, total_length=None):
         """given a track_number (typically starting from 1)
+        and optional total length as a Fraction number of seconds
+        (including the disc's pre-gap, if any),
         returns the length of the track as a Fraction number of seconds
         or None if the length is to the remainder of the stream
         (typically for the last track in the album)
@@ -4690,6 +4692,8 @@ class Sheet(object):
             next_track = self.track(track_number + 1)
             return (next_track.index(1).offset() -
                     initial_track.index(1).offset())
+        elif total_length is not None:
+            return total_length - initial_track.index(1).offset()
         else:
             # no next track, so total length is unknown
             return None

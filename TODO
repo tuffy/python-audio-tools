@@ -7562,14 +7562,22 @@
     so things like disc pre-gap can be accounted for
 **** DONE update man page
 **** DONE update unit tests
-*** TODO trackverify
-    take cuesheet for DiscID calculations when verifying AccurateRip
-**** TODO update man page
-**** TODO update unit tests
-*** TODO trackcmp
+*** DONE Update Sheet.track_length() method
+    Take an optional total_length parameter
+    of the entire disc's length, in seconds, and use that length
+    to calculate the final track's length, if necessary.
+**** DONE Update Sheet.track_length()
+**** DONE Update Flac_CUESHEET.track_length()
+**** DONE Update CDTOC.track_length()
+**** DONE Update documentation
+**** DONE Add unit tests
+**** DONE Update utilities
+     - [X] trackinfo
+     - [X] trackverify
+*** DONE trackcmp
     detect if largest file is a CD image and accomodate
     its internal cuesheet (if any)
-**** TODO update unit tests
+**** DONE update unit tests
 ** TODO Add CTDB support
    Need to figure out how the cuetools client interface actually works.
    Then attempt to use it wherever AccurateRip is used, if possible.

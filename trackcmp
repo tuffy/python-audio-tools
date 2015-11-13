@@ -175,6 +175,11 @@ if (__name__ == '__main__'):
                         action="version",
                         version="Python Audio Tools %s" % (audiotools.VERSION))
 
+    parser.add_argument("--cue",
+                        dest="cuesheet",
+                        metavar="FILENAME",
+                        help=_.OPT_CUESHEET_TRACKCMP)
+
     parser.add_argument("-V", "--verbose",
                         action="store",
                         dest="verbosity",
@@ -421,29 +426,70 @@ if (__name__ == '__main__'):
                     msg.warning(str(err))
                 except IOError:
                     msg.warning(_.ERR_OPEN_IOERROR % (path,))
-        audiofiles.sort(key=lambda t: t.total_frames())
 
-        if (sum(t.total_frames() for t in audiofiles[0:-1]) !=
-            audiofiles[-1].total_frames()):
+        cd_image = audiofiles[0]
+        tracks = audiofiles[1:]
+
+        if options.cuesheet:
+            try:
+                sheet = audiotools.read_sheet(options.cuesheet)
+            except audiotools.SheetException as err:
+                msg.error(err)
+                sys.exit(1)
+        else:
+            sheet = cd_image.get_cuesheet()
+            if sheet is None:
+                # assume the disc is a CD image with no pre-gap
+                sheet = audiotools.Sheet.from_tracks(tracks)
+
+        # a list of (AudioFile, offset Fraction, length Fraction) tuples
+        to_compare = []
+
+        if (sheet.pre_gap() > 0) and (len(tracks) == len(sheet) + 1):
+            # treat first track as disc pre-gap data
+            from fractions import Fraction
+
+            cd_length = cd_image.seconds_length()
+
+            if tracks[0].seconds_length() == sheet.pre_gap():
+                to_compare.append((tracks[0], Fraction(0, 1), sheet.pre_gap()))
+            else:
+                msg.output(_.USAGE_TRACKCMP_CDIMAGE)
+                sys.exit(1)
+
+            for track, number in zip(tracks[1:], sheet.track_numbers()):
+                sheet_track_length = sheet.track_length(number, cd_length)
+                if (track.seconds_length() == sheet_track_length):
+                    to_compare.append((track,
+                                       sheet.track_offset(number),
+                                       sheet_track_length))
+                else:
+                    msg.output(_.USAGE_TRACKCMP_CDIMAGE)
+                    sys.exit(1)
+        elif len(tracks) == len(sheet):
+            # treat any pre-gap data as blank
+            cd_length = cd_image.seconds_length()
+
+            for track, number in zip(tracks, sheet.track_numbers()):
+                sheet_track_length = sheet.track_length(number, cd_length)
+                if (track.seconds_length() == sheet_track_length):
+                    to_compare.append((track,
+                                       sheet.track_offset(number),
+                                       sheet_track_length))
+                else:
+                    msg.output(_.USAGE_TRACKCMP_CDIMAGE)
+                    sys.exit(1)
+        else:
+            # track count / sheet length mismatch
             msg.output(_.USAGE_TRACKCMP_CDIMAGE)
             sys.exit(1)
 
-        cd_image = audiofiles[-1]
-        tracks = audiofiles[0:-1]
-
         image_name = audiotools.Filename(cd_image.filename)
-
-        # all tracks should have the same album number and track total
-        tracks = audiotools.sorted_tracks(tracks)
-
-        cd_data = audiotools.BufferedPCMReader(cd_image.to_pcm())
 
         queue = audiotools.ExecProgressQueue(msg)
 
-        pcm_offset = 0
-
         if cd_image.seekable():
-            for (i, track) in enumerate(tracks):
+            for track, offset, length in to_compare:
                 track_name = audiotools.Filename(track.filename)
                 queue.execute(
                     function=image_compare,
@@ -456,10 +502,8 @@ if (__name__ == '__main__'):
                     track_audiofile=track,
                     image_filename=str(image_name),
                     track_filename=str(track_name),
-                    pcm_frames_offset=pcm_offset,
-                    total_pcm_frames=track.total_frames())
-
-                pcm_offset += track.total_frames()
+                    pcm_frames_offset=int(offset * cd_image.sample_rate()),
+                    total_pcm_frames=int(length * cd_image.sample_rate()))
 
             try:
                 if ({r[0] for r in
@@ -499,7 +543,7 @@ if (__name__ == '__main__'):
             temp_blob.flush()
 
             # compare the blob using multiple jobs
-            for (i, track) in enumerate(tracks):
+            for track, offset, length in to_compare:
                 track_name = audiotools.Filename(track.filename)
                 queue.execute(
                     function=image_compare_raw,
@@ -516,10 +560,8 @@ if (__name__ == '__main__'):
                     track_audiofile=track,
                     image_filename=str(image_name),
                     track_filename=str(track_name),
-                    pcm_frames_offset=pcm_offset,
-                    total_pcm_frames=track.total_frames())
-
-                pcm_offset += track.total_frames()
+                    pcm_frames_offset=int(offset * cd_image.sample_rate()),
+                    total_pcm_frames=int(length * cd_image.sample_rate()))
 
             try:
                 if ({r[0] for r in

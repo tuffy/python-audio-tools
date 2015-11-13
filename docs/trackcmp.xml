@@ -38,6 +38,9 @@ San Francisco, California, 94105, USA.
     <option short="S" long="no-summary">
       suppress summary output
     </option>
+    <option long="cue">
+      cuesheet to use for comparing disc image to tracks
+    </option>
     <option short="V" long="verbose" arg="verbosity">
       The level of output to display.
       Choose between 'normal', 'quiet' and 'debug.

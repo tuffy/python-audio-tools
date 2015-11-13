@@ -3306,27 +3306,6 @@ class trackcmp(UtilTest):
 
             for (i, track) in enumerate(tracks):
                 track.set_metadata(audiotools.MetaData(track_number=i + 1))
-
-            from random import shuffle
-
-            shuffled = tracks[:]
-            shuffle(shuffled)
-
-            for order in [[track.filename for track in tracks],
-                          [track.filename for track in reversed(tracks)],
-                          [track.filename for track in shuffled]]:
-                self.assertEqual(
-                    self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
-                                      image.filename] + order), 0)
-                for (i, track) in enumerate(tracks):
-                    self.__check_output__(
-                        audiotools.output_progress(
-                            LAB_TRACKCMP_CMP %
-                            {"file1": audiotools.Filename(image.filename),
-                             "file2": audiotools.Filename(track.filename)} +
-                            u" : " +
-                            LAB_TRACKCMP_OK,
-                            i + 1, len(tracks)))
         finally:
             image_file.close()
             for track_file in track_files:
@@ -3495,6 +3474,261 @@ class trackinfo(UtilTest):
 
             if os.path.isfile(filename):
                 os.unlink(filename)
+
+
+class trackcmp_cd_image(UtilTest):
+    @UTIL_TRACKCMP
+    def setUp(self):
+        from audiotools import Sheet
+        from audiotools import SheetTrack
+        from audiotools import SheetIndex
+        from fractions import Fraction
+
+        self.temp_dir = tempfile.mkdtemp()
+
+        self.track1 = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.temp_dir, "01.flac"),
+            EXACT_RANDOM_PCM_Reader(pcm_frames=44100 * 10),
+            total_pcm_frames=44100 * 10)
+
+        self.track2 = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.temp_dir, "02.flac"),
+            EXACT_RANDOM_PCM_Reader(pcm_frames=44100 * 15),
+            total_pcm_frames=44100 * 15)
+
+        self.track3 = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.temp_dir, "03.flac"),
+            EXACT_RANDOM_PCM_Reader(pcm_frames=44100 * 19),
+            total_pcm_frames=44100 * 19)
+
+        self.pre_gap = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.temp_dir, "gap.flac"),
+            EXACT_RANDOM_PCM_Reader(pcm_frames=44100 * 3),
+            total_pcm_frames=44100 * 3)
+
+        self.no_pre_gap_sheet = Sheet([
+            SheetTrack(1, [SheetIndex(1, Fraction(0, 1))]),
+            SheetTrack(2, [SheetIndex(0, Fraction(8, 1)),
+                           SheetIndex(1, Fraction(10, 1))]),
+            SheetTrack(3, [SheetIndex(0, Fraction(23, 1)),
+                           SheetIndex(1, Fraction(25, 1))])])
+
+        self.pre_gap_sheet = Sheet([
+            SheetTrack(1, [SheetIndex(0, Fraction(0, 1)),
+                           SheetIndex(1, Fraction(3, 1))]),
+            SheetTrack(2, [SheetIndex(0, Fraction(11, 1)),
+                           SheetIndex(1, Fraction(13, 1))]),
+            SheetTrack(3, [SheetIndex(0, Fraction(26, 1)),
+                           SheetIndex(1, Fraction(28, 1))])])
+
+    @UTIL_TRACKCMP
+    def tearDown(self):
+        from shutil import rmtree
+        rmtree(self.temp_dir)
+
+    def __compare_files__(self, number, total, image, track):
+        from audiotools.text import LAB_TRACKCMP_CMP
+        from audiotools.text import LAB_TRACKCMP_OK
+
+        self.__check_output__(
+            audiotools.output_progress(
+                u"%s : %s" % (
+                    LAB_TRACKCMP_CMP %
+                    {"file1": audiotools.Filename(image.filename),
+                     "file2": audiotools.Filename(track.filename)},
+                    LAB_TRACKCMP_OK),
+                number, total))
+
+    @UTIL_TRACKCMP
+    def test_no_cuesheet(self):
+        for seektable in [True, False]:
+            image = audiotools.FlacAudio.from_pcm(
+                os.path.join(self.temp_dir, "image.flac"),
+                audiotools.PCMCat([self.track1.to_pcm(),
+                                   self.track2.to_pcm(),
+                                   self.track3.to_pcm()]))
+
+            if seektable:
+                self.assertTrue(image.seekable())
+            else:
+                m = image.get_metadata()
+                m.replace_blocks(3, [])
+                image.update_metadata(m)
+                self.assertFalse(image.seekable())
+
+            self.assertEqual(
+                self.__run_app__(["trackcmp", "-V", "normal",
+                                  image.filename,
+                                  self.track1.filename,
+                                  self.track2.filename,
+                                  self.track3.filename]), 0)
+
+            self.__compare_files__(1, 3, image, self.track1)
+            self.__compare_files__(2, 3, image, self.track2)
+            self.__compare_files__(3, 3, image, self.track3)
+
+    @UTIL_TRACKCMP
+    def test_embedded_cuesheet(self):
+        for seektable in [True, False]:
+            # test image with no disc pre-gap against tracks
+            no_pre_gap_image = audiotools.FlacAudio.from_pcm(
+                os.path.join(self.temp_dir, "image1.flac"),
+                audiotools.PCMCat([self.track1.to_pcm(),
+                                   self.track2.to_pcm(),
+                                   self.track3.to_pcm()]))
+
+            no_pre_gap_image.set_cuesheet(self.no_pre_gap_sheet)
+            self.assertIsNotNone(no_pre_gap_image.get_cuesheet())
+
+            if seektable:
+                self.assertTrue(no_pre_gap_image.seekable())
+            else:
+                m = no_pre_gap_image.get_metadata()
+                m.replace_blocks(3, [])
+                no_pre_gap_image.update_metadata(m)
+                self.assertFalse(no_pre_gap_image.seekable())
+
+            self.assertEqual(
+                self.__run_app__(["trackcmp", "-V", "normal",
+                                  no_pre_gap_image.filename,
+                                  self.track1.filename,
+                                  self.track2.filename,
+                                  self.track3.filename]), 0)
+
+            self.__compare_files__(1, 3, no_pre_gap_image, self.track1)
+            self.__compare_files__(2, 3, no_pre_gap_image, self.track2)
+            self.__compare_files__(3, 3, no_pre_gap_image, self.track3)
+
+            # test image with disc pre-gap against tracks, without pre-gap track
+            pre_gap_image = audiotools.FlacAudio.from_pcm(
+                os.path.join(self.temp_dir, "image2.flac"),
+                audiotools.PCMCat([self.pre_gap.to_pcm(),
+                                   self.track1.to_pcm(),
+                                   self.track2.to_pcm(),
+                                   self.track3.to_pcm()]))
+
+            pre_gap_image.set_cuesheet(self.pre_gap_sheet)
+            self.assertIsNotNone(pre_gap_image.get_cuesheet())
+
+            if seektable:
+                self.assertTrue(pre_gap_image.seekable())
+            else:
+                m = pre_gap_image.get_metadata()
+                m.replace_blocks(3, [])
+                pre_gap_image.update_metadata(m)
+                self.assertFalse(pre_gap_image.seekable())
+
+            self.assertEqual(
+                self.__run_app__(["trackcmp", "-V", "normal",
+                                  pre_gap_image.filename,
+                                  self.track1.filename,
+                                  self.track2.filename,
+                                  self.track3.filename]), 0)
+
+            self.__compare_files__(1, 3, pre_gap_image, self.track1)
+            self.__compare_files__(2, 3, pre_gap_image, self.track2)
+            self.__compare_files__(3, 3, pre_gap_image, self.track3)
+
+            # test image with disc pre-gap against tracks, with pre-gap track
+            self.assertEqual(
+                self.__run_app__(["trackcmp", "-V", "normal",
+                                  pre_gap_image.filename,
+                                  self.pre_gap.filename,
+                                  self.track1.filename,
+                                  self.track2.filename,
+                                  self.track3.filename]), 0)
+
+            self.__compare_files__(1, 4, pre_gap_image, self.pre_gap)
+            self.__compare_files__(2, 4, pre_gap_image, self.track1)
+            self.__compare_files__(3, 4, pre_gap_image, self.track2)
+            self.__compare_files__(4, 4, pre_gap_image, self.track3)
+
+    @UTIL_TRACKCMP
+    def test_external_cuesheet(self):
+        from audiotools.cue import Cuesheet
+
+        for seekable in [True, False]:
+            # test image with no disc pre-gap against tracks
+            no_pre_gap_image = audiotools.FlacAudio.from_pcm(
+                os.path.join(self.temp_dir, "image1.flac"),
+                audiotools.PCMCat([self.track1.to_pcm(),
+                                   self.track2.to_pcm(),
+                                   self.track3.to_pcm()]))
+
+            no_pre_gap_cue = os.path.join(self.temp_dir, "image1.cue")
+            with open(no_pre_gap_cue, "w") as w:
+                w.write(Cuesheet.converted(self.no_pre_gap_sheet).build())
+
+            self.assertIsNone(no_pre_gap_image.get_cuesheet())
+
+            if seekable:
+                self.assertTrue(no_pre_gap_image.seekable())
+            else:
+                m = no_pre_gap_image.get_metadata()
+                m.replace_blocks(3, [])
+                no_pre_gap_image.update_metadata(m)
+                self.assertFalse(no_pre_gap_image.seekable())
+
+            self.assertEqual(
+                self.__run_app__(["trackcmp", "-V", "normal",
+                                  "--cue", no_pre_gap_cue,
+                                  no_pre_gap_image.filename,
+                                  self.track1.filename,
+                                  self.track2.filename,
+                                  self.track3.filename]), 0)
+
+            self.__compare_files__(1, 3, no_pre_gap_image, self.track1)
+            self.__compare_files__(2, 3, no_pre_gap_image, self.track2)
+            self.__compare_files__(3, 3, no_pre_gap_image, self.track3)
+
+            # test image with disc pre-gap against tracks, without pre-gap track
+            pre_gap_image = audiotools.FlacAudio.from_pcm(
+                os.path.join(self.temp_dir, "image2.flac"),
+                audiotools.PCMCat([self.pre_gap.to_pcm(),
+                                   self.track1.to_pcm(),
+                                   self.track2.to_pcm(),
+                                   self.track3.to_pcm()]))
+
+            pre_gap_cue = os.path.join(self.temp_dir, "image2.cue")
+            with open(pre_gap_cue, "w") as w:
+                w.write(Cuesheet.converted(self.pre_gap_sheet).build())
+
+            self.assertIsNone(pre_gap_image.get_cuesheet())
+
+            if seekable:
+                self.assertTrue(pre_gap_image.seekable())
+            else:
+                m = pre_gap_image.get_metadata()
+                m.replace_blocks(3, [])
+                pre_gap_image.update_metadata(m)
+                self.assertFalse(pre_gap_image.seekable())
+
+            self.assertEqual(
+                self.__run_app__(["trackcmp", "-V", "normal",
+                                  "--cue", pre_gap_cue,
+                                  pre_gap_image.filename,
+                                  self.track1.filename,
+                                  self.track2.filename,
+                                  self.track3.filename]), 0)
+
+            self.__compare_files__(1, 3, pre_gap_image, self.track1)
+            self.__compare_files__(2, 3, pre_gap_image, self.track2)
+            self.__compare_files__(3, 3, pre_gap_image, self.track3)
+
+            # test image with disc pre-gap against tracks, with pre-gap track
+            self.assertEqual(
+                self.__run_app__(["trackcmp", "-V", "normal",
+                                  "--cue", pre_gap_cue,
+                                  pre_gap_image.filename,
+                                  self.pre_gap.filename,
+                                  self.track1.filename,
+                                  self.track2.filename,
+                                  self.track3.filename]), 0)
+
+            self.__compare_files__(1, 4, pre_gap_image, self.pre_gap)
+            self.__compare_files__(2, 4, pre_gap_image, self.track1)
+            self.__compare_files__(3, 4, pre_gap_image, self.track2)
+            self.__compare_files__(4, 4, pre_gap_image, self.track3)
 
 
 class tracklength(UtilTest):

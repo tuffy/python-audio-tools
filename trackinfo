@@ -144,13 +144,8 @@ if (__name__ == '__main__'):
                     isrcs = {}    # track_number -> ISRC unicode
                     index_numbers = set()
                     for track in cuesheet:
-                        track_length = cuesheet.track_length(track.number())
-                        if track_length is not None:
-                            lengths[track.number()] = track_length
-                        else:
-                            lengths[track.number()] = \
-                                (file.seconds_length() -
-                                 track.index(1).offset())
+                        lengths[track.number()] = cuesheet.track_length(
+                            track.number(), file.seconds_length())
                         track_indexes = {}
                         for index in track:
                             track_indexes[index.number()] = index.offset()

@@ -4545,6 +4545,30 @@ class TestReplayGain(unittest.TestCase):
 
 class testsheet(unittest.TestCase):
     @LIB_CORE
+    def test_track_lengths(self):
+        from audiotools import Sheet
+        from audiotools import SheetTrack
+        from audiotools import SheetIndex
+        from fractions import Fraction
+
+        track1 = SheetTrack(1, [SheetIndex(1, Fraction(0, 1))])
+        track2 = SheetTrack(2, [SheetIndex(0, Fraction(28, 1)),
+                                SheetIndex(1, Fraction(30, 1))])
+        track3 = SheetTrack(3, [SheetIndex(0, Fraction(88, 1)),
+                                SheetIndex(1, Fraction(90, 1))])
+
+        sheet = Sheet([track1, track2, track3])
+        self.assertEqual(sheet.track_numbers(), [1, 2, 3])
+        self.assertEqual(sheet.track_offset(1), Fraction(0, 1))
+        self.assertEqual(sheet.track_length(1), Fraction(30, 1))
+        self.assertEqual(sheet.track_offset(2), Fraction(30, 1))
+        self.assertEqual(sheet.track_length(2), Fraction(60, 1))
+        self.assertEqual(sheet.track_offset(3), Fraction(90, 1))
+        self.assertIsNone(sheet.track_length(3))
+        self.assertEqual(sheet.track_length(3, Fraction(170, 1)),
+                         Fraction(80, 1))
+
+    @LIB_CORE
     def test_from_tracks_no_pre_gap(self):
         from audiotools import Sheet
         from audiotools import SheetTrack

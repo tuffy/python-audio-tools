@@ -140,6 +140,7 @@ OPT_JOINT = u"the maximum number of processes to run at a time"
 OPT_CUESHEET_TRACKCAT = u"a cuesheet to embed in the output file"
 OPT_ADD_CUESHEET_TRACKCAT = u"create a cuesheet to embed in the output file"
 OPT_CUESHEET_TRACKSPLIT = u"the cuesheet to use for splitting track"
+OPT_CUESHEET_TRACKCMP = u"cuesheet to use for comparing disc image to tracks"
 OPT_CUESHEET_TRACKVERIFY = \
     u"the cuesheet to verify disc image with AccurateRip"
 OPT_CUESHEET_CDDA2TRACK = \

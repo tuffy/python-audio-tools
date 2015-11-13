@@ -1661,9 +1661,11 @@ when burning a set of tracks back to CD.
 
    May raise :exc:`KeyError` if the track cannot be found.
 
-.. method:: Sheet.track_length(track_number)
+.. method:: Sheet.track_length(track_number, [total_length])
 
    Given a track number (often starting from 1),
+   and optional total length of the disc (including pre-gap)
+   as a :class:`Fraction` number of seconds,
    returns the length of that track as a :class:`Fraction` number
    of seconds.
 

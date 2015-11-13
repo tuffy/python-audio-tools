@@ -534,16 +534,9 @@ if (__name__ == '__main__'):
                         offset = int(sheet.track_offset(track_num) *
                                      sample_rate)
 
-                        if sheet.track_length(track_num) is not None:
-                            length = int(sheet.track_length(track_num) *
-                                         sample_rate)
-                        elif track_num > 1:
-                            length = (tracks[0].total_frames() -
-                                      int(sheet.track_offset(track_num) *
-                                          sample_rate))
-                        else:
-                            length = (tracks[0].total_frames() -
-                                      int(sheet.pre_gap() * sample_rate))
+                        length = int(sheet.track_length(
+                            track_num,
+                            tracks[0].seconds_length()) * sample_rate)
 
                         queue.execute(
                             function=accuraterip_image_checksum,
