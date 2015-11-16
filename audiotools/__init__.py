@@ -393,7 +393,7 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.__print__(string=u"*** Error: %s" % (s,),
+        self.__print__(string=u"*** Error: {}".format(s),
                        stream=self.__stderr__,
                        add_newline=True,
                        flush=False)
@@ -413,7 +413,7 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.__print__(string=u"*** Warning: %s" % (s,),
+        self.__print__(string=u"*** Warning: {}".format(s,),
                        stream=self.__stderr__,
                        add_newline=True,
                        flush=False)
@@ -439,7 +439,7 @@ class Messenger(object):
         """moves the cursor up by the given number of lines"""
 
         if self.output_isatty():
-            self.partial_output(u"\u001B[%dA" % (lines))
+            self.partial_output(u"\u001B[{:d}A".format(lines))
 
     def ansi_cleardown(self):
         """clears the remainder of the screen from the cursor downward"""
@@ -478,18 +478,18 @@ def khz(hz):
     num = hz // 1000
     den = (hz % 1000) // 100
     if den == 0:
-        return u"%dkHz" % (num)
+        return u"{:d}kHz".format(num)
     else:
-        return u"%d.%dkHz" % (num, den)
+        return u"{:d}.{:d}kHz".format(num, den)
 
 
 def hex_string(byte_string):
     """given a string of bytes, returns a Unicode string encoded as hex"""
 
     if PY3:
-        hex_digits = [u"%2.2X" % (b,) for b in byte_string]
+        hex_digits = [u"{:02X}".format(b) for b in byte_string]
     else:
-        hex_digits = [u"%2.2X" % (ord(b)) for b in byte_string]
+        hex_digits = [u"{:02X}".format(ord(b)) for b in byte_string]
 
     return u"".join(hex_digits)
 
@@ -580,12 +580,11 @@ class output_text(tuple):
 
     def __repr__(self):
         # the other fields can be derived
-        return "%s(%s, %s, %s, %s)" % \
-            (self.__class__.__name__,
-             repr(self[0]),
-             repr(self.fg_color()),
-             repr(self.bg_color()),
-             repr(self.style()))
+        return "{}({!r}, {!r}, {!r}, {!r})".format(self.__class__.__name__,
+                                                   self[0],
+                                                   self.fg_color(),
+                                                   self.bg_color(),
+                                                   self.style())
 
     @classmethod
     def __open_codes__(cls, fg_color, bg_color, style):
@@ -593,7 +592,7 @@ class output_text(tuple):
 
         if fg_color is not None:
             if fg_color not in cls.COLORS:
-                raise ValueError("invalid fg_color %s" % (repr(fg_color)))
+                raise ValueError("invalid fg_color {!r}".format(fg_color))
             else:
                 open_codes.append({"black": u"30",
                                    "red": u"31",
@@ -606,7 +605,7 @@ class output_text(tuple):
 
         if bg_color is not None:
             if bg_color not in cls.COLORS:
-                raise ValueError("invalid bg_color %s" % (repr(bg_color)))
+                raise ValueError("invalid bg_color {!r}".format(bg_color))
             else:
                 open_codes.append({"black": u"40",
                                    "red": u"41",
@@ -619,7 +618,7 @@ class output_text(tuple):
 
         if style is not None:
             if style not in cls.STYLES:
-                raise ValueError("invalid style %s" % (repr(style)))
+                raise ValueError("invalid style {!r}".format(style))
             else:
                 open_codes.append({"bold": u"1",
                                    "underline": u"4",
@@ -627,7 +626,7 @@ class output_text(tuple):
                                    "inverse": u"7"}[style])
 
         if len(open_codes) > 0:
-            return u"\u001B[%sm" % (u";".join(open_codes))
+            return u"\u001B[{}m".format(u";".join(open_codes))
         else:
             return u""
 
@@ -637,19 +636,19 @@ class output_text(tuple):
 
         if fg_color is not None:
             if fg_color not in cls.COLORS:
-                raise ValueError("invalid fg_color %s" % (repr(fg_color)))
+                raise ValueError("invalid fg_color {!r}".format(fg_color))
             else:
                 close_codes.append(u"39")
 
         if bg_color is not None:
             if bg_color not in cls.COLORS:
-                raise ValueError("invalid bg_color %s" % (repr(bg_color)))
+                raise ValueError("invalid bg_color {!r}".format(bg_color))
             else:
                 close_codes.append(u"49")
 
         if style is not None:
             if style not in cls.STYLES:
-                raise ValueError("invalid style %s" % (repr(style)))
+                raise ValueError("invalid style {!r}".format(style))
             else:
                 close_codes.append({"bold": u"22",
                                     "underline": u"24",
@@ -657,7 +656,7 @@ class output_text(tuple):
                                     "inverse": u"27"}[style])
 
         if len(close_codes) > 0:
-            return u"\u001B[%sm" % (u";".join(close_codes))
+            return u"\u001B[{}m".format(u";".join(close_codes))
         else:
             return u""
 
@@ -735,7 +734,7 @@ class output_text(tuple):
         """returns unicode text formatted depending on is_tty"""
 
         if is_tty and self.has_formatting():
-            return u"%s%s%s" % (self[6], self[0], self[7])
+            return u"{}{}{}".format(self[6], self[0], self[7])
         else:
             return self[0]
 
@@ -968,7 +967,7 @@ class output_list(output_text):
         # but not both
 
         if is_tty and self.has_formatting():
-            return u"%s%s%s" % (
+            return u"{}{}{}".format(
                 self[5],
                 u"".join(t.format(False) for t in self[0]),
                 self[6])
@@ -1386,8 +1385,9 @@ class ProgressRow(object):
             estimated_total_time = time_spent / self.progress
             estimated_time_remaining = int(round(estimated_total_time -
                                                  time_spent))
-            time_remaining = u" %2.1d:%2.2d" % (estimated_time_remaining // 60,
-                                                estimated_time_remaining % 60)
+            time_remaining = u" {:2d}:{:02d}".format(
+                estimated_time_remaining // 60,
+                estimated_time_remaining % 60)
         except ZeroDivisionError:
             split_point = 0
             time_remaining = u" --:--"
@@ -1878,8 +1878,7 @@ class Filename(tuple):
         return Filename(os.path.abspath(self[0]))
 
     def __repr__(self):
-        return "Filename(%s, %s, %s)" % \
-            (repr(self[0]), repr(self[1]), repr(self[2]))
+        return "Filename({!r}, {!r}, {!r})".format(self[0], self[1], self[2])
 
     def __eq__(self, filename):
         if isinstance(filename, Filename):
@@ -2055,7 +2054,7 @@ class AmbiguousAudioType(UnknownAudioType):
 
         messenger.error(ERR_AMBIGUOUS_AUDIO_TYPE % (self.suffix,))
         messenger.info(LAB_T_OPTIONS %
-                       (u" or ".join([u"\"%s\"" % (t.NAME.decode('ascii'))
+                       (u" or ".join([u"\"{}\"".format(t.NAME.decode('ascii'))
                                       for t in self.type_list])))
 
 
@@ -2191,10 +2190,10 @@ class ChannelMask(object):
             setattr(self, speaker, (mask & speaker_mask) != 0)
 
     def __repr__(self):
-        return "ChannelMask(%s)" % \
-            ",".join(["%s=%s" % (field, getattr(self, field))
+        return "ChannelMask({})".format(
+            ",".join(["{}={}".format(field, getattr(self, field))
                       for field in self.SPEAKER_TO_MASK.keys()
-                      if (getattr(self, field))])
+                      if getattr(self, field)]))
 
     if PY3:
         def __str__(self):
@@ -3354,10 +3353,9 @@ class MetaData(object):
             MetaData.__setattr__(self, "__images__", list())
 
     def __repr__(self):
-        fields = ["%s=%s" % (field, repr(getattr(self, field)))
-                  for field in MetaData.FIELDS]
-        return ("MetaData(%s)" % (
-                ",".join(["%s"] * (len(MetaData.FIELDS))))) % tuple(fields)
+        return "MetaData({})".format(
+                   ",".join(["{}={!r}".format(field, getattr(self, field))
+                             for field in MetaData.FIELDS]))
 
     def __delattr__(self, field):
         if field in self.FIELDS:
@@ -3414,18 +3412,19 @@ class MetaData(object):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
-                    row.add_column(u"%d" % (track_number))
+                    row.add_column(u"{:d}".format(track_number))
                 elif (track_number is None) and (track_total is not None):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
-                    row.add_column(u"?/%d" % (track_total,))
+                    row.add_column(u"?/{:d}".format(track_total))
                 else:
                     # neither track_number or track_total is None
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
-                    row.add_column(u"%d/%d" % (track_number, track_total))
+                    row.add_column(u"{:d}/{:d}".format(track_number,
+                                                       track_total))
             elif attr == "track_total":
                 pass
             elif attr == "album_number":
@@ -3439,18 +3438,19 @@ class MetaData(object):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
-                    row.add_column(u"%d" % (track_number))
+                    row.add_column(u"{:d}".format(track_number))
                 elif (album_number is None) and (album_total is not None):
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
-                    row.add_column(u"?/%d" % (album_total,))
+                    row.add_column(u"?/{:d}".format(album_total))
                 else:
                     # neither album_number or album_total is None
                     row = table.row()
                     row.add_column(self.FIELD_NAMES[attr], "right")
                     row.add_column(SEPARATOR)
-                    row.add_column(u"%d/%d" % (album_number, album_total))
+                    row.add_column(u"{:d}/{:d}".format(album_number,
+                                                       album_total))
             elif attr == "album_total":
                 pass
             elif getattr(self, attr) is not None:
@@ -3460,7 +3460,7 @@ class MetaData(object):
                 if self.FIELD_TYPES[attr] is type(u""):
                     row.add_column(getattr(self, attr))
                 elif self.FIELD_TYPES[attr] is int:
-                    row.add_column(u"%d" % (getattr(self, attr)))
+                    row.add_column(u"{:d}".format(getattr(self, attr)))
                 elif self.FIELD_TYPES[attr] is bool:
                     from audiotools.text import (METADATA_TRUE,
                                                  METADATA_FALSE)
@@ -3693,7 +3693,7 @@ class Image(object):
                 OTHER: "Other"}.get(self.type, "Other")
 
     def __repr__(self):
-        fields = ["%s=%s" % (attr, getattr(self, attr))
+        fields = ["{}={}".format(attr, getattr(self, attr))
                   for attr in ["mime_type",
                                "width",
                                "height",
@@ -3701,7 +3701,7 @@ class Image(object):
                                "color_count",
                                "description",
                                "type"]]
-        return "Image(%s)" % (",".join(fields))
+        return "Image({})".format(",".join(fields))
 
     if PY3:
         def __str__(self):
@@ -3711,9 +3711,10 @@ class Image(object):
             return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
-        return u"%s (%d\u00D7%d,'%s')" % \
-               (self.type_string(),
-                self.width, self.height, self.mime_type)
+        return u"{} ({:d}\u00D7{:d},'{}')".format(self.type_string(),
+                                                  self.width,
+                                                  self.height,
+                                                  self.mime_type)
 
     @classmethod
     def new(cls, image_data, description, type):
@@ -3778,9 +3779,10 @@ class ReplayGain(object):
         self.album_peak = float(album_peak)
 
     def __repr__(self):
-        return "ReplayGain(%s,%s,%s,%s)" % \
-            (self.track_gain, self.track_peak,
-             self.album_gain, self.album_peak)
+        return "ReplayGain({},{},{},{})".format(self.track_gain,
+                                                self.track_peak,
+                                                self.album_gain,
+                                                self.album_peak)
 
     def __eq__(self, rg):
         if isinstance(rg, ReplayGain):
@@ -4619,8 +4621,8 @@ class Sheet(object):
             return cls(sheet_tracks=sheet_tracks, metadata=None)
 
     def __repr__(self):
-        return "Sheet(sheet_tracks=%s, metadata=%s)" % \
-            (repr(self.__sheet_tracks__), repr(self.__metadata__))
+        return "Sheet(sheet_tracks={!r}, metadata={!r})".format(
+            self.__sheet_tracks__, self.__metadata__)
 
     def __len__(self):
         return len(self.__sheet_tracks__)
@@ -4772,16 +4774,16 @@ class SheetTrack(object):
             copy_permitted=sheet_track.copy_permitted())
 
     def __repr__(self):
-        return "SheetTrack(%s)" % \
-            ", ".join(["%s=%s" % (attr,
-                                  repr(getattr(self, "__" + attr + "__")))
+        return "SheetTrack({})".format(
+            ", ".join(["{}={!r}".format(attr,
+                                        getattr(self, "__" + attr + "__"))
                        for attr in ["number",
                                     "track_indexes",
                                     "metadata",
                                     "filename",
                                     "is_audio",
                                     "pre_emphasis",
-                                    "copy_permitted"]])
+                                    "copy_permitted"]]))
 
     def __len__(self):
         return len(self.__track_indexes__)
@@ -4875,8 +4877,8 @@ class SheetIndex(object):
                    offset=sheet_index.offset())
 
     def __repr__(self):
-        return "SheetIndex(number=%s, offset=%s)" % \
-            (repr(self.__number__), repr(self.__offset__))
+        return "SheetIndex(number={}, offset={})".format(self.__number__,
+                                                         self.__offset__)
 
     def __eq__(self, sheet_index):
         try:

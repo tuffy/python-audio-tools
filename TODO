@@ -7508,6 +7508,83 @@
 **** DONE Add unit tests
 *** TODO Update trackverify
 **** TODO Add unit tests
+** TODO Convert old string formatting to new .format()-based formatting
+   That is, instead of using: "foo %s bar" % (argument)
+   it's better to use "foo {} bar".format(argument)
+   since the old string formatting is deprecated and not as powerful.
+
+   Since the old format sync is baked into some areas of the code
+   (like the --format utility flags) it'll take longer to remove
+   than from elsewhere.
+
+   See: [[https://docs.python.org/3/library/string.html#formatstrings][Format String Syntax]] for more info.
+*** TODO Update audiotools.text entries
+*** DONE Update setup.py
+*** TODO Update utilities
+    - [ ] audiotools-config
+    - [ ] cdda2track
+    - [ ] cddainfo
+    - [ ] cddaplay
+    - [ ] coverdump
+    - [ ] covertag
+    - [ ] coverview
+    - [ ] dvda2track
+    - [ ] dvdainfo
+    - [ ] track2cdda
+    - [ ] track2track
+    - [ ] trackcat
+    - [ ] trackcmp
+    - [ ] trackinfo
+    - [ ] tracklength
+    - [ ] tracklint
+    - [ ] trackplay
+    - [ ] trackrename
+    - [ ] tracksplit
+    - [ ] tracktag
+    - [ ] trackverify
+*** TODO Update modules
+    - [ ] __init__.py
+    - [ ] accuraterip.py
+    - [ ] aiff.py
+    - [ ] ape.py
+    - [ ] au.py
+    - [ ] cdtoc.py
+    - [ ] coverartarchive.py
+    - [ ] flac.py
+    - [ ] freedb.py
+    - [ ] id3.py
+    - [ ] id3v1.py
+    - [ ] image.py
+    - [ ] m4a.py
+    - [ ] m4a_atoms.py
+    - [ ] mp3.py
+    - [ ] mpc.py
+    - [ ] musicbrainz.py
+    - [ ] ogg.py
+    - [ ] opus.py
+    - [ ] player.py
+    - [ ] text.py
+    - [ ] tta.py
+    - [ ] ui.py
+    - [ ] vorbis.py
+    - [ ] vorbiscomment.py
+    - [ ] wav.py
+    - [ ] wavpack.py
+**** TODO cue
+     - [ ] __init__.py
+     - [ ] tokrules.py
+     - [ ] yaccrules.py
+**** TODO toc
+     - [ ] __init__.py
+     - [ ] tokrules.py
+     - [ ] yaccrules.py
+*** TODO Update unit tests
+    - [ ] test.py
+    - [ ] test_core.py
+    - [ ] test_formats.py
+    - [ ] test_metadata.py
+    - [ ] test_streams.py
+    - [ ] test_utils.py
 ** TODO Support MBID tags
    These are basically direct MusicBrainz links rather than using
    calculated disc IDs to perform lookups.

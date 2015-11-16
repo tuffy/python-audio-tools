@@ -421,7 +421,7 @@ class build_ext(_build_ext):
             pkg_config_found = False
 
         print("=" * table.total_width())
-        print("Python Audio Tools %s Setup" % (VERSION))
+        print("Python Audio Tools {} Setup".format(VERSION))
         print("=" * table.total_width())
 
         if not pkg_config_found:
