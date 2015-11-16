@@ -29,6 +29,8 @@ struct tta_header {
     unsigned bits_per_sample;
     unsigned sample_rate;
     unsigned total_pcm_frames;
+    unsigned default_block_size;
+    unsigned total_tta_frames;
 };
 
 #ifndef STANDALONE
@@ -36,9 +38,6 @@ typedef struct {
     PyObject_HEAD
 
     struct tta_header header;
-
-    unsigned default_block_size;
-    unsigned total_tta_frames;
     unsigned current_tta_frame;
     unsigned* seektable;
 

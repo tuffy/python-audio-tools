@@ -3557,7 +3557,7 @@ class trackcmp_cd_image(UtilTest):
                 self.assertFalse(image.seekable())
 
             self.assertEqual(
-                self.__run_app__(["trackcmp", "-V", "normal",
+                self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                                   image.filename,
                                   self.track1.filename,
                                   self.track2.filename,
@@ -3589,7 +3589,7 @@ class trackcmp_cd_image(UtilTest):
                 self.assertFalse(no_pre_gap_image.seekable())
 
             self.assertEqual(
-                self.__run_app__(["trackcmp", "-V", "normal",
+                self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                                   no_pre_gap_image.filename,
                                   self.track1.filename,
                                   self.track2.filename,
@@ -3619,7 +3619,7 @@ class trackcmp_cd_image(UtilTest):
                 self.assertFalse(pre_gap_image.seekable())
 
             self.assertEqual(
-                self.__run_app__(["trackcmp", "-V", "normal",
+                self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                                   pre_gap_image.filename,
                                   self.track1.filename,
                                   self.track2.filename,
@@ -3631,7 +3631,7 @@ class trackcmp_cd_image(UtilTest):
 
             # test image with disc pre-gap against tracks, with pre-gap track
             self.assertEqual(
-                self.__run_app__(["trackcmp", "-V", "normal",
+                self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                                   pre_gap_image.filename,
                                   self.pre_gap.filename,
                                   self.track1.filename,
@@ -3670,7 +3670,7 @@ class trackcmp_cd_image(UtilTest):
                 self.assertFalse(no_pre_gap_image.seekable())
 
             self.assertEqual(
-                self.__run_app__(["trackcmp", "-V", "normal",
+                self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                                   "--cue", no_pre_gap_cue,
                                   no_pre_gap_image.filename,
                                   self.track1.filename,
@@ -3704,7 +3704,7 @@ class trackcmp_cd_image(UtilTest):
                 self.assertFalse(pre_gap_image.seekable())
 
             self.assertEqual(
-                self.__run_app__(["trackcmp", "-V", "normal",
+                self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                                   "--cue", pre_gap_cue,
                                   pre_gap_image.filename,
                                   self.track1.filename,
@@ -3717,7 +3717,7 @@ class trackcmp_cd_image(UtilTest):
 
             # test image with disc pre-gap against tracks, with pre-gap track
             self.assertEqual(
-                self.__run_app__(["trackcmp", "-V", "normal",
+                self.__run_app__(["trackcmp", "-V", "normal", "-j", "1",
                                   "--cue", pre_gap_cue,
                                   pre_gap_image.filename,
                                   self.pre_gap.filename,
