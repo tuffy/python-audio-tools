@@ -29,8 +29,8 @@ class CDTOC(Sheet):
         self.__lead_out__ = lead_out
 
     def __repr__(self):
-        return "CDTOC(%s, %s)" % (repr(self.__cdtoc_tracks__),
-                                  repr(self.__lead_out__))
+        return "CDTOC({!r}, {!r})".format(self.__cdtoc_tracks__,
+                                          self.__lead_out__)
 
     if PY3:
         def __str__(self):
@@ -40,9 +40,10 @@ class CDTOC(Sheet):
             return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
-        return u"+".join([u"%X" % (len([t for t in self if t.is_audio()]))] +
+        return u"+".join([u"{:X}".format(
+                              len([t for t in self if t.is_audio()]))] +
                          [t.__unicode__() for t in self] +
-                         [u"%X" % (self.__lead_out__)])
+                         [u"{:X}".format(self.__lead_out__)])
 
     @classmethod
     def from_unicode(cls, u):
@@ -153,14 +154,14 @@ class CDTOC_DataAudio(CDTOC):
         CDTOC.__init__(self, cdtoc_tracks, lead_out)
 
     def __unicode__(self):
-        return u"+".join([u"%X" % (len(self) - 1)] +
+        return u"+".join([u"{:X}".format(len(self) - 1)] +
                          [t.__unicode__() for t in self[1:]] +
-                         [u"%X" % (self.__lead_out__),
-                          u"X%s" % (self[0].__unicode__())])
+                         [u"{:X}".format(self.__lead_out__),
+                          u"X{}".format(self[0].__unicode__())])
 
     def __repr__(self):
-        return "CDTOC_DataAudio(%s, %s)" % (repr(self.__cdtoc_tracks__),
-                                            repr(self.__lead_out__))
+        return "CDTOC_DataAudio({!r}, {!r})".format(self.__cdtoc_tracks__,
+                                                    self.__lead_out__)
 
 
 class CDTOC_Track(SheetTrack):
@@ -203,10 +204,8 @@ class CDTOC_Track(SheetTrack):
         return self.index(1).__unicode__()
 
     def __repr__(self):
-        return "CDTOC_Track(%s, %s, %s)" % \
-            (repr(self.__number__),
-             repr(self.__indexes__),
-             repr(self.__is_audio__))
+        return "CDTOC_Track({!r}, {!r}, {!r})".format(
+            self.__number__, self.__indexes__, self.__is_audio__)
 
     def number(self):
         """return SheetTrack's number, starting from 1"""
@@ -252,11 +251,11 @@ class CDTOC_Index(SheetIndex):
             return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
-        return u"%X" % (self.__address__)
+        return u"{:X}".format(self.__address__)
 
     def __repr__(self):
-        return "CDTOC_Index(number=%s, address=%s)" % \
-            (repr(self.__number__), repr(self.__address__))
+        return "CDTOC_Index(number={!r}, address={!r})".format(
+            self.__number__, self.__address__)
 
     def number(self):
         return self.__number__

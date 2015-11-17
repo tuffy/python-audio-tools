@@ -217,7 +217,7 @@ class AIFF_Chunk(object):
         self.__data__ = chunk_data
 
     def __repr__(self):
-        return "AIFF_Chunk(%s)" % (repr(self.id))
+        return "AIFF_Chunk({!r})".format(self.id)
 
     def size(self):
         """returns size of chunk in bytes
@@ -279,7 +279,7 @@ class AIFF_File_Chunk(AIFF_Chunk):
         self.__aiff_file__.close()
 
     def __repr__(self):
-        return "AIFF_File_Chunk(%s)" % (repr(self.id))
+        return "AIFF_File_Chunk({!r})".format(self.id)
 
     def data(self):
         """returns chunk data as file-like object"""

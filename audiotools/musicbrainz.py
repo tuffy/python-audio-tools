@@ -87,12 +87,12 @@ class DiscID(object):
             offsets=[int(t.index(1).offset() * 75 + 150) for t in sheet])
 
     def __repr__(self):
-        return "DiscID(%s)" % \
-            ", ".join(["%s=%s" % (attr, getattr(self, attr))
+        return "DiscID({})".format(
+            ", ".join(["{}={!r}".format(attr, getattr(self, attr))
                        for attr in ["first_track_number",
                                     "last_track_number",
                                     "lead_out_offset",
-                                    "offsets"]])
+                                    "offsets"]]))
 
     if sys.version_info[0] >= 3:
         def __str__(self):
@@ -105,10 +105,10 @@ class DiscID(object):
         from hashlib import sha1
         from base64 import b64encode
 
-        raw_id = (u"%2.2X%2.2X%s" %
+        raw_id = (u"{:02X}{:02X}{}".format(
                   (self.first_track_number,
                    self.last_track_number,
-                   u"".join([u"%8.8X" % (offset) for offset in
+                   u"".join([u"{:08X}".format(offset) for offset in
                              [self.lead_out_offset] +
                             self.offsets +
                             [0] * (99 - len(self.offsets))])))
@@ -140,11 +140,11 @@ def perform_lookup(disc_id, musicbrainz_server, musicbrainz_port):
     from audiotools.coverartarchive import perform_lookup as image_lookup
 
     # query MusicBrainz web service (version 2) for <metadata>
-    m = urlopen("http://%s:%d/ws/2/discid/%s?%s" %
-                (musicbrainz_server,
-                 musicbrainz_port,
-                 disc_id,
-                 urlencode({"inc": "artists labels recordings"})))
+    m = urlopen("http://{}:{:d}/ws/2/discid/{}?{}".format(
+                    musicbrainz_server,
+                    musicbrainz_port,
+                    disc_id,
+                    urlencode({"inc": "artists labels recordings"})))
     xml = xml.dom.minidom.parse(m)
     m.close()
 

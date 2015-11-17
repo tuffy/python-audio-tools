@@ -36,7 +36,7 @@ class RIFF_Chunk(object):
         self.__data__ = chunk_data
 
     def __repr__(self):
-        return "RIFF_Chunk(%s)" % (repr(self.id))
+        return "RIFF_Chunk({!r})".format(self.id)
 
     def size(self):
         """returns size of chunk in bytes
@@ -98,7 +98,7 @@ class RIFF_File_Chunk(RIFF_Chunk):
         self.__wav_file__.close()
 
     def __repr__(self):
-        return "RIFF_File_Chunk(%s)" % (repr(self.id))
+        return "RIFF_File_Chunk({!r})".format(self.id)
 
     def data(self):
         """returns chunk data as file-like object"""

@@ -1213,4 +1213,4 @@ def open_output(output):
         if audio_output.NAME == output:
             return audio_output
     else:
-        raise ValueError("no such outout %s" % (output))
+        raise ValueError("no such outout {}".format(output))

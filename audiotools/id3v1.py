@@ -80,14 +80,14 @@ class ID3v1Comment(MetaData):
         MetaData.__setattr__(self, "__genre__", genre)
 
     def __repr__(self):
-        return "ID3v1Comment(%s, %s, %s, %s, %s, %s, %s)" % \
-            (repr(self.__track_name__),
-             repr(self.__artist_name__),
-             repr(self.__album_name__),
-             repr(self.__year__),
-             repr(self.__comment__),
-             repr(self.__track_number__),
-             repr(self.__genre__))
+        return "ID3v1Comment({!r},{!r},{!r},{!r},{!r},{!r},{!r})".format(
+            self.__track_name__,
+            self.__artist_name__,
+            self.__album_name__,
+            self.__year__,
+            self.__comment__,
+            self.__track_number__,
+            self.__genre__)
 
     def __getattr__(self, attr):
         if attr == "track_number":
@@ -149,7 +149,7 @@ class ID3v1Comment(MetaData):
 
         return linesep.join(
             [u"ID3v1.1:"] +
-            [u"%s = %s" % (label, getattr(self, attr))
+            [u"{} = {}".format(label, getattr(self, attr))
              for (label, attr) in [(u"  track name", "track_name"),
                                    (u" artist name", "artist_name"),
                                    (u"  album name", "album_name"),
@@ -157,7 +157,7 @@ class ID3v1Comment(MetaData):
                                    (u"     comment", "comment"),
                                    (u"track number", "track_number")]
              if (getattr(self, attr) is not None)] +
-            [u"       genre = %d" % (self.__genre__)])
+            [u"       genre = {:d}".format(self.__genre__)])
 
     @classmethod
     def parse(cls, mp3_file):

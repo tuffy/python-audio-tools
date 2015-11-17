@@ -7544,32 +7544,31 @@
     - [ ] trackverify
 *** TODO Update modules
     - [ ] __init__.py
-    - [ ] accuraterip.py
-    - [ ] aiff.py
+    - [X] accuraterip.py
+    - [X] aiff.py
     - [ ] ape.py
     - [ ] au.py
-    - [ ] cdtoc.py
-    - [ ] coverartarchive.py
+    - [X] cdtoc.py
+    - [X] coverartarchive.py
     - [ ] flac.py
-    - [ ] freedb.py
+    - [X] freedb.py
     - [ ] id3.py
     - [ ] id3v1.py
     - [ ] image.py
-    - [ ] m4a.py
+    - [X] m4a.py
     - [ ] m4a_atoms.py
-    - [ ] mp3.py
-    - [ ] mpc.py
-    - [ ] musicbrainz.py
-    - [ ] ogg.py
+    - [X] mp3.py
+    - [X] mpc.py
+    - [X] musicbrainz.py
+    - [X] ogg.py
     - [ ] opus.py
-    - [ ] player.py
-    - [ ] text.py
+    - [X] player.py
     - [ ] tta.py
     - [ ] ui.py
     - [ ] vorbis.py
     - [ ] vorbiscomment.py
-    - [ ] wav.py
-    - [ ] wavpack.py
+    - [X] wav.py
+    - [X] wavpack.py
 **** TODO cue
      - [ ] __init__.py
      - [ ] tokrules.py

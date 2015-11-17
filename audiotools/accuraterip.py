@@ -246,15 +246,15 @@ class DiscID(object):
             return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
-        return u"dBAR-%(tracks)3.3d-%(id1)8.8x-%(id2)8.8x-%(freedb)8.8x.bin" % \
-            {"tracks": len(self.__track_numbers__),
-             "id1": self.id1(),
-             "id2": self.id2(),
-             "freedb": int(self.__freedb_disc_id__)}
+        return u"dBAR-{tracks:03d}-{id1:08x}-{id2:08x}-{freedb:08x}.bin".format(
+            tracks=len(self.__track_numbers__),
+            id1=self.id1(),
+            id2=self.id2(),
+            freedb=int(self.__freedb_disc_id__))
 
     def __repr__(self):
-        return "AccurateRipDiscID(%s)" % \
-            (", ".join(["%s=%s" % (key, repr(getattr(self, attr)))
+        return "AccurateRipDiscID({})".format(
+            ", ".join(["{}={!r}".format(key, getattr(self, attr))
                         for (key, attr) in
                         [("track_numbers", "__track_numbers__"),
                          ("track_offsets", "__track_offsets__"),
@@ -283,12 +283,12 @@ def perform_lookup(disc_id,
 
     matches = {n: [] for n in disc_id.track_numbers()}
 
-    url = "http://%s:%s/accuraterip/%s/%s/%s/%s" % (accuraterip_server,
-                                                    accuraterip_port,
-                                                    str(disc_id)[16],
-                                                    str(disc_id)[15],
-                                                    str(disc_id)[14],
-                                                    disc_id)
+    url = "http://{}:{}/accuraterip/{}/{}/{}/{}".format(accuraterip_server,
+                                                        accuraterip_port,
+                                                        str(disc_id)[16],
+                                                        str(disc_id)[15],
+                                                        str(disc_id)[14],
+                                                        disc_id)
 
     try:
         response = BitstreamReader(urlopen(url), True)

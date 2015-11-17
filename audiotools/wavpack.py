@@ -583,7 +583,7 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
 
         cuesheet_data = BytesIO()
         write_cuesheet(cuesheet,
-                       u"%s" % (Filename(self.filename).basename(),),
+                       u"{}".format(Filename(self.filename).basename()),
                        cuesheet_data)
 
         metadata[b'Cuesheet'] = ApeTag.ITEM.string(

@@ -27,7 +27,7 @@ class MPC_Size:
         self.__length__ = length
 
     def __repr__(self):
-        return "MPC_Size(%d, %d)" % (self.__value__, self.__length__)
+        return "MPC_Size({!r}, {!r})".format(self.__value__, self.__length__)
 
     def __int__(self):
         return self.__value__

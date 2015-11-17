@@ -113,8 +113,8 @@ class DiscID(object):
                                     sample_rate))
 
     def __repr__(self):
-        return "DiscID(%s)" % \
-            ", ".join(["%s=%s" % (attr, getattr(self, attr))
+        return "DiscID({})".format(
+            ", ".join(["{}={}".format(attr, getattr(self, attr))
                        for attr in ["offsets",
                                     "total_length",
                                     "track_count",
@@ -128,7 +128,7 @@ class DiscID(object):
             return self.__unicode__().encode('ascii')
 
     def __unicode__(self):
-        return u"%8.8X" % (int(self))
+        return u"{:08X}".format(int(self))
 
     def __int__(self):
         digit_sum_ = sum([digit_sum(o // 75) for o in self.offsets])
@@ -159,9 +159,9 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
                            freedb_port,
                            u"query",
                            *([disc_id.__unicode__(),
-                              u"%d" % (disc_id.track_count)] +
-                             [u"%d" % (o) for o in disc_id.offsets] +
-                             [u"%d" % (disc_id.playable_length)]))
+                              u"{:d}".format(disc_id.track_count)] +
+                             [u"{:d}".format(o) for o in disc_id.offsets] +
+                             [u"{:d}".format(disc_id.playable_length)]))
 
     line = next(query)
     response = RESPONSE.match(line)
@@ -257,26 +257,22 @@ def freedb_command(freedb_server, freedb_port, cmd, *args):
 
     # generate query to post with arguments in specific order
     if len(args) > 0:
-        POST.append((u"cmd", u"cddb %s %s" % (cmd, " ".join(args))))
+        POST.append((u"cmd", u"cddb {} {}".format(cmd, " ".join(args))))
     else:
-        POST.append((u"cmd", u"cddb %s" % (cmd)))
+        POST.append((u"cmd", u"cddb {}".format(cmd)))
 
-    if PY3:
-        POST.append((u"hello",
-                     u"user %s %s %s" % (getfqdn(),
-                                         u"audiotools",
-                                         VERSION)))
-    else:
-        POST.append((u"hello",
-                     u"user %s %s %s" % (getfqdn().decode("UTF-8", "replace"),
-                                         u"audiotools",
-                                         VERSION.decode("ascii"))))
+    POST.append(
+        (u"hello",
+         u"user {} {} {}".format(
+            getfqdn() if PY3 else getfqdn().decode("UTF-8", "replace"),
+            u"audiotools",
+            VERSION if PY3 else VERSION.decode("ascii"))))
 
     POST.append((u"proto", u"6"))
 
     # get Request object from post
     request = urlopen(
-        "http://%s:%d/~cddb/cddb.cgi" % (freedb_server, freedb_port),
+        "http://{}:{:d}/~cddb/cddb.cgi".format(freedb_server, freedb_port),
         urlencode(POST).encode("UTF-8") if (version_info[0] >= 3) else
         urlencode(POST))
     try:
