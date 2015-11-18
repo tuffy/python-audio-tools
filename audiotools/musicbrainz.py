@@ -105,13 +105,13 @@ class DiscID(object):
         from hashlib import sha1
         from base64 import b64encode
 
-        raw_id = (u"{:02X}{:02X}{}".format(
-                  (self.first_track_number,
-                   self.last_track_number,
-                   u"".join([u"{:08X}".format(offset) for offset in
-                             [self.lead_out_offset] +
-                            self.offsets +
-                            [0] * (99 - len(self.offsets))])))
+        raw_id = u"{:02X}{:02X}{}".format(
+                  self.first_track_number,
+                  self.last_track_number,
+                  u"".join([u"{:08X}".format(offset) for offset in
+                            [self.lead_out_offset] +
+                           self.offsets +
+                           [0] * (99 - len(self.offsets))]))
 
         return b64encode(sha1(raw_id.encode("ascii")).digest(),
                          b"._").replace(b"=", b"-").decode('ascii')

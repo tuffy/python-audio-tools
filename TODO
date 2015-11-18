@@ -7511,7 +7511,8 @@
 ** TODO Convert old string formatting to new .format()-based formatting
    That is, instead of using: "foo %s bar" % (argument)
    it's better to use "foo {} bar".format(argument)
-   since the old string formatting is deprecated and not as powerful.
+   since the new format method is recommended for new code
+   and the old one is somewhat clunky and not as powerful.
 
    Since the old format sync is baked into some areas of the code
    (like the --format utility flags) it'll take longer to remove

@@ -118,7 +118,7 @@ class DiscID(object):
                        for attr in ["offsets",
                                     "total_length",
                                     "track_count",
-                                    "playable_length"]])
+                                    "playable_length"]]))
 
     if sys.version_info[0] >= 3:
         def __str__(self):
