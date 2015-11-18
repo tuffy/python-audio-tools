@@ -317,12 +317,12 @@ class VorbisAudio(AudioFile):
         comment_writer = BitstreamRecorder(True)
         comment_writer.build("8u 6b", (3, b"vorbis"))
         vendor_string = metadata.vendor_string.encode('utf-8')
-        comment_writer.build("32u %db" % (len(vendor_string)),
+        comment_writer.build("32u {:d}b".format(len(vendor_string)),
                              (len(vendor_string), vendor_string))
         comment_writer.write(32, len(metadata.comment_strings))
         for comment_string in metadata.comment_strings:
             comment_string = comment_string.encode('utf-8')
-            comment_writer.build("32u %db" % (len(comment_string)),
+            comment_writer.build("32u {:d}b".format(len(comment_string)),
                                  (len(comment_string), comment_string))
 
         comment_writer.build("1u a", (1,))  # framing bit
@@ -474,16 +474,16 @@ class VorbisAudio(AudioFile):
             from audiotools import VERSION
 
             vorbis_comment = VorbisComment(
-                [], u"Python Audio Tools %s" % (VERSION))
+                [], u"Python Audio Tools {}".format(VERSION))
 
         vorbis_comment[u"REPLAYGAIN_TRACK_GAIN"] = [
-            u"%1.2f dB" % (replaygain.track_gain)]
+            u"{:.2f} dB".format(replaygain.track_gain)]
         vorbis_comment[u"REPLAYGAIN_TRACK_PEAK"] = [
-            u"%1.8f" % (replaygain.track_peak)]
+            u"{:.8f}".format(replaygain.track_peak)]
         vorbis_comment[u"REPLAYGAIN_ALBUM_GAIN"] = [
-            u"%1.2f dB" % (replaygain.album_gain)]
+            u"{:.2f} dB".format(replaygain.album_gain)]
         vorbis_comment[u"REPLAYGAIN_ALBUM_PEAK"] = [
-            u"%1.8f" % (replaygain.album_peak)]
+            u"{:.8f}".format(replaygain.album_peak)]
         vorbis_comment[u"REPLAYGAIN_REFERENCE_LOUDNESS"] = [u"89.0 dB"]
 
         self.update_metadata(vorbis_comment)
@@ -512,10 +512,10 @@ class VorbisChannelMask(ChannelMask):
     """the Vorbis-specific channel mapping"""
 
     def __repr__(self):
-        return "VorbisChannelMask(%s)" % \
-            ",".join(["%s=%s" % (field, getattr(self, field))
+        return "VorbisChannelMask({})".format(
+            ",".join(["{}={}".format(field, getattr(self, field))
                       for field in self.SPEAKER_TO_MASK.keys()
-                      if (getattr(self, field))])
+                      if (getattr(self, field))]))
 
     def channels(self):
         """returns a list of speaker strings this mask contains

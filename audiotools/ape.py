@@ -28,18 +28,18 @@ def __number_pair__(current, total):
     def empty(i):
         return i is None
 
-    unslashed_format = u"%d"
-    slashed_format = u"%d/%d"
+    unslashed_format = u"{:d}"
+    slashed_format = u"{:d}/{:d}"
 
     if empty(current) and empty(total):
-        return unslashed_format % (0,)
+        return unslashed_format.format(0)
     elif (not empty(current)) and empty(total):
-        return unslashed_format % (current,)
+        return unslashed_format.format(current)
     elif empty(current) and (not empty(total)):
-        return slashed_format % (0, total)
+        return slashed_format.format(0, total)
     else:
         # neither current or total are empty
-        return slashed_format % (current, total)
+        return slashed_format.format(current, total)
 
 
 def limited_transfer_data(from_function, to_function, max_bytes):
@@ -100,11 +100,10 @@ class ApeTagItem(object):
                           self.data)
 
     def __repr__(self):
-        return "ApeTagItem(%s,%s,%s,%s)" % \
-            (repr(self.type),
-             repr(self.read_only),
-             repr(self.key),
-             repr(self.data))
+        return "ApeTagItem({!r},{!r},{!r},{!r})".format(self.type,
+                                                        self.read_only,
+                                                        self.key,
+                                                        self.data)
 
     def raw_info_pair(self):
         """returns a human-readable key/value pair of item data"""
@@ -112,18 +111,18 @@ class ApeTagItem(object):
         if self.type == 0:    # text
             if self.read_only:
                 return (self.key.decode('ascii'),
-                        u"(read only) %s" % (self.data.decode('utf-8')))
+                        u"(read only) {}".format(self.data.decode('utf-8')))
             else:
                 return (self.key.decode('ascii'), self.data.decode('utf-8'))
         elif self.type == 1:  # binary
             return (self.key.decode('ascii'),
-                    u"(binary) %d bytes" % (len(self.data)))
+                    u"(binary) {:d} bytes".format(len(self.data)))
         elif self.type == 2:  # external
             return (self.key.decode('ascii'),
-                    u"(external) %d bytes" % (len(self.data)))
-        else:                   # reserved
+                    u"(external) {:d} bytes".format(len(self.data)))
+        else:                 # reserved
             return (self.key.decode('ascii'),
-                    u"(reserved) %d bytes" % (len(self.data)))
+                    u"(reserved) {:d} bytes".format(len(self.data)))
 
     if sys.version_info[0] >= 3:
         def __str__(self):
@@ -198,9 +197,9 @@ class ApeTagItem(object):
     def build(self, writer):
         """writes the ApeTagItem values to the given BitstreamWriter"""
 
-        writer.build("%s %db 8u %db" % (self.FORMAT,
-                                        len(self.key),
-                                        len(self.data)),
+        writer.build("{} {:d}b 8u {:d}b".format(self.FORMAT,
+                                                len(self.key),
+                                                len(self.data)),
                      (len(self.data),
                       self.read_only,
                       self.type,
@@ -274,9 +273,9 @@ class ApeTag(MetaData):
         MetaData.__setattr__(self, "contains_footer", contains_footer)
 
     def __repr__(self):
-        return "ApeTag(%s, %s, %s)" % (repr(self.tags),
-                                       repr(self.contains_header),
-                                       repr(self.contains_footer))
+        return "ApeTag({!r},{!r},{!r})".format(self.tags,
+                                               self.contains_header,
+                                               self.contains_footer)
 
     def total_size(self):
         """returns the minimum size of the total ApeTag, in bytes"""
@@ -387,14 +386,14 @@ class ApeTag(MetaData):
         def swap_number(unicode_value, new_number):
             import re
 
-            return re.sub(r'\d+', u"%d" % (new_number), unicode_value, 1)
+            return re.sub(r'\d+', u"{:d}".format(new_number), unicode_value, 1)
 
         def swap_slashed_number(unicode_value, new_number):
             if u"/" in unicode_value:
                 (first, second) = unicode_value.split(u"/", 1)
                 return u"/".join([first, swap_number(second, new_number)])
             else:
-                return u"/".join([unicode_value, u"%d" % (new_number)])
+                return u"/".join([unicode_value, u"{:d}".format(new_number)])
 
         if attr in self.ATTRIBUTE_MAP:
             key = self.ATTRIBUTE_MAP[attr]
@@ -416,8 +415,8 @@ class ApeTag(MetaData):
                         self[key] = self.ITEM.string(
                             key, __number_pair__(None, value))
                 elif attr == 'compilation':
-                    self[key] = self.ITEM.string(key,
-                                                 u"%d" % (1 if value else 0))
+                    self[key] = self.ITEM.string(
+                        key, u"{:d}".format(1 if value else 0))
                 else:
                     self[key] = self.ITEM.string(key, value)
             else:
@@ -689,20 +688,22 @@ class ApeTag(MetaData):
                             fix3 = fix2
                         elif ((current_int is not None) and
                               (total_int is None)):
-                            fix3 = u"%d" % (int(current_int.group(0)))
+                            fix3 = u"{:d}".format(int(current_int.group(0)))
                         elif ((current_int is None) and
                               (total_int is not None)):
-                            fix3 = u"%d/%d" % (0, int(total_int.group(0)))
+                            fix3 = u"{:d}/{:d}".format(
+                                0, int(total_int.group(0)))
                         else:
                             # both sides contain an int
-                            fix3 = u"%d/%d" % (int(current_int.group(0)),
-                                               int(total_int.group(0)))
+                            fix3 = u"{:d}/{:d}".format(
+                                int(current_int.group(0)),
+                                int(total_int.group(0)))
                     else:
                         # item contains no slash
                         current_int = re.search(r'\d+', fix2)
                         if current_int is not None:
                             # item contains an integer
-                            fix3 = u"%d" % (int(current_int.group(0)),)
+                            fix3 = u"{:d}".format(int(current_int.group(0)))
                         else:
                             # item contains no integer value so ignore it
                             # (although 'Track' should only contain
@@ -1066,16 +1067,16 @@ class ApeGainedAudio(object):
 
         metadata[b"replaygain_track_gain"] = ApeTagItem.string(
             b"replaygain_track_gain",
-            u"%+1.2f dB" % (replaygain.track_gain))
+            u"{:+.2f} dB".format(replaygain.track_gain))
         metadata[b"replaygain_track_peak"] = ApeTagItem.string(
             b"replaygain_track_peak",
-            u"%1.6f" % (replaygain.track_peak))
+            u"{:.6f}".format(replaygain.track_peak))
         metadata[b"replaygain_album_gain"] = ApeTagItem.string(
             b"replaygain_album_gain",
-            u"%+1.2f dB" % (replaygain.album_gain))
+            u"{:+.2f} dB".format(replaygain.album_gain))
         metadata[b"replaygain_album_peak"] = ApeTagItem.string(
             b"replaygain_album_peak",
-            u"%1.6f" % (replaygain.album_peak))
+            u"{:.6f}".format(replaygain.album_peak))
 
         self.update_metadata(metadata)
 

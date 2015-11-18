@@ -69,7 +69,7 @@ class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
                     self.__total_pcm_frames__ * 245,
                     self.__sample_rate__ * 256)
                 self.__frame_lengths__ = list(reader.parse(
-                    "%d* 32u" % (self.__total_tta_frames__) + "32p"))
+                    "{:d}* 32u".format(self.__total_tta_frames__) + "32p"))
         except IOError as msg:
             raise InvalidTTA(str(msg))
 
@@ -293,7 +293,7 @@ class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
 
         cuesheet_data = BytesIO()
         write_cuesheet(cuesheet,
-                       u"%s" % (Filename(self.filename).basename(),),
+                       u"{}".format(Filename(self.filename).basename()),
                        cuesheet_data)
 
         metadata[b'Cuesheet'] = ApeTag.ITEM.string(

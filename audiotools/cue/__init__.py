@@ -44,15 +44,15 @@ class Cuesheet(Sheet):
         self.__cdtextfile__ = cdtextfile
 
     def __repr__(self):
-        return "Cuesheet(%s)" % \
-            ", ".join(["%s=%s" % (attr,
-                                  repr(getattr(self, "__" + attr + "__")))
+        return "Cuesheet({})".format(
+            ", ".join(["{}={!r}".format(attr,
+                                        getattr(self, "__" + attr + "__"))
                        for attr in ["files",
                                     "catalog",
                                     "title",
                                     "performer",
                                     "songwriter",
-                                    "cdtextfile"]])
+                                    "cdtextfile"]]))
 
     @classmethod
     def converted(cls, sheet, filename=None):
@@ -133,19 +133,19 @@ class Cuesheet(Sheet):
         items = []
         if self.__catalog__ is not None:
             items.append(
-                u"CATALOG %s" % (format_string(self.__catalog__)))
+                u"CATALOG {}".format(format_string(self.__catalog__)))
         if self.__title__ is not None:
             items.append(
-                u"TITLE %s" % (format_string(self.__title__)))
+                u"TITLE {}".format(format_string(self.__title__)))
         if self.__performer__ is not None:
             items.append(
-                u"PERFORMER %s" % (format_string(self.__performer__)))
+                u"PERFORMER {}".format(format_string(self.__performer__)))
         if self.__songwriter__ is not None:
             items.append(
-                u"SONGWRITER %s" % (format_string(self.__songwriter__)))
+                u"SONGWRITER {}".format(format_string(self.__songwriter__)))
         if self.__cdtextfile__ is not None:
             items.append(
-                u"CDTEXTFILE %s" % (format_string(self.__cdtextfile__)))
+                u"CDTEXTFILE {}".format(format_string(self.__cdtextfile__)))
 
         if len(items) > 0:
             return (u"\r\n".join(items) +
@@ -177,10 +177,9 @@ class File(object):
         return self.__tracks__[index]
 
     def __repr__(self):
-        return "File(%s)" % \
-            ", ".join(["%s=%s" % (attr,
-                                  repr(getattr(self, "__" + attr + "__")))
-                       for attr in ["filename", "file_type", "tracks"]])
+        return "File({})".format(
+            ", ".join(["{}={!r}".format(attr, getattr(self, "__" + attr + "__"))
+                       for attr in ["filename", "file_type", "tracks"]]))
 
     def filename(self):
         return self.__filename__
@@ -188,10 +187,10 @@ class File(object):
     def build(self):
         """returns the File as a unicode string"""
 
-        return u"FILE %s %s\r\n%s" % \
-            (format_string(self.__filename__),
-             self.__file_type__,
-             u"\r\n".join([t.build() for t in self.__tracks__]))
+        return u"FILE {} {}\r\n{}".format(
+            format_string(self.__filename__),
+            self.__file_type__,
+            u"\r\n".join([t.build() for t in self.__tracks__]))
 
 
 class Track(SheetTrack):
@@ -233,9 +232,9 @@ class Track(SheetTrack):
         self.__songwriter__ = songwriter
 
     def __repr__(self):
-        return "Track(%s)" % \
-            ", ".join(["%s=%s" % (attr,
-                                  repr(getattr(self, "__" + attr + "__")))
+        return "Track({})".format(
+            ", ".join(["{}={!r}".format(
+                           attr, getattr(self, "__" + attr + "__"))
                        for attr in ["number",
                                     "track_type",
                                     "indexes",
@@ -245,7 +244,7 @@ class Track(SheetTrack):
                                     "flags",
                                     "title",
                                     "performer",
-                                    "songwriter"]])
+                                    "songwriter"]]))
 
     @classmethod
     def converted(cls, sheettrack):
@@ -339,37 +338,38 @@ class Track(SheetTrack):
         items = []
 
         if self.__title__ is not None:
-            items.append(u"    TITLE %s" %
-                         (format_string(self.__title__)))
+            items.append(u"    TITLE {}".format(
+                             format_string(self.__title__)))
 
         if self.__performer__ is not None:
-            items.append(u"    PERFORMER %s" %
-                         (format_string(self.__performer__)))
+            items.append(u"    PERFORMER {}".format(
+                             format_string(self.__performer__)))
 
         if self.__songwriter__ is not None:
-            items.append(u"    SONGWRITER %s" %
-                         (format_string(self.__songwriter__)))
+            items.append(u"    SONGWRITER {}".format(
+                             format_string(self.__songwriter__)))
 
         if self.__flags__ is not None:
-            items.append(u"    FLAGS %s" % (" ".join(self.__flags__)))
+            items.append(u"    FLAGS {}".format(
+                             " ".join(self.__flags__)))
 
         if self.__isrc__ is not None:
-            items.append(u"    ISRC %s" % (self.__isrc__))
+            items.append(u"    ISRC {}".format(self.__isrc__))
 
         if self.__pregap__ is not None:
-            items.append(u"    PREGAP %s" %
-                         (format_timestamp(self.__pregap__)))
+            items.append(u"    PREGAP {}".format(
+                             format_timestamp(self.__pregap__)))
 
         for index in self.__indexes__:
             items.append(index.build())
 
         if self.__postgap__ is not None:
-            items.append(u"    POSTGAP %s" %
-                         (format_timestamp(self.__postgap__)))
+            items.append(u"    POSTGAP {}".format(
+                             format_timestamp(self.__postgap__)))
 
-        return u"  TRACK %2.2d %s\r\n%s" % (self.__number__,
-                                            self.__track_type__,
-                                            u"\r\n".join(items))
+        return u"  TRACK {:02d} {}\r\n{}".format(self.__number__,
+                                                 self.__track_type__,
+                                                 u"\r\n".join(items))
 
 
 class Index(SheetIndex):
@@ -378,9 +378,8 @@ class Index(SheetIndex):
         self.__timestamp__ = timestamp
 
     def __repr__(self):
-        return "Index(number=%s, timestamp=%s)" % \
-            (repr(self.__number__),
-             repr(self.__timestamp__))
+        return "Index(number=%s, timestamp=%s)".format(
+            self.__number__, self.__timestamp__)
 
     @classmethod
     def converted(cls, index):
@@ -392,8 +391,8 @@ class Index(SheetIndex):
     def build(self):
         """returns the Index as a string"""
 
-        return u"    INDEX %2.2d %s" % (self.__number__,
-                                        format_timestamp(self.__timestamp__))
+        return u"    INDEX {:02d} {}".format(
+            self.__number__, format_timestamp(self.__timestamp__))
 
     def number(self):
         """returns the index's number (typically starting from 1)"""
@@ -410,13 +409,13 @@ class Index(SheetIndex):
 
 
 def format_string(s):
-    return u"\"%s\"" % (s.replace(u'\\', u'\\\\').replace(u'"', u'\\"'))
+    return u"\"{}\"".format(s.replace(u'\\', u'\\\\').replace(u'"', u'\\"'))
 
 
 def format_timestamp(t):
-    return u"%2.2d:%2.2d:%2.2d" % (t // 75 // 60,
-                                   t // 75 % 60,
-                                   t % 75)
+    return u"{:02d}:{:02d}:{:02d}".format(t // 75 // 60,
+                                          t // 75 % 60,
+                                          t % 75)
 
 
 def read_cuesheet(filename):

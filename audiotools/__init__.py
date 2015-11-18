@@ -403,10 +403,10 @@ class Messenger(object):
 
         this appends a newline to that message"""
 
-        self.error(u"[Errno %d] %s: '%s'" %
-                   (oserror.errno,
-                    oserror.strerror,
-                    Filename(oserror.filename)))
+        self.error(u"[Errno {:d}] {}: '{}'".format(
+                        oserror.errno,
+                        oserror.strerror,
+                        Filename(oserror.filename)))
 
     def warning(self, s):
         """displays a warning message unicode string to stderr
@@ -2997,8 +2997,8 @@ class ReplayGainCalculator:
 
         if pcmreader.sample_rate != self.sample_rate():
             raise ValueError(
-                "sample rate mismatch, %d != %d" %
-                (pcmreader.sample_rate, self.sample_rate()))
+                "sample rate mismatch, {:d} != {:d}".format(
+                    pcmreader.sample_rate, self.sample_rate()))
         reader = ReplayGainCalculatorReader(self.__replaygain__, pcmreader)
         self.__tracks__.append(reader)
         return reader
@@ -3871,8 +3871,8 @@ class AudioFile(object):
         if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() == audiofile.__sort_key__())
         else:
-            raise TypeError("cannot compare %s and %s" %
-                            (repr(self), repr(audiofile)))
+            raise TypeError(
+                "cannot compare {!r} and {!r}".format(self, audiofile))
 
     def __ne__(self, audiofile):
         return not self.__eq__(audiofile)
@@ -3881,36 +3881,36 @@ class AudioFile(object):
         if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() < audiofile.__sort_key__())
         else:
-            raise TypeError("cannot compare %s and %s" %
-                            (repr(self), repr(audiofile)))
+            raise TypeError(
+                "cannot compare {!r} and {!r}".format(self, audiofile))
 
     def __le__(self, audiofile):
         if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() <= audiofile.__sort_key__())
         else:
-            raise TypeError("cannot compare %s and %s" %
-                            (repr(self), repr(audiofile)))
+            raise TypeError(
+                "cannot compare {!r} and {!r}".format(self, audiofile))
 
     def __gt__(self, audiofile):
         if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() > audiofile.__sort_key__())
         else:
-            raise TypeError("cannot compare %s and %s" %
-                            (repr(self), repr(audiofile)))
+            raise TypeError(
+                "cannot compare {!r} and {!r}".format(self, audiofile))
 
     def __ge__(self, audiofile):
         if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() >= audiofile.__sort_key__())
         else:
-            raise TypeError("cannot compare %s and %s" %
-                            (repr(self), repr(audiofile)))
+            raise TypeError(
+                "cannot compare {!r} and {!r}".format(self, audiofile))
 
     def __gt__(self, audiofile):
         if isinstance(audiofile, AudioFile):
             return (self.__sort_key__() > audiofile.__sort_key__())
         else:
-            raise TypeError("cannot compare %s and %s" %
-                            (repr(self), repr(audiofile)))
+            raise TypeError(
+                "cannot compare {!r} and {!r}".format(self, audiofile))
 
     def bits_per_sample(self):
         """returns an integer number of bits-per-sample this track contains"""
@@ -5024,8 +5024,8 @@ class PCMReaderHead(PCMReader):
         self.forward_close = forward_close
 
     def __repr__(self):
-        return "PCMReaderHead(%s, %s)" % (repr(self.pcmreader),
-                                          self.pcm_frames)
+        return "PCMReaderHead({!r}, {!r})".format(self.pcmreader,
+                                                  self.pcm_frames)
 
     def read(self, pcm_frames):
         if self.pcm_frames > 0:
@@ -5095,8 +5095,8 @@ class PCMReaderDeHead(PCMReader):
         self.forward_close = forward_close
 
     def __repr__(self):
-        return "PCMReaderDeHead(%s, %s)" % (repr(self.pcmreader),
-                                            self.pcm_frames)
+        return "PCMReaderDeHead({!r}, {!r})".format(self.pcmreader,
+                                                    self.pcm_frames)
 
     def read(self, pcm_frames):
         if self.pcm_frames == 0:

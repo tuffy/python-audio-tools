@@ -94,8 +94,7 @@ class M4A_Tree_Atom(object):
         return M4A_Tree_Atom(self.name, [leaf.copy() for leaf in self])
 
     def __repr__(self):
-        return "M4A_Tree_Atom(%s, %s)" % \
-            (repr(self.name), repr(self.leaf_atoms))
+        return "M4A_Tree_Atom({!r}, {!r})".format(self.name, self.leaf_atoms)
 
     def __eq__(self, atom):
         for attr in ["name", "leaf_atoms"]:
@@ -238,8 +237,7 @@ class M4A_Leaf_Atom(object):
         return M4A_Leaf_Atom(self.name, self.data)
 
     def __repr__(self):
-        return "M4A_Leaf_Atom(%s, %s)" % \
-            (repr(self.name), repr(self.data))
+        return "M4A_Leaf_Atom({!r}, {!r})".format(self.name, self.data)
 
     def __eq__(self, atom):
         for attr in ["name", "data"]:
@@ -269,13 +267,13 @@ class M4A_Leaf_Atom(object):
         from audiotools import hex_string
 
         if len(self.data) > 20:
-            return u"%s : %s\u2026" % \
-                (self.name.decode('ascii', 'replace'),
-                 hex_string(self.data[0:20]))
+            return u"{} : {}\u2026".format(
+                self.name.decode('ascii', 'replace'),
+                hex_string(self.data[0:20]))
         else:
-            return u"%s : %s" % \
-                (self.name.decode('ascii', 'replace'),
-                 hex_string(self.data))
+            return u"{} : {}".format(
+                self.name.decode('ascii', 'replace'),
+                hex_string(self.data))
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -310,10 +308,8 @@ class M4A_FTYP_Atom(M4A_Leaf_Atom):
         self.compatible_brands = compatible_brands
 
     def __repr__(self):
-        return "M4A_FTYP_Atom(%s, %s, %s)" % \
-            (repr(self.major_brand),
-             repr(self.major_brand_version),
-             repr(self.compatible_brands))
+        return "M4A_FTYP_Atom({!r}, {!r}, {!r})".format(
+            self.major_brand, self.major_brand_version, self.compatible_brands)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -331,7 +327,7 @@ class M4A_FTYP_Atom(M4A_Leaf_Atom):
         """writes the atom to the given BitstreamWriter
         not including its 64-bit size / name header"""
 
-        writer.build("4b 32u %d* 4b" % (len(self.compatible_brands)),
+        writer.build("4b 32u {:d}* 4b".format(len(self.compatible_brands)),
                      [self.major_brand,
                       self.major_brand_version] +
                      self.compatible_brands)
@@ -408,14 +404,21 @@ class M4A_MVHD_Atom(M4A_Leaf_Atom):
                    next_track_id=next_track_id)
 
     def __repr__(self):
-        return "MVHD_Atom(%s)" % (
+        return "MVHD_Atom({})".format(
             ",".join(map(repr,
-                         [self.version, self.flags,
-                          self.created_utc_date, self.modified_utc_date,
-                          self.time_scale, self.duration, self.playback_speed,
-                          self.user_volume, self.geometry_matrices,
-                          self.qt_preview, self.qt_still_poster,
-                          self.qt_selection_time, self.qt_current_time,
+                         [self.version,
+                          self.flags,
+                          self.created_utc_date,
+                          self.modified_utc_date,
+                          self.time_scale,
+                          self.duration,
+                          self.playback_speed,
+                          self.user_volume,
+                          self.geometry_matrices,
+                          self.qt_preview,
+                          self.qt_still_poster,
+                          self.qt_selection_time,
+                          self.qt_current_time,
                           self.next_track_id])))
 
     def build(self, writer):
@@ -475,15 +478,23 @@ class M4A_TKHD_Atom(M4A_Leaf_Atom):
         self.video_height = video_height
 
     def __repr__(self):
-        return "M4A_TKHD_Atom(%s)" % (
+        return "M4A_TKHD_Atom({})".format(
             ",".join(map(repr,
-                         [self.version, self.track_in_poster,
-                          self.track_in_preview, self.track_in_movie,
-                          self.track_enabled, self.created_utc_date,
-                          self.modified_utc_date, self.track_id,
-                          self.duration, self.video_layer, self.qt_alternate,
-                          self.volume, self.geometry_matrices,
-                          self.video_width, self.video_height])))
+                         [self.version,
+                          self.track_in_poster,
+                          self.track_in_preview,
+                          self.track_in_movie,
+                          self.track_enabled,
+                          self.created_utc_date,
+                          self.modified_utc_date,
+                          self.track_id,
+                          self.duration,
+                          self.video_layer,
+                          self.qt_alternate,
+                          self.volume,
+                          self.geometry_matrices,
+                          self.video_width,
+                          self.video_height])))
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -571,11 +582,16 @@ class M4A_MDHD_Atom(M4A_Leaf_Atom):
         self.quality = quality
 
     def __repr__(self):
-        return "M4A_MDHD_Atom(%s)" % \
-            (",".join(map(repr,
-                          [self.version, self.flags, self.created_utc_date,
-                           self.modified_utc_date, self.sample_rate,
-                           self.track_length, self.language, self.quality])))
+        return "M4A_MDHD_Atom({})".format(
+            ",".join(map(repr,
+                         [self.version,
+                          self.flags,
+                          self.created_utc_date,
+                          self.modified_utc_date,
+                          self.sample_rate,
+                          self.track_length,
+                          self.language,
+                          self.quality])))
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -638,10 +654,10 @@ class M4A_SMHD_Atom(M4A_Leaf_Atom):
         self.audio_balance = audio_balance
 
     def __repr__(self):
-        return "M4A_SMHD_Atom(%s)" % \
-            (",".join(map(repr, (self.version,
-                                 self.flags,
-                                 self.audio_balance))))
+        return "M4A_SMHD_Atom({})".format(
+            ",".join(map(repr, [self.version,
+                                self.flags,
+                                self.audio_balance])))
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -673,10 +689,10 @@ class M4A_DREF_Atom(M4A_Leaf_Atom):
         self.references = references
 
     def __repr__(self):
-        return "M4A_DREF_Atom(%s)" % \
-            (",".join(map(repr, (self.version,
-                                 self.flags,
-                                 self.references))))
+        return "M4A_DREF_Atom({})".format(
+            ",".join(map(repr, [self.version,
+                                self.flags,
+                                self.references])))
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -723,8 +739,8 @@ class M4A_STSD_Atom(M4A_Leaf_Atom):
         self.descriptions = descriptions
 
     def __repr__(self):
-        return "M4A_STSD_Atom(%s, %s, %s)" % \
-            (repr(self.version), repr(self.flags), repr(self.descriptions))
+        return "M4A_STSD_Atom({!r}, {!r}, {!r})".format(
+            self.version, self.flags, self.descriptions)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -775,8 +791,8 @@ class M4A_STTS_Atom(M4A_Leaf_Atom):
         self.times = times
 
     def __repr__(self):
-        return "M4A_STTS_Atom(%s, %s, %s)" % \
-            (repr(self.version), repr(self.flags), repr(self.times))
+        return "M4A_STTS_Atom({!r}, {!r}, {!r})".format(
+            self.version, self.flags, self.times)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -813,8 +829,8 @@ class M4A_STSC_Atom(M4A_Leaf_Atom):
         self.blocks = blocks
 
     def __repr__(self):
-        return "M4A_STSC_Atom(%s, %s, %s)" % \
-            (repr(self.version), repr(self.flags), repr(self.blocks))
+        return "M4A_STSC_Atom({!r}, {!r}, {!r})".format(
+            self.version, self.flags, self.blocks)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -853,9 +869,8 @@ class M4A_STSZ_Atom(M4A_Leaf_Atom):
         self.block_sizes = block_sizes
 
     def __repr__(self):
-        return "M4A_STSZ_Atom(%s, %s, %s, %s)" % \
-            (repr(self.version), repr(self.flags), repr(self.byte_size),
-             repr(self.block_sizes))
+        return "M4A_STSZ_Atom({!r}, {!r}, {!r}, {!r})".format(
+            self.version, self.flags, self.byte_size, self.block_sizes)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -896,8 +911,8 @@ class M4A_STCO_Atom(M4A_Leaf_Atom):
         self.offsets = offsets
 
     def __repr__(self):
-        return "M4A_STCO_Atom(%s, %s, %s)" % \
-            (self.version, self.flags, self.offsets)
+        return "M4A_STCO_Atom({!r}, {!r}, {!r})".format(
+            self.version, self.flags, self.offsets)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -945,7 +960,7 @@ class M4A_ALAC_Atom(M4A_Leaf_Atom):
         self.sub_alac = sub_alac
 
     def __repr__(self):
-        return "M4A_ALAC_Atom(%s)" % \
+        return "M4A_ALAC_Atom({})".format(
             ",".join(map(repr, [self.reference_index,
                                 self.qt_version,
                                 self.qt_revision_level,
@@ -955,7 +970,7 @@ class M4A_ALAC_Atom(M4A_Leaf_Atom):
                                 self.qt_compression_id,
                                 self.audio_packet_size,
                                 self.sample_rate,
-                                self.sub_alac]))
+                                self.sub_alac])))
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -1032,17 +1047,17 @@ class M4A_SUB_ALAC_Atom(M4A_Leaf_Atom):
         self.sample_rate = sample_rate
 
     def __repr__(self):
-        return "M4A_SUB_ALAC_Atom(%s)" % \
-            (",".join(map(repr, [self.max_samples_per_frame,
-                                 self.bits_per_sample,
-                                 self.history_multiplier,
-                                 self.initial_history,
-                                 self.maximum_k,
-                                 self.channels,
-                                 self.unknown,
-                                 self.max_coded_frame_size,
-                                 self.bitrate,
-                                 self.sample_rate])))
+        return "M4A_SUB_ALAC_Atom({})".format(
+            ",".join(map(repr, [self.max_samples_per_frame,
+                                self.bits_per_sample,
+                                self.history_multiplier,
+                                self.initial_history,
+                                self.maximum_k,
+                                self.channels,
+                                self.unknown,
+                                self.max_coded_frame_size,
+                                self.bitrate,
+                                self.sample_rate])))
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -1101,8 +1116,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
         MetaData.__setattr__(self, "flags", flags)
 
     def __repr__(self):
-        return "M4A_META_Atom(%s, %s, %s)" % \
-            (repr(self.version), repr(self.flags), repr(self.leaf_atoms))
+        return "M4A_META_Atom({!r}, {!r}, {!r})".format(
+            self.version, self.flags, self.leaf_atoms)
 
     def has_ilst_atom(self):
         """returns True if this atom contains an ILST sub-atom"""
@@ -1150,9 +1165,10 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 if hasattr(atom, "raw_info_lines"):
                     comment_lines.extend(atom.raw_info_lines())
                 else:
-                    comment_lines.append(u"%s : (%d bytes)" %
-                                         (atom.name.decode('ascii', 'replace'),
-                                          atom.size()))
+                    comment_lines.append(
+                        u"{} : ({:d} bytes)".format(
+                            atom.name.decode('ascii', 'replace'),
+                            atom.size()))
 
             return linesep.join(comment_lines)
         else:
@@ -1571,8 +1587,8 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
         return M4A_ILST_Leaf_Atom(self.name, [leaf.copy() for leaf in self])
 
     def __repr__(self):
-        return "M4A_ILST_Leaf_Atom(%s, %s)" % \
-            (repr(self.name), repr(self.leaf_atoms))
+        return "M4A_ILST_Leaf_Atom({!r}, {!r})".format(
+            self.name, self.leaf_atoms)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -1618,9 +1634,9 @@ class M4A_ILST_Leaf_Atom(M4A_Tree_Atom):
         for leaf_atom in self.leaf_atoms:
             name = self.name.replace(b"\xa9", b" ").decode('ascii')
             if hasattr(leaf_atom, "raw_info"):
-                yield u"%s : %s" % (name, leaf_atom.raw_info())
+                yield u"{} : {}".format(name, leaf_atom.raw_info())
             else:
-                yield u"%s : %s" % (name, repr(leaf_atom))  # FIXME
+                yield u"{} : {!r}".format(name, leaf_atom)  # FIXME
 
 
 class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
@@ -1639,8 +1655,8 @@ class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
         return M4A_ILST_Unicode_Data_Atom(self.type, self.flags, self.data)
 
     def __repr__(self):
-        return "M4A_ILST_Unicode_Data_Atom(%s, %s, %s)" % \
-            (repr(self.type), repr(self.flags), repr(self.data))
+        return "M4A_ILST_Unicode_Data_Atom({!r}, {!r}, {!r})".format(
+            self.type, self.flags, self.data)
 
     def __eq__(self, atom):
         for attr in ["type", "flags", "data"]:
@@ -1669,7 +1685,7 @@ class M4A_ILST_Unicode_Data_Atom(M4A_Leaf_Atom):
         """writes the atom to the given BitstreamWriter
         not including its 64-bit size / name header"""
 
-        writer.build("8u 24u 32p %db" % (len(self.data)),
+        writer.build("8u 24u 32p {:d}b".format(len(self.data)),
                      (self.type, self.flags, self.data))
 
     def size(self):
@@ -1702,8 +1718,8 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
         return M4A_ILST_TRKN_Data_Atom(self.track_number, self.track_total)
 
     def __repr__(self):
-        return "M4A_ILST_TRKN_Data_Atom(%d, %d)" % \
-            (self.track_number, self.track_total)
+        return "M4A_ILST_TRKN_Data_Atom({:d}, {:d})".format(
+            self.track_number, self.track_total)
 
     def __eq__(self, atom):
         for attr in ["track_number", "track_total"]:
@@ -1722,14 +1738,14 @@ class M4A_ILST_TRKN_Data_Atom(M4A_Leaf_Atom):
 
     def __unicode__(self):
         if self.track_total > 0:
-            return u"%d/%d" % (self.track_number, self.track_total)
+            return u"{:d}/{:d}".format(self.track_number, self.track_total)
         else:
-            return u"%d" % (self.track_number,)
+            return u"{:d}".format(self.track_number,)
 
     def raw_info(self):
         """returns a line of human-readable information about the atom"""
 
-        return u"%d/%d" % (self.track_number, self.track_total)
+        return u"{:d}/{:d}".format(self.track_number, self.track_total)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -1786,8 +1802,8 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
         return M4A_ILST_DISK_Data_Atom(self.disk_number, self.disk_total)
 
     def __repr__(self):
-        return "M4A_ILST_DISK_Data_Atom(%d, %d)" % \
-            (self.disk_number, self.disk_total)
+        return "M4A_ILST_DISK_Data_Atom({:d}, {:d})".format(
+            self.disk_number, self.disk_total)
 
     def __eq__(self, atom):
         for attr in ["disk_number", "disk_total"]:
@@ -1806,14 +1822,14 @@ class M4A_ILST_DISK_Data_Atom(M4A_Leaf_Atom):
 
     def __unicode__(self):
         if self.disk_total > 0:
-            return u"%d/%d" % (self.disk_number, self.disk_total)
+            return u"{:d}/{:d}".format(self.disk_number, self.disk_total)
         else:
-            return u"%d" % (self.disk_number,)
+            return u"{:d}".format(self.disk_number,)
 
     def raw_info(self):
         """returns a line of human-readable information about the atom"""
 
-        return u"%d/%d" % (self.disk_number, self.disk_total)
+        return u"{:d}/{:d}".format(self.disk_number, self.disk_total)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -1881,8 +1897,8 @@ class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
         return M4A_ILST_COVR_Data_Atom(self.version, self.flags, self.data)
 
     def __repr__(self):
-        return "M4A_ILST_COVR_Data_Atom(%s, %s, ...)" % \
-            (self.version, self.flags)
+        return "M4A_ILST_COVR_Data_Atom({}, {}, ...)".format(
+            self.version, self.flags)
 
     def raw_info(self):
         """returns a line of human-readable information about the atom"""
@@ -1890,10 +1906,11 @@ class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
         from audiotools import hex_string
 
         if len(self.data) > 20:
-            return (u"(%d bytes) %s\u2026" % (len(self.data),
-                                              hex_string(self.data[0:20])))
+            return u"({:d} bytes) {}\u2026".format(
+                len(self.data), hex_string(self.data[0:20]))
         else:
-            return (u"(%d bytes) %s" % (len(self.data), hex_string(self.data)))
+            return u"({:d} bytes) {}".format(
+                len(self.data), hex_string(self.data))
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -1909,7 +1926,7 @@ class M4A_ILST_COVR_Data_Atom(Image, M4A_Leaf_Atom):
         """writes the atom to the given BitstreamWriter
         not including its 64-bit size / name header"""
 
-        writer.build("8u 24u 32p %db" % (len(self.data)),
+        writer.build("8u 24u 32p {:d}b".format(len(self.data)),
                      (self.version, self.flags, self.data))
 
     def size(self):
@@ -1960,11 +1977,17 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
                              self.padding_size)
 
     def __repr__(self):
-        return "M4A_HDLR_Atom(%s, %s, %s, %s, %s, %s, %s, %s, %d)" % \
-            (self.version, self.flags, repr(self.qt_type),
-             repr(self.qt_subtype), repr(self.qt_manufacturer),
-             self.qt_reserved_flags, self.qt_reserved_flags_mask,
-             repr(self.component_name), self.padding_size)
+        return "M4A_HDLR_Atom({})".format(
+            ",".join(map(repr,
+                         [self.version,
+                          self.flags,
+                          self.qt_type,
+                          self.qt_subtype,
+                          self.qt_manufacturer,
+                          self.qt_reserved_flags,
+                          self.qt_reserved_flags_mask,
+                          self.component_name,
+                          self.padding_size])))
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):
@@ -1991,9 +2014,8 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
         """writes the atom to the given BitstreamWriter
         not including its 64-bit size / name header"""
 
-        writer.build("8u 24u 4b 4b 4b 32u 32u 8u %db %dP" %
-                     (len(self.component_name),
-                      self.padding_size),
+        writer.build("8u 24u 4b 4b 4b 32u 32u 8u {:d}b {:d}P".format(
+                         len(self.component_name), self.padding_size),
                      (self.version,
                       self.flags,
                       self.qt_type,
@@ -2023,7 +2045,7 @@ class M4A_FREE_Atom(M4A_Leaf_Atom):
         return M4A_FREE_Atom(self.bytes)
 
     def __repr__(self):
-        return "M4A_FREE_Atom(%d)" % (self.bytes)
+        return "M4A_FREE_Atom({:d})".format(self.bytes)
 
     @classmethod
     def parse(cls, name, data_size, reader, parsers):

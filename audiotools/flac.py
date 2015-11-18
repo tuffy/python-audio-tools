@@ -120,7 +120,7 @@ class FlacMetaData(MetaData):
                 from audiotools import VERSION
 
                 vorbis_comment = Flac_VORBISCOMMENT(
-                    [], u"Python Audio Tools %s" % (VERSION))
+                    [], u"Python Audio Tools {}".format(VERSION))
 
                 self.add_block(vorbis_comment)
 
@@ -257,7 +257,7 @@ class FlacMetaData(MetaData):
         return (self.__class__(cleaned_blocks), fixes_performed)
 
     def __repr__(self):
-        return "FlacMetaData(%s)" % (self.block_list)
+        return "FlacMetaData({!r})".format(self.block_list)
 
     def intersection(self, metadata):
         """given a MetaData-compatible object,
@@ -418,17 +418,17 @@ class Flac_STREAMINFO(object):
             return True
 
     def __repr__(self):
-        return ("Flac_STREAMINFO(%s)" %
-                ",".join(["%s=%s" % (key, repr(getattr(self, key)))
-                          for key in ["minimum_block_size",
-                                      "maximum_block_size",
-                                      "minimum_frame_size",
-                                      "maximum_frame_size",
-                                      "sample_rate",
-                                      "channels",
-                                      "bits_per_sample",
-                                      "total_samples",
-                                      "md5sum"]]))
+        return "Flac_STREAMINFO({})".format(
+                   ",".join(["{}={!r}".format(key, getattr(self, key))
+                             for key in ["minimum_block_size",
+                                         "maximum_block_size",
+                                         "minimum_frame_size",
+                                         "maximum_frame_size",
+                                         "sample_rate",
+                                         "channels",
+                                         "bits_per_sample",
+                                         "total_samples",
+                                         "md5sum"]]))
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -439,15 +439,15 @@ class Flac_STREAMINFO(object):
 
         return linesep.join(
             [u"  STREAMINFO:",
-             u"    minimum block size = %d" % (self.minimum_block_size),
-             u"    maximum block size = %d" % (self.maximum_block_size),
-             u"    minimum frame size = %d" % (self.minimum_frame_size),
-             u"    maximum frame size = %d" % (self.maximum_frame_size),
-             u"           sample rate = %d" % (self.sample_rate),
-             u"              channels = %d" % (self.channels),
-             u"       bits-per-sample = %d" % (self.bits_per_sample),
-             u"         total samples = %d" % (self.total_samples),
-             u"               MD5 sum = %s" % (hex_string(self.md5sum))])
+             u"    minimum block size = {:d}".format(self.minimum_block_size),
+             u"    maximum block size = {:d}".format(self.maximum_block_size),
+             u"    minimum frame size = {:d}".format(self.minimum_frame_size),
+             u"    maximum frame size = {:d}".format(self.maximum_frame_size),
+             u"           sample rate = {:d}".format(self.sample_rate),
+             u"              channels = {:d}".format(self.channels),
+             u"       bits-per-sample = {:d}".format(self.bits_per_sample),
+             u"         total samples = {:d}".format(self.total_samples),
+             u"               MD5 sum = {}".format(hex_string(self.md5sum))])
 
     @classmethod
     def parse(cls, reader):
@@ -497,7 +497,7 @@ class Flac_PADDING(object):
             return False
 
     def __repr__(self):
-        return "Flac_PADDING(%d)" % (self.length)
+        return "Flac_PADDING({!r})".format(self.length)
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -507,7 +507,7 @@ class Flac_PADDING(object):
 
         return linesep.join(
             [u"  PADDING:",
-             u"    length = %d" % (self.length)])
+             u"    length = {:d}".format(self.length)])
 
     @classmethod
     def parse(cls, reader, block_length):
@@ -550,8 +550,8 @@ class Flac_APPLICATION(object):
                                 self.data)
 
     def __repr__(self):
-        return "Flac_APPLICATION(%s, %s)" % (repr(self.application_id),
-                                             repr(self.data))
+        return "Flac_APPLICATION({!r}, {!r})".format(
+            self.application_id, self.data)
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -559,10 +559,10 @@ class Flac_APPLICATION(object):
 
         from os import linesep
 
-        return u"  APPLICATION:%s    %s (%d bytes)" % \
-            (linesep,
-             self.application_id.decode('ascii'),
-             len(self.data))
+        return u"  APPLICATION:{}    {} ({:d} bytes)".format(
+            linesep,
+            self.application_id.decode('ascii'),
+            len(self.data))
 
     @classmethod
     def parse(cls, reader, block_length):
@@ -604,7 +604,7 @@ class Flac_SEEKTABLE(object):
         return Flac_SEEKTABLE(self.seekpoints[:])
 
     def __repr__(self):
-        return "Flac_SEEKTABLE(%s)" % (repr(self.seekpoints))
+        return "Flac_SEEKTABLE({!r})".format(self.seekpoints)
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -615,7 +615,9 @@ class Flac_SEEKTABLE(object):
         return linesep.join(
             [u"  SEEKTABLE:",
              u"    first sample   file offset   frame samples"] +
-            [u"  %14.1d %13.1X %15.d" % seekpoint
+            [u"  {:14d} {:13X} {:15d}".format(seekpoint[0],
+                                              seekpoint[1],
+                                              seekpoint[2])
              for seekpoint in self.seekpoints])
 
     @classmethod
@@ -672,8 +674,8 @@ class Flac_VORBISCOMMENT(VorbisComment):
                                   self.vendor_string)
 
     def __repr__(self):
-        return "Flac_VORBISCOMMENT(%s, %s)" % \
-            (repr(self.comment_strings), repr(self.vendor_string))
+        return "Flac_VORBISCOMMENT({!r}, {!r})".format(
+            self.comment_strings, self.vendor_string)
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -700,7 +702,8 @@ class Flac_VORBISCOMMENT(VorbisComment):
                 row.add_column(u"")
 
         return (u"  VORBIS_COMMENT:" + linesep +
-                u"    %s" % (self.vendor_string) + linesep +
+                u"    {}".format(self.vendor_string) +
+                linesep +
                 linesep.join(table.format()))
 
     @classmethod
@@ -797,13 +800,13 @@ class Flac_CUESHEET(Sheet):
             return Sheet.__eq__(self, cuesheet)
 
     def __repr__(self):
-        return ("Flac_CUESHEET(%s)" %
-                ",".join(["%s=%s" % (key,
-                                     repr(getattr(self, "__" + key + "__")))
-                          for key in ["catalog_number",
-                                      "lead_in_samples",
-                                      "is_cdda",
-                                      "tracks"]]))
+        return "Flac_CUESHEET({})".format(
+                   ",".join(["{}={!r}".format(
+                                 key, getattr(self, "__" + key + "__"))
+                             for key in ["catalog_number",
+                                         "lead_in_samples",
+                                         "is_cdda",
+                                         "tracks"]]))
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -813,10 +816,10 @@ class Flac_CUESHEET(Sheet):
 
         return linesep.join(
             [u"  CUESHEET:",
-             u"     catalog number = %s" %
-             (self.__catalog_number__.decode('ascii', 'replace')),
-             u"    lead-in samples = %d" % (self.__lead_in_samples__),
-             u"            is CDDA = %d" % (self.__is_cdda__)] +
+             u"     catalog number = {}".format(
+                 self.__catalog_number__.decode('ascii', 'replace')),
+             u"    lead-in samples = {:d}".format(self.__lead_in_samples__),
+             u"            is CDDA = {:d}".format(self.__is_cdda__)] +
             [track.raw_info(4) for track in self.__tracks__])
 
     @classmethod
@@ -1013,30 +1016,30 @@ class Flac_CUESHEET_track(SheetTrack):
                                     self.__index_points__])
 
     def __repr__(self):
-        return ("Flac_CUESHEET_track(%s)" %
-                ",".join(["%s=%s" % (key,
-                                     repr(getattr(self, "__" + key + "__")))
-                          for key in ["offset",
-                                      "number",
-                                      "ISRC",
-                                      "track_type",
-                                      "pre_emphasis",
-                                      "index_points"]]))
+        return "Flac_CUESHEET_track({})".format(
+                   ",".join(["{}={!r}".format(
+                                 key, getattr(self, "__" + key + "__"))
+                             for key in ["offset",
+                                         "number",
+                                         "ISRC",
+                                         "track_type",
+                                         "pre_emphasis",
+                                         "index_points"]]))
 
     def raw_info(self, indent):
         """returns a human-readable version of this track as unicode"""
 
         from os import linesep
 
-        lines = [((u"track  : %(number)3.d  " +
-                   u"offset : %(offset)9.d  " +
-                   u"ISRC : %(ISRC)s") %
-                 {"number": self.__number__,
-                  "offset": self.__offset__,
-                  "type": self.__track_type__,
-                  "pre_emphasis": self.__pre_emphasis__,
-                  "ISRC": self.__ISRC__.strip(b"\x00").decode('ascii',
-                                                              'replace')})
+        lines = [(u"track  : {number:3d}  " +
+                  u"offset : {offset:9d}  " +
+                  u"ISRC : {ISRC}").format(
+                       number=self.__number__,
+                       offset=self.__offset__,
+                       type=self.__track_type__,
+                       pre_emphasis=self.__pre_emphasis__,
+                       ISRC=self.__ISRC__.strip(b"\x00").decode('ascii',
+                                                                'replace'))
                  ] + [i.raw_info(1) for i in self.__index_points__]
 
         return linesep.join(
@@ -1174,11 +1177,9 @@ class Flac_CUESHEET_index(SheetIndex):
                                    self.__sample_rate__)
 
     def __repr__(self):
-        return "Flac_CUESHEET_index(%s, %s, %s, %s)" % \
-            (repr(self.__track_offset__),
-             repr(self.__offset__),
-             repr(self.__number__),
-             repr(self.__sample_rate__))
+        return "Flac_CUESHEET_index({!r}, {!r}, {!r}, {!r})".format(
+            self.__track_offset__, self.__offset__,
+            self.__number__, self.__sample_rate__)
 
     def __eq__(self, index):
         if isinstance(index, Flac_CUESHEET_index):
@@ -1207,8 +1208,9 @@ class Flac_CUESHEET_index(SheetIndex):
 
     def raw_info(self, indent):
         return ((u" " * indent) +
-                u"index : %3.2d  offset : %9.9s" %
-                (self.__number__, u"+%d" % (self.__offset__)))
+                u"index : {:3d}  offset : {:>9d}".format(
+                    self.__number__,
+                    self.__offset__))
 
     def number(self):
         return self.__number__
@@ -1327,15 +1329,15 @@ class Flac_PICTURE(Image):
             Image.__setattr__(self, attr, value)
 
     def __repr__(self):
-        return ("Flac_PICTURE(%s)" %
-                ",".join(["%s=%s" % (attr, repr(getattr(self, attr)))
-                          for attr in ["picture_type",
-                                       "mime_type",
-                                       "description",
-                                       "width",
-                                       "height",
-                                       "color_depth",
-                                       "color_count"]]))
+        return "Flac_PICTURE({})".format(
+                   ",".join(["{}={!r}".format(attr, getattr(self, attr))
+                             for attr in ["picture_type",
+                                          "mime_type",
+                                          "description",
+                                          "width",
+                                          "height",
+                                          "color_depth",
+                                          "color_count"]]))
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -1345,14 +1347,14 @@ class Flac_PICTURE(Image):
 
         return linesep.join(
             [u"  PICTURE:",
-             u"    picture type = %d" % (self.picture_type),
-             u"       MIME type = %s" % (self.mime_type),
-             u"     description = %s" % (self.description),
-             u"           width = %d" % (self.width),
-             u"          height = %d" % (self.height),
-             u"     color depth = %d" % (self.color_depth),
-             u"     color count = %d" % (self.color_count),
-             u"           bytes = %d" % (len(self.data))])
+             u"    picture type = {:d}".format(self.picture_type),
+             u"       MIME type = {}".format(self.mime_type),
+             u"     description = {}".format(self.description),
+             u"           width = {:d}".format(self.width),
+             u"          height = {:d}".format(self.height),
+             u"     color depth = {:d}".format(self.color_depth),
+             u"     color count = {:d}".format(self.color_count),
+             u"           bytes = {:d}".format(len(self.data))])
 
     @classmethod
     def parse(cls, reader):
@@ -1773,7 +1775,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                 # from our actual mask if necessary
                 if (self.channels() > 2) or (self.bits_per_sample() > 16):
                     new_vorbiscomment[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
-                        u"0x%.4X" % (self.channel_mask())]
+                        u"0x{:04X}".format(self.channel_mask())]
 
                 # remove CDTOC from new VORBIS_COMMENT block
                 new_vorbiscomment[u"CDTOC"] = []
@@ -2714,17 +2716,17 @@ class FlacAudio(WaveContainer, AiffContainer):
             from audiotools import VERSION
 
             vorbis_comment = Flac_VORBISCOMMENT(
-                [], u"Python Audio Tools %s" % (VERSION))
+                [], u"Python Audio Tools {}".format(VERSION))
             metadata.add_block(vorbis_comment)
 
         vorbis_comment[u"REPLAYGAIN_TRACK_GAIN"] = [
-            u"%1.2f dB" % (replaygain.track_gain)]
+            u"{:.2f} dB".format(replaygain.track_gain)]
         vorbis_comment[u"REPLAYGAIN_TRACK_PEAK"] = [
-            u"%1.8f" % (replaygain.track_peak)]
+            u"{:.8f}".format(replaygain.track_peak)]
         vorbis_comment[u"REPLAYGAIN_ALBUM_GAIN"] = [
-            u"%1.2f dB" % (replaygain.album_gain)]
+            u"{:.2f} dB".format(replaygain.album_gain)]
         vorbis_comment[u"REPLAYGAIN_ALBUM_PEAK"] = [
-            u"%1.8f" % (replaygain.album_peak)]
+            u"{:.8f}".format(replaygain.album_peak)]
         vorbis_comment[u"REPLAYGAIN_REFERENCE_LOUDNESS"] = [u"89.0 dB"]
 
         self.update_metadata(metadata)
@@ -2852,14 +2854,14 @@ class FlacAudio(WaveContainer, AiffContainer):
                     from audiotools import VERSION
 
                     vorbis_comment = Flac_VORBISCOMMENT(
-                        [], u"Python Audio Tools %s" % (VERSION))
+                        [], u"Python Audio Tools {}".format(VERSION))
 
                 if ((u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
                      vorbis_comment.keys())):
                     fixes_performed.append(CLEAN_FLAC_ADD_CHANNELMASK)
                     vorbis_comment[
                         u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
-                        [u"0x%.4X" % (int(self.channel_mask()))]
+                        [u"0x{:04X}".format(int(self.channel_mask()))]
 
                     metadata.replace_blocks(
                         Flac_VORBISCOMMENT.BLOCK_ID,
@@ -2910,7 +2912,7 @@ class OggFlacMetaData(FlacMetaData):
                         for image in metadata.images()])
 
     def __repr__(self):
-        return ("OggFlacMetaData(%s)" % (repr(self.block_list)))
+        return ("OggFlacMetaData({!r})".format(self.block_list))
 
     @classmethod
     def parse(cls, packetreader):
@@ -3383,7 +3385,7 @@ class OggFlacAudio(FlacAudio):
                 metadata = oggflac.get_metadata()
                 vorbis = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
                 vorbis[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
-                    u"0x%.4X" % (channel_mask)]
+                    u"0x{:04X}".format(channel_mask)]
                 oggflac.update_metadata(metadata)
             return oggflac
         else:
@@ -3468,14 +3470,14 @@ class OggFlacAudio(FlacAudio):
                     from audiotools import VERSION
 
                     vorbis_comment = Flac_VORBISCOMMENT(
-                        [], u"Python Audio Tools %s" % (VERSION))
+                        [], u"Python Audio Tools {}".format(VERSION))
 
                 if ((u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
                      vorbis_comment.keys())):
                     fixes_performed.append(CLEAN_FLAC_ADD_CHANNELMASK)
                     vorbis_comment[
                         u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
-                        [u"0x%.4X" % (int(self.channel_mask()))]
+                        [u"0x{:04X}".format(int(self.channel_mask()))]
 
                     metadata.replace_blocks(
                         Flac_VORBISCOMMENT.BLOCK_ID,

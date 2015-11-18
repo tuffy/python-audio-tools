@@ -37,13 +37,13 @@ class TOCFile(Sheet):
         self.__cd_text__ = cd_text
 
     def __repr__(self):
-        return "TOCFile(%s)" % \
-            ", ".join(["%s=%s" % (attr,
-                                  repr(getattr(self, "__" + attr + "__")))
+        return "TOCFile({})".format(
+            ", ".join(["{}={!r}".format(
+                           attr, getattr(self, "__" + attr + "__"))
                        for attr in ["type",
                                     "tracks",
                                     "catalog",
-                                    "cd_text"]])
+                                    "cd_text"]]))
 
     @classmethod
     def converted(cls, sheet, filename=None):
@@ -83,7 +83,8 @@ class TOCFile(Sheet):
 
         output = [self.__type__, u""]
         if self.__catalog__ is not None:
-            output.extend([u"CATALOG %s" % (format_string(self.__catalog__)),
+            output.extend([u"CATALOG {}".format(
+                               format_string(self.__catalog__)),
                            u""])
         if self.__cd_text__ is not None:
             output.append(self.__cd_text__.build())
@@ -221,13 +222,13 @@ class TOCTrack(SheetTrack):
         return [f for f in self.__flags__ if isinstance(f, flag_class)]
 
     def __repr__(self):
-        return "TOCTrack(%s)" % \
-            ", ".join(["%s=%s" % (attr,
-                                  repr(getattr(self, "__" + attr + "__")))
+        return "TOCTrack({})".format(
+            ", ".join(["{}={!r}".format(
+                           attr, getattr(self, "__" + attr + "__"))
                        for attr in ["number",
                                     "mode",
                                     "sub_channel_mode",
-                                    "flags"]])
+                                    "flags"]]))
 
     def __len__(self):
         return len(self.__indexes__)
@@ -293,10 +294,10 @@ class TOCTrack(SheetTrack):
     def build(self):
         """returns the TOCTrack as a string"""
 
-        output = [(u"TRACK %s" % (self.__mode__) if
+        output = [(u"TRACK {}".format(self.__mode__) if
                    (self.__sub_channel_mode__ is None) else
-                   u"TRACK %s %s" % (self.__mode__,
-                                     self.__sub_channel_mode__))]
+                   u"TRACK {} {}".format(self.__mode__,
+                                         self.__sub_channel_mode__))]
         output.extend([flag.build() for flag in self.__flags__])
         output.append(u"")
         return u"\n".join(output)
@@ -307,11 +308,11 @@ class TOCFlag(object):
         self.__attrs__ = attrs
 
     def __repr__(self):
-        return "%s(%s)" % \
-            (self.__class__.__name__,
-             ", ".join(["%s=%s" % (attr,
-                                   repr(getattr(self, "__" + attr + "__")))
-                        for attr in self.__attrs__]))
+        return "{}({})".format(
+            self.__class__.__name__,
+            ", ".join(["{}={!r}".format(
+                           attr, getattr(self, "__" + attr + "__"))
+                       for attr in self.__attrs__]))
 
     def build(self):
         """returns the TOCTracFlag as a string"""
@@ -370,7 +371,7 @@ class TOCFlag_ISRC(TOCFlag):
         return self.__isrc__
 
     def build(self):
-        return u"ISRC %s" % (format_string(self.__isrc__))
+        return u"ISRC {}".format(format_string(self.__isrc__))
 
 
 class TOCFlag_FILE(TOCFlag):
@@ -399,14 +400,14 @@ class TOCFlag_FILE(TOCFlag):
 
     def build(self):
         if self.__length__ is None:
-            return u"%s %s %s" % (self.__type__,
-                                  format_string(self.__filename__),
-                                  format_timestamp(self.__start__))
+            return u"{} {} {}".format(self.__type__,
+                                      format_string(self.__filename__),
+                                      format_timestamp(self.__start__))
         else:
-            return u"%s %s %s %s" % (self.__type__,
-                                     format_string(self.__filename__),
-                                     format_timestamp(self.__start__),
-                                     format_timestamp(self.__length__))
+            return u"{} {} {} {}".format(self.__type__,
+                                         format_string(self.__filename__),
+                                         format_timestamp(self.__start__),
+                                         format_timestamp(self.__length__))
 
 
 class TOCFlag_START(TOCFlag):
@@ -423,7 +424,7 @@ class TOCFlag_START(TOCFlag):
         if self.__start__ is None:
             return u"START"
         else:
-            return u"START %s" % (format_timestamp(self.__start__))
+            return u"START {}".format(format_timestamp(self.__start__))
 
 
 class TOCFlag_INDEX(TOCFlag):
@@ -437,7 +438,7 @@ class TOCFlag_INDEX(TOCFlag):
         return self.__index__
 
     def build(self):
-        return u"INDEX %s" % (format_timestamp(self.__index__))
+        return u"INDEX {}".format(format_timestamp(self.__index__))
 
 
 class CDText(object):
@@ -446,9 +447,8 @@ class CDText(object):
         self.__language_map__ = language_map
 
     def __repr__(self):
-        return "CDText(languages=%s, language_map=%s)" % \
-            (repr(self.__languages__),
-             repr(self.__language_map__))
+        return "CDText(languages={!r}, language_map={!r})".format(
+            self.__languages__, self.__language_map__)
 
     def get(self, key, default):
         for language in self.__languages__:
@@ -540,9 +540,8 @@ class CDTextLanguage(object):
         self.__text_pairs__ = text_pairs
 
     def __repr__(self):
-        return "CDTextLanguage(language_id=%s, text_pairs=%s)" % \
-            (repr(self.__id__),
-             repr(self.__text_pairs__))
+        return "CDTextLanguage(language_id={!r}, text_pairs={!r})".format(
+            self.__id__, self.__text_pairs__)
 
     def __len__(self):
         return len(self.__text_pairs__)
@@ -555,12 +554,12 @@ class CDTextLanguage(object):
             raise KeyError(key)
 
     def build(self):
-        output = [u"LANGUAGE %d {" % (self.__id__)]
+        output = [u"LANGUAGE {:d} {{".format(self.__id__)]
         for (key, value) in self.__text_pairs__:
             if key in {u"TOC_INFO1", u"TOC_INFO2", u"SIZE_INFO"}:
-                output.append(u"  %s %s" % (key, format_binary(value)))
+                output.append(u"  {} {}".format(key, format_binary(value)))
             else:
-                output.append(u"  %s %s" % (key, format_string(value)))
+                output.append(u"  {} {}".format(key, format_string(value)))
         output.append(u"}")
         return u"\n".join([u"  " + l for l in output])
 
@@ -570,28 +569,29 @@ class CDTextLanguageMap(object):
         self.__mapping__ = mapping
 
     def __repr__(self):
-        return "CDTextLanguageMap(mapping=%s)" % (repr(self.__mapping__))
+        return "CDTextLanguageMap(mapping={!r})".format(self.__mapping__)
 
     def build(self):
         output = [u"LANGUAGE_MAP {"]
-        output.extend([u"  %d : %s" % (i, l) for (i, l) in self.__mapping__])
+        output.extend([u"  {:d} : {}".format(i, l)
+                       for (i, l) in self.__mapping__])
         output.append(u"}")
         return u"\n".join([u"  " + l for l in output])
 
 
 def format_string(s):
-    return u"\"%s\"" % (s.replace(u'\\', u'\\\\').replace(u'"', u'\\"'))
+    return u"\"{}\"".format(s.replace(u'\\', u'\\\\').replace(u'"', u'\\"'))
 
 
 def format_timestamp(t):
     sectors = int(t * 75)
-    return u"%2.2d:%2.2d:%2.2d" % (sectors // 75 // 60,
-                                   sectors // 75 % 60,
-                                   sectors % 75)
+    return u"{:02d}:{:02d}:{:02d}".format(sectors // 75 // 60,
+                                          sectors // 75 % 60,
+                                          sectors % 75)
 
 
 def format_binary(s):
-    return u"{%s}" % (",".join([u"%d" % (int(c)) for c in s]))
+    return u"{{{}}}".format(",".join([u"{:d}".format(int(c)) for c in s]))
 
 
 def read_tocfile(filename):

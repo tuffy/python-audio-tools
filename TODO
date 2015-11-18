@@ -7555,24 +7555,24 @@
     - [X] freedb.py
     - [ ] id3.py
     - [ ] id3v1.py
-    - [ ] image.py
+    - [X] image.py
     - [X] m4a.py
     - [ ] m4a_atoms.py
     - [X] mp3.py
     - [X] mpc.py
     - [X] musicbrainz.py
     - [X] ogg.py
-    - [ ] opus.py
+    - [X] opus.py
     - [X] player.py
-    - [ ] tta.py
+    - [X] tta.py
     - [ ] ui.py
-    - [ ] vorbis.py
+    - [X] vorbis.py
     - [ ] vorbiscomment.py
     - [X] wav.py
     - [X] wavpack.py
 **** TODO cue
-     - [ ] __init__.py
-     - [ ] tokrules.py
+     - [X] __init__.py
+     - [X] tokrules.py
      - [ ] yaccrules.py
 **** TODO toc
      - [ ] __init__.py

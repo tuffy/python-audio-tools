@@ -61,7 +61,7 @@ def p_catalog_string(t):
 def p_catalog_number(t):
     'catalog : CATALOG NUMBER'
 
-    t[0] = ("catalog", u"%13.13d" % (t[2]))
+    t[0] = ("catalog", u"{:013d}".format(t[2]))
 
 
 def p_title(t):
@@ -187,7 +187,7 @@ def p_index(t):
 def p_isrc(t):
     '''isrc : ISRC_ID ISRC
             | ISRC_ID NUMBER'''
-    t[0] = ("isrc", u"%s" % (t[2],))
+    t[0] = ("isrc", u"{}".format(t[2]))
 
 
 def p_pregap(t):

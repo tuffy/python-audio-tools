@@ -1758,7 +1758,7 @@ try:
                 label=LAB_OPTIONS_AUDIO_QUALITY)
 
             self.output_type = SelectOne(
-                items=sorted([(u"%s - %s" % (t.NAME, t.DESCRIPTION), t)
+                items=sorted([(u"{} - {}".format(t.NAME, t.DESCRIPTION), t)
                               for t in audiotools.AVAILABLE_TYPES
                               if t.supports_from_pcm()],
                              key=lambda pair: pair[0]),
@@ -1771,27 +1771,27 @@ try:
             header = urwid.Pile(
                 [urwid.Columns([('fixed', 10,
                                  urwid.Text(('label',
-                                             u"%s : " %
-                                             (LAB_OPTIONS_OUTPUT_DIRECTORY)),
+                                             u"{} : ".format(
+                                                 LAB_OPTIONS_OUTPUT_DIRECTORY)),
                                             align="right")),
                                 ('weight', 1, self.output_directory)]),
                  urwid.Columns([('fixed', 10,
                                  urwid.Text(('label',
-                                             u"%s : " %
-                                             (LAB_OPTIONS_FILENAME_FORMAT)),
+                                             u"{} : ".format(
+                                                 LAB_OPTIONS_FILENAME_FORMAT)),
                                             align="right")),
                                 ('weight', 1, self.output_format),
                                 ('fixed', 10, self.browse_fields)]),
                  urwid.Columns([('fixed', 10,
                                  urwid.Text(('label',
-                                             u"%s : " %
-                                             (LAB_OPTIONS_AUDIO_CLASS)),
+                                             u"{} : ".format(
+                                                 LAB_OPTIONS_AUDIO_CLASS)),
                                             align="right")),
                                 ('weight', 1, self.output_type)]),
                  urwid.Columns([('fixed', 10,
                                  urwid.Text(('label',
-                                             u"%s : " %
-                                             (LAB_OPTIONS_AUDIO_QUALITY)),
+                                             u"{} : ".format(
+                                                 LAB_OPTIONS_AUDIO_QUALITY)),
                                             align="right")),
                                 ('weight', 1, self.output_quality)])])
 
@@ -1829,10 +1829,10 @@ try:
                     default = [q for q in qualities if
                                q == audio_class.DEFAULT_COMPRESSION][0]
                 self.output_quality.set_items(
-                    [(u"%s" % (q,) if q not in
+                    [(u"{}".format(q) if q not in
                       audio_class.COMPRESSION_DESCRIPTIONS else
-                      u"%s - %s" % (q,
-                                    audio_class.COMPRESSION_DESCRIPTIONS[q]),
+                      u"{} - {}".format(
+                          q, audio_class.COMPRESSION_DESCRIPTIONS[q]),
                       q)
                      for q in qualities],
                     default)
@@ -1983,7 +1983,7 @@ try:
                 label=LAB_OPTIONS_AUDIO_QUALITY)
 
             self.output_type = SelectOne(
-                items=sorted([(u"%s - %s" % (t.NAME, t.DESCRIPTION), t)
+                items=sorted([(u"{} - {}".format(t.NAME, t.DESCRIPTION), t)
                               for t in audiotools.AVAILABLE_TYPES
                               if t.supports_from_pcm()],
                              key=lambda pair: pair[0]),
@@ -1995,24 +1995,22 @@ try:
 
             filename_widget = urwid.Columns(
                 [('fixed', 10, urwid.Text(('label',
-                                           u"%s : " %
-                                           (LAB_OPTIONS_OUTPUT)),
+                                           u"{} : ".format(
+                                               LAB_OPTIONS_OUTPUT)),
                                           align="right")),
                  ('weight', 1, self.output_filename)])
 
             class_widget = urwid.Columns(
                 [('fixed', 10,
                   urwid.Text(('label',
-                              u"%s : " %
-                              (LAB_OPTIONS_AUDIO_CLASS)),
+                              u"{} : ".format(LAB_OPTIONS_AUDIO_CLASS)),
                              align="right")),
                  ('weight', 1, self.output_type)])
 
             quality_widget = urwid.Columns(
                 [('fixed', 10,
                   urwid.Text(('label',
-                              u"%s : " %
-                              (LAB_OPTIONS_AUDIO_QUALITY)),
+                              u"{} : ".format(LAB_OPTIONS_AUDIO_QUALITY)),
                              align="right")),
                  ('weight', 1, self.output_quality)])
 
@@ -2047,11 +2045,10 @@ try:
                     default = [q for q in qualities if
                                q == audio_class.DEFAULT_COMPRESSION][0]
                 self.output_quality.set_items(
-                    [(u"%s" % (q,) if q not in
+                    [((u"{}".format(q) if q not in
                       audio_class.COMPRESSION_DESCRIPTIONS else
-                      u"%s - %s" % (q,
-                                    audio_class.COMPRESSION_DESCRIPTIONS[q]),
-                      q)
+                      u"{} - {}".format(
+                          q, audio_class.COMPRESSION_DESCRIPTIONS[q])), q)
                      for q in qualities],
                     default)
 
@@ -2192,7 +2189,8 @@ try:
         def get_text(self):
             from audiotools.text import LAB_VOLUME
 
-            return u"%s : %s" % (LAB_VOLUME, urwid.ProgressBar.get_text(self))
+            return u"{} : {}".format(
+                LAB_VOLUME, urwid.ProgressBar.get_text(self))
 
         def selectable(self):
             return True
@@ -2367,32 +2365,28 @@ try:
             track_name_widget = urwid.Columns(
                 [('fixed',
                   label_width,
-                  urwid.Text(('label',
-                              u"%s : " % (METADATA_TRACK_NAME)),
+                  urwid.Text(('label', u"{} : ".format(METADATA_TRACK_NAME)),
                              align='right')),
                  ('weight', 1, self.track_name)])
 
             artist_name_widget = urwid.Columns(
                 [('fixed',
                   label_width,
-                  urwid.Text(('label',
-                              u"%s : " % (METADATA_ARTIST_NAME)),
+                  urwid.Text(('label', u"{} : ".format(METADATA_ARTIST_NAME)),
                              align='right')),
                  ('weight', 1, self.artist_name)])
 
             album_name_widget = urwid.Columns(
                 [('fixed',
                   label_width,
-                  urwid.Text(('label',
-                              u"%s : " % (METADATA_ALBUM_NAME)),
+                  urwid.Text(('label', u"{} : ".format(METADATA_ALBUM_NAME)),
                              align='right')),
                  ('weight', 1, self.album_name)])
 
             track_number_widget = urwid.Columns(
                 [('fixed',
                   label_width,
-                  urwid.Text(('label',
-                              u"%s : " % (LAB_PLAY_TRACK)),
+                  urwid.Text(('label', u"{} : ".format(LAB_PLAY_TRACK)),
                              align='right')),
                  ('weight', 1, self.tracknum)])
 
@@ -2445,9 +2439,9 @@ try:
                                         key_map={'tab': 'down'})),
                      ("fixed",
                       6,
-                      urwid.Text(u"%2.1d:%2.2d" %
-                                 (seconds_length // 60,
-                                  seconds_length % 60),
+                      urwid.Text(u"{:2d}:{:02d}".format(
+                                     seconds_length // 60,
+                                     seconds_length % 60),
                                  align="right"))])
                  for (track_label, seconds_length, user_data) in tracks])
 
@@ -2529,7 +2523,7 @@ try:
                                            (track_number,
                                             track_total))
                 else:
-                    self.tracknum.set_text(u"%d" % (track_number,))
+                    self.tracknum.set_text(u"{:d}".format(track_number))
             else:
                 self.tracknum.set_text(u"")
 
@@ -2543,7 +2537,7 @@ try:
                 else:
                     self.albumnum_label.set_text(('label',
                                                   LAB_ALBUM_NUMBER + u" : "))
-                    self.albumnum.set_text(u"%d" % (album_number,))
+                    self.albumnum.set_text(u"{:d}".format(album_number))
             else:
                 self.albumnum_label.set_text(u"")
                 self.albumnum.set_text(u"")
@@ -2649,7 +2643,7 @@ def show_available_formats(msg):
     for name in sorted(audiotools.TYPE_MAP.keys()):
         row = table.row()
         row.add_column(
-            output_text(u"%s" % (name),
+            output_text(u"{}".format(name),
                         style=("underline" if
                                (name == audiotools.DEFAULT_TYPE)
                                else None)),
@@ -2687,7 +2681,7 @@ def show_available_qualities(msg, audiotype):
         for mode in audiotype.COMPRESSION_MODES:
             row = table.row()
             row.add_column(
-                output_text(u"%s" % (mode),
+                output_text(u"{}".format(mode),
                             style=("underline" if
                                    (mode == audiotools.__default_quality__(
                                        audiotype.NAME))
@@ -2731,9 +2725,9 @@ def select_metadata(metadata_choices, msg, use_default=False):
                     choice=i + 1,
                     selection=choice_selection_unicode(choice[0])))
             try:
-                choice = int(raw_input(u"%s (1-%d) : " %
-                                       (LAB_SELECT_BEST_MATCH,
-                                        len(metadata_choices)))) - 1
+                choice = int(raw_input(u"{} (1-{:d}) : ".format(
+                                           LAB_SELECT_BEST_MATCH,
+                                           len(metadata_choices)))) - 1
             except ValueError:
                 choice = None
 
@@ -2821,11 +2815,11 @@ def process_output_options(metadata_choices,
 
 
 class PlayerTTY(object):
-    OUTPUT_FORMAT = (u"%(track_number)d/%(track_total)d " +
-                     u"[%(sent_minutes)d:%(sent_seconds)2.2d / " +
-                     u"%(total_minutes)d:%(total_seconds)2.2d] " +
-                     u"%(channels)dch %(sample_rate)s " +
-                     u"%(bits_per_sample)d-bit")
+    OUTPUT_FORMAT = (u"{track_number:d}/{track_total:d} " +
+                     u"[{sent_minutes:d}:{sent_seconds:d} / " +
+                     u"{total_minutes:d}:{total_seconds:d}] " +
+                     u"{channels:d}ch {sample_rate} " +
+                     u"{bits_per_sample:d}-bit")
 
     def __init__(self, player):
         self.player = player
@@ -2936,16 +2930,16 @@ class PlayerTTY(object):
         return self.player.progress()
 
     def progress_line(self, frames_sent, frames_total):
-        return (self.OUTPUT_FORMAT %
-                {"track_number": self.track_number,
-                 "track_total": self.track_total,
-                 "sent_minutes": (frames_sent // self.sample_rate) // 60,
-                 "sent_seconds": (frames_sent // self.sample_rate) % 60,
-                 "total_minutes": (frames_total // self.sample_rate) // 60,
-                 "total_seconds": (frames_total // self.sample_rate) % 60,
-                 "channels": self.channels,
-                 "sample_rate": audiotools.khz(self.sample_rate),
-                 "bits_per_sample": self.bits_per_sample})
+        return self.OUTPUT_FORMAT.format(
+            track_number=self.track_number,
+            track_total=self.track_total,
+            sent_minutes=(frames_sent // self.sample_rate) // 60,
+            sent_seconds=(frames_sent // self.sample_rate) % 60,
+            total_minutes=(frames_total // self.sample_rate) // 60,
+            total_seconds=(frames_total // self.sample_rate) % 60,
+            channels=self.channels,
+            sample_rate=audiotools.khz(self.sample_rate),
+            bits_per_sample=self.bits_per_sample)
 
 
 def not_available_message(msg):

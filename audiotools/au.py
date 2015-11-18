@@ -236,7 +236,7 @@ class AuAudio(AudioFile):
         f = open(self.filename, 'rb')
         (magic_number, data_offset) = struct.unpack(">4sI", f.read(8))
         header = f.read(data_offset - struct.calcsize(">4sI"))
-        return (struct.pack(">4sI%ds" % (len(header)),
+        return (struct.pack(">4sI{:d}s".format(len(header)),
                             magic_number, data_offset, header), "")
 
     @classmethod

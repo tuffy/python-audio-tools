@@ -120,7 +120,7 @@ class VorbisComment(MetaData):
                     try:
                         # replace current value with newly set value
                         new_comment_strings.append(
-                            u"%s=%s" % (c_key, new_values.pop(0)))
+                            u"{}={}".format(c_key, new_values.pop(0)))
                     except IndexError:
                         # no more newly set values, so remove current value
                         continue
@@ -133,7 +133,7 @@ class VorbisComment(MetaData):
 
         # append any leftover values
         for new_value in new_values:
-            new_comment_strings.append(u"%s=%s" % (key.upper(), new_value))
+            new_comment_strings.append(u"{}={}".format(key.upper(), new_value))
 
         MetaData.__setattr__(self, "comment_strings", new_comment_strings)
 
@@ -157,8 +157,8 @@ class VorbisComment(MetaData):
         MetaData.__setattr__(self, "comment_strings", new_comment_strings)
 
     def __repr__(self):
-        return "VorbisComment(%s, %s)" % \
-            (repr(self.comment_strings), repr(self.vendor_string))
+        return "VorbisComment({!r}, {!r})".format(self.comment_strings,
+                                                  self.vendor_string)
 
     def __comment_name__(self):
         return u"Vorbis Comment"
@@ -192,8 +192,9 @@ class VorbisComment(MetaData):
                 row.add_column(u"")
                 row.add_column(u"")
 
-        return (u"%s:  %s" % (self.__comment_name__(),
-                              self.vendor_string) + linesep +
+        return (u"{}:  {}".format(self.__comment_name__(),
+                                  self.vendor_string) +
+                linesep +
                 linesep.join(table.format()))
 
     def __getattr__(self, attr):
@@ -280,7 +281,7 @@ class VorbisComment(MetaData):
         def swap_number(unicode_value, new_number):
             import re
 
-            return re.sub(r'\d+', u"%d" % (new_number), unicode_value, 1)
+            return re.sub(r'\d+', u"{:d}".format(new_number), unicode_value, 1)
 
         if (attr in self.FIELDS) and (value is None):
             # setting any value to None is equivilent to deleting it
@@ -309,10 +310,10 @@ class VorbisComment(MetaData):
                                 break
                     else:
                         # no integer field matching key, so add new one
-                        self[key] = current_values + [u"%d" % (value)]
+                        self[key] = current_values + [u"{:d}".format(value)]
                 except KeyError:
                     # no current field with key, so add new one
-                    self[key] = [u"%d" % (value)]
+                    self[key] = [u"{:d}".format(value)]
             elif attr in {'track_total', 'album_total'}:
                 # look for standalone TRACKTOTAL/DISCTOTAL field
                 try:
@@ -351,7 +352,7 @@ class VorbisComment(MetaData):
 
                 # no slashed TRACKNUMBER/DISCNUMBER values either
                 # so append a TRACKTOTAL/DISCTOTAL field
-                self[key] = current_values + [u"%d" % (value)]
+                self[key] = current_values + [u"{:d}".format(value)]
             elif attr == "compilation":
                 self[key] = [u"1" if value else u"0"]
             else:
@@ -403,7 +404,7 @@ class VorbisComment(MetaData):
                                  'album_number': u"DISCTOTAL"}[attr]
 
                     if (len(slashed_totals) > 0) and (total_key not in self):
-                        self[total_key] = [u"%d" % (slashed_totals[0])]
+                        self[total_key] = [u"{:d}".format(slashed_totals[0])]
                 except KeyError:
                     # no TRACKNUMBER/DISCNUMBER field to remove
                     pass
@@ -462,7 +463,7 @@ class VorbisComment(MetaData):
                 return cls(vorbis_comment.comment_strings[:],
                            vorbis_comment.vendor_string)
             else:
-                return cls([], u"Python Audio Tools %s" % (VERSION))
+                return cls([], u"Python Audio Tools {}".format(VERSION))
         elif (metadata.__class__.__name__ in ('Flac_VORBISCOMMENT',
                                               'OpusTags')):
             return cls(metadata.comment_strings[:],
@@ -476,15 +477,16 @@ class VorbisComment(MetaData):
                     attr_type = cls.FIELD_TYPES[attr]
                     if attr_type is type(u""):
                         comment_strings.append(
-                            u"%s=%s" % (key, value))
+                            u"{}={}".format(key, value))
                     elif attr_type is int:
                         comment_strings.append(
-                            u"%s=%d" % (key, value))
+                            u"{}={:d}".format(key, value))
                     elif attr_type is bool:
                         comment_strings.append(
-                            u"%s=%d" % (key, 1 if value else 0))
+                            u"{}={:d}".format(key, 1 if value else 0))
 
-            return cls(comment_strings, u"Python Audio Tools %s" % (VERSION))
+            return cls(comment_strings,
+                       u"Python Audio Tools {}".format(VERSION))
 
     @classmethod
     def supports_images(cls):
@@ -552,7 +554,7 @@ class VorbisComment(MetaData):
                             if match is not None:
                                 # fix whitespace/zeroes
                                 # on either side of slash
-                                fix3 = u"%s/%s" % (
+                                fix3 = u"{}/{}".format(
                                     match.group(1).lstrip(u"0"),
                                     match.group(2).lstrip(u"0"))
 
@@ -578,7 +580,7 @@ class VorbisComment(MetaData):
                         else:
                             fix3 = fix2
 
-                        cleaned_fields.append(u"%s=%s" % (key, fix3))
+                        cleaned_fields.append(u"{}={}".format(key, fix3))
                 else:
                     cleaned_fields.append(comment_string)
             else:

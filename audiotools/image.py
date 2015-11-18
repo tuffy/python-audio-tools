@@ -70,12 +70,12 @@ class ImageMetrics:
         self.mime_type = mime_type
 
     def __repr__(self):
-        return "ImageMetrics(%s,%s,%s,%s,%s)" % \
-               (repr(self.width),
-                repr(self.height),
-                repr(self.bits_per_pixel),
-                repr(self.color_count),
-                repr(self.mime_type))
+        return "ImageMetrics({!r},{!r},{!r},{!r},{!r})".format(
+            self.width,
+            self.height,
+            self.bits_per_pixel,
+            self.color_count,
+            self.mime_type)
 
     @classmethod
     def parse(cls, file_data):

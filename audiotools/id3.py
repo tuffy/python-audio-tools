@@ -91,7 +91,7 @@ def decode_syncsafe32(i):
     larger than 32 bits or contains invalid sync-safe bits"""
 
     if i >= (2 ** 32):
-        raise ValueError("value of %s is too large" % (i))
+        raise ValueError("value of {} is too large".format(i))
     elif i < 0:
         raise ValueError("value cannot be negative")
 
@@ -152,8 +152,8 @@ class C_string(object):
         self.unicode_string = unicode_string
 
     def __repr__(self):
-        return "C_string(%s, %s)" % (repr(self.encoding),
-                                     repr(self.unicode_string))
+        return "C_string({!r}, {!r})".format(
+            self.encoding, self.unicode_string)
 
     if sys.version_info[0] >= 3:
         def __str__(self):
@@ -172,22 +172,22 @@ class C_string(object):
         return len(self.unicode_string)
 
     def __eq__(self, s):
-        return (self.unicode_string == (u"%s" % (s)))
+        return (self.unicode_string == u"{}".format(s))
 
     def __ne__(self, s):
-        return (self.unicode_string != (u"%s" % (s)))
+        return (self.unicode_string != u"{}".format(s))
 
     def __lt__(self, s):
-        return (self.unicode_string < (u"%s" % (s)))
+        return (self.unicode_string < u"{}".format(s))
 
     def __le__(self, s):
-        return (self.unicode_string <= (u"%s" % (s)))
+        return (self.unicode_string <= u"{}".format(s))
 
     def __gt__(self, s):
-        return (self.unicode_string > (u"%s" % (s)))
+        return (self.unicode_string > u"{}".format(s))
 
     def __ge__(self, s):
-        return (self.unicode_string >= (u"%s" % (s)))
+        return (self.unicode_string >= u"{}".format(s))
 
     @classmethod
     def parse(cls, encoding, reader):
@@ -241,9 +241,9 @@ def __padded__(value):
     with the proper padding"""
 
     if config.getboolean_default("ID3", "pad", False):
-        return u"%2.2d" % (value)
+        return u"{:02d}".format(value)
     else:
-        return u"%d" % (value)
+        return u"{:d}".format(value)
 
 
 # takes a pair of integers (or None) for the current and total values
@@ -392,19 +392,19 @@ class ID3v22_Frame(object):
         return self.__class__(self.id, self.data)
 
     def __repr__(self):
-        return "ID3v22_Frame(%s, %s)" % (repr(self.id), repr(self.data))
+        return "ID3v22_Frame({!r}, {!r})".format(self.id, self.data)
 
     def raw_info(self):
         from audiotools import hex_string
 
         if len(self.data) > 20:
-            return u"%s = %s\u2026" % \
-                (self.id.decode('ascii', 'replace'),
-                 hex_string(self.data[0:20]))
+            return u"{} = {}\u2026".format(
+                self.id.decode('ascii', 'replace'),
+                hex_string(self.data[0:20]))
         else:
-            return u"%s = %s" % \
-                (self.id.decode('ascii', 'replace'),
-                 hex_string(self.data))
+            return u"{} = {}".format(
+                self.id.decode('ascii', 'replace'),
+                hex_string(self.data))
 
     def __eq__(self, frame):
         return __attrib_equals__(["id", "data"], self, frame)
@@ -462,16 +462,16 @@ class ID3v22_T__Frame(object):
         return self.__class__(self.id, self.encoding, self.data)
 
     def __repr__(self):
-        return "ID3v22_T__Frame(%s, %s, %s)" % \
-            (repr(self.id), repr(self.encoding), repr(self.data))
+        return "ID3v22_T__Frame({!r}, {!r}, {!r})".format(
+            self.id, self.encoding, self.data)
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"%s = (%s) %s" % \
-            (self.id.decode('ascii'),
-             {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
-             self.__unicode__())
+        return u"{} = ({}) {}".format(
+            self.id.decode('ascii'),
+            {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
+            self.__unicode__())
 
     def __eq__(self, frame):
         return __attrib_equals__(["id", "encoding", "data"], self, frame)
@@ -640,17 +640,17 @@ class ID3v22_TXX_Frame(object):
                               self.data)
 
     def __repr__(self):
-        return "ID3v22_TXX_Frame(%s, %s, %s)" % \
-            (repr(self.encoding), repr(self.description), repr(self.data))
+        return "ID3v22_TXX_Frame({!r}, {!r}, {!r})".format(
+            self.encoding, self.description, self.data)
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"%s = (%s, \"%s\") %s" % \
-            (self.id.decode('ascii', 'replace'),
-             {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
-             self.description,
-             self.__unicode__())
+        return u"{} = ({}, \"{}\") {}".format(
+            self.id.decode('ascii', 'replace'),
+            {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
+            self.description,
+            self.__unicode__())
 
     def __eq__(self, frame):
         return __attrib_equals__(["id", "encoding", "description", "data"],
@@ -736,14 +736,13 @@ class ID3v22_W__Frame(object):
         return self.__class__(self.id, self.data)
 
     def __repr__(self):
-        return "ID3v22_W__Frame(%s, %s)" % \
-            (repr(self.id), repr(self.data))
+        return "ID3v22_W__Frame({!r}, {!r})".format(self.id, self.data)
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"%s = %s" % (self.id.decode('ascii'),
-                             self.data.decode('ascii', 'replace'))
+        return u"{} = {}".format(self.id.decode('ascii'),
+                                 self.data.decode('ascii', 'replace'))
 
     def __eq__(self, frame):
         return __attrib_equals__(["id", "data"], self, frame)
@@ -786,17 +785,17 @@ class ID3v22_WXX_Frame(object):
                               self.data)
 
     def __repr__(self):
-        return "ID3v22_WXX_Frame(%s, %s, %s)" % \
-            (repr(self.encoding), repr(self.description), repr(self.data))
+        return "ID3v22_WXX_Frame({!r}, {!r}, {!r})".format(
+            self.encoding, self.description, self.data)
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"%s = (%s, \"%s\") %s" % \
-            (self.id.decode('ascii', 'replace'),
-             {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
-             self.description,
-             self.data.decode('ascii', 'replace'))
+        return u"{} = ({}, \"{}\") {}".format(
+            self.id.decode('ascii', 'replace'),
+            {0: u"Latin-1", 1: u"UCS-2"}[self.encoding],
+            self.description,
+            self.data.decode('ascii', 'replace'))
 
     def __eq__(self, frame):
         return __attrib_equals__(["id", "encoding", "description", "data"])
@@ -859,18 +858,17 @@ class ID3v22_COM_Frame(object):
                               self.data)
 
     def __repr__(self):
-        return "ID3v22_COM_Frame(%s, %s, %s, %s)" % \
-            (repr(self.encoding), repr(self.language),
-             repr(self.short_description), repr(self.data))
+        return "ID3v22_COM_Frame({!r}, {!r}, {!r}, {!r})".format(
+            self.encoding, self.language, self.short_description, self.data)
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"COM = (%s, %s, \"%s\") %s" % \
-            ({0: u'Latin-1', 1: 'UCS-2'}[self.encoding],
-             self.language.decode('ascii', 'replace'),
-             self.short_description,
-             self.data.decode({0: 'latin-1', 1: 'ucs2'}[self.encoding]))
+        return u"COM = ({}, {}, \"{}\") {}".format(
+            {0: u'Latin-1', 1: 'UCS-2'}[self.encoding],
+            self.language.decode('ascii', 'replace'),
+            self.short_description,
+            self.data.decode({0: 'latin-1', 1: 'ucs2'}[self.encoding]))
 
     def __eq__(self, frame):
         return __attrib_equals__(["encoding",
@@ -1006,20 +1004,19 @@ class ID3v22_PIC_Frame(Image):
                                 self.data)
 
     def __repr__(self):
-        return "ID3v22_PIC_Frame(%s, %s, %s, ...)" % \
-            (repr(self.pic_format), repr(self.pic_type),
-             repr(self.pic_description))
+        return "ID3v22_PIC_Frame({!r}, {!r}, {!r}, ...)".format(
+            self.pic_format, self.pic_type, self.pic_description)
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"PIC = (%s, %d\u00D7%d, %s, \"%s\") %d bytes" % \
-            (self.type_string(),
-             self.width,
-             self.height,
-             self.mime_type,
-             self.pic_description,
-             len(self.data))
+        return u"PIC = ({}, {:d}\u00D7{:d}, {}, \"{}\") {:d} bytes".format(
+            self.type_string(),
+            self.width,
+            self.height,
+            self.mime_type,
+            self.pic_description,
+            len(self.data))
 
     def type_string(self):
         return {0: u"Other",
@@ -1189,8 +1186,8 @@ class ID3v22Comment(MetaData):
         return self.__class__([frame.copy() for frame in self])
 
     def __repr__(self):
-        return "ID3v22Comment(%s, %s)" % (repr(self.frames),
-                                          repr(self.total_size))
+        return "ID3v22Comment({!r}, {!r})".format(self.frames,
+                                                  self.total_size)
 
     def __iter__(self):
         return iter(self.frames)
@@ -1201,8 +1198,7 @@ class ID3v22Comment(MetaData):
         from os import linesep
 
         return linesep.join(
-            ["%s:" % (self.NAME)] +
-            [frame.raw_info() for frame in self])
+            ["{}:".format(self.NAME)] + [frame.raw_info() for frame in self])
 
     @classmethod
     def parse(cls, reader):
@@ -1406,10 +1402,10 @@ class ID3v22Comment(MetaData):
                         frame_id, value)
                 elif attr == 'compilation':
                     new_frame = self.TEXT_FRAME.converted(
-                        frame_id, u"%d" % (1 if value else 0))
+                        frame_id, u"{:d}".format(1 if value else 0))
                 else:
                     new_frame = self.TEXT_FRAME.converted(
-                        frame_id, u"%s" % (value,))
+                        frame_id, u"{}".format(value))
 
                 try:
                     self[frame_id] = [new_frame] + self[frame_id][1:]
@@ -1514,7 +1510,8 @@ class ID3v22Comment(MetaData):
                     frames.append(cls.TEXT_FRAME.converted(key, value))
             elif (attr == 'compilation') and (value is not None):
                 frames.append(
-                    cls.TEXT_FRAME.converted(key, u"%d" % (1 if value else 0)))
+                    cls.TEXT_FRAME.converted(
+                        key, u"{:d}".format(1 if value else 0)))
 
         if (((metadata.track_number is not None) or
              (metadata.track_total is not None))):
@@ -1578,7 +1575,7 @@ class ID3v22Comment(MetaData):
 
 class ID3v23_Frame(ID3v22_Frame):
     def __repr__(self):
-        return "ID3v23_Frame(%s, %s)" % (repr(self.id), repr(self.data))
+        return "ID3v23_Frame({!r}, {!r})".format(self.id, self.data)
 
 
 class ID3v23_T___Frame(ID3v22_T__Frame):
@@ -1586,8 +1583,8 @@ class ID3v23_T___Frame(ID3v22_T__Frame):
     BOOLEAN_IDS = (b'TCMP',)
 
     def __repr__(self):
-        return "ID3v23_T___Frame(%s, %s, %s)" % \
-            (repr(self.id), repr(self.encoding), repr(self.data))
+        return "ID3v23_T___Frame({!r}, {!r}, {!r})".format(
+            self.id, self.encoding, self.data)
 
 
 class ID3v23_TXXX_Frame(ID3v22_TXX_Frame):
@@ -1599,14 +1596,13 @@ class ID3v23_TXXX_Frame(ID3v22_TXX_Frame):
         self.data = data
 
     def __repr__(self):
-        return "ID3v23_TXXX_Frame(%s, %s, %s)" % \
-            (repr(self.encoding), repr(self.description), repr(self.data))
+        return "ID3v23_TXXX_Frame({!r}, {!r}, {!r})".format(
+            self.encoding, self.description, self.data)
 
 
 class ID3v23_W___Frame(ID3v22_W__Frame):
     def __repr__(self):
-        return "ID3v23_W___Frame(%s, %s)" % \
-            (repr(self.id), repr(self.data))
+        return "ID3v23_W___Frame({!r}, {!r})".format(self.id, self.data)
 
 
 class ID3v23_WXXX_Frame(ID3v22_WXX_Frame):
@@ -1618,8 +1614,8 @@ class ID3v23_WXXX_Frame(ID3v22_WXX_Frame):
         self.data = data
 
     def __repr__(self):
-        return "ID3v23_WXXX_Frame(%s, %s, %s)" % \
-            (repr(self.encoding), repr(self.description), repr(self.data))
+        return "ID3v23_WXXX_Frame({!r}, {!r}, {!r})".format(
+            self.encoding, self.description, self.data)
 
 
 class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
@@ -1660,20 +1656,19 @@ class ID3v23_APIC_Frame(ID3v22_PIC_Frame):
                               self.data)
 
     def __repr__(self):
-        return "ID3v23_APIC_Frame(%s, %s, %s, ...)" % \
-            (repr(self.pic_mime_type), repr(self.pic_type),
-             repr(self.pic_description))
+        return "ID3v23_APIC_Frame({!r}, {!r}, {!r}, ...)".format(
+            self.pic_mime_type, self.pic_type, self.pic_description)
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"APIC = (%s, %d\u00D7%d, %s, \"%s\") %d bytes" % \
-            (self.type_string(),
-             self.width,
-             self.height,
-             self.pic_mime_type,
-             self.pic_description,
-             len(self.data))
+        return u"APIC = ({}, {:d}\u00D7{:d}, {}, \"{}\") {:d} bytes".format(
+            self.type_string(),
+            self.width,
+            self.height,
+            self.pic_mime_type,
+            self.pic_description,
+            len(self.data))
 
     def __getattr__(self, attr):
         from audiotools import (FRONT_COVER,
@@ -1810,18 +1805,17 @@ class ID3v23_COMM_Frame(ID3v22_COM_Frame):
         self.data = data
 
     def __repr__(self):
-        return "ID3v23_COMM_Frame(%s, %s, %s, %s)" % \
-            (repr(self.encoding), repr(self.language),
-             repr(self.short_description), repr(self.data))
+        return "ID3v23_COMM_Frame({!r}, {!r}, {!r}, {!r})".format(
+            self.encoding, self.language, self.short_description, self.data)
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"COMM = (%s, %s, \"%s\") %s" % \
-            ({0: u'Latin-1', 1: 'UCS-2'}[self.encoding],
-             self.language.decode('ascii', 'replace'),
-             self.short_description,
-             self.data.decode({0: 'latin-1', 1: 'ucs2'}[self.encoding]))
+        return u"COMM = ({}, {}, \"{}\") {}".format(
+            {0: u'Latin-1', 1: 'UCS-2'}[self.encoding],
+            self.language.decode('ascii', 'replace'),
+            self.short_description,
+            self.data.decode({0: 'latin-1', 1: 'ucs2'}[self.encoding]))
 
 
 class ID3v23Comment(ID3v22Comment):
@@ -1857,8 +1851,7 @@ class ID3v23Comment(ID3v22Comment):
     ITUNES_COMPILATION_ID = b'TCMP'
 
     def __repr__(self):
-        return "ID3v23Comment(%s, %s)" % (repr(self.frames),
-                                          repr(self.total_size))
+        return "ID3v23Comment({!r}, {!r})".format(self.frames, self.total_size)
 
     @classmethod
     def parse(cls, reader):
@@ -1954,7 +1947,7 @@ class ID3v23Comment(ID3v22Comment):
 
 class ID3v24_Frame(ID3v23_Frame):
     def __repr__(self):
-        return "ID3v24_Frame(%s, %s)" % (repr(self.id), repr(self.data))
+        return "ID3v24_Frame({!r}, {!r})".format(self.id, self.data)
 
 
 class ID3v24_T___Frame(ID3v23_T___Frame):
@@ -1967,8 +1960,8 @@ class ID3v24_T___Frame(ID3v23_T___Frame):
         self.data = data
 
     def __repr__(self):
-        return "ID3v24_T___Frame(%s, %s, %s)" % \
-            (repr(self.id), repr(self.encoding), repr(self.data))
+        return "ID3v24_T___Frame({!r}, {!r}, {!r})".format(
+            self.id, self.encoding, self.data)
 
     def __unicode__(self):
         return self.data.decode(
@@ -1980,12 +1973,12 @@ class ID3v24_T___Frame(ID3v23_T___Frame):
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"%s = (%s) %s" % (self.id.decode('ascii'),
-                                  {0: u"Latin-1",
-                                   1: u"UTF-16",
-                                   2: u"UTF-16BE",
-                                   3: u"UTF-8"}[self.encoding],
-                                  self.__unicode__())
+        return u"{} = ({}) {}".format(self.id.decode('ascii'),
+                                      {0: u"Latin-1",
+                                       1: u"UTF-16",
+                                       2: u"UTF-16BE",
+                                       3: u"UTF-8"}[self.encoding],
+                                      self.__unicode__())
 
     @classmethod
     def converted(cls, frame_id, unicode_string):
@@ -1999,20 +1992,20 @@ class ID3v24_T___Frame(ID3v23_T___Frame):
 
 class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
     def __repr__(self):
-        return "ID3v24_TXXX_Frame(%s, %s, %s)" % \
-            (repr(self.encoding), repr(self.description), repr(self.data))
+        return "ID3v24_TXXX_Frame({!r}, {!r}, {!r})".format(
+            self.encoding, self.description, self.data)
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"%s = (%s, \"%s\") %s" % \
-            (self.id.decode('ascii', 'replace'),
-             {0: u"Latin-1",
-              1: u"UTF-16",
-              2: u"UTF-16BE",
-              3: u"UTF-8"}[self.encoding],
-             self.description,
-             self.__unicode__())
+        return u"{} = ({}, \"{}\") {}".format(
+            self.id.decode('ascii', 'replace'),
+            {0: u"Latin-1",
+             1: u"UTF-16",
+             2: u"UTF-16BE",
+             3: u"UTF-8"}[self.encoding],
+            self.description,
+            self.__unicode__())
 
     def __unicode__(self):
         return self.data.decode(
@@ -2039,9 +2032,10 @@ class ID3v24_TXXX_Frame(ID3v23_TXXX_Frame):
 
 class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
     def __repr__(self):
-        return "ID3v24_APIC_Frame(%s, %s, %s, ...)" % \
-            (repr(self.pic_mime_type), repr(self.pic_type),
-             repr(self.pic_description))
+        return "ID3v24_APIC_Frame({!r}, {!r}, {!r}, ...)".format(
+            self.pic_mime_type,
+            self.pic_type,
+            self.pic_description)
 
     def __setattr__(self, attr, value):
         from audiotools import (FRONT_COVER,
@@ -2138,26 +2132,25 @@ class ID3v24_APIC_Frame(ID3v23_APIC_Frame):
 
 class ID3v24_W___Frame(ID3v23_W___Frame):
     def __repr__(self):
-        return "ID3v24_W___Frame(%s, %s)" % \
-            (repr(self.id), repr(self.data))
+        return "ID3v24_W___Frame({!r}, {!r})".format(self.id, self.data)
 
 
 class ID3v24_WXXX_Frame(ID3v23_WXXX_Frame):
     def __repr__(self):
-        return "ID3v24_WXXX_Frame(%s, %s, %s)" % \
-            (repr(self.encoding), repr(self.description), repr(self.data))
+        return "ID3v24_WXXX_Frame({!r}, {!r}, {!r})".format(
+            self.encoding, self.description, self.data)
 
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"%s = (%s, \"%s\") %s" % \
-            (self.id.decode('ascii', 'replace'),
-             {0: u'Latin-1',
-              1: u'UTF-16',
-              2: u'UTF-16BE',
-              3: u'UTF-8'}[self.encoding],
-             self.description,
-             self.data.decode('ascii', 'replace'))
+        return u"{} = ({}, \"{}\") {}".format(
+            self.id.decode('ascii', 'replace'),
+            {0: u'Latin-1',
+             1: u'UTF-16',
+             2: u'UTF-16BE',
+             3: u'UTF-8'}[self.encoding],
+            self.description,
+            self.data.decode('ascii', 'replace'))
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -2177,9 +2170,8 @@ class ID3v24_WXXX_Frame(ID3v23_WXXX_Frame):
 
 class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
     def __repr__(self):
-        return "ID3v24_COMM_Frame(%s, %s, %s, %s)" % \
-            (repr(self.encoding), repr(self.language),
-             repr(self.short_description), repr(self.data))
+        return "ID3v24_COMM_Frame({!r}, {!r}, {!r}, {!r})".format(
+            self.encoding, self.language, self.short_description, self.data)
 
     def __unicode__(self):
         return self.data.decode({0: 'latin-1',
@@ -2190,17 +2182,17 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
     def raw_info(self):
         """returns a human-readable version of this frame as unicode"""
 
-        return u"COMM = (%s, %s, \"%s\") %s" % \
-            ({0: u'Latin-1',
-              1: u'UTF-16',
-              2: u'UTF-16BE',
-              3: u'UTF-8'}[self.encoding],
-             self.language.decode('ascii', 'replace'),
-             self.short_description,
-             self.data.decode({0: 'latin-1',
-                               1: 'utf-16',
-                               2: 'utf-16be',
-                               3: 'utf-8'}[self.encoding]))
+        return u"COMM = ({}, {}, \"{}\") {}".format(
+            {0: u'Latin-1',
+             1: u'UTF-16',
+             2: u'UTF-16BE',
+             3: u'UTF-8'}[self.encoding],
+            self.language.decode('ascii', 'replace'),
+            self.short_description,
+            self.data.decode({0: 'latin-1',
+                              1: 'utf-16',
+                              2: 'utf-16be',
+                              3: 'utf-8'}[self.encoding]))
 
     @classmethod
     def parse(cls, frame_id, frame_size, reader):
@@ -2283,8 +2275,7 @@ class ID3v24Comment(ID3v23Comment):
     ITUNES_COMPILATION_ID = b'TCMP'
 
     def __repr__(self):
-        return "ID3v24Comment(%s, %s)" % (repr(self.frames),
-                                          repr(self.total_size))
+        return "ID3v24Comment({!r}, {!r})".format(self.frames, self.total_size)
 
     @classmethod
     def parse(cls, reader):
@@ -2401,7 +2392,7 @@ class ID3CommentPair(MetaData):
             raise ValueError("ID3v2 and ID3v1 cannot both be blank")
 
     def __repr__(self):
-        return "ID3CommentPair(%s, %s)" % (repr(self.id3v2), repr(self.id3v1))
+        return "ID3CommentPair({!r}, {!r})".format(self.id3v2, self.id3v1)
 
     def __getattr__(self, attr):
         assert((self.id3v2 is not None) or (self.id3v1 is not None))

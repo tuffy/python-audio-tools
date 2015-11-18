@@ -319,12 +319,12 @@ class OpusAudio(VorbisAudio):
         comment_writer = BitstreamRecorder(True)
         comment_writer.write_bytes(b"OpusTags")
         vendor_string = metadata.vendor_string.encode('utf-8')
-        comment_writer.build("32u %db" % (len(vendor_string)),
+        comment_writer.build("32u {:d}b".format(len(vendor_string)),
                              (len(vendor_string), vendor_string))
         comment_writer.write(32, len(metadata.comment_strings))
         for comment_string in metadata.comment_strings:
             comment_string = comment_string.encode('utf-8')
-            comment_writer.build("32u %db" % (len(comment_string)),
+            comment_writer.build("32u {:d}b".format(len(comment_string)),
                                  (len(comment_string), comment_string))
 
         for page in packet_to_pages(

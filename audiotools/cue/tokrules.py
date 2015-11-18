@@ -111,4 +111,4 @@ def t_newline(t):
 
 
 def t_error(t):
-    raise ValueError("illegal character %s" % (repr(t.value[0])))
+    raise ValueError("illegal character {!r}".format(t.value[0]))
