@@ -45,11 +45,11 @@ def do_nothing(self):
 for section in parser.sections():
     for option in parser.options(section):
         if parser.getboolean(section, option):
-            vars()["%s_%s" % (section.upper(),
-                              option.upper())] = lambda function: function
+            vars()["{}_{}".format(section.upper(), option.upper())] = \
+                lambda function: function
         else:
-            vars()["%s_%s" % (section.upper(),
-                              option.upper())] = lambda function: do_nothing
+            vars()["{}_{}".format(section.upper(), option.upper())] = \
+                lambda function: do_nothing
 
 
 def BLANK_PCM_Reader(length, sample_rate=44100, channels=2,
@@ -174,9 +174,8 @@ class MD5_Reader(audiotools.PCMReader):
         self.md5 = md5()
 
     def __repr__(self):
-        return "MD5Reader(%s,%s,%s)" % (self.sample_rate,
-                                        self.channels,
-                                        self.bits_per_sample)
+        return "MD5Reader({!r},{!r},{!r})".format(
+            self.sample_rate, self.channels, self.bits_per_sample)
 
     def reset(self):
         if hasattr(self.pcmreader, "reset"):
@@ -263,11 +262,8 @@ class FrameCounter:
         self.value = value
 
     def __repr__(self):
-        return "FrameCounter(%d %d %d %d)" % \
-            (self.channels,
-             self.bits_per_sample,
-             self.sample_rate,
-             self.value)
+        return "FrameCounter({!r}, {!r}, {!r}, {!r})".format(
+            self.channels, self.bits_per_sample, self.sample_rate, self.value)
 
     def update(self, f):
         self.value += len(f)

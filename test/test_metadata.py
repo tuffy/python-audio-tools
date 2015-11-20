@@ -35,11 +35,11 @@ def do_nothing(self):
 for section in parser.sections():
     for option in parser.options(section):
         if parser.getboolean(section, option):
-            vars()["%s_%s" % (section.upper(),
-                              option.upper())] = lambda function: function
+            vars()["{}_{}".format(section.upper(), option.upper())] = \
+                lambda function: function
         else:
-            vars()["%s_%s" % (section.upper(),
-                              option.upper())] = lambda function: do_nothing
+            vars()["{}_{}".format(section.upper(), option.upper())] = \
+                lambda function: do_nothing
 
 
 class MetaDataTest(unittest.TestCase):
@@ -192,8 +192,8 @@ class MetaDataTest(unittest.TestCase):
                         self.assertEqual(
                             getattr(metadata, field),
                             None,
-                            "%s != %s for field %s" % (
-                                repr(getattr(metadata, field)), None, field))
+                            "{!r} != {} for field {}".format(
+                                getattr(metadata, field), None, field))
 
                 # check an unsupported field
                 metadata = self.empty_metadata()
@@ -2140,15 +2140,16 @@ class WavPackApeTagMetaData(MetaDataTest):
                     test_streams.Sine16_Stereo(44100, 44100,
                                                441.0, 0.50,
                                                4410.0, 0.49, 1.0))
-                self.assertIsNone(track1.get_replay_gain(),
-                                  "ReplayGain present for class %s" %
-                                  (input_class.NAME))
+                self.assertIsNone(
+                    track1.get_replay_gain(),
+                    "ReplayGain present for class {}".format(input_class.NAME))
                 track1.set_metadata(audiotools.MetaData(track_name=u"Foo"))
                 audiotools.add_replay_gain([track1])
                 self.assertEqual(track1.get_metadata().track_name, u"Foo")
-                self.assertIsNotNone(track1.get_replay_gain(),
-                                     "ReplayGain not present for class %s" %
-                                     (input_class.NAME))
+                self.assertIsNotNone(
+                    track1.get_replay_gain(),
+                    "ReplayGain not present for class {}".format(
+                        input_class.NAME))
 
                 for output_class in [audiotools.WavPackAudio]:
                     with tempfile.NamedTemporaryFile(
@@ -2163,15 +2164,15 @@ class WavPackApeTagMetaData(MetaDataTest):
                         # via set_metadata()
                         self.assertIsNone(
                             track2.get_replay_gain(),
-                            "ReplayGain present for class %s" %
-                            (output_class.NAME))
+                            "ReplayGain present for class {}".format(
+                                output_class.NAME))
                         track2.set_metadata(track1.get_metadata())
                         self.assertEqual(track2.get_metadata().track_name,
                                          u"Foo")
                         self.assertIsNone(
                             track2.get_replay_gain(),
-                            "ReplayGain present for class %s from %s" %
-                            (output_class.NAME, input_class.NAME))
+                            "ReplayGain present for class {} from {}".format(
+                                output_class.NAME, input_class.NAME))
 
                         # and if ReplayGain is already set,
                         # ensure set_metadata() doesn't remove it
@@ -2603,7 +2604,7 @@ class ID3v22MetaData(MetaDataTest):
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if attribute not in SPECIAL_ATTRIBS:
-                attribs1[attribute] = attribs2[key] = u"value %d" % (i)
+                attribs1[attribute] = attribs2[key] = u"value {:d}".format(i)
         attribs1["track_number"] = 2
         attribs1["track_total"] = 10
         attribs1["album_number"] = 1
@@ -2618,7 +2619,7 @@ class ID3v22MetaData(MetaDataTest):
 
         # ensure that all the keys for non-integer items match up
         for (key, value) in attribs2.items():
-            self.assertEqual(u"%s" % (id3[key][0],), value)
+            self.assertEqual(u"{}".format(id3[key][0]), value)
 
         # ensure the keys for integer items match up
         self.assertEqual(
@@ -2646,9 +2647,9 @@ class ID3v22MetaData(MetaDataTest):
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if ((key not in id3_class.TEXT_FRAME.NUMERICAL_IDS) and
                 (key not in id3_class.TEXT_FRAME.BOOLEAN_IDS)):
-                setattr(id3, attribute, u"new value %d" % (i))
-                self.assertEqual(u"%s" % (id3[key][0],),
-                                 u"new value %d" % (i))
+                setattr(id3, attribute, u"new value {:d}".format(i))
+                self.assertEqual(u"{}".format(id3[key][0]),
+                                 u"new value {:d}".format(i))
 
         # ensure that changing integer attributes changes the underlying frame
         # >>> id3.track_number = 2
@@ -2709,9 +2710,9 @@ class ID3v22MetaData(MetaDataTest):
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if attribute not in SPECIAL_ATTRIBS:
                 id3[key] = [id3_class.TEXT_FRAME(
-                    key, 0, (u"new value %d" % (i)).encode("ascii"))]
+                    key, 0, (u"new value {:d}".format(i)).encode("ascii"))]
                 self.assertEqual(getattr(id3, attribute),
-                                 u"new value %d" % (i))
+                                 u"new value {:d}".format(i))
 
         # ensure that changing the underlying integer frames changes attributes
         key = id3_class.TEXT_FRAME.NUMERICAL_IDS[0]
@@ -2741,8 +2742,9 @@ class ID3v22MetaData(MetaDataTest):
         for (i,
              (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if attribute not in SPECIAL_ATTRIBS:
-                id3[key] = [id3_class.TEXT_FRAME.converted(key, u"%s" % (i,))]
-                self.assertEqual(getattr(id3, attribute), u"%s" % (i,))
+                id3[key] = [id3_class.TEXT_FRAME.converted(key,
+                                                           u"{}".format(i))]
+                self.assertEqual(getattr(id3, attribute), u"{}".format(i))
 
         # and ensure explicitly setting integer frames also changes attribs
         id3[id3_class.TEXT_FRAME.NUMERICAL_IDS[0]] = [
@@ -3046,7 +3048,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.frames,
                          [self.text_tag("track_number",
-                                        u"%s/2" % (padded(1)))])
+                                        u"{}/2".format(padded(1)))])
 
         metadata = self.metadata_class([
             self.text_tag("track_number", u"foo 6 bar")])
@@ -3054,7 +3056,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.track_number, 1)
         self.assertEqual(metadata.frames,
                          [self.text_tag("track_number",
-                                        u"foo %s bar" % (padded(1)))])
+                                        u"foo {} bar".format(padded(1)))])
 
         metadata = self.metadata_class([
             self.text_tag("track_number", u"foo 6 bar / blah 7 baz")])
@@ -3063,7 +3065,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.frames,
                          [self.text_tag(
                              "track_number",
-                             u"foo %s bar / blah 7 baz" % (padded(1)))])
+                             u"foo {} bar / blah 7 baz".format(padded(1)))])
 
         # album_number adds new field if necessary
         metadata = self.metadata_class([])
@@ -3099,7 +3101,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(metadata.frames,
                          [self.text_tag("album_number",
-                                        u"%s/4" % (padded(3)))])
+                                        u"{}/4".format(padded(3)))])
 
         metadata = self.metadata_class([
             self.text_tag("album_number", u"foo 7 bar")])
@@ -3107,7 +3109,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.album_number, 3)
         self.assertEqual(metadata.frames,
                          [self.text_tag("album_number",
-                                        u"foo %s bar" % (padded(3)))])
+                                        u"foo {} bar".format(padded(3)))])
 
         metadata = self.metadata_class([
             self.text_tag("album_number", u"foo 7 bar / blah 8 baz")])
@@ -3116,7 +3118,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.frames,
                          [self.text_tag(
                              "album_number",
-                             u"foo %s bar / blah 8 baz" % (padded(3)))])
+                             u"foo {} bar / blah 8 baz".format(padded(3)))])
 
         # track_total adds new field if necessary
         metadata = self.metadata_class([])
@@ -3134,7 +3136,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata.frames,
                          [self.text_tag("track_number",
-                                        u"6/%s" % (padded(2)))])
+                                        u"6/{}".format(padded(2)))])
 
         metadata = self.metadata_class([
             self.text_tag("track_number", u"6"),
@@ -3143,7 +3145,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata.frames,
                          [self.text_tag("track_number",
-                                         u"6/%s" % (padded(2))),
+                                         u"6/{}".format(padded(2))),
                           self.text_tag("track_number", u"10")])
 
         metadata = self.metadata_class([
@@ -3152,7 +3154,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata.frames,
                          [self.text_tag("track_number",
-                                        u"6/%s" % (padded(2)))])
+                                        u"6/{}".format(padded(2)))])
 
         metadata = self.metadata_class([
             self.text_tag("track_number", u"foo 6 bar / blah 7 baz")])
@@ -3161,7 +3163,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.frames,
                          [self.text_tag(
                              "track_number",
-                             u"foo 6 bar / blah %s baz" % (padded(2)))])
+                             u"foo 6 bar / blah {} baz".format(padded(2)))])
 
         # album_total adds new field if necessary
         metadata = self.metadata_class([])
@@ -3179,7 +3181,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(metadata.frames,
                          [self.text_tag("album_total",
-                                        u"9/%s" % (padded(4)))])
+                                        u"9/{}".format(padded(4)))])
 
         metadata = self.metadata_class([
             self.text_tag("album_number", u"9"),
@@ -3187,8 +3189,8 @@ class ID3v22MetaData(MetaDataTest):
         metadata.album_total = 4
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(metadata.frames,
-                         [self.text_tag("album_number", u"9/%s" %
-                                        (padded(4))),
+                         [self.text_tag("album_number",
+                                        u"9/{}".format(padded(4))),
                           self.text_tag("album_number", u"10")])
 
         metadata = self.metadata_class([
@@ -3197,7 +3199,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.album_total, 4)
         self.assertEqual(metadata.frames,
                          [self.text_tag("album_number",
-                                        u"9/%s" % (padded(4)))])
+                                        u"9/{}".format(padded(4)))])
 
         metadata = self.metadata_class([
             self.text_tag("album_total", u"foo 9 bar / blah 10 baz")])
@@ -3206,7 +3208,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.frames,
                          [self.text_tag(
                              "album_number",
-                             u"foo 9 bar / blah %s baz" % (padded(4)))])
+                             u"foo 9 bar / blah {} baz".format(padded(4)))])
 
         # other fields update the first match
         # while leaving the rest alone
@@ -3515,13 +3517,19 @@ class ID3v22MetaData(MetaDataTest):
 
     @METADATA_ID3V2
     def test_clean(self):
+        from audiotools.text import CLEAN_REMOVE_TRAILING_WHITESPACE
+        from audiotools.text import CLEAN_REMOVE_LEADING_WHITESPACE
+        from audiotools.text import CLEAN_REMOVE_EMPTY_TAG
+        from audiotools.text import CLEAN_ADD_LEADING_ZEROES
+        from audiotools.text import CLEAN_REMOVE_LEADING_ZEROES
+
         # check trailing whitespace
         metadata = audiotools.ID3v22Comment(
             [audiotools.id3.ID3v22_T__Frame.converted(b"TT2", u"Title ")])
         self.assertEqual(metadata.track_name, u"Title ")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
-                         ["removed trailing whitespace from %(field)s" %
+                         [CLEAN_REMOVE_TRAILING_WHITESPACE %
                           {"field": u"TT2"}])
         self.assertEqual(cleaned.track_name, u"Title")
 
@@ -3531,7 +3539,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata.track_name, u" Title")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
-                         ["removed leading whitespace from %(field)s" %
+                         [CLEAN_REMOVE_LEADING_WHITESPACE %
                           {"field": u"TT2"}])
         self.assertEqual(cleaned.track_name, u"Title")
 
@@ -3541,7 +3549,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata[b"TT2"][0].data, b"")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
-                         ["removed empty field %(field)s" %
+                         [CLEAN_REMOVE_EMPTY_TAG %
                           {"field": u"TT2"}])
         self.assertRaises(KeyError,
                           cleaned.__getitem__,
@@ -3564,7 +3572,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"1")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             ["added leading zeroes to %(field)s" %
+                             [CLEAN_ADD_LEADING_ZEROES %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
@@ -3577,7 +3585,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"1/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             ["added leading zeroes to %(field)s" %
+                             [CLEAN_ADD_LEADING_ZEROES %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
@@ -3595,7 +3603,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"01")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             ["removed leading zeroes from %(field)s" %
+                             [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
@@ -3608,7 +3616,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"01/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             ["removed leading zeroes from %(field)s" %
+                             [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
@@ -3621,7 +3629,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"1/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             ["removed leading zeroes from %(field)s" %
+                             [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
@@ -3634,7 +3642,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"01/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             ["removed leading zeroes from %(field)s" %
+                             [CLEAN_REMOVE_LEADING_ZEROES %
                               {"field": u"TRK"}])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
@@ -4459,7 +4467,7 @@ class FlacMetaData(MetaDataTest):
                         metadata.get_block(
                             audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID
                             )[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
@@ -4467,7 +4475,7 @@ class FlacMetaData(MetaDataTest):
                         metadata2.get_block(
                             audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID
                             )[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
 
                 # ensure that updating the low-level implementation
                 # is reflected in the class field
@@ -4476,13 +4484,13 @@ class FlacMetaData(MetaDataTest):
                     metadata = self.empty_metadata()
                     metadata.get_block(
                         audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)[key] = \
-                        [u"%s" % (value)]
+                        [u"{}".format(value)]
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
                         metadata.get_block(
                             audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID
                             )[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
@@ -4490,7 +4498,7 @@ class FlacMetaData(MetaDataTest):
                         metadata2.get_block(
                             audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID
                             )[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
             finally:
                 # temp_file.close()
                 pass
@@ -5089,15 +5097,17 @@ class FlacMetaData(MetaDataTest):
                     test_streams.Sine16_Stereo(44100, 44100,
                                                441.0, 0.50,
                                                4410.0, 0.49, 1.0))
-                self.assertIsNone(track1.get_replay_gain(),
-                                  "ReplayGain present for class %s" %
-                                  (input_class.NAME))
+                self.assertIsNone(
+                    track1.get_replay_gain(),
+                    "ReplayGain present for class {}".format(input_class.NAME))
+
                 track1.set_metadata(audiotools.MetaData(track_name=u"Foo"))
                 audiotools.add_replay_gain([track1])
                 self.assertEqual(track1.get_metadata().track_name, u"Foo")
-                self.assertIsNotNone(track1.get_replay_gain(),
-                                     "ReplayGain not present for class %s" %
-                                     (input_class.NAME))
+                self.assertIsNotNone(
+                    track1.get_replay_gain(),
+                    "ReplayGain not present for class {}".format(
+                        input_class.NAME))
 
                 for output_class in [audiotools.FlacAudio]:
                     temp2 = tempfile.NamedTemporaryFile(
@@ -5129,16 +5139,15 @@ class FlacMetaData(MetaDataTest):
                         # via set_metadata()
                         self.assertIsNone(
                             track2.get_replay_gain(),
-                            "ReplayGain present for class %s" %
-                            (output_class.NAME))
+                            "ReplayGain present for class {}".format(
+                                output_class.NAME))
                         track2.set_metadata(track1.get_metadata())
                         self.assertEqual(track2.get_metadata().track_name,
                                          u"Foo")
                         self.assertIsNone(
                             track2.get_replay_gain(),
-                            "ReplayGain present for class %s from %s" %
-                            (output_class.NAME,
-                             input_class.NAME))
+                            "ReplayGain present for class {} from {}".format(
+                                output_class.NAME, input_class.NAME))
 
                         # and if ReplayGain is already set,
                         # ensure set_metadata() doesn't remove it
@@ -7313,30 +7322,30 @@ class VorbisCommentTest(MetaDataTest):
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
                         metadata[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
                     self.assertEqual(
                         metadata2[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
 
                 # ensure that updating the low-level implementation
                 # is reflected in the class field
                 for (field, key, value) in mapping:
                     track.delete_metadata()
                     metadata = self.empty_metadata()
-                    metadata[key] = [u"%s" % (value)]
+                    metadata[key] = [u"{}".format(value)]
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
                         metadata[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
                     self.assertEqual(
                         metadata2[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
             finally:
                 temp_file.close()
 
@@ -8326,15 +8335,17 @@ class VorbisCommentTest(MetaDataTest):
                     test_streams.Sine16_Stereo(44100, 44100,
                                                441.0, 0.50,
                                                4410.0, 0.49, 1.0))
-                self.assertIsNone(track1.get_replay_gain(),
-                                  "ReplayGain present for class %s" %
-                                  (input_class.NAME))
+                self.assertIsNone(
+                    track1.get_replay_gain(),
+                    "ReplayGain present for class {}".format(
+                        input_class.NAME))
                 track1.set_metadata(audiotools.MetaData(track_name=u"Foo"))
                 audiotools.add_replay_gain([track1])
                 self.assertEqual(track1.get_metadata().track_name, u"Foo")
-                self.assertIsNotNone(track1.get_replay_gain(),
-                                     "ReplayGain not present for class %s" %
-                                     (input_class.NAME))
+                self.assertIsNotNone(
+                    track1.get_replay_gain(),
+                    "ReplayGain not present for class {}".format(
+                        input_class.NAME))
 
                 for output_class in [audiotools.VorbisAudio]:
                     temp2 = tempfile.NamedTemporaryFile(
@@ -8350,16 +8361,15 @@ class VorbisCommentTest(MetaDataTest):
                         # via set_metadata()
                         self.assertIsNone(
                             track2.get_replay_gain(),
-                            "ReplayGain present for class %s" %
-                            (output_class.NAME))
+                            "ReplayGain present for class {}".format(
+                                output_class.NAME))
                         track2.set_metadata(track1.get_metadata())
                         self.assertEqual(track2.get_metadata().track_name,
                                          u"Foo")
                         self.assertIsNone(
                             track2.get_replay_gain(),
-                            "ReplayGain present for class %s from %s" %
-                            (output_class.NAME,
-                             input_class.NAME))
+                            "ReplayGain present for class {} from {}".format(
+                                output_class.NAME, input_class.NAME))
 
                         # and if ReplayGain is already set,
                         # ensure set_metadata() doesn't remove it
@@ -8588,30 +8598,30 @@ class OpusTagsTest(MetaDataTest):
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
                         metadata[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
                     self.assertEqual(
                         metadata2[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
 
                 # ensure that updating the low-level implementation
                 # is reflected in the class field
                 for (field, key, value) in mapping:
                     track.delete_metadata()
                     metadata = self.empty_metadata()
-                    metadata[key] = [u"%s" % (value)]
+                    metadata[key] = [u"{}".format(value)]
                     self.assertEqual(getattr(metadata, field), value)
                     self.assertEqual(
                         metadata[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
                     track.set_metadata(metadata)
                     metadata2 = track.get_metadata()
                     self.assertEqual(getattr(metadata2, field), value)
                     self.assertEqual(
                         metadata2[key][0],
-                        u"%s" % (value))
+                        u"{}".format(value))
             finally:
                 temp_file.close()
 
@@ -8792,8 +8802,8 @@ class TrueAudioTest(unittest.TestCase):
                                                4410.0, 0.49, 1.0))
                 self.assertIsNone(
                     track1.get_replay_gain(),
-                    "ReplayGain present for class %s" %
-                    (audiotools.TrueAudio.NAME))
+                    "ReplayGain present for class {}".format(
+                        audiotools.TrueAudio.NAME))
                 track1.update_metadata(metadata)
                 audiotools.add_replay_gain([track1])
                 self.assertIsInstance(track1.get_metadata(), audiotools.ApeTag)
@@ -8801,8 +8811,8 @@ class TrueAudioTest(unittest.TestCase):
                                  u"Track Name")
                 self.assertIsNotNone(
                     track1.get_replay_gain(),
-                    "ReplayGain not present for class %s" %
-                    (audiotools.TrueAudio.NAME))
+                    "ReplayGain not present for class {}".format(
+                        audiotools.TrueAudio.NAME))
 
                 temp2 = tempfile.NamedTemporaryFile(
                     suffix="." + audiotools.TrueAudio.SUFFIX)
@@ -8817,16 +8827,16 @@ class TrueAudioTest(unittest.TestCase):
                     # via set_metadata()
                     self.assertIsNone(
                         track2.get_replay_gain(),
-                        "ReplayGain present for class %s" %
-                        (audiotools.TrueAudio.NAME))
+                        "ReplayGain present for class {}".format(
+                            audiotools.TrueAudio.NAME))
                     track2.set_metadata(track1.get_metadata())
                     self.assertEqual(track2.get_metadata().track_name,
                                      u"Track Name")
                     self.assertIsNone(
                         track2.get_replay_gain(),
-                        "ReplayGain present for class %s from %s" %
-                        (audiotools.TrueAudio.NAME,
-                         audiotools.TrueAudio.NAME))
+                        "ReplayGain present for class {} from {}".format(
+                            audiotools.TrueAudio.NAME,
+                            audiotools.TrueAudio.NAME))
 
                     # and if ReplayGain is already set,
                     # ensure set_metadata() doesn't remove it

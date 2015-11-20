@@ -50,11 +50,11 @@ def do_nothing(self):
 for section in parser.sections():
     for option in parser.options(section):
         if parser.getboolean(section, option):
-            vars()["%s_%s" % (section.upper(),
-                              option.upper())] = lambda function: function
+            vars()["{}_{}".format(section.upper(), option.upper())] = \
+                lambda function: function
         else:
-            vars()["%s_%s" % (section.upper(),
-                              option.upper())] = lambda function: do_nothing
+            vars()["{}_{}".format(section.upper(), option.upper())] = \
+                lambda function: do_nothing
 
 
 class CLOSE_PCM_Reader(audiotools.PCMReader):
@@ -155,7 +155,7 @@ class AudioFileTest(unittest.TestCase):
         # first check nonexistent files
         self.assertRaises(audiotools.InvalidFile,
                           self.audio_class,
-                          "/dev/null/foo.%s" % (self.audio_class.SUFFIX))
+                          "/dev/null/foo.{}".format(self.audio_class.SUFFIX))
 
         f = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
@@ -492,9 +492,9 @@ class AudioFileTest(unittest.TestCase):
                     self.assertGreater(
                         len(log.results),
                         0,
-                        "no logging converting %s to %s" %
-                        (self.audio_class.NAME,
-                         audio_class.NAME))
+                        "no logging converting {} to {}".format(
+                            self.audio_class.NAME, audio_class.NAME))
+
                     for x, y in zip(log.results[1:], log.results):
                         self.assertGreaterEqual(x - y, 0)
 
@@ -502,7 +502,7 @@ class AudioFileTest(unittest.TestCase):
                         self.assertTrue(
                             audiotools.pcm_cmp(track.to_pcm(),
                                                track2.to_pcm()),
-                            "PCM mismatch converting %s to %s" % (
+                            "PCM mismatch converting {} to {}".format(
                                 self.audio_class.NAME,
                                 audio_class.NAME))
 
@@ -978,7 +978,7 @@ class AudioFileTest(unittest.TestCase):
                     for value in [2 ** 31, 2 ** 34, 2 ** 38]:
                         seeked = pcmreader.seek(value)
                         self.assertLessEqual(seeked, value,
-                                             "%s > %s" % (seeked, value))
+                                             "{} > {}".format(seeked, value))
 
                     # a PCMReader that's closed should raise ValueError
                     # whenever seek is called
@@ -1250,7 +1250,7 @@ class LosslessFileTest(AudioFileTest):
                     # test unwritable output file
                     self.assertRaises(audiotools.EncodingError,
                                       self.audio_class.from_pcm,
-                                      "/dev/null/foo.%s" % (self.suffix),
+                                      "/dev/null/foo.{}".format(self.suffix),
                                       BLANK_PCM_Reader(1))
 
                     # test without suffix
@@ -1290,13 +1290,15 @@ class LosslessFileTest(AudioFileTest):
                 test_streams.Sine16_Stereo(441000, 44100,
                                            8820.0, 0.70, 4410.0, 0.29, 1.0))
             for audio_class in audiotools.AVAILABLE_TYPES:
-                self.assertFalse(os.path.isfile("/dev/null/foo.%s" %
-                                                (audio_class.SUFFIX)))
-                self.assertRaises(audiotools.EncodingError,
-                                  track.convert,
-                                  "/dev/null/foo.%s" %
-                                  (audio_class.SUFFIX),
-                                  audio_class)
+                self.assertFalse(
+                    os.path.isfile(
+                        "/dev/null/foo.{}".format(audio_class.SUFFIX)))
+
+                self.assertRaises(
+                    audiotools.EncodingError,
+                    track.convert,
+                    "/dev/null/foo.{}".format(audio_class.SUFFIX),
+                    audio_class)
 
                 with tempfile.NamedTemporaryFile(
                     suffix="." + audio_class.SUFFIX) as temp_output:
@@ -1305,9 +1307,9 @@ class LosslessFileTest(AudioFileTest):
                         self.assertTrue(
                             audiotools.pcm_cmp(track.to_pcm(),
                                                track2.to_pcm()),
-                            "error round-tripping %s to %s" %
-                            (self.audio_class.NAME,
-                             audio_class.NAME))
+                            "error round-tripping {} to {}".format(
+                                self.audio_class.NAME,
+                                 audio_class.NAME))
                     else:
                         pcm = track2.to_pcm()
                         counter = FrameCounter(pcm.channels,
@@ -1319,11 +1321,8 @@ class LosslessFileTest(AudioFileTest):
 
                         self.assertEqual(
                             int(counter), 10,
-                            "mismatch encoding %s (%s/%d != %s)" %
-                            (audio_class.NAME,
-                             counter,
-                             int(counter),
-                             10))
+                            "mismatch encoding {} ({}/{:d} != {})".format(
+                                audio_class.NAME, counter, int(counter), 10))
 
                     for compression in audio_class.COMPRESSION_MODES:
                         track2 = track.convert(temp_output.name,
@@ -1333,10 +1332,10 @@ class LosslessFileTest(AudioFileTest):
                             self.assertTrue(
                                 audiotools.pcm_cmp(track.to_pcm(),
                                                    track2.to_pcm()),
-                                "error round-tripping %s to %s at %s" %
-                                (self.audio_class.NAME,
-                                 audio_class.NAME,
-                                 compression))
+                                "error round-tripping {} to {} at {}".format(
+                                     self.audio_class.NAME,
+                                     audio_class.NAME,
+                                     compression))
                         else:
                             pcm = track2.to_pcm()
                             counter = FrameCounter(
@@ -1347,16 +1346,17 @@ class LosslessFileTest(AudioFileTest):
                                 pcm, counter.update)
                             self.assertEqual(
                                 int(counter), 10,
-                                ("mismatch encoding %s " +
-                                 "at quality %s (%s != %s)") %
-                                (audio_class.NAME, compression,
-                                 counter, 10))
+                                ("mismatch encoding {} " +
+                                 "at quality {} ({} != {})").format(
+                                    audio_class.NAME,
+                                    compression,
+                                    counter, 10))
 
                         # check some obvious failures
                         self.assertRaises(audiotools.EncodingError,
                                           track.convert,
-                                          "/dev/null/foo.%s" %
-                                          (audio_class.SUFFIX),
+                                          "/dev/null/foo.{}".format(
+                                              audio_class.SUFFIX),
                                           audio_class,
                                           compression)
 
@@ -1459,10 +1459,10 @@ class LossyFileTest(AudioFileTest):
                     counter = FrameCounter(2, 16, 44100)
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        counter.update)
-                    self.assertEqual(int(counter), 5,
-                                     "mismatch encoding %s at quality %s" %
-                                     (self.audio_class.NAME,
-                                      compression))
+                    self.assertEqual(
+                        int(counter), 5,
+                        "mismatch encoding {} at quality {}".format(
+                            self.audio_class.NAME, compression))
 
                     # test random noise
                     reader = RANDOM_PCM_Reader(5)
@@ -1480,10 +1480,10 @@ class LossyFileTest(AudioFileTest):
                     counter = FrameCounter(2, 16, 44100)
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        counter.update)
-                    self.assertEqual(int(counter), 5,
-                                     "mismatch encoding %s at quality %s" %
-                                     (self.audio_class.NAME,
-                                      compression))
+                    self.assertEqual(
+                        int(counter), 5,
+                        "mismatch encoding {} at quality {}".format(
+                            self.audio_class.NAME, compression))
 
                     # test randomly-sized chunks of silence
                     reader = Variable_Reader(BLANK_PCM_Reader(5))
@@ -1502,10 +1502,10 @@ class LossyFileTest(AudioFileTest):
                     counter = FrameCounter(2, 16, 44100)
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        counter.update)
-                    self.assertEqual(int(counter), 5,
-                                     "mismatch encoding %s at quality %s" %
-                                     (self.audio_class.NAME,
-                                      compression))
+                    self.assertEqual(
+                        int(counter), 5,
+                        "mismatch encoding {} at quality {}".format(
+                            self.audio_class.NAME, compression))
 
                     # test randomly-sized chunks of random noise
                     reader = Variable_Reader(RANDOM_PCM_Reader(5))
@@ -1524,10 +1524,10 @@ class LossyFileTest(AudioFileTest):
                     counter = FrameCounter(2, 16, 44100)
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        counter.update)
-                    self.assertEqual(int(counter), 5,
-                                     "mismatch encoding %s at quality %s" %
-                                     (self.audio_class.NAME,
-                                      compression))
+                    self.assertEqual(
+                        int(counter), 5,
+                        "mismatch encoding {} at quality {}".format(
+                            self.audio_class.NAME, compression))
 
                     # test PCMReaders that trigger a DecodingError
                     self.assertRaises(
@@ -1567,7 +1567,7 @@ class LossyFileTest(AudioFileTest):
                     # test unwritable output file
                     self.assertRaises(audiotools.EncodingError,
                                       self.audio_class.from_pcm,
-                                      "/dev/null/foo.%s" % (self.suffix),
+                                      "/dev/null/foo.{}".format(self.suffix),
                                       BLANK_PCM_Reader(1))
 
                     # test without suffix
@@ -1587,10 +1587,10 @@ class LossyFileTest(AudioFileTest):
                     counter = FrameCounter(2, 16, 44100)
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        counter.update)
-                    self.assertEqual(int(counter), 5,
-                                     "mismatch encoding %s at quality %s" %
-                                     (self.audio_class.NAME,
-                                      compression))
+                    self.assertEqual(
+                        int(counter), 5,
+                        "mismatch encoding {} at quality {}".format(
+                            self.audio_class.NAME, compression))
         finally:
             temp.close()
             temp2.close()
@@ -1620,13 +1620,12 @@ class LossyFileTest(AudioFileTest):
                                                counter.update)
             self.assertEqual(
                 int(counter), 5,
-                "mismatch encoding %s" %
-                (self.audio_class.NAME))
+                "mismatch encoding {}".format(self.audio_class.NAME))
 
             self.assertRaises(audiotools.EncodingError,
                               track.convert,
-                              "/dev/null/foo.%s" %
-                              (audio_class.SUFFIX),
+                              "/dev/null/foo.{}".format(
+                                  audio_class.SUFFIX),
                               audio_class)
 
             for compression in audio_class.COMPRESSION_MODES:
@@ -1639,15 +1638,14 @@ class LossyFileTest(AudioFileTest):
                                                    counter.update)
                 self.assertEqual(
                     int(counter), 5,
-                    "mismatch encoding %s at quality %s" %
-                    (self.audio_class.NAME,
-                     compression))
+                    "mismatch encoding {} at quality {}".format(
+                        self.audio_class.NAME, compression))
 
                 # check some obvious failures
                 self.assertRaises(audiotools.EncodingError,
                                   track.convert,
-                                  "/dev/null/foo.%s" %
-                                  (audio_class.SUFFIX),
+                                  "/dev/null/foo.{}".format(
+                                      audio_class.SUFFIX),
                                   audio_class,
                                   compression)
 
@@ -1781,9 +1779,8 @@ class TestForeignWaveChunks:
                             # gets called during conversion
                             self.assertGreater(
                                 len(log.results), 0,
-                                "no logging converting %s to %s" %
-                                (self.audio_class.NAME,
-                                 new_class.NAME))
+                                "no logging converting {} to {}".format(
+                                    self.audio_class.NAME, new_class.NAME))
 
                             for x, y in zip(log.results[1:], log.results):
                                 self.assertGreaterEqual(x - y, 0)
@@ -2026,9 +2023,8 @@ class TestForeignAiffChunks:
                             # gets called during conversion
                             self.assertGreater(
                                 len(log.results), 0,
-                                "no logging converting %s to %s" %
-                                (self.audio_class.NAME,
-                                 new_class.NAME))
+                                "no logging converting {} to {}".format(
+                                    self.audio_class.NAME, new_class.NAME))
 
                             for x, y in zip(log.results[1:], log.results):
                                 self.assertGreaterEqual(x - y, 0)
@@ -2507,11 +2503,12 @@ class ALACFileTest(LosslessFileTest):
                 temp.name,
                 BLANK_PCM_Reader(1))
             metadata = track.get_metadata()
-            encoder = u"%s" % (metadata[b'ilst'][b'\xa9too'],)
+            encoder = u"{}".format(metadata[b'ilst'][b'\xa9too'],)
             track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
             metadata = track.get_metadata()
             self.assertEqual(metadata.track_name, u"Foo")
-            self.assertEqual(u"%s" % (metadata[b'ilst'][b'\xa9too'],), encoder)
+            self.assertEqual(u"{}".format(metadata[b'ilst'][b'\xa9too']),
+                             encoder)
 
     def __test_reader__(self, pcmreader, total_pcm_frames, block_size=4096):
         if not audiotools.BIN.can_execute(audiotools.BIN["alac"]):
@@ -2547,11 +2544,12 @@ class ALACFileTest(LosslessFileTest):
                                  md5sum_reference.update)
         reference.stdout.close()
         self.assertEqual(reference.wait(), 0)
-        self.assertEqual(md5sum_reference.digest(), pcmreader.digest(),
-                         "mismatch decoding %s from reference (%s != %s)" %
-                         (repr(pcmreader),
-                          md5sum_reference.hexdigest(),
-                          pcmreader.hexdigest()))
+        self.assertEqual(
+            md5sum_reference.digest(), pcmreader.digest(),
+            "mismatch decoding {!r} from reference ({} != {})".format(
+                pcmreader,
+                md5sum_reference.hexdigest(),
+                pcmreader.hexdigest()))
 
         # then, perform test again using from_pcm()
         # with total_pcm_frames indicated
@@ -2585,11 +2583,12 @@ class ALACFileTest(LosslessFileTest):
                                  md5sum_reference.update)
         reference.stdout.close()
         self.assertEqual(reference.wait(), 0)
-        self.assertEqual(md5sum_reference.digest(), pcmreader.digest(),
-                         "mismatch decoding %s from reference (%s != %s)" %
-                         (repr(pcmreader),
-                          md5sum_reference.hexdigest(),
-                          pcmreader.hexdigest()))
+        self.assertEqual(
+            md5sum_reference.digest(), pcmreader.digest(),
+            "mismatch decoding {!r} from reference ({} != {})".format(
+                pcmreader,
+                md5sum_reference.hexdigest(),
+                pcmreader.hexdigest()))
 
     def __test_reader_nonalac__(self, pcmreader, total_pcm_frames,
                                 block_size=4096):
@@ -3864,9 +3863,8 @@ class FlacFileTest(TestForeignAiffChunks,
         self.assertEqual(
             subprocess.call([audiotools.BIN["flac"], "-ts", temp_file.name]),
             0,
-            "flac decode error on %s with options %s" %
-            (repr(pcmreader),
-             repr(encode_options)))
+            "flac decode error on {!r} with options {!r}".format(
+                pcmreader, encode_options))
 
         flac = audiotools.open(temp_file.name)
         self.assertGreater(flac.total_frames(), 0)
@@ -4308,7 +4306,7 @@ class FlacFileTest(TestForeignAiffChunks,
                             metadata.get_block(
                                 audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)[
                                 u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0],
-                            u"0x%.4X" % (mask))
+                            u"0x{:04X}".format(mask))
 
         # check bad seekpoint destinations
         track = audiotools.open("flac-seektable.flac")
@@ -4574,11 +4572,12 @@ class M4AFileTest(LossyFileTest):
                 temp.name,
                 BLANK_PCM_Reader(1))
             metadata = track.get_metadata()
-            encoder = u"%s" % (metadata[b'ilst'][b'\xa9too'],)
+            encoder = u"{}".format(metadata[b'ilst'][b'\xa9too'])
             track.set_metadata(audiotools.MetaData(track_name=u"Foo"))
             metadata = track.get_metadata()
             self.assertEqual(metadata.track_name, u"Foo")
-            self.assertEqual(u"%s" % (metadata[b'ilst'][b'\xa9too'],), encoder)
+            self.assertEqual(u"{}".format(metadata[b'ilst'][b'\xa9too']),
+                             encoder)
 
 
 class MP3FileTest(LossyFileTest):
@@ -5510,10 +5509,10 @@ class WavPackFileTest(TestForeignWaveChunks,
                                stdout=devnull,
                                stderr=devnull)
 
-        self.assertEqual(sub.wait(), 0,
-                         "wvunpack decode error on %s with options %s" %
-                         (repr(pcmreader),
-                          repr(encode_options)))
+        self.assertEqual(
+            sub.wait(), 0,
+            "wvunpack decode error on {!r} with options {!r}".format(
+                pcmreader, encode_options))
 
         wavpack = self.decoder(temp_file.name)
         self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
@@ -5544,10 +5543,10 @@ class WavPackFileTest(TestForeignWaveChunks,
 
         devnull.close()
 
-        self.assertEqual(sub.wait(), 0,
-                         "wvunpack decode error on %s with options %s" %
-                         (repr(pcmreader),
-                          repr(encode_options)))
+        self.assertEqual(
+            sub.wait(), 0,
+            "wvunpack decode error on {!r} with options {!r}".format(
+                pcmreader, encode_options))
 
         wavpack = self.decoder(temp_file.name)
         self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
@@ -6205,7 +6204,7 @@ class TTAFileTest(LosslessFileTest):
                                    stdout=devnull,
                                    stderr=devnull)
             self.assertEqual(sub.wait(), 0,
-                             "tta decode error on %s" % (repr(pcmreader)))
+                             "tta decode error on {!r}".format(pcmreader))
         else:
             temp_wav_file = None
 
@@ -6249,7 +6248,7 @@ class TTAFileTest(LosslessFileTest):
                                    stdout=devnull,
                                    stderr=devnull)
             self.assertEqual(sub.wait(), 0,
-                             "tta decode error on %s" % (repr(pcmreader)))
+                             "tta decode error on {!r}".format(pcmreader))
         else:
             temp_wav_file = None
 
@@ -6438,7 +6437,7 @@ class TTAFileTest(LosslessFileTest):
                                        stdout=devnull,
                                        stderr=devnull)
                 self.assertEqual(sub.wait(), 0,
-                                 "tta decode error on %s" % (repr(pcmreader)))
+                                 "tta decode error on {!r}".format(pcmreader))
 
                 self.assertTrue(
                     audiotools.pcm_cmp(
@@ -6473,7 +6472,7 @@ class TTAFileTest(LosslessFileTest):
                                        stdout=devnull,
                                        stderr=devnull)
                 self.assertEqual(sub.wait(), 0,
-                                 "tta decode error on %s" % (repr(pcmreader)))
+                                 "tta decode error on {!r}".format(pcmreader))
 
                 self.assertTrue(
                     audiotools.pcm_cmp(

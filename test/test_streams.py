@@ -93,9 +93,8 @@ class MD5Reader(audiotools.PCMReader):
         self.md5 = md5()
 
     def __repr__(self):
-        return "MD5Reader(%s,%s,%s)" % (self.sample_rate,
-                                        self.channels,
-                                        self.bits_per_sample)
+        return "MD5Reader({!r},{!r},{!r})".format(
+            self.sample_rate, self.channels, self.bits_per_sample)
 
     def read(self, pcm_frames):
         framelist = self.pcmreader.read(pcm_frames)
@@ -175,9 +174,8 @@ class Silence8_Mono(SameSample):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Silence8_Mono(%s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate))
+        return "Silence8_Mono({!r},{!r})".format(
+            self.pcm_frames, self.sample_rate)
 
 
 class Silence16_Mono(Silence8_Mono):
@@ -193,9 +191,8 @@ class Silence16_Mono(Silence8_Mono):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Silence16_Mono(%s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate))
+        return "Silence16_Mono({!r},{!r})".format(
+            self.pcm_frames, self.sample_rate)
 
 
 class Silence24_Mono(Silence8_Mono):
@@ -211,9 +208,8 @@ class Silence24_Mono(Silence8_Mono):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Silence24_Mono(%s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate))
+        return "Silence24_Mono({!r},{!r})".format(
+            self.pcm_frames, self.sample_rate)
 
 
 class Silence8_Stereo(Silence8_Mono):
@@ -229,9 +225,8 @@ class Silence8_Stereo(Silence8_Mono):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Silence8_Stereo(%s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate))
+        return "Silence8_Stereo({!r},{!r})".format(
+            self.pcm_frames, self.sample_rate)
 
 
 class Silence16_Stereo(Silence8_Mono):
@@ -247,9 +242,8 @@ class Silence16_Stereo(Silence8_Mono):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Silence16_Stereo(%s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate))
+        return "Silence16_Stereo({!r},{!r})".format(
+            self.pcm_frames, self.sample_rate)
 
 
 class Silence24_Stereo(Silence8_Mono):
@@ -265,9 +259,8 @@ class Silence24_Stereo(Silence8_Mono):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Silence24_Stereo(%s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate))
+        return "Silence24_Stereo({!r},{!r})".format(
+            self.pcm_frames, self.sample_rate)
 
 
 class Sine8_Mono(Sine_Mono):
@@ -300,13 +293,13 @@ class Sine8_Mono(Sine_Mono):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine8_Mono(%s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
-             repr(self.f1),
-             repr(self.a1),
-             repr(self.f2),
-             repr(self.a2))
+        return "Sine8_Mono({!r},{!r},{!r},{!r},{!r},{!r})".format(
+            self.pcm_frames,
+            self.sample_rate,
+            self.f1,
+            self.a1,
+            self.f2,
+            self.a2)
 
 
 class Sine8_Stereo(Sine_Stereo):
@@ -338,14 +331,14 @@ class Sine8_Stereo(Sine_Stereo):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine8_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
-             repr(self.f1),
-             repr(self.a1),
-             repr(self.f2),
-             repr(self.a2),
-             repr(self.fmult))
+        return "Sine8_Stereo({!r},{!r},{!r},{!r},{!r},{!r},{!r})".format(
+            self.pcm_frames,
+            self.sample_rate,
+            self.f1,
+            self.a1,
+            self.f2,
+            self.a2,
+            self.fmult)
 
 
 class Sine16_Mono(Sine8_Mono):
@@ -361,13 +354,13 @@ class Sine16_Mono(Sine8_Mono):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine16_Mono(%s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
-             repr(self.f1),
-             repr(self.a1),
-             repr(self.f2),
-             repr(self.a2))
+        return "Sine16_Mono({!r},{!r},{!r},{!r},{!r},{!r})".format(
+            self.pcm_frames,
+            self.sample_rate,
+            self.f1,
+            self.a1,
+            self.f2,
+            self.a2)
 
 
 class Sine16_Stereo(Sine8_Stereo):
@@ -384,14 +377,14 @@ class Sine16_Stereo(Sine8_Stereo):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine16_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
-             repr(self.f1),
-             repr(self.a1),
-             repr(self.f2),
-             repr(self.a2),
-             repr(self.fmult))
+        return "Sine16_Stereo({!r},{!r},{!r},{!r},{!r},{!r},{!r})".format(
+            self.pcm_frames,
+            self.sample_rate,
+            self.f1,
+            self.a1,
+            self.f2,
+            self.a2,
+            self.fmult)
 
 
 class Sine24_Mono(Sine8_Mono):
@@ -407,13 +400,13 @@ class Sine24_Mono(Sine8_Mono):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine24_Mono(%s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
-             repr(self.f1),
-             repr(self.a1),
-             repr(self.f2),
-             repr(self.a2))
+        return "Sine24_Mono({!r},{!r},{!r},{!r},{!r},{!r})".format(
+            self.pcm_frames,
+            self.sample_rate,
+            self.f1,
+            self.a1,
+            self.f2,
+            self.a2)
 
 
 class Sine24_Stereo(Sine8_Stereo):
@@ -430,14 +423,14 @@ class Sine24_Stereo(Sine8_Stereo):
         self.md5 = md5()
 
     def __repr__(self):
-        return "Sine24_Stereo(%s, %s, %s, %s, %s, %s, %s)" % \
-            (repr(self.pcm_frames),
-             repr(self.sample_rate),
-             repr(self.f1),
-             repr(self.a1),
-             repr(self.f2),
-             repr(self.a2),
-             repr(self.fmult))
+        return "Sine24_Stereo({!r},{!r},{!r},{!r},{!r},{!r},{!r})".format(
+            self.pcm_frames,
+            self.sample_rate,
+            self.f1,
+            self.a1,
+            self.f2,
+            self.a2,
+            self.fmult)
 
 
 class Simple_Sine(audiotools.PCMReader):
@@ -487,13 +480,13 @@ class Simple_Sine(audiotools.PCMReader):
             stream.close()
 
     def __repr__(self):
-        return "Simple_Sine(%s, %s, %s, %s, *%s)" % \
-            (self.pcm_frames,
-             self.sample_rate,
-             self.channel_mask,
-             self.bits_per_sample,
-             repr([(m, c) for m, c in zip(self.channel_max_values,
-                                          self.channel_counts)]))
+        return "Simple_Sine({!r}, {!r}, {!r}, {!r}, *{!r})".format(
+            self.pcm_frames,
+            self.sample_rate,
+            self.channel_mask,
+            self.bits_per_sample,
+            [(m, c) for m, c in zip(self.channel_max_values,
+                                    self.channel_counts)])
 
 
 class WastedBPS16:
@@ -551,7 +544,7 @@ class WastedBPS16:
         self.read = self.read_closed
 
     def __repr__(self):
-        return "WastedBPS(%s)" % (repr(self.pcm_frames))
+        return "WastedBPS({!r})".format(self.pcm_frames)
 
 
 class Raw(audiotools.PCMReader):

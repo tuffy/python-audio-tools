@@ -7579,11 +7579,11 @@
      - [ ] tokrules.py
      - [ ] yaccrules.py
 *** TODO Update unit tests
-    - [ ] test.py
-    - [ ] test_core.py
-    - [ ] test_formats.py
+    - [X] test.py
+    - [X] test_core.py
+    - [X] test_formats.py
     - [ ] test_metadata.py
-    - [ ] test_streams.py
+    - [X] test_streams.py
     - [ ] test_utils.py
 ** TODO Support MBID tags
    These are basically direct MusicBrainz links rather than using

@@ -47,11 +47,11 @@ def do_nothing(self):
 for section in parser.sections():
     for option in parser.options(section):
         if parser.getboolean(section, option):
-            vars()["%s_%s" % (section.upper(),
-                              option.upper())] = lambda function: function
+            vars()["{}_{}".format(section.upper(), option.upper())] = \
+                lambda function: function
         else:
-            vars()["%s_%s" % (section.upper(),
-                              option.upper())] = lambda function: do_nothing
+            vars()["{}_{}".format(section.upper(), option.upper())] = \
+                lambda function: do_nothing
 
 
 if sys.version_info[0] >= 3:
@@ -611,25 +611,25 @@ class Filename(unittest.TestCase):
         self.assertTrue(file1.disk_file())
         self.assertTrue(file2.disk_file())
         self.assertNotEqual(str(file1), str(file2))
-        self.assertNotEqual(u"%s" % (file1,), u"%s" % (file2,))
+        self.assertNotEqual(u"{}".format(file1), u"{}".format(file2))
         self.assertEqual(file1, file2)
         self.assertEqual(hash(file1), hash(file2))
 
         self.assertFalse(file3.disk_file())
         self.assertNotEqual(str(file1), str(file3))
-        self.assertNotEqual(u"%s" % (file1,), u"%s" % (file3,))
+        self.assertNotEqual(u"{}".format(file1), u"{}".format(file3))
         self.assertNotEqual(file1, file3)
         self.assertNotEqual(hash(file1), hash(file3))
 
         self.assertFalse(file4.disk_file())
         self.assertEqual(str(file3), str(file4))
-        self.assertEqual(u"%s" % (file3,), u"%s" % (file4,))
+        self.assertEqual(u"{}".format(file3), u"{}".format(file4))
         self.assertEqual(file3, file4)
         self.assertEqual(hash(file3), hash(file4))
 
         self.assertFalse(file5.disk_file())
         self.assertNotEqual(str(file3), str(file5))
-        self.assertNotEqual(u"%s" % (file3,), u"%s" % (file5,))
+        self.assertNotEqual(u"{}".format(file3), u"{}".format(file5))
         self.assertNotEqual(file3, file5)
         self.assertNotEqual(hash(file3), hash(file5))
 
@@ -1123,13 +1123,13 @@ class Test_sorted_tracks(unittest.TestCase):
 
     def __no_metadata__(self, filename_number):
         return audiotools.WaveAudio.from_pcm(
-            os.path.join(self.dir, "%2.2d.wav" % (filename_number)),
+            os.path.join(self.dir, "{:02d}.wav".format(filename_number)),
             BLANK_PCM_Reader(1))
 
     def __metadata__(self, filename_number,
                      track_number=None, album_number=None):
         track = audiotools.FlacAudio.from_pcm(
-            os.path.join(self.dir, "%2.2d.flac" % (filename_number)),
+            os.path.join(self.dir, "{:02d}.flac".format(filename_number)),
             BLANK_PCM_Reader(1))
         track.set_metadata(audiotools.MetaData(track_number=track_number,
                                                album_number=album_number))
@@ -1580,28 +1580,30 @@ class TestFrameList(unittest.TestCase):
         self.assertEqual(
             [i - (1 << 7) for i in unsigned_ints],
             list(audiotools.pcm.FrameList(
-                struct.pack(">%dB" % (len(unsigned_ints)), *unsigned_ints),
+                struct.pack(">{:d}B".format(len(unsigned_ints)),
+                            *unsigned_ints),
                 1, 8, True, False)))
 
         # unsigned, little-endian
         self.assertEqual(
             [i - (1 << 7) for i in unsigned_ints],
             list(audiotools.pcm.FrameList(
-                struct.pack("<%dB" % (len(unsigned_ints)), *unsigned_ints),
+                struct.pack("<{:d}B".format(len(unsigned_ints)),
+                            *unsigned_ints),
                 1, 8, False, False)))
 
         # signed, big-endian
         self.assertEqual(
             signed_ints,
             list(audiotools.pcm.FrameList(
-                struct.pack(">%db" % (len(signed_ints)), *signed_ints),
+                struct.pack(">{:d}b".format(len(signed_ints)), *signed_ints),
                 1, 8, True, True)))
 
         # signed, little-endian
         self.assertEqual(
             signed_ints,
             list(audiotools.pcm.FrameList(
-                struct.pack("<%db" % (len(signed_ints)), *signed_ints),
+                struct.pack("<{:d}b".format(len(signed_ints)), *signed_ints),
                 1, 8, 0, 1)))
 
     @LIB_CORE
@@ -1641,28 +1643,30 @@ class TestFrameList(unittest.TestCase):
         self.assertEqual(
             [i - (1 << 15) for i in unsigned_ints],
             list(audiotools.pcm.FrameList(
-                struct.pack(">%dH" % (len(unsigned_ints)), *unsigned_ints),
+                struct.pack(">{:d}H".format(len(unsigned_ints)),
+                            *unsigned_ints),
                 1, 16, True, False)))
 
         # unsigned, little-endian
         self.assertEqual(
             [i - (1 << 15) for i in unsigned_ints],
             list(audiotools.pcm.FrameList(
-                struct.pack("<%dH" % (len(unsigned_ints)), *unsigned_ints),
+                struct.pack("<{:d}H".format(len(unsigned_ints)),
+                            *unsigned_ints),
                 1, 16, False, False)))
 
         # signed, big-endian
         self.assertEqual(
             signed_ints,
             list(audiotools.pcm.FrameList(
-                struct.pack(">%dh" % (len(signed_ints)), *signed_ints),
+                struct.pack(">{:d}h".format(len(signed_ints)), *signed_ints),
                 1, 16, True, True)))
 
         # signed, little-endian
         self.assertEqual(
             signed_ints,
             list(audiotools.pcm.FrameList(
-                struct.pack("<%dh" % (len(signed_ints)), *signed_ints),
+                struct.pack("<{:d}h".format(len(signed_ints)), *signed_ints),
                 1, 16, False, True)))
 
     @LIB_CORE
@@ -1709,7 +1713,7 @@ class TestFrameList(unittest.TestCase):
 
         #unsigned, big-endian
         rec = BitstreamRecorder(0)
-        rec.build("%d*24u" % (len(unsigned_values)), unsigned_values)
+        rec.build("{:d}*24u".format(len(unsigned_values)), unsigned_values)
         framelist = audiotools.pcm.FrameList(rec.data(), 1, 24, True, False)
         self.assertEqual(len(unsigned_values), framelist.frames)
         self.assertEqual(
@@ -1718,7 +1722,7 @@ class TestFrameList(unittest.TestCase):
 
         #unsigned, little-endian
         rec = BitstreamRecorder(1)
-        rec.build("%d*24u" % (len(unsigned_values)), unsigned_values)
+        rec.build("{:d}*24u".format(len(unsigned_values)), unsigned_values)
         framelist = audiotools.pcm.FrameList(rec.data(), 1, 24, False, False)
         self.assertEqual(len(unsigned_values), framelist.frames)
         self.assertEqual(
@@ -1729,13 +1733,13 @@ class TestFrameList(unittest.TestCase):
         signed_values.append(2 ** 23 - 1)
 
         rec = BitstreamRecorder(0)
-        rec.build("%d*24s" % (len(signed_values)), signed_values)
+        rec.build("{:d}*24s".format(len(signed_values)), signed_values)
         framelist = audiotools.pcm.FrameList(rec.data(), 1, 24, True, True)
         self.assertEqual(len(signed_values), framelist.frames)
         self.assertEqual(signed_values, list(framelist))
 
         rec = BitstreamRecorder(1)
-        rec.build("%d*24s" % (len(signed_values)), signed_values)
+        rec.build("{:d}*24s".format(len(signed_values)), signed_values)
         framelist = audiotools.pcm.FrameList(rec.data(), 1, 24, False, True)
         self.assertEqual(len(signed_values), framelist.frames)
         self.assertEqual(signed_values, list(framelist))
@@ -1793,7 +1797,7 @@ class TestFrameList(unittest.TestCase):
                             track.to_pcm(), md5sum.update)
                         self.assertEqual(
                             md5sum.hexdigest(), sine.hexdigest(),
-                            "MD5 mismatch for %s using %s" % (
+                            "MD5 mismatch for {} using {}".format(
                                 track.NAME, repr(sine)))
                         for new_format in audiotools.AVAILABLE_TYPES:
                             with tempfile.NamedTemporaryFile(
@@ -1811,7 +1815,7 @@ class TestFrameList(unittest.TestCase):
                                     self.assertEqual(
                                         md5sum.hexdigest(),
                                         sine.hexdigest(),
-                                        "MD5 mismatch for converting %s from %s to %s" % (repr(sine), track.NAME, track2.NAME))
+                                        "MD5 mismatch for converting {!r} from {} to {}".format(sine, track.NAME, track2.NAME))
             finally:
                 temp_track.close()
 
@@ -3675,7 +3679,7 @@ class Bitstream(unittest.TestCase):
 
                 unsigned2 = BitstreamReader(
                     BytesIO(data),
-                    little_endian).parse("%du" % (bits))[0]
+                    little_endian).parse("{:d}u".format(bits))[0]
 
                 signed1 = BitstreamReader(
                     BytesIO(data),
@@ -3683,7 +3687,7 @@ class Bitstream(unittest.TestCase):
 
                 signed2 = BitstreamReader(
                     BytesIO(data),
-                    little_endian).parse("%ds" % (bits))[0]
+                    little_endian).parse("{:d}s".format(bits))[0]
 
                 # check that reading from .read and .parse
                 # yield the same values
@@ -3699,12 +3703,12 @@ class Bitstream(unittest.TestCase):
                 BitstreamWriter(unsigned_data1,
                                 little_endian).write(bits, unsigned1)
                 BitstreamWriter(unsigned_data2,
-                                little_endian).build("%du" % (bits),
+                                little_endian).build("{:d}u".format(bits),
                                                      [unsigned1])
                 BitstreamWriter(signed_data1,
                                 little_endian).write_signed(bits, signed1)
                 BitstreamWriter(signed_data2,
-                                little_endian).build("%ds" % (bits),
+                                little_endian).build("{:d}s".format(bits),
                                                      [signed1])
 
                 self.assertEqual(data, unsigned_data1.getvalue())
@@ -3718,9 +3722,9 @@ class Bitstream(unittest.TestCase):
                 signed_data2 = BitstreamRecorder(little_endian)
 
                 unsigned_data1.write(bits, unsigned1)
-                unsigned_data2.build("%du" % (bits), [unsigned1])
+                unsigned_data2.build("{:d}u".format(bits), [unsigned1])
                 signed_data1.write_signed(bits, signed1)
-                signed_data2.build("%ds" % (bits), [signed1])
+                signed_data2.build("{:d}s".format(bits), [signed1])
 
                 self.assertEqual(data, unsigned_data1.data())
                 self.assertEqual(data, unsigned_data2.data())
@@ -5479,10 +5483,10 @@ class TestMultiChannel(unittest.TestCase):
                      for i in range(len(channel_mask))],
                     int(channel_mask)))
             self.assertEqual(temp_track.channel_mask(), channel_mask,
-                             "%s != %s for format %s" %
-                             (temp_track.channel_mask(),
-                              channel_mask,
-                              audio_class.NAME))
+                             "{} != {} for format {}".format(
+                                 temp_track.channel_mask(),
+                                 channel_mask,
+                                 audio_class.NAME))
 
             pcm = temp_track.to_pcm()
             self.assertEqual(int(pcm.channel_mask), int(channel_mask))
@@ -5505,17 +5509,17 @@ class TestMultiChannel(unittest.TestCase):
                 self.assertEqual(int(pcm.channel_mask), 0)
                 audiotools.transfer_framelist_data(pcm, lambda x: None)
             else:
-                self.assertNotEqual(int(temp_track.channel_mask()), 0,
-                                    "mask = %s for format %s at %d channels" %
-                                    (repr(temp_track.channel_mask()),
-                                     audio_class,
-                                     channels))
+                self.assertNotEqual(
+                    int(temp_track.channel_mask()), 0,
+                    "mask = {!r} for format {} at {:d} channels".format(
+                        temp_track.channel_mask(), audio_class, channels))
                 pcm = temp_track.to_pcm()
                 self.assertEqual(
                     pcm.channel_mask,
                     int(temp_track.channel_mask()),
-                    "%s != %s" % (audiotools.ChannelMask(pcm.channel_mask),
-                                  temp_track.channel_mask()))
+                    "{} != {}".format(
+                        audiotools.ChannelMask(pcm.channel_mask),
+                        temp_track.channel_mask()))
                 audiotools.transfer_framelist_data(pcm, lambda x: None)
 
     def __test_error_mask_blank__(self, audio_class, channels,
@@ -5570,8 +5574,8 @@ class TestMultiChannel(unittest.TestCase):
 
             self.assertEqual(isinstance(source_pcm.channel_mask, int),
                              True,
-                             "%s's to_pcm() PCMReader is not an int" %
-                             (source_audio_class.NAME))
+                             "{}'s to_pcm() PCMReader is not an int".format(
+                                 source_audio_class.NAME))
 
             target_track = target_audio_class.from_pcm(
                 target_file.name,
@@ -5866,7 +5870,7 @@ class Test_FreeDB(unittest.TestCase):
                 self.assertEqual(length, track_lengths[i - 1])
                 self.assertEqual(cddareader.seek(offset), offset)
                 tracks.append(audiotools.WaveAudio.from_pcm(
-                    os.path.join(dir, "track%d.wav" % (i)),
+                    os.path.join(dir, "track{:d}.wav".format(i)),
                     audiotools.PCMReaderHead(cddareader, length, False),
                     total_pcm_frames=length))
 
@@ -6061,7 +6065,7 @@ class Test_FreeDB(unittest.TestCase):
                 self.assertEqual(length, track_lengths[i - 1])
                 self.assertEqual(cddareader.seek(offset), offset)
                 track = audiotools.FlacAudio.from_pcm(
-                    os.path.join(dir, "%2.2d.flac" % (i)),
+                    os.path.join(dir, "{:02d}.flac".format(i)),
                     audiotools.PCMReaderHead(cddareader, length, False),
                     total_pcm_frames=length)
                 track.set_metadata(
@@ -7056,7 +7060,7 @@ class Test_ExecProgressQueue(unittest.TestCase):
             return sum_
 
         def range_sum_output(total):
-            return u"%d" % (total)
+            return u"{:d}".format(total)
 
         for max_processes in range(1, 21):
             queue = audiotools.ExecProgressQueue(audiotools.SilentMessenger())
@@ -7064,8 +7068,8 @@ class Test_ExecProgressQueue(unittest.TestCase):
             for i in range(100):
                 queue.execute(
                     function=range_sum,
-                    progress_text=u"Sum %d" % (i + 1),
-                    completion_output=((u"Sum %d Finished" % (i + 1))
+                    progress_text=u"Sum {:d}".format(i + 1),
+                    completion_output=((u"Sum {:d} Finished".format(i + 1))
                                        if (i % 2) else range_sum_output),
                     start=i,
                     end=i + 10)
@@ -7099,7 +7103,7 @@ class Test_Output_Text(unittest.TestCase):
 
         # ensure setting format returns new output_text with that format
         t1 = output_text(unicode_string=u"Foo")
-        self.assertEqual(u"%s" % (t1,), u"Foo")
+        self.assertEqual(u"{}".format(t1), u"Foo")
         self.assertEqual(t1.format(False), u"Foo")
         self.assertIn(u"Foo", t1.format(True))
         self.assertEqual(t1.fg_color(), None)
@@ -7109,7 +7113,7 @@ class Test_Output_Text(unittest.TestCase):
         t2 = t1.set_format(fg_color="black",
                            bg_color="blue",
                            style="underline")
-        self.assertEqual(u"%s" % (t2,), u"Foo")
+        self.assertEqual(u"{}".format(t2), u"Foo")
         self.assertEqual(t2.format(False), u"Foo")
         self.assertIn(u"Foo", t2.format(True))
         self.assertEqual(t2.fg_color(), "black")
@@ -7119,7 +7123,7 @@ class Test_Output_Text(unittest.TestCase):
         t3 = t2.set_format(fg_color=None,
                            bg_color=None,
                            style=None)
-        self.assertEqual(u"%s" % (t3,), u"Foo")
+        self.assertEqual(u"{}".format(t3), u"Foo")
         self.assertEqual(t3.format(False), u"Foo")
         self.assertIn(u"Foo", t3.format(True))
         self.assertEqual(t3.fg_color(), None)
@@ -7212,7 +7216,7 @@ class Test_Output_Text(unittest.TestCase):
 
         # ensure setting format returns new output_list with that format
         t1 = output_list(output_texts=[u"Foo", output_text(u"Bar")])
-        self.assertEqual(u"%s" % (t1,), u"FooBar")
+        self.assertEqual(u"{}".format(t1), u"FooBar")
         self.assertEqual(t1.format(False), u"FooBar")
         self.assertIn(u"FooBar", t1.format(True))
         self.assertEqual(t1.fg_color(), None)
@@ -7222,7 +7226,7 @@ class Test_Output_Text(unittest.TestCase):
         t2 = t1.set_format(fg_color="black",
                            bg_color="blue",
                            style="underline")
-        self.assertEqual(u"%s" % (t2,), u"FooBar")
+        self.assertEqual(u"{}".format(t2), u"FooBar")
         self.assertEqual(t2.format(False), u"FooBar")
         self.assertIn(u"FooBar", t2.format(True))
         self.assertEqual(t2.fg_color(), "black")
@@ -7232,7 +7236,7 @@ class Test_Output_Text(unittest.TestCase):
         t3 = t2.set_format(fg_color=None,
                            bg_color=None,
                            style=None)
-        self.assertEqual(u"%s" % (t3,), u"FooBar")
+        self.assertEqual(u"{}".format(t3), u"FooBar")
         self.assertEqual(t3.format(False), u"FooBar")
         self.assertIn(u"FooBar", t3.format(True))
         self.assertEqual(t3.fg_color(), None)
