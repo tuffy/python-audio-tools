@@ -78,7 +78,7 @@ if (__name__ == '__main__'):
 
     parser.add_argument("--version",
                         action="version",
-                        version="Python Audio Tools %s" % (audiotools.VERSION))
+                        version=audiotools.VERSION_STR)
 
     parser.add_argument("-I", "--interactive",
                         action="store_true",
@@ -276,8 +276,8 @@ if (__name__ == '__main__'):
             metadata_choices=[[c[i - 1] for i in tracks_to_rip]
                               for c in metadata_choices],
             input_filenames=[
-                audiotools.Filename("track-%d-%2.2d.dvda.wav" %
-                                    (options.title, i))
+                audiotools.Filename(
+                    "track-{:d}-{:02d}.dvda.wav".format(options.title, i))
                 for i in tracks_to_rip],
             output_directory=options.dir,
             format_string=(options.format if
@@ -314,8 +314,9 @@ if (__name__ == '__main__'):
                     metadata_choices=[[c[i - 1] for i in tracks_to_rip]
                                       for c in metadata_choices],
                     input_filenames=[
-                        audiotools.Filename("track-%d-%2.2d.dvda.wav" %
-                                            (options.title, i))
+                        audiotools.Filename(
+                            "track-{:d}-{:02d}.dvda.wav".format(
+                                options.title, i))
                         for i in tracks_to_rip],
                     output_directory=options.dir,
                     format_string=options.format,

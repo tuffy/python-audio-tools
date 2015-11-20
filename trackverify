@@ -351,14 +351,14 @@ def accuraterip_display_result(result):
             # only AccurateRip V1 matches
             return _.LAB_TRACKVERIFY_RESULT % \
                 {"path": path,
-                 "result": u"%s (%s)" % (
+                 "result": u"{} ({})".format(
                      _.LAB_ACCURATERIP_FOUND,
                      _.LAB_ACCURATERIP_CONFIDENCE % (confidence_v1))}
         else:
             # AccurateRip V2 has a match, so display that by default
             return _.LAB_TRACKVERIFY_RESULT % \
                 {"path": path,
-                 "result": u"%s (%s)" % (
+                 "result": u"{} ({})".format(
                      _.LAB_ACCURATERIP_FOUND,
                      _.LAB_ACCURATERIP_CONFIDENCE % (confidence_v2))}
     else:
@@ -373,7 +373,7 @@ if (__name__ == '__main__'):
 
     parser.add_argument("--version",
                         action="version",
-                        version="Python Audio Tools %s" % (audiotools.VERSION))
+                        version=audiotools.VERSION_STR)
 
     parser.add_argument("-V", "--verbose",
                         dest="verbosity",
@@ -467,23 +467,24 @@ if (__name__ == '__main__'):
                 failure = len([r for r in results if ((r[1] == format) and
                                                       (r[2] is not None))])
                 row = table.row()
-                row.add_column(u"%s" % (format), "right")
+                row.add_column(u"{}".format(format), "right")
                 row.add_column(u" ")
-                row.add_column(u"%d" % (success), "right")
+                row.add_column(u"{:d}".format(success), "right")
                 row.add_column(u" ")
-                row.add_column(u"%d" % (failure), "right")
+                row.add_column(u"{:d}".format(failure), "right")
                 row.add_column(u" ")
-                row.add_column(u"%d" % (success + failure), "right")
+                row.add_column(u"{:d}".format(success + failure), "right")
 
             table.divider_row([_.DIV, u" ", _.DIV, u" ", _.DIV, u" ", _.DIV])
             row = table.row()
             row.add_column(_.LAB_TRACKVERIFY_SUMMARY, "right")
             row.add_column(u" ")
-            row.add_column(u"%d" % (success_total), "right")
+            row.add_column(u"{:d}".format(success_total), "right")
             row.add_column(u" ")
-            row.add_column(u"%d" % (failure_total), "right")
+            row.add_column(u"{:d}".format(failure_total), "right")
             row.add_column(u" ")
-            row.add_column(u"%d" % (success_total + failure_total), "right")
+            row.add_column(u"{:d}".format(success_total + failure_total),
+                           "right")
 
             for row in table.format(msg.output_isatty()):
                 msg.output(row)
@@ -526,10 +527,10 @@ if (__name__ == '__main__'):
 
                     for track_num in sheet.track_numbers():
 
-                        filename = u"%2.2d - %s" % \
-                            (track_num,
-                             audiotools.Filename(
-                                 tracks[0].filename).basename().__unicode__())
+                        filename = u"{:02d} - {}".format(
+                            track_num,
+                            audiotools.Filename(
+                                tracks[0].filename).basename().__unicode__())
 
                         offset = int(sheet.track_offset(track_num) *
                                      sample_rate)
@@ -587,9 +588,9 @@ if (__name__ == '__main__'):
                                 track_number(track, i), []))
             else:
                 for track in tracks:
-                    msg.error(u"\"%(path)s\" %(result)s" %
-                              {"path": audiotools.Filename(track.filename),
-                               "result": _.ERR_TRACKVERIFY})
+                    msg.error(u"\"{path}\" {result}".format(
+                                  path=audiotools.Filename(track.filename),
+                                  result=_.ERR_TRACKVERIFY))
 
         msg.ansi_clearline()
 
@@ -644,7 +645,8 @@ if (__name__ == '__main__'):
             else:
                 head = filename.head(filename_max - 1)
                 row.add_column(
-                    u"%s%s" % (head, u"\u2026" * (filename_max - len(head))))
+                    u"{}{}".format(head,
+                                   u"\u2026" * (filename_max - len(head))))
 
             if err is None:
                 for version in ["v1", "v2"]:
@@ -654,13 +656,13 @@ if (__name__ == '__main__'):
 
                     row.add_column(u"")
                     if confidence >= 0:
-                        row.add_column(u"%d" % (confidence), "right")
+                        row.add_column(u"{:d}".format(confidence), "right")
                     else:
                         row.add_column(u"", "right")
                     row.add_column(u"")
-                    row.add_column(u"%d" % (offset), "right")
+                    row.add_column(u"{:d}".format(offset), "right")
                     row.add_column(u"")
-                    row.add_column(u"%8.8X" % (checksum), "right")
+                    row.add_column(u"{:08X}".format(checksum), "right")
             else:
                 row.add_column(_.ERR_READ_ERROR, "right", colspan=6)
 

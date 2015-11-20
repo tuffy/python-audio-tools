@@ -54,7 +54,7 @@ if (__name__ == '__main__'):
 
     parser.add_argument("--version",
                         action="version",
-                        version="Python Audio Tools %s" % (audiotools.VERSION))
+                        version=audiotools.VERSION_STR)
 
     parser.add_argument("-I", "--interactive",
                         action="store_true",

@@ -29,7 +29,7 @@ if (__name__ == '__main__'):
 
     parser.add_argument("--version",
                         action="version",
-                        version="Python Audio Tools %s" % (audiotools.VERSION))
+                        version=audiotools.VERSION_STR)
 
     parser.add_argument("-n", "--no-metadata",
                         action="store_true",
@@ -105,7 +105,7 @@ if (__name__ == '__main__'):
             metadata = file.get_metadata()
             if not options.low_level:
                 if metadata is not None:
-                    msg.output(u"%s" % (metadata))
+                    msg.output(u"{}".format(metadata))
                     msg.output(u"")
                 replay_gain = file.get_replay_gain()
                 if replay_gain is not None:
@@ -169,11 +169,12 @@ if (__name__ == '__main__'):
                     for t in sorted(indexes.keys()):
                         row = table.row()
                         row.add_column(u"")
-                        row.add_column(u"%d" % (t), "right")
+                        row.add_column(u"{:d}".format(t), "right")
                         row.add_column(u"")
                         length = int(lengths[t])
-                        row.add_column(u"%d:%2.2d" % (length // 60,
-                                                      length % 60),
+                        row.add_column(u"{:d}:{:02d}".format(
+                                           length // 60,
+                                           length % 60),
                                        "right")
                         track_indexes = indexes[t]
                         for i in index_numbers:
@@ -181,9 +182,10 @@ if (__name__ == '__main__'):
                             if i in track_indexes:
                                 index = track_indexes[i]
                                 row.add_column(
-                                    u"%d:%2.2d.%2.2d" % (int(index) // 60,
-                                                         int(index) % 60,
-                                                         int(index * 75) % 75),
+                                    u"{:d}:{:02d}.{:02d}".format(
+                                        int(index) // 60,
+                                        int(index) % 60,
+                                        int(index * 75) % 75),
                                     "right")
                             else:
                                 row.add_column(u"")

@@ -410,8 +410,7 @@ Consult "man python" for further details.
             Label(self, text="coverview",
                   font=("Helvetica", 48)).pack(side=TOP)
             Label(self,
-                  text="Python Audio Tools %s" %
-                  (audiotools.VERSION)).pack(side=TOP)
+                  text=audiotools.VERSION_STR).pack(side=TOP)
             Label(self,
                   text="(c) by Brian Langenberger",
                   font=("Helvetica", 10)).pack(side=TOP)
@@ -455,7 +454,7 @@ Consult "man python" for further details.
 
             frame.pack(fill=BOTH, expand=1, side=LEFT)
             frame.master.title("coverview")
-            frame.master.geometry("%dx%d" % (800, 600))
+            frame.master.geometry("{:d}x{:d}".format(800, 600))
 
             self.image_width = int(self.canvas.cget("width"))
             self.image_height = int(self.canvas.cget("height"))
@@ -597,7 +596,7 @@ if (__name__ == '__main__'):
 
     parser.add_argument("--version",
                         action="version",
-                        version="Python Audio Tools %s" % (audiotools.VERSION))
+                        version=audiotools.VERSION_STR)
 
     if GTK_AVAILABLE:
         parser.add_argument('--no-gtk',

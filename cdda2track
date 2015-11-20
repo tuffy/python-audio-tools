@@ -89,7 +89,7 @@ if (__name__ == '__main__'):
 
     parser.add_argument("--version",
                         action="version",
-                        version="Python Audio Tools %s" % (audiotools.VERSION))
+                        version=audiotools.VERSION_STR)
 
     parser.add_argument("-I", "--interactive",
                         action="store_true",
@@ -360,7 +360,8 @@ if (__name__ == '__main__'):
                               enumerate(choices, 0 if preserve_pre_gap else 1)
                                if i in tracks_to_rip]
                               for choices in metadata_choices],
-            input_filenames=[audiotools.Filename("track%2.2d.cdda.wav" % (i))
+            input_filenames=[audiotools.Filename(
+                                 "track{:02d}.cdda.wav".format(i))
                              for i in tracks_to_rip],
             output_directory=options.dir,
             format_string=(options.format if
@@ -400,7 +401,7 @@ if (__name__ == '__main__'):
                           if i in tracks_to_rip]
                          for choices in metadata_choices],
                     input_filenames=[
-                        audiotools.Filename("track%2.2d.cdda.wav" % (i))
+                        audiotools.Filename("track{:02d}.cdda.wav".format(i))
                         for i in tracks_to_rip],
                     output_directory=options.dir,
                     format_string=options.format,
@@ -613,7 +614,7 @@ if (__name__ == '__main__'):
         row = table.row()
 
         # first output the filename
-        row.add_column(u"%d" % (track_number), "right")
+        row.add_column(u"{:d}".format(track_number), "right")
 
         # then output the 7 log fields
         log = rip_log[track_number]
@@ -625,7 +626,7 @@ if (__name__ == '__main__'):
                     "fixup_duped",
                     "drift"]:
             row.add_column(u" ")
-            row.add_column(u"%d" % (log.get(key, 0)), "right")
+            row.add_column(u"{:d}".format(log.get(key, 0)), "right")
 
         (checksum_v2,
          confidence_v2,
@@ -654,11 +655,11 @@ if (__name__ == '__main__'):
             if (confidence is None) or (confidence < 0):
                 row.add_column(u"", "right")
             else:
-                row.add_column(u"%d" % (confidence), "right")
+                row.add_column(u"{:d}".format(confidence), "right")
             row.add_column(u"")
-            row.add_column(u"%d" % (offset), "right")
+            row.add_column(u"{:d}".format(offset), "right")
             row.add_column(u"")
-            row.add_column(u"%8.8X" % (checksum), "right")
+            row.add_column(u"{:08X}".format(checksum), "right")
 
     for row in table.format(msg.output_isatty()):
         msg.output(row)

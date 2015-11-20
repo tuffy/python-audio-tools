@@ -31,7 +31,7 @@ if (__name__ == '__main__'):
 
     parser.add_argument("--version",
                         action="version",
-                        version="Python Audio Tools %s" % (audiotools.VERSION))
+                        version=audiotools.VERSION_STR)
 
     parser.add_argument("-c", "--cdrom",
                         dest="cdrom",
@@ -84,13 +84,13 @@ if (__name__ == '__main__'):
         for track in [title.track(j) for j in range(1, title.tracks + 1)]:
 
             row = table.row()
-            row.add_column(u"%d" % (title.number), "right")
+            row.add_column(u"{:d}".format(title.number), "right")
             row.add_column(u" ")
-            row.add_column(u"%d" % (track.number), "right")
+            row.add_column(u"{:d}".format(track.number), "right")
             row.add_column(u" ")
-            row.add_column(u"%d:%2.2d" %
-                           (track.pts_length // 90000 // 60,
-                            track.pts_length // 90000 % 60), "right")
+            row.add_column(u"{:d}:{:02d}".format(
+                               track.pts_length // 90000 // 60,
+                               track.pts_length // 90000 % 60), "right")
 
             try:
                 reader = track.reader()
@@ -101,9 +101,9 @@ if (__name__ == '__main__'):
                 row.add_column(u" ")
                 row.add_column(audiotools.khz(reader.sample_rate), "right")
                 row.add_column(u" ")
-                row.add_column(u"%d" % (reader.channels), "right")
+                row.add_column(u"{:d}".format(reader.channels), "right")
                 row.add_column(u" ")
-                row.add_column(u"%d" % (reader.bits_per_sample), "right")
+                row.add_column(u"{:d}".format(reader.bits_per_sample), "right")
 
                 reader.close()
             except IOError:
@@ -112,11 +112,11 @@ if (__name__ == '__main__'):
                     row.add_column(u" ")
 
             row.add_column(u" ")
-            row.add_column(u"%d" % (track.pts_length), "right")
+            row.add_column(u"{:d}".format(track.pts_length), "right")
             row.add_column(u" ")
-            row.add_column(u"%d" % (track.first_sector), "right")
+            row.add_column(u"{:d}".format(track.first_sector), "right")
             row.add_column(u" ")
-            row.add_column(u"%d" % (track.last_sector), "right")
+            row.add_column(u"{:d}".format(track.last_sector), "right")
 
         table.divider_row([_.DIV] + [u" ", _.DIV] * 9)
 

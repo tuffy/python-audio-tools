@@ -53,7 +53,7 @@ if audiotools.ui.AVAILABLE:
                     next_track_callback=self.next_track),
                 [(metadata[track_number].track_name
                   if (metadata[track_number].track_name is not None)
-                  else (u"track %2.2d" % (track_number)),
+                  else (u"track {:02d}".format(track_number)),
                   track_lengths[track_number] // 44100,
                   (track_number, metadata[track_number]))
                  for track_number in track_numbers],
@@ -154,7 +154,7 @@ if (__name__ == '__main__'):
 
     parser.add_argument("--version",
                         action="version",
-                        version="Python Audio Tools %s" % (audiotools.VERSION))
+                        version=audiotools.VERSION_STR)
 
     parser.add_argument("-I", "--interactive",
                         action="store_true",

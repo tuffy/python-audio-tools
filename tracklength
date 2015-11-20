@@ -52,7 +52,7 @@ class FormatSummary(object):
         row = table.row()
         row.add_column(name, "right")
         row.add_column(u" ")
-        row.add_column(u"%d" % (self.file_count), "right")
+        row.add_column(u"{:d}".format(self.file_count), "right")
         row.add_column(u" ")
         format_length = int(self.total_length)
         row.add_column(_.LAB_TRACKLENGTH %
@@ -63,27 +63,27 @@ class FormatSummary(object):
         row.add_column(u" ")
         if self.total_size > (2 ** 40):
             # terabytes
-            total_size = u"%sT" % \
-                ((self.total_size /
-                  Decimal(2 ** 40)).quantize(Decimal("1.0")))
+            total_size = u"{}T".format(
+                (self.total_size /
+                 Decimal(2 ** 40)).quantize(Decimal("1.0")))
         elif self.total_size > (2 ** 30):
             # gigabytes
-            total_size = u"%sG" % \
-                ((self.total_size /
-                  Decimal(2 ** 30)).quantize(Decimal("1.0")))
+            total_size = u"{}G".format(
+                (self.total_size /
+                 Decimal(2 ** 30)).quantize(Decimal("1.0")))
         elif self.total_size > (2 ** 20):
             # megabytes
-            total_size = u"%sM" % \
-                ((self.total_size /
-                  Decimal(2 ** 20)).quantize(Decimal("1.0")))
+            total_size = u"{}M".format(
+                (self.total_size /
+                 Decimal(2 ** 20)).quantize(Decimal("1.0")))
         elif self.total_size > (2 ** 10):
             # kilobytes
-            total_size = u"%sK" % \
-                ((self.total_size /
-                  Decimal(2 ** 10)).quantize(Decimal("1.0")))
+            total_size = u"{}K".format(
+                (self.total_size /
+                 Decimal(2 ** 10)).quantize(Decimal("1.0")))
         else:
             # bytes
-            total_size = u"%d" % (self.total_size)
+            total_size = u"{:d}".format(self.total_size)
 
         row.add_column(total_size, "right")
 
@@ -95,7 +95,7 @@ if (__name__ == '__main__'):
 
     parser.add_argument("--version",
                         action="version",
-                        version="Python Audio Tools %s" % (audiotools.VERSION))
+                        version=audiotools.VERSION_STR)
 
     parser.add_argument("filenames",
                         metavar="PATH",

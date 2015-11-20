@@ -7525,12 +7525,12 @@
     - [ ] audiotools-config
     - [ ] cdda2track
     - [ ] cddainfo
-    - [ ] cddaplay
+    - [X] cddaplay
     - [ ] coverdump
     - [ ] covertag
     - [ ] coverview
     - [ ] dvda2track
-    - [ ] dvdainfo
+    - [X] dvdainfo
     - [ ] track2cdda
     - [ ] track2track
     - [ ] trackcat

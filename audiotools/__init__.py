@@ -149,6 +149,7 @@ ADD_REPLAYGAIN = config.getboolean_default("ReplayGain", "add_by_default",
                                            True)
 
 VERSION = "3.2alpha2"
+VERSION_STR = "Python Audio Tools {}".format(VERSION)
 
 DEFAULT_FILENAME_FORMAT = '%(track_number)2.2d - %(track_name)s.%(suffix)s'
 FILENAME_FORMAT = config.get_default("Filenames", "format",

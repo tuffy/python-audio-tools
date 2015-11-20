@@ -80,8 +80,8 @@ if audiotools.ui.AVAILABLE:
             template_row = urwid.Columns(
                 [('fixed', 10,
                   urwid.Text(('label',
-                              u"%s : " %
-                              (_.LAB_OPTIONS_FILENAME_FORMAT)),
+                              u"{} : ".format(
+                                  _.LAB_OPTIONS_FILENAME_FORMAT)),
                              align="right")),
                  ('weight', 1, output_format),
                  ('fixed', 10, browse_fields)])
@@ -169,7 +169,7 @@ if (__name__ == '__main__'):
 
     parser.add_argument("--version",
                         action="version",
-                        version="Python Audio Tools %s" % (audiotools.VERSION))
+                        version=audiotools.VERSION_STR)
 
     parser.add_argument("-I", "--interactive",
                         action="store_true",

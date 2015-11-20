@@ -66,7 +66,7 @@ def display_defaults(config, msg):
 
         assert(isinstance(value, int))
 
-        display_unicode_option(table, label, u"%d" % (value), indent)
+        display_unicode_option(table, label, u"{:d}".format(value), indent)
 
     table = audiotools.output_table()
     display_option(table,
@@ -457,11 +457,12 @@ if (__name__ == '__main__'):
 
                         qualities = \
                             audiotools.ui.SelectOne(
-                                [(u"%s" % (q,) if
+                                [(u"{}".format(q) if
                                   q not in
                                   audio_type.COMPRESSION_DESCRIPTIONS else
-                                  u"%s - %s" %
-                                  (q, audio_type.COMPRESSION_DESCRIPTIONS[q]),
+                                  u"{} - {}".format(
+                                      q,
+                                      audio_type.COMPRESSION_DESCRIPTIONS[q]),
                                   q) for q in
                                  audio_type.COMPRESSION_MODES],
                                 DEFAULT_QUALITY,
@@ -489,7 +490,7 @@ if (__name__ == '__main__'):
                               len(audiotools.output_text(
                                   _.LAB_AT_CONFIG_TYPE)),
                               urwid.Text(
-                                  markup=u"%s" % (audio_type.NAME),
+                                  markup=u"{}".format(audio_type.NAME),
                                   align="right")),
                              ("fixed", 1,
                               urwid.Text(u" " if no_modes else u"-")),
@@ -505,7 +506,7 @@ if (__name__ == '__main__'):
 
                 format = urwid.Edit(
                     caption=("label",
-                             u"%s  : " % (_.LAB_OPTIONS_FILENAME_FORMAT)),
+                             u"{}  : ".format(_.LAB_OPTIONS_FILENAME_FORMAT)),
                     edit_text=current_format,
                     wrap='clip')
 
@@ -525,7 +526,7 @@ if (__name__ == '__main__'):
                 format_rows.append(format_example)
 
                 joint = urwid.IntEdit(
-                    caption=("label", u"%s : " % (_.LAB_AT_CONFIG_JOBS,)),
+                    caption=("label", u"{} : ".format(_.LAB_AT_CONFIG_JOBS)),
                     default=config.getint_default("System", "maximum_jobs", 1))
                 urwid.connect_signal(joint,
                                      "change",
@@ -574,8 +575,8 @@ if (__name__ == '__main__'):
                         audiotools.WaveAudio)
 
                     example_text = default_audio_format.track_name(
-                        file_path="file_name.%s" %
-                        (default_audio_format.SUFFIX),
+                        file_path="file_name.{}".format(
+                            default_audio_format.SUFFIX),
                         track_metadata=audiotools.MetaData(
                             track_name=u"Track Name",
                             track_number=1,
@@ -590,8 +591,8 @@ if (__name__ == '__main__'):
                             catalog=u"Catalog # ",
                             copyright=u"Copyright",
                             publisher=u"Publisher Name",
-                            year=u"%s" % (strftime("%Y")),
-                            date=u"%s" % (strftime("%x")),
+                            year=u"{}".format(strftime("%Y")),
+                            date=u"{}".format(strftime("%x")),
                             album_number=3,
                             album_total=4,
                             comment=u"Comment Text"),
@@ -602,7 +603,7 @@ if (__name__ == '__main__'):
 
                 example_widget.set_text(
                     [("label",
-                      u"%s : " % (_.LAB_OPTIONS_FILENAME_FORMAT_EXAMPLE)),
+                      u"{} : ".format(_.LAB_OPTIONS_FILENAME_FORMAT_EXAMPLE)),
                      example_text])
 
             def change_text(self, widget, new_value, user_data):
@@ -651,7 +652,8 @@ if (__name__ == '__main__'):
 
                 musicbrainz_server = urwid.Edit(
                     caption=("label",
-                             u"%s : " % (_.LAB_AT_CONFIG_MUSICBRAINZ_SERVER)),
+                             u"{} : ".format(
+                                 _.LAB_AT_CONFIG_MUSICBRAINZ_SERVER)),
                     edit_text=server if PY3 else server.decode("UTF-8"))
                 urwid.connect_signal(musicbrainz_server,
                                      "change",
@@ -662,7 +664,8 @@ if (__name__ == '__main__'):
 
                 musicbrainz_port = urwid.IntEdit(
                     caption=("label",
-                             u"%s : " % (_.LAB_AT_CONFIG_MUSICBRAINZ_PORT)),
+                             u"{} : ".format(
+                                 _.LAB_AT_CONFIG_MUSICBRAINZ_PORT)),
                     default=config.getint_default(
                         "MusicBrainz",
                         "port",
@@ -691,7 +694,7 @@ if (__name__ == '__main__'):
 
                 freedb_server = urwid.Edit(
                     caption=("label",
-                             u"%s : " % (_.LAB_AT_CONFIG_FREEDB_SERVER)),
+                             u"{} : ".format(_.LAB_AT_CONFIG_FREEDB_SERVER)),
                     edit_text=server if PY3 else server.decode("UTF-8"))
                 urwid.connect_signal(freedb_server,
                                      "change",
@@ -702,7 +705,7 @@ if (__name__ == '__main__'):
 
                 freedb_port = urwid.IntEdit(
                     caption=("label",
-                             u"%s : " % (_.LAB_AT_CONFIG_FREEDB_PORT)),
+                             u"{} : ".format(_.LAB_AT_CONFIG_FREEDB_PORT)),
                     default=config.getint_default(
                         "FreeDB",
                         "port",
@@ -754,8 +757,8 @@ if (__name__ == '__main__'):
                     [("fixed",
                       len(audiotools.output_text(
                           _.LAB_AT_CONFIG_ID3V2_VERSION)) + 3,
-                      urwid.Text(("label", u"%s : " %
-                                  (_.LAB_AT_CONFIG_ID3V2_VERSION))))] +
+                      urwid.Text(("label", u"{} : ".format(
+                                     _.LAB_AT_CONFIG_ID3V2_VERSION))))] +
                     [("weight",
                       1,
                       urwid.RadioButton(
@@ -778,8 +781,8 @@ if (__name__ == '__main__'):
                     [("fixed",
                       len(audiotools.output_text(
                           _.LAB_AT_CONFIG_ID3V1_VERSION)) + 3,
-                      urwid.Text(("label", u"%s : " %
-                                 (_.LAB_AT_CONFIG_ID3V1_VERSION))))] +
+                      urwid.Text(("label", u"{} : ".format(
+                                     _.LAB_AT_CONFIG_ID3V1_VERSION))))] +
                     [("weight",
                       1,
                       urwid.RadioButton(
@@ -800,8 +803,8 @@ if (__name__ == '__main__'):
                     [("fixed",
                       len(audiotools.output_text(
                           _.LAB_AT_CONFIG_ID3V2_PADDING)) + 3,
-                      urwid.Text(("label", u"%s : " %
-                                  (_.LAB_AT_CONFIG_ID3V2_PADDING))))] +
+                      urwid.Text(("label", u"{} : ".format(
+                                      _.LAB_AT_CONFIG_ID3V2_PADDING))))] +
                     [("weight",
                       1,
                       urwid.RadioButton(
@@ -831,7 +834,7 @@ if (__name__ == '__main__'):
             def __init__(self, config):
                 cdrom_device = urwid.Edit(
                     caption=("label",
-                             u"%s : " % (_.LAB_AT_CONFIG_DEFAULT_CDROM)),
+                             u"{} : ".format(_.LAB_AT_CONFIG_DEFAULT_CDROM)),
                     edit_text=audiotools.Filename(
                         config.get_default(
                             "System",
@@ -846,7 +849,8 @@ if (__name__ == '__main__'):
 
                 read_offset = urwid.IntEdit(
                     caption=("label",
-                             u"%s : " % (_.LAB_AT_CONFIG_CDROM_READ_OFFSET)),
+                             u"{} : ".format(
+                                 _.LAB_AT_CONFIG_CDROM_READ_OFFSET)),
                     default=config.getint_default("System",
                                                   "cdrom_read_offset",
                                                   0))
@@ -859,7 +863,8 @@ if (__name__ == '__main__'):
 
                 write_offset = urwid.IntEdit(
                     caption=("label",
-                             u"%s : " % (_.LAB_AT_CONFIG_CDROM_WRITE_OFFSET)),
+                             u"{} : ".format(
+                                 _.LAB_AT_CONFIG_CDROM_WRITE_OFFSET)),
                     default=config.getint_default("System",
                                                   "cdrom_write_offset",
                                                   0))
@@ -910,8 +915,8 @@ if (__name__ == '__main__'):
                     [("fixed",
                       len(audiotools.output_text(
                           _.LAB_AT_CONFIG_VERBOSITY)) + 3,
-                      urwid.Text(("label", u"%s : " %
-                                  (_.LAB_AT_CONFIG_VERBOSITY))))] +
+                      urwid.Text(("label", u"{} : ".format(
+                                      _.LAB_AT_CONFIG_VERBOSITY))))] +
                     [("weight", 1,
                       urwid.RadioButton(
                           group=verbosity,
@@ -1013,7 +1018,7 @@ if (__name__ == '__main__'):
 
     parser.add_argument("--version",
                         action="version",
-                        version="Python Audio Tools %s" % (audiotools.VERSION))
+                        version=audiotools.VERSION_STR)
 
     parser.add_argument("-I", "--interactive",
                         action="store_true",
