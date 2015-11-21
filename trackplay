@@ -191,15 +191,15 @@ if (__name__ == '__main__'):
             if audiofile.__class__.supports_to_pcm():
                 audiofiles.append(audiofile)
             else:
-                msg.warning(_.ERR_UNSUPPORTED_TO_PCM %
-                            {"filename": filename,
-                             "type": audiofile.NAME})
+                msg.warning(
+                    _.ERR_UNSUPPORTED_TO_PCM.format(
+                        filename=filename, type=audiofile.NAME))
         except audiotools.UnsupportedFile:
-            msg.warning(_.ERR_UNSUPPORTED_FILE % (filename,))
+            msg.warning(_.ERR_UNSUPPORTED_FILE.format(filename))
         except audiotools.InvalidFile as err:
             msg.warning(str(err))
         except IOError:
-            msg.warning(_.ERR_OPEN_IOERROR % (filename,))
+            msg.warning(_.ERR_OPEN_IOERROR.format(filename))
 
     if options.shuffle:
         import random

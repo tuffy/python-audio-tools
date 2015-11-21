@@ -69,37 +69,38 @@ if (__name__ == '__main__'):
         if options.show_bitrate:
             try:
                 msg.output(
-                    _.LAB_TRACKINFO_BITRATE %
-                    {'bitrate': ((os.path.getsize(file.filename) * 8) //
+                    _.LAB_TRACKINFO_BITRATE.format(
+                        bitrate=((os.path.getsize(file.filename) * 8) //
                                  2 ** 10) // length,
-                     'filename': audiotools.Filename(file.filename)})
+                        filename=audiotools.Filename(file.filename)))
             except ZeroDivisionError:
                 msg.output(
-                    _.LAB_TRACKINFO_BITRATE %
-                    {'bitrate': 0,
-                     'filename': audiotools.Filename(file.filename)})
+                    _.LAB_TRACKINFO_BITRATE.format(
+                        bitrate=0,
+                        filename=audiotools.Filename(file.filename)))
         elif options.show_percentage:
             try:
-                percentage = (float(os.path.getsize(file.filename) * 100) /
-                              (file.total_frames() * file.channels() *
+                percentage = (float(os.path.getsize(file.filename)) /
+                              (file.total_frames() *
+                               file.channels() *
                                (file.bits_per_sample() // 8)))
                 msg.output(
-                    _.LAB_TRACKINFO_PERCENTAGE %
-                    {'percentage': int(round(percentage)),
-                     'filename': audiotools.Filename(file.filename)})
+                    _.LAB_TRACKINFO_PERCENTAGE.format(
+                        percentage=percentage,
+                        filename=audiotools.Filename(file.filename)))
             except ZeroDivisionError:
-                msg.output(_.LAB_TRACKINFO_PERCENTAGE %
-                           {'percentage': "0",
-                            'filename': audiotools.Filename(file.filename)})
+                msg.output(_.LAB_TRACKINFO_PERCENTAGE.format(
+                               percentage=0.,
+                               filename=audiotools.Filename(file.filename)))
         else:
             msg.output(
-                _.LAB_TRACKINFO_ATTRIBS %
-                {"minutes": length // 60,
-                 "seconds": length % 60,
-                 "channels": file.channels(),
-                 "rate": audiotools.khz(file.sample_rate()),
-                 "bits": file.bits_per_sample(),
-                 "filename": audiotools.Filename(file.filename)})
+                _.LAB_TRACKINFO_ATTRIBS.format(
+                    minutes=length // 60,
+                    seconds=length % 60,
+                    channels=file.channels(),
+                    rate=audiotools.khz(file.sample_rate()),
+                    bits=file.bits_per_sample(),
+                    filename=audiotools.Filename(file.filename)))
 
         if not options.no_metadata:
             metadata = file.get_metadata()
@@ -164,7 +165,7 @@ if (__name__ == '__main__'):
                     for i in index_numbers:
                         row.add_column(u"  ")
                         row.add_column(
-                            _.LAB_TRACKINFO_CUESHEET_INDEX % (i), "right")
+                            _.LAB_TRACKINFO_CUESHEET_INDEX.format(i), "right")
 
                     for t in sorted(indexes.keys()):
                         row = table.row()
@@ -206,11 +207,13 @@ if (__name__ == '__main__'):
 
             if file.channel_mask().defined():
                 for (i, channel) in enumerate(file.channel_mask().channels()):
-                    msg.output(_.LAB_TRACKINFO_CHANNEL %
-                               {"channel_number": i + 1,
-                                "channel_name": channel_names[channel]})
+                    msg.output(
+                        _.LAB_TRACKINFO_CHANNEL.format(
+                            channel_number=i + 1,
+                            channel_name=channel_names[channel]))
             else:
                 for i in range(file.channels()):
-                    msg.output(_.LAB_TRACKINFO_CHANNEL %
-                               {"channel_number": i + 1,
-                                "channel_name": _.LAB_TRACKINFO_UNDEFINED})
+                    msg.output(
+                        _.LAB_TRACKINFO_CHANNEL.format(
+                            channel_number=i + 1,
+                            channel_name=_.LAB_TRACKINFO_UNDEFINED))

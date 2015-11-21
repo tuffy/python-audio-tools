@@ -218,9 +218,9 @@ if (__name__ == '__main__'):
     elif (options.quality is None):
         options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
-                  {"quality": options.quality,
-                   "type": AudioType.NAME})
+        msg.error(
+            _.ERR_UNSUPPORTED_COMPRESSION_MODE.format(
+                quality=options.quality, type=AudioType.NAME))
         sys.exit(1)
 
     quality = options.quality
@@ -271,7 +271,7 @@ if (__name__ == '__main__'):
     if options.interactive:
         # pick choice using interactive widget
         output_widget = audiotools.ui.OutputFiller(
-            track_labels=[_.LAB_TRACK_X_OF_Y % (i, title.tracks)
+            track_labels=[_.LAB_TRACK_X_OF_Y.format(i, title.tracks)
                           for i in tracks_to_rip],
             metadata_choices=[[c[i - 1] for i in tracks_to_rip]
                               for c in metadata_choices],
@@ -410,7 +410,7 @@ if (__name__ == '__main__'):
             encoded.append(track)
         except audiotools.EncodingError as err:
             progress.clear_rows()
-            msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
+            msg.error(_.ERR_ENCODING_ERROR.format(output_filename))
             sys.exit(1)
         except KeyboardInterrupt:
             progress.clear_rows()
@@ -426,11 +426,10 @@ if (__name__ == '__main__'):
 
         msg.info(
             audiotools.output_progress(
-                _.LAB_ENCODE % {
-                    "source": _.LAB_DVDA_TRACK %
-                    {"title_number": options.title,
-                     "track_number": track_number},
-                    "destination": output_filename},
+                _.LAB_ENCODE.format(
+                    source=_.LAB_DVDA_TRACK.format(title_number=options.title,
+                                                   track_number=track_number),
+                    destination=output_filename),
                 index, len(tracks_to_rip)))
 
     # add ReplayGain to ripped tracks, if necessary

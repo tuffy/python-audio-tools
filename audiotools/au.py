@@ -266,12 +266,8 @@ class AuAudio(AudioFile):
         if pcmreader.bits_per_sample not in (8, 16, 24):
             from audiotools import Filename
             from audiotools import UnsupportedBitsPerSample
-            from audiotools.text import ERR_UNSUPPORTED_BITS_PER_SAMPLE
             pcmreader.close()
-            raise UnsupportedBitsPerSample(
-                ERR_UNSUPPORTED_BITS_PER_SAMPLE %
-                {"target_filename": Filename(filename),
-                 "bps": pcmreader.bits_per_sample})
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
         try:
             header = au_header(pcmreader.sample_rate,

@@ -167,17 +167,18 @@ if (__name__ == '__main__'):
             if audiofile.__class__.supports_to_pcm():
                 audiofiles.append(audiofile)
             else:
-                msg.error(_.ERR_UNSUPPORTED_TO_PCM %
-                          {"filename": filename, "type": audiofile.NAME})
+                msg.error(
+                    _.ERR_UNSUPPORTED_TO_PCM.format(filename=filename,
+                                                    type=audiofile.NAME))
                 sys.exit(1)
         except audiotools.UnsupportedFile:
-            msg.error(_.ERR_UNSUPPORTED_FILE % (filename,))
+            msg.error(_.ERR_UNSUPPORTED_FILE.format(filename))
             sys.exit(1)
         except audiotools.InvalidFile as err:
             msg.error(str(err))
             sys.exit(1)
         except IOError:
-            msg.error(_.ERR_OPEN_IOERROR % (filename,))
+            msg.error(_.ERR_OPEN_IOERROR.format(filename))
             sys.exit(1)
 
     if len(audiofiles) < 1:
@@ -319,7 +320,7 @@ if (__name__ == '__main__'):
             track_length = cuesheet.track_length(cuesheet_track)
             if ((track_length is not None) and
                 (track_length != input_track.seconds_length())):
-                msg.error(_.ERR_CUE_LENGTH_MISMATCH % (cuesheet_track))
+                msg.error(_.ERR_CUE_LENGTH_MISMATCH.format(cuesheet_track))
                 sys.exit(1)
 
         tempcue = tempfile.NamedTemporaryFile(suffix='.cue')
@@ -447,8 +448,8 @@ if (__name__ == '__main__'):
                     queue.execute(
                         function=convert_to_wave,
                         progress_text=filename.__unicode__(),
-                        completion_output=_.LAB_TRACK2CD_CONVERTED % {
-                            "filename": filename},
+                        completion_output=
+                            _.LAB_TRACK2CD_CONVERTED.format(filename),
                         audiofile=audiofile,
                         wave_filename=f[1])
 
@@ -488,7 +489,7 @@ if (__name__ == '__main__'):
                             progress.update))
                     wave_files.append(wave.filename)
                     progress.clear_rows()
-                    msg.info(_.LAB_TRACK2CD_CONVERTED % {"filename": filename})
+                    msg.info(_.LAB_TRACK2CD_CONVERTED.format(filename))
             except KeyboardInterrupt:
                 progress.clear_rows()
                 msg.error(_.ERR_CANCELLED)

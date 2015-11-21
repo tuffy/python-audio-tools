@@ -532,20 +532,17 @@ class VorbisComment(MetaData):
                     # handle all text fields by stripping whitespace
                     if len(value.strip()) == 0:
                         fixes_performed.append(
-                            CLEAN_REMOVE_EMPTY_TAG %
-                            {"field": key})
+                            CLEAN_REMOVE_EMPTY_TAG.format(key))
                     else:
                         fix1 = value.rstrip()
                         if fix1 != value:
                             fixes_performed.append(
-                                CLEAN_REMOVE_TRAILING_WHITESPACE %
-                                {"field": key})
+                                CLEAN_REMOVE_TRAILING_WHITESPACE.format(key))
 
                         fix2 = fix1.lstrip()
                         if fix2 != fix1:
                             fixes_performed.append(
-                                CLEAN_REMOVE_LEADING_WHITESPACE %
-                                {"field": key})
+                                CLEAN_REMOVE_LEADING_WHITESPACE.format(key))
 
                         # integer fields also strip leading zeroes
                         if (((attr == "track_number") or
@@ -560,23 +557,20 @@ class VorbisComment(MetaData):
 
                                 if fix3 != fix2:
                                     fixes_performed.append(
-                                        CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES
-                                        % {"field": key})
+                                        CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES.format(key))
                             else:
                                 # fix zeroes only
                                 fix3 = fix2.lstrip(u"0")
 
                                 if fix3 != fix2:
                                     fixes_performed.append(
-                                        CLEAN_REMOVE_LEADING_ZEROES %
-                                        {"field": key})
+                                        CLEAN_REMOVE_LEADING_ZEROES.format(key))
                         elif ((attr == "track_total") or
                               (attr == "album_total")):
                             fix3 = fix2.lstrip(u"0")
                             if fix3 != fix2:
                                 fixes_performed.append(
-                                    CLEAN_REMOVE_LEADING_ZEROES %
-                                    {"field": key})
+                                    CLEAN_REMOVE_LEADING_ZEROES.format(key))
                         else:
                             fix3 = fix2
 

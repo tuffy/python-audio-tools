@@ -248,9 +248,9 @@ if (__name__ == '__main__'):
     elif options.quality is None:
         options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif options.quality not in AudioType.COMPRESSION_MODES:
-        msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
-                  {"quality": options.quality,
-                   "type": AudioType.NAME})
+        msg.error(
+            _.ERR_UNSUPPORTED_COMPRESSION_MODE.format(
+                quality=options.quality, type=AudioType.NAME))
         sys.exit(1)
 
     quality = options.quality
@@ -354,7 +354,8 @@ if (__name__ == '__main__'):
     if options.interactive:
         # pick options using interactive widget
         output_widget = audiotools.ui.OutputFiller(
-            track_labels=[_.LAB_TRACK_X_OF_Y % (i, max(track_offsets.keys()))
+            track_labels=[_.LAB_TRACK_X_OF_Y.format(i,
+                                                    max(track_offsets.keys()))
                           for i in tracks_to_rip],
             metadata_choices=[[c for i, c in
                               enumerate(choices, 0 if preserve_pre_gap else 1)
@@ -492,7 +493,7 @@ if (__name__ == '__main__'):
             audiotools.transfer_data(accuraterip.read, lambda f: None)
         except audiotools.EncodingError as err:
             progress.clear_rows()
-            msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
+            msg.error(_.ERR_ENCODING_ERROR.format(output_filename))
             sys.exit(1)
         except KeyboardInterrupt:
             progress.clear_rows()
@@ -512,9 +513,8 @@ if (__name__ == '__main__'):
 
         msg.info(
             audiotools.output_progress(
-                _.LAB_CD2TRACK_PROGRESS %
-                {"track_number": track_number,
-                 "filename": output_filename},
+                _.LAB_CD2TRACK_PROGRESS.format(track_number=track_number,
+                                               filename=output_filename),
                 index, len(tracks_to_rip)))
 
     # add ReplayGain to ripped tracks, if necessary
@@ -544,9 +544,9 @@ if (__name__ == '__main__'):
                 cuesheet.write(
                     Cuesheet.converted(
                         Sheet.from_cddareader(cddareader)).build())
-            msg.info(_.LAB_CDDA2TRACK_WROTE_CUESHEET % (options.cuesheet))
+            msg.info(_.LAB_CDDA2TRACK_WROTE_CUESHEET.format(options.cuesheet))
         except IOError:
-            msg.error(_.ERR_OPEN_IOERROR % (options.cuesheet))
+            msg.error(_.ERR_OPEN_IOERROR.format(options.cuesheet))
             sys.exit(1)
 
     # display ripping log

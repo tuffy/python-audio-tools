@@ -213,8 +213,8 @@ def validate_header(header):
                 elif header_size > 0:
                     # ensure no data remains after data chunk header
                     from audiotools.text import ERR_WAV_HEADER_EXTRA_DATA
-                    raise ValueError(ERR_WAV_HEADER_EXTRA_DATA %
-                                     (header_size))
+                    raise ValueError(
+                        ERR_WAV_HEADER_EXTRA_DATA.format(header_size))
                 else:
                     return (total_size, chunk_size)
             else:

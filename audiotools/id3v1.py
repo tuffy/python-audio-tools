@@ -276,12 +276,12 @@ class ID3v1Comment(MetaData):
             if initial_value is not None:
                 fix1 = initial_value.rstrip()
                 if fix1 != initial_value:
-                    fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
-                                           {"field": name})
+                    fixes_performed.append(
+                        CLEAN_REMOVE_TRAILING_WHITESPACE.format(name))
                 fix2 = fix1.lstrip()
                 if fix2 != fix1:
-                    fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
-                                           {"field": name})
+                    fixes_performed.append(
+                        CLEAN_REMOVE_LEADING_WHITESPACE.format(name))
 
                 # restore trailing NULL bytes
                 fields[attr] = fix2

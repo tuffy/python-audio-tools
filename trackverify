@@ -106,15 +106,15 @@ def verify(progress, track):
 def display_results(result, is_tty=False):
     (filename, track_type, error) = result
     if error is None:
-        return _.LAB_TRACKVERIFY_RESULT % {
-            "path": filename,
-            "result": audiotools.output_text(_.LAB_TRACKVERIFY_OK,
-                                             fg_color="green").format(is_tty)}
+        return _.LAB_TRACKVERIFY_RESULT.format(
+            path=filename,
+            result=audiotools.output_text(_.LAB_TRACKVERIFY_OK,
+                                          fg_color="green").format(is_tty))
     else:
-        return _.LAB_TRACKVERIFY_RESULT % {
-            "path": filename,
-            "result": audiotools.output_text(error,
-                                             fg_color="red").format(is_tty)}
+        return _.LAB_TRACKVERIFY_RESULT.format(
+            path=filename,
+            result=audiotools.output_text(error,
+                                          fg_color="red").format(is_tty))
 
 
 def display_results_tty(result):
@@ -340,27 +340,27 @@ def accuraterip_display_result(result):
         if ((confidence_v1 == AR_NOT_FOUND) and
             (confidence_v2 == AR_NOT_FOUND)):
             # no matches found for disc
-            return _.LAB_TRACKVERIFY_RESULT % \
-                {"path": path, "result": _.LAB_ACCURATERIP_NOT_FOUND}
+            return _.LAB_TRACKVERIFY_RESULT.format(
+                path=path, result=_.LAB_ACCURATERIP_NOT_FOUND)
         elif ((confidence_v1 == AR_MISMATCH) and
               (confidence_v2 == AR_MISMATCH)):
             # neither checksum matches
-            return _.LAB_TRACKVERIFY_RESULT % \
-                {"path": path, "result": _.LAB_ACCURATERIP_MISMATCH}
+            return _.LAB_TRACKVERIFY_RESULT.format(
+                path=path, result=_.LAB_ACCURATERIP_MISMATCH)
         elif confidence_v2 == AR_MISMATCH:
             # only AccurateRip V1 matches
-            return _.LAB_TRACKVERIFY_RESULT % \
-                {"path": path,
-                 "result": u"{} ({})".format(
-                     _.LAB_ACCURATERIP_FOUND,
-                     _.LAB_ACCURATERIP_CONFIDENCE % (confidence_v1))}
+            return _.LAB_TRACKVERIFY_RESULT.format(
+                path=path,
+                result=u"{} ({})".format(
+                    _.LAB_ACCURATERIP_FOUND,
+                    _.LAB_ACCURATERIP_CONFIDENCE.format(confidence_v1)))
         else:
             # AccurateRip V2 has a match, so display that by default
-            return _.LAB_TRACKVERIFY_RESULT % \
-                {"path": path,
-                 "result": u"{} ({})".format(
-                     _.LAB_ACCURATERIP_FOUND,
-                     _.LAB_ACCURATERIP_CONFIDENCE % (confidence_v2))}
+            return _.LAB_TRACKVERIFY_RESULT.format(
+                path=path,
+                result=u"{} ({})".format(
+                    _.LAB_ACCURATERIP_FOUND,
+                    _.LAB_ACCURATERIP_CONFIDENCE.format(confidence_v2)))
     else:
         # FIXME - display actual error
         return u"read error"

@@ -431,7 +431,7 @@ if (__name__ == '__main__'):
                 sys.exit(1)
 
     if not AudioType.supports_from_pcm():
-        msg.error(_.ERR_UNSUPPORTED_FROM_PCM % {"type": AudioType.NAME})
+        msg.error(_.ERR_UNSUPPORTED_FROM_PCM.format(AudioType.NAME))
         sys.exit(1)
 
     # whether to add ReplayGain to newly converted files
@@ -449,9 +449,9 @@ if (__name__ == '__main__'):
     elif options.quality is None:
         options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif options.quality not in AudioType.COMPRESSION_MODES:
-        msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
-                  {"quality": options.quality,
-                   "type": AudioType.NAME})
+        msg.error(
+            _.ERR_UNSUPPORTED_COMPRESSION_MODE.format(
+                quality=options.quality, type=AudioType.NAME))
         sys.exit(1)
 
     # grab the list of AudioFile objects we are converting from
@@ -461,7 +461,7 @@ if (__name__ == '__main__'):
         if filename not in input_filenames:
             input_filenames.add(filename)
         else:
-            msg.error(_.ERR_DUPLICATE_FILE % (filename,))
+            msg.error(_.ERR_DUPLICATE_FILE.format(filename))
             sys.exit(1)
 
         try:
@@ -469,14 +469,15 @@ if (__name__ == '__main__'):
             if audiofile.__class__.supports_to_pcm():
                 audiofiles.append(audiofile)
             else:
-                msg.warning(_.ERR_UNSUPPORTED_TO_PCM %
-                            {"filename": filename, "type": audiofile.NAME})
+                msg.warning(
+                    _.ERR_UNSUPPORTED_TO_PCM.format(
+                        filename=filename, type=audiofile.NAME))
         except audiotools.UnsupportedFile:
-            msg.warning(_.ERR_UNSUPPORTED_FILE % (filename,))
+            msg.warning(_.ERR_UNSUPPORTED_FILE.format(filename))
         except audiotools.InvalidFile as err:
             msg.warning(str(err))
         except IOError:
-            msg.warning(_.ERR_OPEN_IOERROR % (filename,))
+            msg.warning(_.ERR_OPEN_IOERROR.format(filename))
 
     if len(audiofiles) < 1:
         msg.error(_.ERR_FILES_REQUIRED)
@@ -739,7 +740,7 @@ if (__name__ == '__main__'):
             if output_filename not in output_filenames:
                 output_filenames.add(output_filename)
             else:
-                msg.error(_.ERR_DUPLICATE_OUTPUT_FILE % (output_filename,))
+                msg.error(_.ERR_DUPLICATE_OUTPUT_FILE.format(output_filename))
                 sys.exit(1)
 
         # queue conversion jobs to ProgressQueue
@@ -754,15 +755,15 @@ if (__name__ == '__main__'):
             try:
                 audiotools.make_dirs(str(output_filename))
             except OSError:
-                msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
+                msg.error(_.ERR_ENCODING_ERROR.format(output_filename))
                 sys.exit(1)
 
             queue.execute(
                 function=convert,
                 progress_text=output_filename.__unicode__(),
-                completion_output=(_.LAB_ENCODE % {
-                    "source": audiotools.Filename(audiofile.filename),
-                    "destination": output_filename}),
+                completion_output=_.LAB_ENCODE.format(
+                    source=audiotools.Filename(audiofile.filename),
+                    destination=output_filename),
                 source_audiofile=audiofile,
                 destination_filename=str(output_filename),
                 destination_class=output_class,
@@ -800,10 +801,10 @@ if (__name__ == '__main__'):
                 progress_text = _.RG_ADDING_REPLAYGAIN
                 completion_output = _.RG_REPLAYGAIN_ADDED
             else:
-                progress_text = _.RG_ADDING_REPLAYGAIN_TO_ALBUM % \
-                    (album_number)
-                completion_output = _.RG_REPLAYGAIN_ADDED_TO_ALBUM % \
-                    (album_number)
+                progress_text = \
+                    _.RG_ADDING_REPLAYGAIN_TO_ALBUM.format(album_number)
+                completion_output = \
+                    _.RG_REPLAYGAIN_ADDED_TO_ALBUM.format(album_number)
 
             queue.execute(function=__add_replay_gain__,
                           progress_text=progress_text,
@@ -858,8 +859,7 @@ if (__name__ == '__main__'):
             track_metadata = audiofile.get_metadata()
 
             if input_filename == output_filename:
-                msg.error(_.ERR_OUTPUT_IS_INPUT %
-                          (output_filename,))
+                msg.error(_.ERR_OUTPUT_IS_INPUT.format(output_filename))
                 sys.exit(1)
 
         progress = audiotools.SingleProgressDisplay(
@@ -879,8 +879,8 @@ if (__name__ == '__main__'):
                     bits_per_sample=options.bits_per_sample)
             progress.clear_rows()
 
-            msg.output(_.LAB_ENCODE % {"source": input_filename,
-                                       "destination": output_filename})
+            msg.output(_.LAB_ENCODE.format(source=input_filename,
+                                           destination=output_filename))
         except audiotools.EncodingError as err:
             progress.clear_rows()
             msg.error(err)

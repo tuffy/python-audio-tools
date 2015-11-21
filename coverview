@@ -221,21 +221,21 @@ try:
                 except audiotools.UnsupportedFile:
                     error = gtk.MessageDialog(
                         type=gtk.MESSAGE_ERROR,
-                        message_format=_.ERR_UNSUPPORTED_FILE % (filename),
+                        message_format=_.ERR_UNSUPPORTED_FILE.format(filename),
                         buttons=gtk.BUTTONS_OK)
                     error.run()
                     error.destroy()
                 except audiotools.InvalidFile:
                     error = gtk.MessageDialog(
                         type=gtk.MESSAGE_ERROR,
-                        message_format=_.ERR_INVALID_FILE % (filename),
+                        message_format=_.ERR_INVALID_FILE.format(filename),
                         buttons=gtk.BUTTONS_OK)
                     error.run()
                     error.destroy()
                 except IOError:
                     error = gtk.MessageDialog(
                         type=gtk.MESSAGE_ERROR,
-                        message_format=_.ERR_OPEN_IOERROR % (filename),
+                        message_format=_.ERR_OPEN_IOERROR.format(filename),
                         buttons=gtk.BUTTONS_OK)
                     error.run()
                     error.destroy()
@@ -292,11 +292,11 @@ try:
                 self.list.set(tree_iter, 1,
                               get_pixbuf(image.data))
                 self.list.set(tree_iter, 2,
-                              _.LAB_BYTE_SIZE % (len(image.data)))
+                              _.LAB_BYTE_SIZE.format(len(image.data)))
                 self.list.set(tree_iter, 3,
-                              _.LAB_DIMENSIONS % (image.width, image.height))
+                              _.LAB_DIMENSIONS.format(image.width, image.height))
                 self.list.set(tree_iter, 4,
-                              _.LAB_BITS_PER_PIXEL % (image.color_depth))
+                              _.LAB_BITS_PER_PIXEL.format(image.color_depth))
                 self.list.set(tree_iter, 5, image.mime_type.decode('ascii'))
 
                 if first_image is None:
@@ -389,11 +389,12 @@ Consult "man python" for further details.
             else:
                 at_image = image.audiotools
             self.path.config(text=image.path)
-            self.size_bits.config(text=_.LAB_BYTE_SIZE % (len(at_image.data)))
-            self.size_pixels.config(text=_.LAB_DIMENSIONS % (at_image.width,
-                                                             at_image.height))
+            self.size_bits.config(
+                text=_.LAB_BYTE_SIZE.format(len(at_image.data)))
+            self.size_pixels.config(
+                text=_.LAB_DIMENSIONS.format(at_image.width, at_image.height))
             self.bits.config(
-                text=_.LAB_BITS_PER_PIXEL % (at_image.color_depth))
+                text=_.LAB_BITS_PER_PIXEL.format(at_image.color_depth))
             self.type.config(text=at_image.mime_type)
 
         def clear_image_data(self):
@@ -488,11 +489,11 @@ Consult "man python" for further details.
                     self.set_metadata(new_file,
                                       audiotools.open(new_file).get_metadata())
                 except audiotools.UnsupportedFile:
-                    self.show_error(_.ERR_UNSUPPORTED_FILE % (new_file))
+                    self.show_error(_.ERR_UNSUPPORTED_FILE.format(new_file))
                 except audiotools.InvalidFile:
-                    self.show_error(_.ERR_INVALID_FILE % (new_file))
+                    self.show_error(_.ERR_INVALID_FILE.format(new_file))
                 except IOError as err:
-                    self.show_error(_.ERR_OPEN_IOERROR % (new_file))
+                    self.show_error(_.ERR_OPEN_IOERROR.format(new_file))
 
         def quit(self, *args):
             self.master.quit()
@@ -631,16 +632,17 @@ if (__name__ == '__main__'):
             try:
                 main_gtk(audiotools.open(args[0]))
             except audiotools.UnsupportedFile:
-                messenger.error(_.ERR_UNSUPPORTED_FILE %
-                                (audiotools.Filename(args[0]),))
+                messenger.error(
+                    _.ERR_UNSUPPORTED_FILE.format(
+                        audiotools.Filename(args[0])))
                 sys.exit(1)
             except audiotools.InvalidFile:
-                messenger.error(_.ERR_INVALID_FILE %
-                                (audiotools.Filename(args[0]),))
+                messenger.error(
+                    _.ERR_INVALID_FILE.format(audiotools.Filename(args[0])))
                 sys.exit(1)
             except IOError:
-                messenger.error(_.ERR_OPEN_IOERROR %
-                                (audiotools.Filename(args[0]),))
+                messenger.error(
+                   _.ERR_OPEN_IOERROR.format(audiotools.Filename(args[0])))
                 sys.exit(1)
         else:
             main_gtk(None)
@@ -649,16 +651,17 @@ if (__name__ == '__main__'):
             try:
                 main_tkinter(audiotools.open(args[0]))
             except audiotools.UnsupportedFile:
-                messenger.error(_.ERR_UNSUPPORTED_FILE %
-                                (audiotools.Filename(args[0]),))
+                messenger.error(
+                    _.ERR_UNSUPPORTED_FILE.format(
+                        audiotools.Filename(args[0])))
                 sys.exit(1)
             except audiotools.InvalidFile:
-                messenger.error(_.ERR_INVALID_FILE %
-                                (audiotools.Filename(args[0]),))
+                messenger.error(
+                    _.ERR_INVALID_FILE.format(audiotools.Filename(args[0])))
                 sys.exit(1)
             except IOError:
-                messenger.error(_.ERR_OPEN_IOERROR %
-                                (audiotools.Filename(args[0]),))
+                messenger.error(
+                    _.ERR_OPEN_IOERROR.format(audiotools.Filename(args[0])))
                 sys.exit(1)
         else:
             main_tkinter(None)

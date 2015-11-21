@@ -378,7 +378,7 @@ try:
             if output_filename in self.input_filenames:
                 from audiotools.text import ERR_OUTPUT_IS_INPUT
                 self.status.set_text(
-                    ERR_OUTPUT_IS_INPUT % (output_filename,))
+                    ERR_OUTPUT_IS_INPUT.format(output_filename))
             else:
                 self.__cancelled__ = False
                 raise urwid.ExitMainLoop()
@@ -439,9 +439,7 @@ try:
             assert(len(set(map(len, metadata_choices))) == 1)
 
             from audiotools.text import (LAB_SELECT_BEST_MATCH,
-                                         LAB_TRACK_METADATA,
-                                         LAB_KEY_NEXT,
-                                         LAB_KEY_PREVIOUS)
+                                         LAB_TRACK_METADATA)
 
             self.metadata_choices = metadata_choices
 
@@ -502,12 +500,12 @@ try:
                 keys = []
                 if radio_button.previous_radio_button() is not None:
                     keys.extend([('key', u"F1"),
-                                 LAB_KEY_PREVIOUS % (swivel.swivel_type)])
+                                 LAB_KEY_PREVIOUS.format(swivel.swivel_type)])
                 if radio_button.next_radio_button() is not None:
                     if len(keys) > 0:
                         keys.append(u"   ")
                     keys.extend([('key', u"F2"),
-                                 LAB_KEY_NEXT % (swivel.swivel_type)])
+                                 LAB_KEY_NEXT.format(swivel.swivel_type)])
 
                 if len(keys) > 0:
                     self.status.set_text(keys)
@@ -2160,11 +2158,11 @@ try:
             from audiotools.text import LAB_TRACK_LENGTH
 
             try:
-                return LAB_TRACK_LENGTH % \
-                    ((self.current // self.sample_rate) // 60,
-                     (self.current // self.sample_rate) % 60)
+                return LAB_TRACK_LENGTH.format(
+                    (self.current // self.sample_rate) // 60,
+                    (self.current // self.sample_rate) % 60)
             except ZeroDivisionError:
-                return LAB_TRACK_LENGTH % (0, 0)
+                return LAB_TRACK_LENGTH.format(0, 0)
 
     class VolumeControl(urwid.ProgressBar):
         def __init__(self, get_volume, volume_delta, change_volume):
@@ -2446,9 +2444,9 @@ try:
                  for (track_label, seconds_length, user_data) in tracks])
 
             status = ((LAB_PLAY_STATUS if (len(tracks) > 1) else
-                       LAB_PLAY_STATUS_1) % {"count": len(tracks),
-                                             "min": int(track_len) // 60,
-                                             "sec": int(track_len) % 60})
+                       LAB_PLAY_STATUS_1).format(count=len(tracks),
+                                                 min=int(track_len) // 60,
+                                                 sec=int(track_len) % 60))
 
             body = urwid.Pile(
                 [("fixed", 1,
@@ -2505,7 +2503,6 @@ try:
             for when a new track is opened"""
 
             from audiotools.text import (LAB_X_OF_Y,
-                                         LAB_TRACK_LENGTH,
                                          LAB_ALBUM_NUMBER)
 
             self.track_name.set_text(track_name if
@@ -2519,9 +2516,8 @@ try:
                                       else u"")
             if track_number is not None:
                 if track_total is not None:
-                    self.tracknum.set_text(LAB_X_OF_Y %
-                                           (track_number,
-                                            track_total))
+                    self.tracknum.set_text(
+                        LAB_X_OF_Y.format(track_number, track_total))
                 else:
                     self.tracknum.set_text(u"{:d}".format(track_number))
             else:
@@ -2531,9 +2527,8 @@ try:
                 if album_total is not None:
                     self.albumnum_label.set_text(('label',
                                                   LAB_ALBUM_NUMBER + u" : "))
-                    self.albumnum.set_text(LAB_X_OF_Y %
-                                           (album_number,
-                                            album_total))
+                    self.albumnum.set_text(
+                        LAB_X_OF_Y.format(album_number, album_total))
                 else:
                     self.albumnum_label.set_text(('label',
                                                   LAB_ALBUM_NUMBER + u" : "))
@@ -2666,7 +2661,7 @@ def show_available_qualities(msg, audiotype):
                                  ERR_NO_COMPRESSION_MODES)
 
     if len(audiotype.COMPRESSION_MODES) > 1:
-        msg.info(LAB_AVAILABLE_COMPRESSION_TYPES % (audiotype.NAME))
+        msg.info(LAB_AVAILABLE_COMPRESSION_TYPES.format(audiotype.NAME))
         msg.info(u"")
 
         table = audiotools.output_table()
@@ -2697,7 +2692,7 @@ def show_available_qualities(msg, audiotype):
         for row in table.format(msg.info_isatty()):
             msg.info(row)
     else:
-        msg.info(ERR_NO_COMPRESSION_MODES % (audiotype.NAME))
+        msg.info(ERR_NO_COMPRESSION_MODES.format(audiotype.NAME))
 
 
 def select_metadata(metadata_choices, msg, use_default=False):

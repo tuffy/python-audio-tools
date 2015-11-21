@@ -110,7 +110,7 @@ if (__name__ == '__main__'):
         if (input_filename in
             [output_filename for
              (image, output_filename) in output_images]):
-            msg.error(_.ERR_OUTPUT_IS_INPUT % (input_filename,))
+            msg.error(_.ERR_OUTPUT_IS_INPUT.format(input_filename))
             sys.exit(1)
 
         # finally, write actual image data to disk if possible
@@ -120,11 +120,10 @@ if (__name__ == '__main__'):
                 f = open(str(output_filename), "wb")
                 f.write(image.data)
                 f.close()
-                msg.info(_.LAB_ENCODE %
-                         {"source": input_filename,
-                          "destination": output_filename})
+                msg.info(_.LAB_ENCODE.format(source=input_filename,
+                                             destination=output_filename))
             except IOError as e:
-                msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
+                msg.error(_.ERR_ENCODING_ERROR.format(output_filename))
                 sys.exit(1)
             except OSError as e:
                 msg.os_error(e)

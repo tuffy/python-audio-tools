@@ -264,9 +264,9 @@ if (__name__ == '__main__'):
     elif options.quality is None:
         options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif options.quality not in AudioType.COMPRESSION_MODES:
-        msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
-                  {"quality": options.quality,
-                   "type": AudioType.NAME})
+        msg.error(
+            _.ERR_UNSUPPORTED_COMPRESSION_MODE.format(
+                quality=options.quality, type=AudioType.NAME))
         sys.exit(1)
 
     try:
@@ -275,13 +275,13 @@ if (__name__ == '__main__'):
         input_filename = audiotools.Filename(audiofile.filename)
         input_filenames = {input_filename}
     except audiotools.UnsupportedFile:
-        msg.error(_.ERR_UNSUPPORTED_FILE % (filename,))
+        msg.error(_.ERR_UNSUPPORTED_FILE.format(filename))
         sys.exit(1)
     except audiotools.InvalidFile as err:
         msg.error(str(err))
         sys.exit(1)
     except IOError:
-        msg.error(_.ERR_OPEN_IOERROR % (filename,))
+        msg.error(_.ERR_OPEN_IOERROR.format(filename))
         sys.exit(1)
 
     base_directory = options.dir
@@ -435,7 +435,7 @@ if (__name__ == '__main__'):
 
     # decide which metadata and output options to use when splitting tracks
     if options.interactive:
-        track_labels = [_.LAB_TRACK_X_OF_Y % (i, output_track_count)
+        track_labels = [_.LAB_TRACK_X_OF_Y.format(i, output_track_count)
                         for i in range(0 if preserve_pre_gap else 1,
                                        output_track_count + 1)]
 
@@ -512,9 +512,9 @@ if (__name__ == '__main__'):
             queue.execute(
                 function=split,
                 progress_text=output_filename.__unicode__(),
-                completion_output=_.LAB_ENCODE % {
-                    "source": audiotools.Filename(audiofile.filename),
-                    "destination": output_filename},
+                completion_output=_.LAB_ENCODE.format(
+                    source=audiotools.Filename(audiofile.filename),
+                    destination=output_filename),
                 source_audiofile=audiofile,
                 destination_filename=output_filename,
                 destination_class=output_class,
@@ -577,9 +577,9 @@ if (__name__ == '__main__'):
             queue.execute(
                 function=split_raw,
                 progress_text=output_filename.__unicode__(),
-                completion_output=_.LAB_ENCODE % {
-                    "source": audiotools.Filename(audiofile.filename),
-                    "destination": output_filename},
+                completion_output=_.LAB_ENCODE.format(
+                    source=audiotools.Filename(audiofile.filename),
+                    destination=output_filename),
                 source_filename=temp_blob.name,
                 sample_rate=audiofile.sample_rate(),
                 channels=audiofile.channels(),

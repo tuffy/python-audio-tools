@@ -26,9 +26,10 @@ import audiotools.text as _
 
 def display_messages(messenger, track, messages):
     for message in messages:
-        messenger.info(_.LAB_TRACKLINT_MESSAGE %
-                       {"filename": audiotools.Filename(track.filename),
-                        "message": message})
+        messenger.info(
+            _.LAB_TRACKLINT_MESSAGE.format(
+                filename=audiotools.Filename(track.filename),
+                message=message))
 
 
 def audiofiles(paths, processed_filenames, messenger):
@@ -126,8 +127,9 @@ if (__name__ == '__main__'):
             try:
                 update(track, msg)
             except IOError:
-                msg.error(_.ERR_ENCODING_ERROR %
-                          (audiotools.Filename(track.filename),))
+                msg.error(
+                    _.ERR_ENCODING_ERROR.format(
+                        audiotools.Filename(track.filename)))
                 sys.exit(1)
             except ValueError as err:
                 msg.error(unicode(err))

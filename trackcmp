@@ -64,31 +64,30 @@ def cmp_result(result, is_tty=False):
     assert((mismatch is None) or isinstance(mismatch, int))
 
     if mismatch is None:
-        return ((_.LAB_TRACKCMP_CMP %
-                 {"file1": audiotools.Filename(path1),
-                  "file2": audiotools.Filename(path2)}) +
+        return (_.LAB_TRACKCMP_CMP.format(
+                    file1=audiotools.Filename(path1),
+                    file2=audiotools.Filename(path2)) +
                 u" : " + audiotools.output_text(
                     _.LAB_TRACKCMP_OK,
                     fg_color="green").format(is_tty))
     elif mismatch >= 0:
-        return ((_.LAB_TRACKCMP_CMP %
-                 {"file1": audiotools.Filename(path1),
-                  "file2": audiotools.Filename(path2)}) +
+        return (_.LAB_TRACKCMP_CMP.format(
+                    file1=audiotools.Filename(path1),
+                    file2=audiotools.Filename(path2)) +
                 u" : " + audiotools.output_text(
-                    _.LAB_TRACKCMP_MISMATCH %
-                    {"frame_number": mismatch + 1},
+                    _.LAB_TRACKCMP_MISMATCH.format(mismatch + 1),
                     fg_color="red").format(is_tty))
     elif mismatch == -1:
-        return ((_.LAB_TRACKCMP_CMP %
-                 {"file1": audiotools.Filename(path1),
-                  "file2": audiotools.Filename(path2)}) +
+        return (_.LAB_TRACKCMP_CMP.format(
+                    file1=audiotools.Filename(path1),
+                    file2=audiotools.Filename(path2)) +
                 u" : " + audiotools.output_text(
                     _.LAB_TRACKCMP_PARAM_MISMATCH,
                     fg_color="red").format(is_tty))
     else:
-        return ((_.LAB_TRACKCMP_CMP %
-                 {"file1": audiotools.Filename(path1),
-                  "file2": audiotools.Filename(path2)}) +
+        return (_.LAB_TRACKCMP_CMP.format(
+                    file1=audiotools.Filename(path1),
+                    file2=audiotools.Filename(path2)) +
                 u" : " + audiotools.output_text(
                     _.LAB_TRACKCMP_ERROR,
                     fg_color="red").format(is_tty))
@@ -149,16 +148,15 @@ def image_compare_raw(progress, source_filename,
 
 def image_compare_results(result, is_tty=False):
     (mismatch, image_name, track_name) = result
-    return u"{} : {}".format(_.LAB_TRACKCMP_CMP %
-                             {"file1": audiotools.Filename(image_name),
-                              "file2": audiotools.Filename(track_name)},
+    return u"{} : {}".format(_.LAB_TRACKCMP_CMP.format(
+                                 file1=audiotools.Filename(image_name),
+                                 file2=audiotools.Filename(track_name)),
                              (audiotools.output_text(
                                  _.LAB_TRACKCMP_OK,
                                  fg_color="green").format(is_tty) if
                               mismatch is None else
                               audiotools.output_text(
-                                  _.LAB_TRACKCMP_MISMATCH %
-                                  {"frame_number": mismatch + 1},
+                                  _.LAB_TRACKCMP_MISMATCH.format(mismatch + 1),
                                   fg_color="red").format(is_tty)))
 
 
@@ -229,23 +227,25 @@ if (__name__ == '__main__'):
             try:
                 audiofile_a = audiotools.open(args[0])
             except audiotools.UnsupportedFile:
-                msg.error(_.ERR_UNSUPPORTED_FILE % (filename_a,))
+                msg.error(_.ERR_UNSUPPORTED_FILE.format(filename_a))
                 sys.exit(1)
 
             if not audiofile_a.__class__.supports_to_pcm():
-                msg.error(_.ERR_UNSUPPORTED_TO_PCM %
-                          {"filename": filename_a, "type": audiofile_a.NAME})
+                msg.error(
+                    _.ERR_UNSUPPORTED_TO_PCM.format(
+                        filename=filename_a, type=audiofile_a.NAME))
                 sys.exit(1)
 
             try:
                 audiofile_b = audiotools.open(args[1])
             except audiotools.UnsupportedFile:
-                msg.error(_.ERR_UNSUPPORTED_FILE % (filename_b,))
+                msg.error(_.ERR_UNSUPPORTED_FILE.format(filename_b))
                 sys.exit(1)
 
             if not audiofile_b.__class__.supports_to_pcm():
-                msg.error(_.ERR_UNSUPPORTED_TO_PCM %
-                          {"filename": filename_b, "type": audiofile_b.NAME})
+                msg.error(
+                    _.ERR_UNSUPPORTED_TO_PCM.format(
+                        filename=filename_b, type=audiofile_b.NAME))
                 sys.exit(1)
 
             (path1, path2, mismatch) = cmp_files(None,
@@ -274,15 +274,16 @@ if (__name__ == '__main__'):
                             if audiofile.__class__.supports_to_pcm():
                                 files[audiofile.filename] = audiofile
                             else:
-                                msg.warning(_.ERR_UNSUPPORTED_TO_PCM %
-                                            {"filename": audiofile.filename,
-                                             "type": audiofile.NAME})
+                                msg.warning(
+                                    _.ERR_UNSUPPORTED_TO_PCM.format(
+                                        filename=audiofile.filename,
+                                        type=audiofile.NAME))
                         except audiotools.UnsupportedFile:
                             pass
                         except audiotools.InvalidFile as err:
                             msg.warning(str(err))
                         except IOError:
-                            msg.warning(_.ERR_OPEN_IOERROR % (path,))
+                            msg.warning(_.ERR_OPEN_IOERROR.format(path))
 
             # first, attempt to match files by their stream characteristics
             streams1 = {}
@@ -346,10 +347,10 @@ if (__name__ == '__main__'):
                 for filename in files.keys():
                     msg.info(
                         audiotools.output_text(
-                            _.LAB_TRACKCMP_MISSING %
-                            {"filename": audiotools.Filename(
-                             os.path.basename(filename)),
-                             "directory": audiotools.Filename(directory)},
+                            _.LAB_TRACKCMP_MISSING.format(
+                                filename=audiotools.Filename(
+                                    os.path.basename(filename)),
+                                directory=audiotools.Filename(directory)),
                             fg_color="red").format(msg.info_isatty()))
                     sys.stdout.flush()
                     results.append((filename, None, 0))
@@ -360,9 +361,9 @@ if (__name__ == '__main__'):
                                            key=lambda f: f[0].filename):
                 queue.execute(
                     function=cmp_files,
-                    progress_text=_.LAB_TRACKCMP_CMP %
-                    {"file1": audiotools.Filename(track1.filename),
-                     "file2": audiotools.Filename(track2.filename)},
+                    progress_text=_.LAB_TRACKCMP_CMP.format(
+                        file1=audiotools.Filename(track1.filename),
+                        file2=audiotools.Filename(track2.filename)),
                     completion_output=(cmp_result_tty
                                        if msg.output_isatty() else
                                        cmp_result),
@@ -405,9 +406,9 @@ if (__name__ == '__main__'):
                 sys.exit(1)
         else:
             # comparison mismatch
-            msg.error((_.LAB_TRACKCMP_CMP %
-                       {"file1": audiotools.Filename(args[0]),
-                        "file2": audiotools.Filename(args[1])}) +
+            msg.error(_.LAB_TRACKCMP_CMP.format(
+                           file1=audiotools.Filename(args[0]),
+                           file2=audiotools.Filename(args[1])) +
                       u" : " +
                       audiotools.output_text(
                           _.LAB_TRACKCMP_TYPE_MISMATCH,
@@ -425,7 +426,7 @@ if (__name__ == '__main__'):
                 except audiotools.InvalidFile as err:
                     msg.warning(str(err))
                 except IOError:
-                    msg.warning(_.ERR_OPEN_IOERROR % (path,))
+                    msg.warning(_.ERR_OPEN_IOERROR.format(path))
 
         cd_image = audiofiles[0]
         tracks = audiofiles[1:]
@@ -493,8 +494,8 @@ if (__name__ == '__main__'):
                 track_name = audiotools.Filename(track.filename)
                 queue.execute(
                     function=image_compare,
-                    progress_text=_.LAB_TRACKCMP_CMP %
-                    {"file1": image_name, "file2": track_name},
+                    progress_text=_.LAB_TRACKCMP_CMP.format(file1=image_name,
+                                                            file2=track_name),
                     completion_output=(image_compare_results_tty
                                        if msg.output_isatty()
                                        else image_compare_results),
@@ -547,8 +548,8 @@ if (__name__ == '__main__'):
                 track_name = audiotools.Filename(track.filename)
                 queue.execute(
                     function=image_compare_raw,
-                    progress_text=_.LAB_TRACKCMP_CMP %
-                    {"file1": image_name, "file2": track_name},
+                    progress_text=_.LAB_TRACKCMP_CMP.format(file1=image_name,
+                                                            file2=track_name),
                     completion_output=(image_compare_results_tty
                                        if msg.output_isatty()
                                        else image_compare_results),

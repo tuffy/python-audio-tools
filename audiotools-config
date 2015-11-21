@@ -1193,11 +1193,12 @@ if (__name__ == '__main__'):
                     configfile = open(configpath, 'w')
                     audiotools.config.write(configfile)
                     configfile.close()
-                    msg.info(_.LAB_AT_CONFIG_FILE_WRITTEN %
-                             (audiotools.Filename(configpath),))
+                    msg.info(_.LAB_AT_CONFIG_FILE_WRITTEN.format(
+                                 audiotools.Filename(configpath)))
                 except IOError as err:
-                    msg.error(_.ERR_OPEN_IOERROR %
-                              (audiotools.Filename(configpath),))
+                    msg.error(
+                        _.ERR_OPEN_IOERROR.format(
+                            audiotools.Filename(configpath)))
                     sys.exit(1)
             else:
                 sys.exit(0)
@@ -1233,9 +1234,9 @@ if (__name__ == '__main__'):
             sys.exit(0)
         elif ((options.quality is not None) and
               (options.quality not in AudioType.COMPRESSION_MODES)):
-            msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
-                      {"quality": options.quality,
-                       "type": AudioType.NAME})
+            msg.error(
+                _.ERR_UNSUPPORTED_COMPRESSION_MODE.format(
+                    quality=options.quality, type=AudioType.NAME))
             sys.exit(1)
 
         # verify --joint is positive, if present
@@ -1252,8 +1253,10 @@ if (__name__ == '__main__'):
             configfile = open(configpath, 'w')
             audiotools.config.write(configfile)
             configfile.close()
-            msg.info(_.LAB_AT_CONFIG_FILE_WRITTEN %
-                     (audiotools.Filename(configpath),))
+            msg.info(_.LAB_AT_CONFIG_FILE_WRITTEN.format(
+                         audiotools.Filename(configpath)))
         except IOError as err:
-            msg.error(_.ERR_OPEN_IOERROR % (audiotools.Filename(configpath),))
+            msg.error(
+                _.ERR_OPEN_IOERROR.format(
+                    audiotools.Filename(configpath)))
             sys.exit(1)

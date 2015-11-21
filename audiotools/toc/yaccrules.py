@@ -324,4 +324,4 @@ def p_length_timestamp(t):
 def p_error(t):
     from audiotools.text import ERR_CUE_SYNTAX_ERROR
 
-    raise ValueError(ERR_CUE_SYNTAX_ERROR % (t.lexer.lineno))
+    raise ValueError(ERR_CUE_SYNTAX_ERROR.format(t.lexer.lineno))

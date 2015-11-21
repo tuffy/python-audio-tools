@@ -1505,14 +1505,14 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                 fix1 = text.rstrip()
                 if fix1 != text:
                     fixes_performed.append(
-                        CLEAN_REMOVE_TRAILING_WHITESPACE %
-                        {"field": atom.name.lstrip(b'\xa9').decode('ascii')})
+                        CLEAN_REMOVE_TRAILING_WHITESPACE.format(
+                            atom.name.lstrip(b'\xa9').decode('ascii')))
                 fix2 = fix1.lstrip()
                 if fix2 != fix1:
                     from audiotools.text import CLEAN_REMOVE_LEADING_WHITESPACE
                     fixes_performed.append(
-                        CLEAN_REMOVE_LEADING_WHITESPACE %
-                        {"field": atom.name.lstrip(b'\xa9').decode('ascii')})
+                        CLEAN_REMOVE_LEADING_WHITESPACE.format(
+                            atom.name.lstrip(b'\xa9').decode('ascii')))
                 if len(fix2) > 0:
                     return M4A_ILST_Leaf_Atom(
                         atom.name,
@@ -1520,8 +1520,8 @@ class M4A_META_Atom(MetaData, M4A_Tree_Atom):
                                                     fix2.encode('utf-8'))])
                 else:
                     fixes_performed.append(
-                        CLEAN_REMOVE_EMPTY_TAG %
-                        {"field": atom.name.lstrip(b'\xa9').decode('ascii')})
+                        CLEAN_REMOVE_EMPTY_TAG.format(
+                            atom.name.lstrip(b'\xa9').decode('ascii')))
                     return None
             else:
                 return atom

@@ -378,7 +378,7 @@ class Index(SheetIndex):
         self.__timestamp__ = timestamp
 
     def __repr__(self):
-        return "Index(number=%s, timestamp=%s)".format(
+        return "Index(number={!r},timestamp={!r})".format(
             self.__number__, self.__timestamp__)
 
     @classmethod

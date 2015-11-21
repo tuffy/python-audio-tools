@@ -352,14 +352,16 @@ if (__name__ == '__main__'):
             with open(options.comment_file, "rb") as f:
                 comment_file = f.read().decode('utf-8', 'replace')
         except IOError:
-            msg.error(_.ERR_TRACKTAG_COMMENT_IOERROR %
-                      (audiotools.Filename(options.comment_file),))
+            msg.error(
+                _.ERR_TRACKTAG_COMMENT_IOERROR.format(
+                    audiotools.Filename(options.comment_file)))
             sys.exit(1)
 
         if (((comment_file.count(u"\uFFFD") * 100) //
              len(comment_file)) >= 10):
-            msg.error(_.ERR_TRACKTAG_COMMENT_NOT_UTF8 %
-                      (audiotools.Filename(options.comment_file),))
+            msg.error(
+                _.ERR_TRACKTAG_COMMENT_NOT_UTF8.format(
+                    audiotools.Filename(options.comment_file)))
             sys.exit(1)
     else:
         comment_file = None
@@ -370,7 +372,7 @@ if (__name__ == '__main__'):
                                        messenger=msg,
                                        no_duplicates=True)
     except audiotools.DuplicateFile as err:
-        msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
+        msg.error(_.ERR_DUPLICATE_FILE.format(err.filename))
         sys.exit(1)
 
     if len(tracks) == 0:
@@ -530,15 +532,16 @@ if (__name__ == '__main__'):
                             track.update_metadata(old_metadata)
                         except IOError as err:
                             msg.error(
-                                _.ERR_ENCODING_ERROR %
-                                (audiotools.Filename(track.filename),))
+                                _.ERR_ENCODING_ERROR.format(
+                                    audiotools.Filename(track.filename)))
                             sys.exit(1)
                 else:
                     try:
                         track.set_metadata(new_metadata)
                     except IOError as err:
-                        msg.error(_.ERR_ENCODING_ERROR %
-                                  (audiotools.Filename(track.filename),))
+                        msg.error(
+                            _.ERR_ENCODING_ERROR.format(
+                                audiotools.Filename(track.filename)))
                         sys.exit(1)
         else:
             # apply final metadata to tracks
@@ -547,8 +550,9 @@ if (__name__ == '__main__'):
                 try:
                     track.set_metadata(metadata)
                 except IOError as err:
-                    msg.error(_.ERR_ENCODING_ERROR %
-                              (audiotools.Filename(track.filename),))
+                    msg.error(
+                        _.ERR_ENCODING_ERROR.format(
+                            audiotools.Filename(track.filename)))
                     sys.exit(1)
 
     # add ReplayGain to tracks, if indicated
@@ -569,10 +573,10 @@ if (__name__ == '__main__'):
                     progress_text = _.RG_ADDING_REPLAYGAIN
                     completion_output = _.RG_REPLAYGAIN_ADDED
                 else:
-                    progress_text = _.RG_ADDING_REPLAYGAIN_TO_ALBUM % \
-                        (album_number)
-                    completion_output = _.RG_REPLAYGAIN_ADDED_TO_ALBUM % \
-                        (album_number)
+                    progress_text = \
+                        _.RG_ADDING_REPLAYGAIN_TO_ALBUM.format(album_number)
+                    completion_output = \
+                        _.RG_REPLAYGAIN_ADDED_TO_ALBUM.format(album_number)
 
                 queue.execute(
                     function=add_replay_gain,
@@ -588,7 +592,7 @@ if (__name__ == '__main__'):
                         sys.exit(1)
                 msg.output(
                     _.RG_REPLAYGAIN_REMOVED if album_number is None else
-                    (_.REPLAYGAIN_REMOVED_FROM_ALBUM % (album_number)))
+                    (_.REPLAYGAIN_REMOVED_FROM_ALBUM.format(album_number)))
 
     # execute ReplayGain addition once all tracks have been tagged
     try:

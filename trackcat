@@ -164,21 +164,22 @@ if (__name__ == '__main__'):
     input_filenames = set()
     for filename in map(audiotools.Filename, options.filenames):
         if filename in input_filenames:
-            msg.warning(_.ERR_DUPLICATE_FILE % (filename,))
+            msg.warning(_.ERR_DUPLICATE_FILE.format(filename))
         input_filenames.add(filename)
         try:
             audiofile = audiotools.open(str(filename))
             if audiofile.__class__.supports_to_pcm():
                 audiofiles.append(audiofile)
             else:
-                msg.warning(_.ERR_UNSUPPORTED_TO_PCM %
-                            {"filename": filename, "type": audiofile.NAME})
+                msg.warning(
+                    _.ERR_UNSUPPORTED_TO_PCM.format(
+                        filename=filename, type=audiofile.NAME))
         except audiotools.UnsupportedFile:
-            msg.warning(_.ERR_UNSUPPORTED_FILE % (filename,))
+            msg.warning(_.ERR_UNSUPPORTED_FILE.format(filename))
         except audiotools.InvalidFile as err:
             msg.warning(str(err))
         except IOError:
-            msg.warning(_.ERR_OPEN_IOERROR % (filename,))
+            msg.warning(_.ERR_OPEN_IOERROR.format(filename))
 
     # perform some option sanity checking
     if len(audiofiles) < 1:
@@ -207,7 +208,7 @@ if (__name__ == '__main__'):
     else:
         output_filename = audiotools.Filename(options.filename)
         if output_filename in input_filenames:
-            msg.error(_.ERR_OUTPUT_IS_INPUT % (output_filename,))
+            msg.error(_.ERR_OUTPUT_IS_INPUT.format(output_filename))
             sys.exit(1)
 
     # get the AudioFile class we are converted to
@@ -228,7 +229,7 @@ if (__name__ == '__main__'):
             AudioType = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
 
     if not AudioType.supports_from_pcm():
-        msg.error(_.ERR_UNSUPPORTED_FROM_PCM % {"type": AudioType.NAME})
+        msg.error(_.ERR_UNSUPPORTED_FROM_PCM.format(AudioType.NAME))
         sys.exit(1)
 
     # ensure the selected compression is compatible with that class
@@ -239,9 +240,9 @@ if (__name__ == '__main__'):
     elif options.quality is None:
         options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif options.quality not in AudioType.COMPRESSION_MODES:
-        msg.error(_.ERR_UNSUPPORTED_COMPRESSION_MODE %
-                  {"quality": options.quality,
-                   "type": AudioType.NAME})
+        msg.error(
+            _.ERR_UNSUPPORTED_COMPRESSION_MODE.format(
+                quality=options.quality, type=AudioType.NAME))
         sys.exit(1)
 
     # if embedding a cuesheet, try to read it before doing any work
@@ -269,7 +270,8 @@ if (__name__ == '__main__'):
                 track_length = cuesheet.track_length(cuesheet_track)
                 if ((track_length is not None) and
                     (track_length != input_track.seconds_length())):
-                    msg.error(_.ERR_CUE_LENGTH_MISMATCH % (cuesheet_track))
+                    msg.error(
+                        _.ERR_CUE_LENGTH_MISMATCH.format(cuesheet_track))
                     sys.exit(1)
 
             preserving_pre_gap = True
@@ -283,7 +285,8 @@ if (__name__ == '__main__'):
                 track_length = cuesheet.track_length(cuesheet_track)
                 if ((track_length is not None) and
                     (track_length != input_track.seconds_length())):
-                    msg.error(_.ERR_CUE_LENGTH_MISMATCH % (cuesheet_track))
+                    msg.error(
+                        _.ERR_CUE_LENGTH_MISMATCH.format(cuesheet_track))
                     sys.exit(1)
 
             preserving_pre_gap = False
@@ -333,7 +336,7 @@ if (__name__ == '__main__'):
     if options.interactive:
         # pick options using interactive widget
         output_widget = audiotools.ui.SingleOutputFiller(
-            track_label=_.LAB_TRACKCAT_INPUT % (len(audiofiles)),
+            track_label=_.LAB_TRACKCAT_INPUT.format(len(audiofiles)),
             metadata_choices=metadata_choices,
             input_filenames=input_filenames,
             output_file=str(output_filename),
@@ -430,7 +433,7 @@ if (__name__ == '__main__'):
 
     except audiotools.EncodingError as err:
         progress.clear_rows()
-        msg.error(_.ERR_ENCODING_ERROR % (output_filename,))
+        msg.error(_.ERR_ENCODING_ERROR.format(output_filename))
         sys.exit(1)
     except audiotools.InvalidFilenameFormat as err:
         progress.clear_rows()

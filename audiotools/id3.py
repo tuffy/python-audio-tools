@@ -594,19 +594,19 @@ class ID3v22_T__Frame(object):
 
         # check for an empty tag
         if len(value.strip()) == 0:
-            return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
+            return (None, [CLEAN_REMOVE_EMPTY_TAG.format(field)])
 
         # check trailing whitespace
         fix1 = value.rstrip()
         if fix1 != value:
-            fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
-                                   {"field": field})
+            fixes_performed.append(
+                CLEAN_REMOVE_TRAILING_WHITESPACE.format(field))
 
         # check leading whitespace
         fix2 = fix1.lstrip()
         if fix2 != fix1:
-            fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
-                                   {"field": field})
+            fixes_performed.append(
+                CLEAN_REMOVE_LEADING_WHITESPACE.format(field))
 
         # check leading zeroes for a numerical tag
         if self.id in self.NUMERICAL_IDS:
@@ -615,11 +615,11 @@ class ID3v22_T__Frame(object):
                 from audiotools import config
 
                 if config.getboolean_default("ID3", "pad", False):
-                    fixes_performed.append(CLEAN_ADD_LEADING_ZEROES %
-                                           {"field": field})
+                    fixes_performed.append(
+                        CLEAN_ADD_LEADING_ZEROES.format(field))
                 else:
-                    fixes_performed.append(CLEAN_REMOVE_LEADING_ZEROES %
-                                           {"field": field})
+                    fixes_performed.append(
+                        CLEAN_REMOVE_LEADING_ZEROES.format(field))
         else:
             fix3 = fix2
 
@@ -709,19 +709,19 @@ class ID3v22_TXX_Frame(object):
 
         # check for an empty tag
         if len(value.strip()) == 0:
-            return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
+            return (None, [CLEAN_REMOVE_EMPTY_TAG.format(field)])
 
         # check trailing whitespace
         fix1 = value.rstrip()
         if fix1 != value:
-            fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
-                                   {"field": field})
+            fixes_performed.append(
+                CLEAN_REMOVE_TRAILING_WHITESPACE.format(field))
 
         # check leading whitespace
         fix2 = fix1.lstrip()
         if fix2 != fix1:
-            fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
-                                   {"field": field})
+            fixes_performed.append(
+                CLEAN_REMOVE_LEADING_WHITESPACE.format(field))
 
         return (self.__class__(self.encoding, self.description, fix2),
                 fixes_performed)
@@ -942,19 +942,19 @@ class ID3v22_COM_Frame(object):
 
         # check for an empty tag
         if len(value.strip()) == 0:
-            return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
+            return (None, [CLEAN_REMOVE_EMPTY_TAG.format(field)])
 
         # check trailing whitespace
         fix1 = value.rstrip()
         if fix1 != value:
-            fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
-                                   {"field": field})
+            fixes_performed.append(
+                CLEAN_REMOVE_TRAILING_WHITESPACE.format(field))
 
         # check leading whitespace
         fix2 = fix1.lstrip()
         if fix2 != fix1:
-            fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
-                                   {"field": field})
+            fixes_performed.append(
+                CLEAN_REMOVE_LEADING_WHITESPACE.format(field))
 
         # stripping whitespace shouldn't alter text/description encoding
 
@@ -2238,19 +2238,19 @@ class ID3v24_COMM_Frame(ID3v23_COMM_Frame):
 
         # check for an empty tag
         if len(value.strip()) == 0:
-            return (None, [CLEAN_REMOVE_EMPTY_TAG % {"field": field}])
+            return (None, [CLEAN_REMOVE_EMPTY_TAG.format(field)])
 
         # check trailing whitespace
         fix1 = value.rstrip()
         if fix1 != value:
-            fixes_performed.append(CLEAN_REMOVE_TRAILING_WHITESPACE %
-                                   {"field": field})
+            fixes_performed.append(
+                CLEAN_REMOVE_TRAILING_WHITESPACE.format(field))
 
         # check leading whitespace
         fix2 = fix1.lstrip()
         if fix2 != fix1:
-            fixes_performed.append(CLEAN_REMOVE_LEADING_WHITESPACE %
-                                   {"field": field})
+            fixes_performed.append(
+                CLEAN_REMOVE_LEADING_WHITESPACE.format(field))
 
         # stripping whitespace shouldn't alter text/description encoding
 

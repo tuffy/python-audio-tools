@@ -63,9 +63,9 @@ if (__name__ == '__main__'):
     row = table.row()
     row.add_column(_.LAB_TOTAL_LENGTH, "right")
     row.add_column(u" : ")
-    row.add_column(_.LAB_TRACK_LENGTH_FRAMES % (total_length // 75 // 60,
-                                                total_length // 75 % 60,
-                                                total_length))
+    row.add_column(_.LAB_TRACK_LENGTH_FRAMES.format(total_length // 75 // 60,
+                                                    total_length // 75 % 60,
+                                                    total_length))
 
     row = table.row()
     row.add_column(_.LAB_FREEDB_ID, "right")
@@ -108,8 +108,8 @@ if (__name__ == '__main__'):
         row.add_column(u"{:d}".format(key), "right")
         row.add_column(u" ")
         row.add_column(
-            _.LAB_TRACK_LENGTH % (track_length // 75 // 60,
-                                  track_length // 75 % 60), "right")
+            _.LAB_TRACK_LENGTH.format(track_length // 75 // 60,
+                                      track_length // 75 % 60), "right")
         row.add_column(u" ")
         row.add_column(u"{:d}".format(track_length), "right")
         row.add_column(u" ")

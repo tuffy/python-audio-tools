@@ -1551,9 +1551,9 @@ class UnsupportedChannelMask(EncodingError):
 
         EncodingError.__init__(
             self,
-            ERR_UNSUPPORTED_CHANNEL_MASK %
-            {"target_filename": Filename(filename),
-             "assignment": ChannelMask(mask)})
+            ERR_UNSUPPORTED_CHANNEL_MASK.format(
+                target_filename=Filename(filename),
+                assignment=ChannelMask(mask)))
         self.filename = filename
         self.mask = mask
 
@@ -1569,9 +1569,9 @@ class UnsupportedChannelCount(EncodingError):
 
         EncodingError.__init__(
             self,
-            ERR_UNSUPPORTED_CHANNEL_COUNT %
-            {"target_filename": Filename(filename),
-             "channels": count})
+            ERR_UNSUPPORTED_CHANNEL_COUNT.format(
+                target_filename=Filename(filename),
+                channels=count))
         self.filename = filename
         self.count = count
 
@@ -1587,9 +1587,9 @@ class UnsupportedBitsPerSample(EncodingError):
 
         EncodingError.__init__(
             self,
-            ERR_UNSUPPORTED_BITS_PER_SAMPLE %
-            {"target_filename": Filename(filename),
-             "bps": bits_per_sample})
+            ERR_UNSUPPORTED_BITS_PER_SAMPLE.format(
+                target_filename=Filename(filename),
+                bps=bits_per_sample))
         self.filename = filename
         self.bits_per_sample = bits_per_sample
 
@@ -1792,7 +1792,7 @@ class DuplicateFile(Exception):
         """filename is a Filename object"""
 
         from audiotools.text import ERR_DUPLICATE_FILE
-        Exception.__init__(self, ERR_DUPLICATE_FILE % (filename,))
+        Exception.__init__(self, ERR_DUPLICATE_FILE.format(filename))
         self.filename = filename
 
 
@@ -1803,7 +1803,7 @@ class DuplicateOutputFile(Exception):
         """filename is a Filename object"""
 
         from audiotools.text import ERR_DUPLICATE_OUTPUT_FILE
-        Exception.__init__(self, ERR_DUPLICATE_OUTPUT_FILE % (filename,))
+        Exception.__init__(self, ERR_DUPLICATE_OUTPUT_FILE.format(filename))
         self.filename = filename
 
 
@@ -1814,7 +1814,7 @@ class OutputFileIsInput(Exception):
         """filename is a Filename object"""
 
         from audiotools.text import ERR_OUTPUT_IS_INPUT
-        Exception.__init__(self, ERR_OUTPUT_IS_INPUT % (filename,))
+        Exception.__init__(self, ERR_OUTPUT_IS_INPUT.format(filename))
         self.filename = filename
 
 
@@ -1964,7 +1964,7 @@ def open_files(filename_list, sorted=True, messenger=None,
             if no_duplicates:
                 raise DuplicateFile(filename)
             elif warn_duplicates and (messenger is not None):
-                messenger.warning(ERR_DUPLICATE_FILE % (filename,))
+                messenger.warning(ERR_DUPLICATE_FILE.format(filename))
 
         try:
             with __open__(str(filename), "rb") as f:
@@ -1977,7 +1977,7 @@ def open_files(filename_list, sorted=True, messenger=None,
                 pass
         except IOError as err:
             if messenger is not None:
-                messenger.warning(ERR_OPEN_IOERROR % (filename,))
+                messenger.warning(ERR_OPEN_IOERROR.format(filename))
         except InvalidFile as err:
             if messenger is not None:
                 messenger.error(str(err))
@@ -2039,7 +2039,7 @@ class UnknownAudioType(Exception):
     def error_msg(self, messenger):
         from audiotools.text import ERR_UNSUPPORTED_AUDIO_TYPE
 
-        messenger.error(ERR_UNSUPPORTED_AUDIO_TYPE % (self.suffix,))
+        messenger.error(ERR_UNSUPPORTED_AUDIO_TYPE.format(self.suffix))
 
 
 class AmbiguousAudioType(UnknownAudioType):
@@ -2053,10 +2053,11 @@ class AmbiguousAudioType(UnknownAudioType):
         from audiotools.text import (ERR_AMBIGUOUS_AUDIO_TYPE,
                                      LAB_T_OPTIONS)
 
-        messenger.error(ERR_AMBIGUOUS_AUDIO_TYPE % (self.suffix,))
-        messenger.info(LAB_T_OPTIONS %
-                       (u" or ".join([u"\"{}\"".format(t.NAME.decode('ascii'))
-                                      for t in self.type_list])))
+        messenger.error(ERR_AMBIGUOUS_AUDIO_TYPE.format(self.suffix))
+        messenger.info(
+            LAB_T_OPTIONS.format(
+                (u" or ".join([u"\"{}\"".format(t.NAME.decode('ascii'))
+                               for t in self.type_list]))))
 
 
 def filename_to_type(path):
@@ -3809,7 +3810,7 @@ class UnsupportedTracknameField(Exception):
         from audiotools.text import (ERR_UNKNOWN_FIELD,
                                      LAB_SUPPORTED_FIELDS)
 
-        messenger.error(ERR_UNKNOWN_FIELD % (self.field,))
+        messenger.error(ERR_UNKNOWN_FIELD.format(self.field))
         messenger.info(LAB_SUPPORTED_FIELDS)
         for field in sorted(MetaData.FIELDS +
                             ("album_track_number", "suffix")):

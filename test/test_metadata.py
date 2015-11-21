@@ -1954,9 +1954,9 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(metadata.track_name, u'Foo ')
         self.assertEqual(metadata[b'Title'].data, u'Foo '.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_TRAILING_WHITESPACE %
-                          {"field": b'Title'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_TRAILING_WHITESPACE.format(b'Title'.decode('ascii'))])
         self.assertEqual(cleaned.track_name, u'Foo')
         self.assertEqual(cleaned[b'Title'].data, u'Foo'.encode('utf-8'))
 
@@ -1966,9 +1966,9 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(metadata.track_name, u' Foo')
         self.assertEqual(metadata[b'Title'].data, u' Foo'.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_LEADING_WHITESPACE %
-                          {"field": b'Title'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_LEADING_WHITESPACE.format(b'Title'.decode('ascii'))])
         self.assertEqual(cleaned.track_name, u'Foo')
         self.assertEqual(cleaned[b'Title'].data, u'Foo'.encode('utf-8'))
 
@@ -1978,9 +1978,9 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(metadata.track_name, u'')
         self.assertEqual(metadata[b'Title'].data, u''.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_EMPTY_TAG %
-                          {"field": b'Title'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_EMPTY_TAG.format(b'Title'.decode('ascii'))])
         self.assertIsNone(cleaned.track_name)
         self.assertRaises(KeyError,
                           cleaned.__getitem__,
@@ -1991,9 +1991,9 @@ class WavPackApeTagMetaData(MetaDataTest):
             [ApeTagItem.string(b'Title', u'Track Name 1'),
              ApeTagItem.string(b'Title', u'Track Name 2')])
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_DUPLICATE_TAG %
-                          {"field": b'Title'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_DUPLICATE_TAG.format(b'Title'.decode('ascii'))])
         self.assertEqual(cleaned.tags,
                          [ApeTagItem.string(b'Title', u'Track Name 1')])
 
@@ -2002,9 +2002,9 @@ class WavPackApeTagMetaData(MetaDataTest):
             [ApeTagItem.string(b'title', u'Track Name 1'),
              ApeTagItem.string(b'Title', u'Track Name 2')])
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_DUPLICATE_TAG %
-                          {"field": b'Title'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_DUPLICATE_TAG.format(b'Title'.decode('ascii'))])
         self.assertEqual(cleaned.tags,
                          [ApeTagItem.string(b'title', u'Track Name 1')])
 
@@ -2015,9 +2015,9 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertIsNone(metadata.track_total)
         self.assertEqual(metadata[b'Track'].data, u'01'.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": b'Track'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_FIX_TAG_FORMATTING.format(b'Track'.decode('ascii'))])
         self.assertEqual(cleaned.track_number, 1)
         self.assertIsNone(cleaned.track_total)
         self.assertEqual(cleaned[b'Track'].data, u'1'.encode('utf-8'))
@@ -2028,9 +2028,9 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata[b'Track'].data, u'01/2'.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": b'Track'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_FIX_TAG_FORMATTING.format(b'Track'.decode('ascii'))])
         self.assertEqual(cleaned.track_number, 1)
         self.assertEqual(cleaned.track_total, 2)
         self.assertEqual(cleaned[b'Track'].data, u'1/2'.encode('utf-8'))
@@ -2041,9 +2041,9 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata[b'Track'].data, u'1/02'.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": b'Track'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_FIX_TAG_FORMATTING.format(b'Track'.decode('ascii'))])
         self.assertEqual(cleaned.track_number, 1)
         self.assertEqual(cleaned.track_total, 2)
         self.assertEqual(cleaned[b'Track'].data, u'1/2'.encode('utf-8'))
@@ -2054,9 +2054,9 @@ class WavPackApeTagMetaData(MetaDataTest):
         self.assertEqual(metadata.track_total, 2)
         self.assertEqual(metadata[b'Track'].data, u'01/02'.encode('utf-8'))
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": b'Track'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_FIX_TAG_FORMATTING.format(b'Track'.decode('ascii'))])
         self.assertEqual(cleaned.track_number, 1)
         self.assertEqual(cleaned.track_total, 2)
         self.assertEqual(cleaned[b'Track'].data, u'1/2'.encode('utf-8'))
@@ -2065,63 +2065,63 @@ class WavPackApeTagMetaData(MetaDataTest):
         metadata = ApeTag(
             [ApeTagItem.string(b'Track', u'1/foo')])
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": b'Track'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_FIX_TAG_FORMATTING.format(b'Track'.decode('ascii'))])
         self.assertEqual(cleaned.tags,
                          [ApeTagItem.string(b'Track', u'1')])
 
         metadata = ApeTag(
             [ApeTagItem.string(b'Track', u'foo/2')])
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": b'Track'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_FIX_TAG_FORMATTING.format(b'Track'.decode('ascii'))])
         self.assertEqual(cleaned.tags,
                          [ApeTagItem.string(b'Track', u'0/2')])
 
         metadata = ApeTag(
             [ApeTagItem.string(b'Track', u'1/ baz 2 blah')])
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": b'Track'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_FIX_TAG_FORMATTING.format(b'Track'.decode('ascii'))])
         self.assertEqual(cleaned.tags,
                          [ApeTagItem.string(b'Track', u'1/2')])
 
         metadata = ApeTag(
             [ApeTagItem.string(b'Track', u'foo 1 bar /2')])
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": b'Track'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_FIX_TAG_FORMATTING.format(b'Track'.decode('ascii'))])
         self.assertEqual(cleaned.tags,
                          [ApeTagItem.string(b'Track', u'1/2')])
 
         metadata = ApeTag(
             [ApeTagItem.string(b'Track', u'foo 1 bar / baz 2 blah')])
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": b'Track'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_FIX_TAG_FORMATTING.format(b'Track'.decode('ascii'))])
         self.assertEqual(cleaned.tags,
                          [ApeTagItem.string(b'Track', u'1/2')])
 
         metadata = ApeTag(
             [ApeTagItem.string(b'Track', u'1/2/3')])
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": b'Track'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_FIX_TAG_FORMATTING.format(b'Track'.decode('ascii'))])
         self.assertEqual(cleaned.tags,
                          [ApeTagItem.string(b'Track', u'1/2')])
 
         metadata = ApeTag(
             [ApeTagItem.string(b'Track', u'1 / 2 / 3')])
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_FIX_TAG_FORMATTING %
-                          {"field": b'Track'.decode('ascii')}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_FIX_TAG_FORMATTING.format(b'Track'.decode('ascii'))])
         self.assertEqual(cleaned.tags,
                          [ApeTagItem.string(b'Track', u'1/2')])
 
@@ -2427,9 +2427,9 @@ class ID3v1MetaData(MetaDataTest):
         # check trailing whitespace
         metadata = audiotools.ID3v1Comment(track_name=u"Title ")
         (cleaned, results) = metadata.clean()
-        self.assertEqual(results,
-                         [CLEAN_REMOVE_TRAILING_WHITESPACE %
-                          {"field": u"title"}])
+        self.assertEqual(
+            results,
+            [CLEAN_REMOVE_TRAILING_WHITESPACE.format(u"title")])
         self.assertEqual(
             cleaned,
             audiotools.ID3v1Comment(track_name=u"Title"))
@@ -2437,9 +2437,9 @@ class ID3v1MetaData(MetaDataTest):
         # check leading whitespace
         metadata = audiotools.ID3v1Comment(track_name=u" Title")
         (cleaned, results) = metadata.clean()
-        self.assertEqual(results,
-                         [CLEAN_REMOVE_LEADING_WHITESPACE %
-                          {"field": u"title"}])
+        self.assertEqual(
+            results,
+            [CLEAN_REMOVE_LEADING_WHITESPACE.format(u"title")])
         self.assertEqual(
             cleaned,
             audiotools.ID3v1Comment(track_name=u"Title"))
@@ -3528,9 +3528,9 @@ class ID3v22MetaData(MetaDataTest):
             [audiotools.id3.ID3v22_T__Frame.converted(b"TT2", u"Title ")])
         self.assertEqual(metadata.track_name, u"Title ")
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_TRAILING_WHITESPACE %
-                          {"field": u"TT2"}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_TRAILING_WHITESPACE.format(u"TT2")])
         self.assertEqual(cleaned.track_name, u"Title")
 
         # check leading whitespace
@@ -3538,9 +3538,9 @@ class ID3v22MetaData(MetaDataTest):
             [audiotools.id3.ID3v22_T__Frame.converted(b"TT2", u" Title")])
         self.assertEqual(metadata.track_name, u" Title")
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_LEADING_WHITESPACE %
-                          {"field": u"TT2"}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_LEADING_WHITESPACE.format(u"TT2")])
         self.assertEqual(cleaned.track_name, u"Title")
 
         # check empty fields
@@ -3549,8 +3549,7 @@ class ID3v22MetaData(MetaDataTest):
         self.assertEqual(metadata[b"TT2"][0].data, b"")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
-                         [CLEAN_REMOVE_EMPTY_TAG %
-                          {"field": u"TT2"}])
+                         [CLEAN_REMOVE_EMPTY_TAG.format(u"TT2")])
         self.assertRaises(KeyError,
                           cleaned.__getitem__,
                           b"TT2")
@@ -3572,8 +3571,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"1")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_ADD_LEADING_ZEROES %
-                              {"field": u"TRK"}])
+                             [CLEAN_ADD_LEADING_ZEROES.format(u"TRK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
             self.assertEqual(cleaned[b"TRK"][0].data, b"01")
@@ -3585,8 +3583,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"1/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_ADD_LEADING_ZEROES %
-                              {"field": u"TRK"}])
+                             [CLEAN_ADD_LEADING_ZEROES.format(u"TRK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRK"][0].data, b"01/02")
@@ -3603,8 +3600,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"01")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
             self.assertEqual(cleaned[b"TRK"][0].data, b"1")
@@ -3616,8 +3612,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"01/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRK"][0].data, b"1/2")
@@ -3629,8 +3624,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"1/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRK"][0].data, b"1/2")
@@ -3642,8 +3636,7 @@ class ID3v22MetaData(MetaDataTest):
             self.assertEqual(metadata[b"TRK"][0].data, b"01/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRK"][0].data, b"1/2")
@@ -3760,9 +3753,9 @@ class ID3v23MetaData(ID3v22MetaData):
             [audiotools.id3.ID3v23_T___Frame.converted(b"TIT2", u"Title ")])
         self.assertEqual(metadata.track_name, u"Title ")
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_TRAILING_WHITESPACE %
-                          {"field": u"TIT2"}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_TRAILING_WHITESPACE.format(u"TIT2")])
         self.assertEqual(cleaned.track_name, u"Title")
 
         # check leading whitespace
@@ -3770,9 +3763,9 @@ class ID3v23MetaData(ID3v22MetaData):
             [audiotools.id3.ID3v23_T___Frame.converted(b"TIT2", u" Title")])
         self.assertEqual(metadata.track_name, u" Title")
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_LEADING_WHITESPACE %
-                          {"field": u"TIT2"}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_LEADING_WHITESPACE.format(u"TIT2")])
         self.assertEqual(cleaned.track_name, u"Title")
 
         # check empty fields
@@ -3781,8 +3774,7 @@ class ID3v23MetaData(ID3v22MetaData):
         self.assertEqual(metadata[b"TIT2"][0].data, b"")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
-                         [CLEAN_REMOVE_EMPTY_TAG %
-                          {"field": u"TIT2"}])
+                         [CLEAN_REMOVE_EMPTY_TAG.format(u"TIT2")])
         self.assertRaises(KeyError,
                           cleaned.__getitem__,
                           b"TIT2")
@@ -3804,8 +3796,7 @@ class ID3v23MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"1")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_ADD_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_ADD_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"01")
@@ -3817,8 +3808,7 @@ class ID3v23MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"1/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_ADD_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_ADD_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"01/02")
@@ -3835,8 +3825,7 @@ class ID3v23MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"01")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"1")
@@ -3848,8 +3837,7 @@ class ID3v23MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"01/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
@@ -3861,8 +3849,7 @@ class ID3v23MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"1/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
@@ -3874,8 +3861,7 @@ class ID3v23MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"01/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
@@ -3970,9 +3956,9 @@ class ID3v24MetaData(ID3v22MetaData):
             [audiotools.id3.ID3v24_T___Frame.converted(b"TIT2", u"Title ")])
         self.assertEqual(metadata.track_name, u"Title ")
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_TRAILING_WHITESPACE %
-                          {"field": u"TIT2"}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_TRAILING_WHITESPACE.format(u"TIT2")])
         self.assertEqual(cleaned.track_name, u"Title")
 
         # check leading whitespace
@@ -3980,9 +3966,9 @@ class ID3v24MetaData(ID3v22MetaData):
             [audiotools.id3.ID3v24_T___Frame.converted(b"TIT2", u" Title")])
         self.assertEqual(metadata.track_name, u" Title")
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_LEADING_WHITESPACE %
-                          {"field": u"TIT2"}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_LEADING_WHITESPACE.format(u"TIT2")])
         self.assertEqual(cleaned.track_name, u"Title")
 
         # check empty fields
@@ -3991,8 +3977,7 @@ class ID3v24MetaData(ID3v22MetaData):
         self.assertEqual(metadata[b"TIT2"][0].data, b"")
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
-                         [CLEAN_REMOVE_EMPTY_TAG %
-                          {"field": u"TIT2"}])
+                         [CLEAN_REMOVE_EMPTY_TAG.format(u"TIT2")])
         self.assertRaises(KeyError,
                           cleaned.__getitem__,
                           b"TIT2")
@@ -4014,8 +3999,7 @@ class ID3v24MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"1")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_ADD_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_ADD_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"01")
@@ -4027,8 +4011,7 @@ class ID3v24MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"1/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_ADD_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_ADD_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"01/02")
@@ -4045,8 +4028,7 @@ class ID3v24MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"01")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertIsNone(cleaned.track_total)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"1")
@@ -4058,8 +4040,7 @@ class ID3v24MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"01/2")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
@@ -4071,8 +4052,7 @@ class ID3v24MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"1/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
@@ -4084,8 +4064,7 @@ class ID3v24MetaData(ID3v22MetaData):
             self.assertEqual(metadata[b"TRCK"][0].data, b"01/02")
             (cleaned, fixes) = metadata.clean()
             self.assertEqual(fixes,
-                             [CLEAN_REMOVE_LEADING_ZEROES %
-                              {"field": u"TRCK"}])
+                             [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRCK")])
             self.assertEqual(cleaned.track_number, 1)
             self.assertEqual(cleaned.track_total, 2)
             self.assertEqual(cleaned[b"TRCK"][0].data, b"1/2")
@@ -4601,9 +4580,9 @@ class FlacMetaData(MetaDataTest):
         self.assertEqual(metadata.track_name, u'Foo ')
         (cleaned, results) = metadata.clean()
         self.assertEqual(cleaned.track_name, u'Foo')
-        self.assertEqual(results,
-                         [CLEAN_REMOVE_TRAILING_WHITESPACE %
-                          {"field": u"TITLE"}])
+        self.assertEqual(
+            results,
+            [CLEAN_REMOVE_TRAILING_WHITESPACE.format(u"TITLE")])
 
         # check leading whitespace
         metadata = audiotools.FlacMetaData([
@@ -4611,9 +4590,9 @@ class FlacMetaData(MetaDataTest):
         self.assertEqual(metadata.track_name, u' Foo')
         (cleaned, results) = metadata.clean()
         self.assertEqual(cleaned.track_name, u'Foo')
-        self.assertEqual(results,
-                         [CLEAN_REMOVE_LEADING_WHITESPACE %
-                          {"field": u"TITLE"}])
+        self.assertEqual(
+            results,
+            [CLEAN_REMOVE_LEADING_WHITESPACE.format(u"TITLE")])
 
         # check leading zeroes
         metadata = audiotools.FlacMetaData([
@@ -4628,8 +4607,7 @@ class FlacMetaData(MetaDataTest):
                 audiotools.flac.Flac_VORBISCOMMENT.BLOCK_ID)[u"TRACKNUMBER"],
             [u"1"])
         self.assertEqual(results,
-                         [CLEAN_REMOVE_LEADING_ZEROES %
-                          {"field": u"TRACKNUMBER"}])
+                         [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRACKNUMBER")])
 
         # check empty fields
         metadata = audiotools.FlacMetaData([
@@ -4643,8 +4621,7 @@ class FlacMetaData(MetaDataTest):
                              audiotools.flac.Flac_VORBISCOMMENT([], u"")]))
 
         self.assertEqual(results,
-                         [CLEAN_REMOVE_EMPTY_TAG %
-                          {"field": u"TITLE"}])
+                         [CLEAN_REMOVE_EMPTY_TAG.format(u"TITLE")])
 
         # check mis-tagged images
         with open("metadata_flac_clean.jpg", "rb") as jpg:
@@ -4980,9 +4957,9 @@ class FlacMetaData(MetaDataTest):
                           audiotools.flac.Flac_PICTURE.BLOCK_ID])
 
         (cleaned, results) = metadata.clean()
-        self.assertEqual(results,
-                         [CLEAN_REMOVE_TRAILING_WHITESPACE %
-                          {"field": u"TITLE"}])
+        self.assertEqual(
+            results,
+            [CLEAN_REMOVE_TRAILING_WHITESPACE.format(u"TITLE")])
 
         for block_id in [audiotools.flac.Flac_STREAMINFO.BLOCK_ID,
                          audiotools.flac.Flac_APPLICATION.BLOCK_ID,
@@ -7051,9 +7028,9 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata[b'ilst'][b"\xa9nam"][b'data'].data, b"Foo ")
         self.assertEqual(metadata.track_name, u'Foo ')
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_TRAILING_WHITESPACE %
-                          {"field": "nam"}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_TRAILING_WHITESPACE.format("nam")])
         self.assertEqual(cleaned[b'ilst'][b'\xa9nam'][b'data'].data, b"Foo")
         self.assertEqual(cleaned.track_name, u'Foo')
 
@@ -7069,9 +7046,9 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata[b'ilst'][b"\xa9nam"][b'data'].data, b" Foo")
         self.assertEqual(metadata.track_name, u' Foo')
         (cleaned, fixes) = metadata.clean()
-        self.assertEqual(fixes,
-                         [CLEAN_REMOVE_LEADING_WHITESPACE %
-                          {"field": "nam"}])
+        self.assertEqual(
+            fixes,
+            [CLEAN_REMOVE_LEADING_WHITESPACE.format("nam")])
         self.assertEqual(cleaned[b'ilst'][b'\xa9nam'][b'data'].data, b"Foo")
         self.assertEqual(cleaned.track_name, u'Foo')
 
@@ -7086,8 +7063,7 @@ class M4AMetaDataTest(MetaDataTest):
         self.assertEqual(metadata.track_name, u'')
         (cleaned, fixes) = metadata.clean()
         self.assertEqual(fixes,
-                         [CLEAN_REMOVE_EMPTY_TAG %
-                          {"field": "nam"}])
+                         [CLEAN_REMOVE_EMPTY_TAG.format("nam")])
         self.assertRaises(KeyError,
                           cleaned[b'ilst'].__getitem__,
                           b'\xa9nam')
@@ -8230,18 +8206,18 @@ class VorbisCommentTest(MetaDataTest):
         (cleaned, results) = metadata.clean()
         self.assertEqual(cleaned,
                          audiotools.VorbisComment([u"TITLE=Foo"], u"vendor"))
-        self.assertEqual(results,
-                         [CLEAN_REMOVE_TRAILING_WHITESPACE %
-                          {"field": u"TITLE"}])
+        self.assertEqual(
+            results,
+            [CLEAN_REMOVE_TRAILING_WHITESPACE.format(u"TITLE")])
 
         # check leading whitespace
         metadata = audiotools.VorbisComment([u"TITLE= Foo"], u"vendor")
         (cleaned, results) = metadata.clean()
         self.assertEqual(cleaned,
                          audiotools.VorbisComment([u"TITLE=Foo"], u"vendor"))
-        self.assertEqual(results,
-                         [CLEAN_REMOVE_LEADING_WHITESPACE %
-                          {"field": u"TITLE"}])
+        self.assertEqual(
+            results,
+            [CLEAN_REMOVE_LEADING_WHITESPACE.format(u"TITLE")])
 
         # check leading zeroes
         metadata = audiotools.VorbisComment([u"TRACKNUMBER=001"], u"vendor")
@@ -8250,8 +8226,7 @@ class VorbisCommentTest(MetaDataTest):
                          audiotools.VorbisComment([u"TRACKNUMBER=1"],
                                                   u"vendor"))
         self.assertEqual(results,
-                         [CLEAN_REMOVE_LEADING_ZEROES %
-                          {"field": u"TRACKNUMBER"}])
+                         [CLEAN_REMOVE_LEADING_ZEROES.format(u"TRACKNUMBER")])
 
         # check leading space/zeroes in slashed field
         for field in [u"TRACKNUMBER=01/2",
@@ -8264,9 +8239,9 @@ class VorbisCommentTest(MetaDataTest):
             self.assertEqual(cleaned,
                              audiotools.VorbisComment([u"TRACKNUMBER=1/2"],
                                                       u"vendor"))
-            self.assertEqual(results,
-                             [CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES %
-                              {"field": u"TRACKNUMBER"}])
+            self.assertEqual(
+                results,
+                [CLEAN_REMOVE_LEADING_WHITESPACE_ZEROES.format(u"TRACKNUMBER")])
 
         # check empty fields
         metadata = audiotools.VorbisComment([u"TITLE="], u"vendor")
@@ -8274,16 +8249,14 @@ class VorbisCommentTest(MetaDataTest):
         self.assertEqual(cleaned,
                          audiotools.VorbisComment([], u"vendor"))
         self.assertEqual(results,
-                         [CLEAN_REMOVE_EMPTY_TAG %
-                          {"field": u"TITLE"}])
+                         [CLEAN_REMOVE_EMPTY_TAG.format(u"TITLE")])
 
         metadata = audiotools.VorbisComment([u"TITLE=    "], u"vendor")
         (cleaned, results) = metadata.clean()
         self.assertEqual(cleaned,
                          audiotools.VorbisComment([], u"vendor"))
         self.assertEqual(results,
-                         [CLEAN_REMOVE_EMPTY_TAG %
-                          {"field": u"TITLE"}])
+                         [CLEAN_REMOVE_EMPTY_TAG.format(u"TITLE")])
 
     @METADATA_VORBIS
     def test_aliases(self):

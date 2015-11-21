@@ -34,8 +34,8 @@ def get_image(filename, type):
     try:
         return audiotools.Image.new(open(filename, 'rb').read(), u'', type)
     except IOError:
-        raise audiotools.InvalidImage(_.ERR_OPEN_IOERROR %
-                                      (audiotools.Filename(filename),))
+        raise audiotools.InvalidImage(
+            _.ERR_OPEN_IOERROR.format(audiotools.Filename(filename)))
 
 
 if (__name__ == '__main__'):
@@ -92,7 +92,7 @@ if (__name__ == '__main__'):
                                            messenger=msg,
                                            no_duplicates=True)
     except audiotools.DuplicateFile as err:
-        msg.error(_.ERR_DUPLICATE_FILE % (err.filename,))
+        msg.error(_.ERR_DUPLICATE_FILE.format(err.filename))
         sys.exit(1)
 
     # open images for addition
@@ -143,8 +143,9 @@ if (__name__ == '__main__'):
                 try:
                     track.update_metadata(metadata)
                 except IOError as err:
-                    msg.error(_.ERR_ENCODING_ERROR %
-                              (audiotools.Filename(track.filename),))
+                    msg.error(
+                        _.ERR_ENCODING_ERROR.format(
+                            audiotools.Filename(track.filename)))
                     sys.exit(1)
             else:
                 # metadata doesn't support images, so do nothing
@@ -162,6 +163,7 @@ if (__name__ == '__main__'):
             try:
                 track.set_metadata(metadata)
             except IOError as err:
-                msg.error(_.ERR_ENCODING_ERROR %
-                          (audiotools.Filename(track.filename),))
+                msg.error(
+                    _.ERR_ENCODING_ERROR.format(
+                        audiotools.Filename(track.filename)))
                 sys.exit(1)

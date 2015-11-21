@@ -323,7 +323,7 @@ class FlacMetaData(MetaData):
                     Flac_PICTURE.parse(reader))
             elif (block_type >= 7) and (block_type <= 126):
                 from audiotools.text import ERR_FLAC_RESERVED_BLOCK
-                raise ValueError(ERR_FLAC_RESERVED_BLOCK % (block_type))
+                raise ValueError(ERR_FLAC_RESERVED_BLOCK.format(block_type))
             else:
                 from audiotools.text import ERR_FLAC_INVALID_BLOCK
                 raise ValueError(ERR_FLAC_INVALID_BLOCK)
@@ -2208,8 +2208,8 @@ class FlacAudio(WaveContainer, AiffContainer):
                     # transfer only "data" chunk header to APPLICATION block
                     if header_len != 0:
                         from audiotools.text import ERR_WAV_HEADER_EXTRA_DATA
-                        raise EncodingError(ERR_WAV_HEADER_EXTRA_DATA %
-                                            (header_len))
+                        raise EncodingError(
+                            ERR_WAV_HEADER_EXTRA_DATA.format(header_len))
                     elif not fmt_found:
                         from audiotools.text import ERR_WAV_NO_FMT_CHUNK
                         raise EncodingError(ERR_WAV_NO_FMT_CHUNK)
@@ -2979,7 +2979,7 @@ class OggFlacMetaData(FlacMetaData):
                 block_list.append(Flac_PICTURE.parse(packet))
             elif (block_type >= 7) and (block_type <= 126):
                 from audiotools.text import ERR_FLAC_RESERVED_BLOCK
-                raise ValueError(ERR_FLAC_RESERVED_BLOCK % (block_type))
+                raise ValueError(ERR_FLAC_RESERVED_BLOCK.format(block_type))
             elif block_type == 127:
                 from audiotools.text import ERR_FLAC_INVALID_BLOCK
                 raise ValueError(ERR_FLAC_INVALID_BLOCK)

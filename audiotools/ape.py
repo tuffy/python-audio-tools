@@ -656,8 +656,7 @@ class ApeTag(MetaData):
         for tag in self.tags:
             if tag.key.upper() in used_tags:
                 fixes_performed.append(
-                    CLEAN_REMOVE_DUPLICATE_TAG %
-                    {"field": tag.key.decode('ascii')})
+                    CLEAN_REMOVE_DUPLICATE_TAG.format(tag.key.decode('ascii')))
             elif tag.type == 0:
                 used_tags.add(tag.key.upper())
                 text = tag.__unicode__()
@@ -666,15 +665,15 @@ class ApeTag(MetaData):
                 fix1 = text.rstrip()
                 if fix1 != text:
                     fixes_performed.append(
-                        CLEAN_REMOVE_TRAILING_WHITESPACE %
-                        {"field": tag.key.decode('ascii')})
+                        CLEAN_REMOVE_TRAILING_WHITESPACE.format(
+                            tag.key.decode('ascii')))
 
                 # check leading whitespace
                 fix2 = fix1.lstrip()
                 if fix2 != fix1:
                     fixes_performed.append(
-                        CLEAN_REMOVE_LEADING_WHITESPACE %
-                        {"field": tag.key.decode('ascii')})
+                        CLEAN_REMOVE_LEADING_WHITESPACE.format(
+                            tag.key.decode('ascii')))
 
                 if tag.key in self.INTEGER_ITEMS:
                     if u"/" in fix2:
@@ -713,8 +712,8 @@ class ApeTag(MetaData):
 
                     if fix3 != fix2:
                         fixes_performed.append(
-                            CLEAN_FIX_TAG_FORMATTING %
-                            {"field": tag.key.decode('ascii')})
+                            CLEAN_FIX_TAG_FORMATTING.format(
+                                tag.key.decode('ascii')))
                 else:
                     fix3 = fix2
 
@@ -722,8 +721,7 @@ class ApeTag(MetaData):
                     tag_items.append(ApeTagItem.string(tag.key, fix3))
                 else:
                     fixes_performed.append(
-                        CLEAN_REMOVE_EMPTY_TAG %
-                        {"field": tag.key.decode('ascii')})
+                        CLEAN_REMOVE_EMPTY_TAG.format(tag.key.decode('ascii')))
             else:
                 used_tags.add(tag.key.upper())
                 tag_items.append(tag)

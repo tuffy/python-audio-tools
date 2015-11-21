@@ -7519,45 +7519,45 @@
    than from elsewhere.
 
    See: [[https://docs.python.org/3/library/string.html#formatstrings][Format String Syntax]] for more info.
-*** TODO Update audiotools.text entries
+*** DONE Update audiotools.text entries
 *** DONE Update setup.py
 *** TODO Update utilities
-    - [ ] audiotools-config
-    - [ ] cdda2track
-    - [ ] cddainfo
+    - [X] audiotools-config
+    - [X] cdda2track
+    - [X] cddainfo
     - [X] cddaplay
     - [ ] coverdump
-    - [ ] covertag
-    - [ ] coverview
-    - [ ] dvda2track
+    - [X] covertag
+    - [X] coverview
+    - [X] dvda2track
     - [X] dvdainfo
-    - [ ] track2cdda
-    - [ ] track2track
-    - [ ] trackcat
-    - [ ] trackcmp
-    - [ ] trackinfo
-    - [ ] tracklength
-    - [ ] tracklint
-    - [ ] trackplay
-    - [ ] trackrename
-    - [ ] tracksplit
-    - [ ] tracktag
-    - [ ] trackverify
+    - [X] track2cdda
+    - [X] track2track
+    - [X] trackcat
+    - [X] trackcmp
+    - [X] trackinfo
+    - [X] tracklength
+    - [X] tracklint
+    - [X] trackplay
+    - [X] trackrename
+    - [X] tracksplit
+    - [X] tracktag
+    - [X] trackverify
 *** TODO Update modules
     - [ ] __init__.py
     - [X] accuraterip.py
     - [X] aiff.py
-    - [ ] ape.py
-    - [ ] au.py
+    - [X] ape.py
+    - [X] au.py
     - [X] cdtoc.py
     - [X] coverartarchive.py
-    - [ ] flac.py
+    - [X] flac.py
     - [X] freedb.py
-    - [ ] id3.py
-    - [ ] id3v1.py
+    - [X] id3.py
+    - [X] id3v1.py
     - [X] image.py
     - [X] m4a.py
-    - [ ] m4a_atoms.py
+    - [X] m4a_atoms.py
     - [X] mp3.py
     - [X] mpc.py
     - [X] musicbrainz.py
@@ -7565,19 +7565,19 @@
     - [X] opus.py
     - [X] player.py
     - [X] tta.py
-    - [ ] ui.py
+    - [X] ui.py
     - [X] vorbis.py
-    - [ ] vorbiscomment.py
+    - [X] vorbiscomment.py
     - [X] wav.py
     - [X] wavpack.py
-**** TODO cue
+**** DONE cue
      - [X] __init__.py
      - [X] tokrules.py
-     - [ ] yaccrules.py
-**** TODO toc
-     - [ ] __init__.py
-     - [ ] tokrules.py
-     - [ ] yaccrules.py
+     - [X] yaccrules.py
+**** DONE toc
+     - [X] __init__.py
+     - [X] tokrules.py
+     - [X] yaccrules.py
 *** TODO Update unit tests
     - [X] test.py
     - [X] test_core.py
