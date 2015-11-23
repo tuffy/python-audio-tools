@@ -80,25 +80,25 @@ if (__name__ == '__main__'):
 
         # build a set of (Image, Filename) tuples to be extracted
         output_images = []
-        for (type, images) in image_types.items():
+        for type, images in image_types.items():
             if len(images) != 1:
                 FILE_TEMPLATE = \
-                    "%(prefix)s%(filename)s%(filenum)2.2d.%(suffix)s"
+                    "{prefix}{filename}{filenum:02d}.{suffix}"
             else:
                 FILE_TEMPLATE = \
-                    "%(prefix)s%(filename)s.%(suffix)s"
+                    "{prefix}{filename}.{suffix}"
 
-            for (i, image) in enumerate(images):
+            for i, image in enumerate(images):
                 output_images.append(
                     (image,
                      audiotools.Filename(
                          os.path.join(
                              options.dir,
-                             FILE_TEMPLATE % {
-                                 "prefix": options.prefix,
-                                 "filename": FILENAME_TYPES[image.type],
-                                 "filenum": i + 1,
-                                 "suffix": image.suffix()}))))
+                             FILE_TEMPLATE.format(
+                                prefix=options.prefix,
+                                filename=FILENAME_TYPES[image.type],
+                                filenum=i + 1,
+                                suffix=image.suffix())))))
 
         # ensure our input file isn't the same
         # as any of the proposed files to extract

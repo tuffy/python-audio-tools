@@ -5419,7 +5419,8 @@ def output_progress(u, current, total):
     indicating the current progress"""
 
     if total > 1:
-        return u"[%%%d.d/%%d]  %%s" % (len(str(total))) % (current, total, u)
+        return u"[{{:{:d}d}}/{{:d}}]  {{}}".format(
+            len(str(total))).format(current, total, u)
     else:
         return u
 

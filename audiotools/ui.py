@@ -2811,8 +2811,8 @@ def process_output_options(metadata_choices,
 
 class PlayerTTY(object):
     OUTPUT_FORMAT = (u"{track_number:d}/{track_total:d} " +
-                     u"[{sent_minutes:d}:{sent_seconds:d} / " +
-                     u"{total_minutes:d}:{total_seconds:d}] " +
+                     u"[{sent_minutes:d}:{sent_seconds:02d} / " +
+                     u"{total_minutes:d}:{total_seconds:02d}] " +
                      u"{channels:d}ch {sample_rate} " +
                      u"{bits_per_sample:d}-bit")
 

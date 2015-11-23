@@ -7508,7 +7508,7 @@
 **** DONE Add unit tests
 *** TODO Update trackverify
 **** TODO Add unit tests
-** TODO Convert old string formatting to new .format()-based formatting
+** DONE Convert old string formatting to new .format()-based formatting
    That is, instead of using: "foo %s bar" % (argument)
    it's better to use "foo {} bar".format(argument)
    since the new format method is recommended for new code
@@ -7521,12 +7521,12 @@
    See: [[https://docs.python.org/3/library/string.html#formatstrings][Format String Syntax]] for more info.
 *** DONE Update audiotools.text entries
 *** DONE Update setup.py
-*** TODO Update utilities
+*** DONE Update utilities
     - [X] audiotools-config
     - [X] cdda2track
     - [X] cddainfo
     - [X] cddaplay
-    - [ ] coverdump
+    - [X] coverdump
     - [X] covertag
     - [X] coverview
     - [X] dvda2track
@@ -7543,8 +7543,8 @@
     - [X] tracksplit
     - [X] tracktag
     - [X] trackverify
-*** TODO Update modules
-    - [ ] __init__.py
+*** DONE Update modules
+    - [X] __init__.py
     - [X] accuraterip.py
     - [X] aiff.py
     - [X] ape.py
@@ -7578,13 +7578,13 @@
      - [X] __init__.py
      - [X] tokrules.py
      - [X] yaccrules.py
-*** TODO Update unit tests
+*** DONE Update unit tests
     - [X] test.py
     - [X] test_core.py
     - [X] test_formats.py
-    - [ ] test_metadata.py
+    - [X] test_metadata.py
     - [X] test_streams.py
-    - [ ] test_utils.py
+    - [X] test_utils.py
 ** TODO Support MBID tags
    These are basically direct MusicBrainz links rather than using
    calculated disc IDs to perform lookups.
