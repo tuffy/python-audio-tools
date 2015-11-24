@@ -201,15 +201,29 @@ class MPCAudio(ApeTaggedAudio, AudioFile):
         if (compression is None) or (compression not in cls.COMPRESSION_MODES):
             compression = __default_quality__(cls.NAME)
 
-        if total_pcm_frames is not None:
-            from audiotools import CounterPCMReader
-            pcmreader = CounterPCMReader(pcmreader)
+        if pcmreader.sample_rate in (32000, 37800, 44100, 48000):
+            sample_rate = pcmreader.sample_rate
+
+            if total_pcm_frames is not None:
+                from audiotools import CounterPCMReader
+                pcmreader = CounterPCMReader(pcmreader)
+        else:
+            from bisect import bisect
+
+            sample_rate = [32000,
+                           32000,
+                           37800,
+                           44100,
+                           48000][bisect([32000, 37800, 44100, 4800],
+                                         pcmreader.sample_rate)]
+
+            total_pcm_frames = None
 
         try:
             encode_mpc(
                 filename,
                 PCMConverter(pcmreader,
-                             sample_rate=pcmreader.sample_rate,
+                             sample_rate=sample_rate,
                              channels=min(pcmreader.channels, 2),
                              channel_mask=int(ChannelMask.from_channels(
                                 min(pcmreader.channels, 2))),

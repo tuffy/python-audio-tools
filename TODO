@@ -7420,7 +7420,7 @@
 ** TODO Add better metadata merge strategies
    These could be used by trackcat and others to combine MetaData objects
    in a useful way.
-*** TODO Add metadata1.intersection(metadata2) -> metadata3 method
+*** DONE Add metadata1.intersection(metadata2) -> metadata3 method
     metadata3 contains fields that are in both metadata1 and metadata2
     and contain the same values
 
@@ -7628,7 +7628,7 @@
     If cuesheet is given an indicates pre-emphasis,
     re-add it when concatenating files to image
 **** TODO Add unit test
-** TODO Add wider --cue support
+** DONE Add wider --cue support
 *** DONE Add Sheet.from_cddareader() method
     this won't account for all index points just yet,
     but should should handle disc pre-gap and round-trip correctly

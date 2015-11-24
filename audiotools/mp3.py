@@ -669,7 +669,6 @@ class MP2Audio(MP3Audio):
                                 __default_quality__,
                                 EncodingError)
         from audiotools.encoders import encode_mp2
-        import bisect
 
         if (((compression is None) or
              (compression not in cls.COMPRESSION_MODES))):
@@ -677,18 +676,20 @@ class MP2Audio(MP3Audio):
 
         if pcmreader.sample_rate in (32000, 48000, 44100):
             sample_rate = pcmreader.sample_rate
+
+            if total_pcm_frames is not None:
+                from audiotools import CounterPCMReader
+                pcmreader = CounterPCMReader(pcmreader)
         else:
+            from bisect import bisect
+
             sample_rate = [32000,
                            32000,
                            44100,
-                           48000][bisect.bisect([32000,
-                                                 44100,
-                                                 48000],
-                                                pcmreader.sample_rate)]
+                           48000][bisect([32000, 44100, 48000],
+                                         pcmreader.sample_rate)]
 
-        if total_pcm_frames is not None:
-            from audiotools import CounterPCMReader
-            pcmreader = CounterPCMReader(pcmreader)
+            total_pcm_frames = None
 
         try:
             encode_mp2(filename,
