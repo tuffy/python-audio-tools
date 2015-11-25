@@ -201,6 +201,11 @@ class MPCAudio(ApeTaggedAudio, AudioFile):
         if (compression is None) or (compression not in cls.COMPRESSION_MODES):
             compression = __default_quality__(cls.NAME)
 
+        if pcmreader.bits_per_sample not in {8, 16, 24}:
+            from audiotools import UnsupportedBitsPerSample
+            pcmreader.close()
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
+
         if pcmreader.sample_rate in (32000, 37800, 44100, 48000):
             sample_rate = pcmreader.sample_rate
 

@@ -446,6 +446,14 @@ class WavPackAudio(ApeTaggedAudio, ApeGainedAudio, WaveContainer):
         from audiotools import EncodingError
         from audiotools import __default_quality__
 
+        if pcmreader.bits_per_sample not in (8, 16, 24):
+            # WavPack technically supports up to 32 bits-per-sample
+            # but nothing else does
+            # so I'll treat it as unsupported for now
+            from audiotools import UnsupportedBitsPerSample
+            pcmreader.close()
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
+
         if (((compression is None) or
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)

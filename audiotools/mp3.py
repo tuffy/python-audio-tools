@@ -250,6 +250,11 @@ class MP3Audio(AudioFile):
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
+        if pcmreader.bits_per_sample not in {8, 16, 24}:
+            from audiotools import UnsupportedBitsPerSample
+            pcmreader.close()
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
+
         try:
             if total_pcm_frames is not None:
                 from audiotools import CounterPCMReader
@@ -673,6 +678,11 @@ class MP2Audio(MP3Audio):
         if (((compression is None) or
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
+
+        if pcmreader.bits_per_sample not in {8, 16, 24}:
+            from audiotools import UnsupportedBitsPerSample
+            pcmreader.close()
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
 
         if pcmreader.sample_rate in (32000, 48000, 44100):
             sample_rate = pcmreader.sample_rate

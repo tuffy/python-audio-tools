@@ -234,6 +234,11 @@ class VorbisAudio(AudioFile):
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
+        if pcmreader.bits_per_sample not in {8, 16, 24}:
+            from audiotools import UnsupportedBitsPerSample
+            pcmreader.close()
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
+
         if (pcmreader.channels > 2) and (pcmreader.channels <= 8):
             channel_mask = int(pcmreader.channel_mask)
             if ((channel_mask != 0) and
@@ -245,6 +250,7 @@ class VorbisAudio(AudioFile):
                   0x70f,     # FL, FC, FR, SL, SR, BC, LFE
                   0x63f))):  # FL, FC, FR, SL, SR, BL, BR, LFE
                 from audiotools import UnsupportedChannelMask
+                pcmreader.close()
                 raise UnsupportedChannelMask(filename, channel_mask)
 
         if total_pcm_frames is not None:

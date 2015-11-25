@@ -201,6 +201,11 @@ class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
         from audiotools.encoders import encode_tta
         from audiotools.bitstream import BitstreamWriter
 
+        if pcmreader.bits_per_sample not in {8, 16, 24}:
+            from audiotools import UnsupportedBitsPerSample
+            pcmreader.close()
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
+
         # open output file right away
         # so we can fail as soon as possible
         try:

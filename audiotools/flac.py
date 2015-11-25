@@ -1428,28 +1428,28 @@ class Flac_PICTURE(Image):
         for example, an image of type 0 returns "Front Cover"
         """
 
-        return {0: "Other",
-                1: "File icon",
-                2: "Other file icon",
-                3: "Cover (front)",
-                4: "Cover (back)",
-                5: "Leaflet page",
-                6: "Media",
-                7: "Lead artist / lead performer / soloist",
-                8: "Artist / Performer",
-                9: "Conductor",
-                10: "Band / Orchestra",
-                11: "Composer",
-                12: "Lyricist / Text writer",
-                13: "Recording Location",
-                14: "During recording",
-                15: "During performance",
-                16: "Movie / Video screen capture",
-                17: "A bright colored fish",
-                18: "Illustration",
-                19: "Band/Artist logotype",
-                20: "Publisher / Studio logotype"}.get(self.picture_type,
-                                                       "Other")
+        return {0: u"Other",
+                1: u"File icon",
+                2: u"Other file icon",
+                3: u"Cover (front)",
+                4: u"Cover (back)",
+                5: u"Leaflet page",
+                6: u"Media",
+                7: u"Lead artist / lead performer / soloist",
+                8: u"Artist / Performer",
+                9: u"Conductor",
+                10: u"Band / Orchestra",
+                11: u"Composer",
+                12: u"Lyricist / Text writer",
+                13: u"Recording Location",
+                14: u"During recording",
+                15: u"During performance",
+                16: u"Movie / Video screen capture",
+                17: u"A bright colored fish",
+                18: u"Illustration",
+                19: u"Band/Artist logotype",
+                20: u"Publisher / Studio logotype"}.get(self.picture_type,
+                                                        u"Other")
 
     def clean(self):
         from audiotools.image import image_metrics
@@ -1950,7 +1950,6 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         from audiotools.encoders import encode_flac
         from audiotools import EncodingError
-        from audiotools import UnsupportedChannelCount
         from audiotools import __default_quality__
         from audiotools import VERSION
 
@@ -2005,7 +2004,14 @@ class FlacAudio(WaveContainer, AiffContainer):
                   "min_residual_partition_order": 0,
                   "max_residual_partition_order": 6}}[compression]
 
+        if pcmreader.bits_per_sample not in {8, 16, 24}:
+            from audiotools import UnsupportedBitsPerSample
+            pcmreader.close()
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
+
         if pcmreader.channels > 8:
+            from audiotools import UnsupportedChannelCount
+            pcmreader.close()
             raise UnsupportedChannelCount(filename, pcmreader.channels)
 
         if (pcmreader.channel_mask not in
@@ -2021,7 +2027,7 @@ class FlacAudio(WaveContainer, AiffContainer):
                  0x060F, # 6ch - L, R, C, LFE, side left, side right
                  0}):
             from audiotools import UnsupportedChannelMask
-
+            pcmreader.close()
             raise UnsupportedChannelMask(filename, pcmreader.channel_mask)
 
         try:
@@ -3048,449 +3054,6 @@ class OggFlacMetaData(FlacMetaData):
                 sequence_number += 1
 
         return sequence_number
-
-
-class OggFlacAudio(FlacAudio):
-    """a Free Lossless Audio Codec file inside an Ogg container"""
-
-    from audiotools.text import (COMP_FLAC_0, COMP_FLAC_8)
-
-    SUFFIX = "oga"
-    NAME = SUFFIX
-    DESCRIPTION = u"Ogg FLAC"
-    DEFAULT_COMPRESSION = "8"
-    COMPRESSION_MODES = tuple(map(str, range(0, 9)))
-    COMPRESSION_DESCRIPTIONS = {"0": COMP_FLAC_0,
-                                "8": COMP_FLAC_8}
-    BINARIES = ("flac",)
-    BINARY_URLS = {"flac": "http://flac.sourceforge.net"}
-
-    METADATA_CLASS = OggFlacMetaData
-
-    def __init__(self, filename):
-        """filename is a plain string"""
-
-        AudioFile.__init__(self, filename)
-        self.__samplerate__ = 0
-        self.__channels__ = 0
-        self.__bitspersample__ = 0
-        self.__total_frames__ = 0
-
-        try:
-            self.__read_streaminfo__()
-        except IOError as msg:
-            raise InvalidFLAC(str(msg))
-
-    def bits_per_sample(self):
-        """returns an integer number of bits-per-sample this track contains"""
-
-        return self.__bitspersample__
-
-    def channels(self):
-        """returns an integer number of channels this track contains"""
-
-        return self.__channels__
-
-    def total_frames(self):
-        """returns the total PCM frames of the track as an integer"""
-
-        return self.__total_frames__
-
-    def sample_rate(self):
-        """returns the rate of the track's audio as an integer number of Hz"""
-
-        return self.__samplerate__
-
-    @classmethod
-    def supports_metadata(cls):
-        """returns True if this audio type supports MetaData"""
-
-        return True
-
-    def get_metadata(self):
-        """returns a MetaData object, or None
-
-        raise ValueError if some error reading metadata
-        raises IOError if unable to read the file"""
-
-        from audiotools.ogg import PacketReader, PageReader
-
-        try:
-            with open(self.filename, "rb") as f:
-                return OggFlacMetaData.parse(PacketReader(PageReader(f)))
-        except ValueError:
-            return None
-
-    def update_metadata(self, metadata):
-        """takes this track's current MetaData object
-        as returned by get_metadata() and sets this track's metadata
-        with any fields updated in that object
-
-        raises IOError if unable to write the file
-        """
-
-        import os
-        from audiotools.ogg import (PageReader, PacketReader, PageWriter)
-        from audiotools import TemporaryFile
-
-        if metadata is None:
-            return None
-        elif not isinstance(metadata, OggFlacMetaData):
-            from audiotools.text import ERR_FOREIGN_METADATA
-            raise ValueError(ERR_FOREIGN_METADATA)
-        elif not os.access(self.filename, os.W_OK):
-            raise IOError(self.filename)
-
-        # always overwrite Ogg FLAC with fresh metadata
-        #
-        # The trouble with Ogg FLAC padding is that Ogg header overhead
-        # requires a variable amount of overhead bytes per Ogg page
-        # which makes it very difficult to calculate how many
-        # bytes to allocate to the PADDING packet.
-        # We'd have to build a bunch of empty pages for padding
-        # then go back and fill-in the initial padding page's length
-        # field before re-checksumming it.
-
-        original_ogg = PageReader(open(self.filename, "rb"))
-        new_ogg = PageWriter(TemporaryFile(self.filename))
-
-        # skip the metadata packets in the original file
-        OggFlacMetaData.parse(PacketReader(original_ogg))
-
-        # write our new comment blocks to the new file
-        sequence_number = metadata.build(new_ogg, self.__serial_number__)
-
-        # transfer the remaining pages from the original file to the new file
-        page = original_ogg.read()
-        page.sequence_number = sequence_number
-        sequence_number += 1
-        new_ogg.write(page)
-        while not page.stream_end:
-            page = original_ogg.read()
-            page.sequence_number = sequence_number
-            sequence_number += 1
-            new_ogg.write(page)
-
-        original_ogg.close()
-        new_ogg.close()
-
-    def __read_streaminfo__(self):
-        from audiotools.bitstream import BitstreamReader
-
-        with BitstreamReader(open(self.filename, "rb"), True) as ogg_reader:
-            (magic_number,
-             version,
-             header_type,
-             granule_position,
-             self.__serial_number__,
-             page_sequence_number,
-             checksum,
-             segment_count) = ogg_reader.parse("4b 8u 8u 64S 32u 32u 32u 8u")
-
-            if magic_number != b'OggS':
-                from audiotools.text import ERR_OGG_INVALID_MAGIC_NUMBER
-                raise InvalidFLAC(ERR_OGG_INVALID_MAGIC_NUMBER)
-            if version != 0:
-                from audiotools.text import ERR_OGG_INVALID_VERSION
-                raise InvalidFLAC(ERR_OGG_INVALID_VERSION)
-
-            segment_length = ogg_reader.read(8)
-
-            ogg_reader.set_endianness(0)
-
-            (packet_byte,
-             ogg_signature,
-             major_version,
-             minor_version,
-             self.__header_packets__,
-             flac_signature,
-             block_type,
-             block_length,
-             minimum_block_size,
-             maximum_block_size,
-             minimum_frame_size,
-             maximum_frame_size,
-             self.__samplerate__,
-             self.__channels__,
-             self.__bitspersample__,
-             self.__total_frames__,
-             self.__md5__) = ogg_reader.parse(
-                "8u 4b 8u 8u 16u 4b 8u 24u 16u 16u 24u 24u 20u 3u 5u 36U 16b")
-
-            if packet_byte != 0x7F:
-                from audiotools.text import ERR_OGGFLAC_INVALID_PACKET_BYTE
-                raise InvalidFLAC(ERR_OGGFLAC_INVALID_PACKET_BYTE)
-            if ogg_signature != b'FLAC':
-                from audiotools.text import ERR_OGGFLAC_INVALID_OGG_SIGNATURE
-                raise InvalidFLAC(ERR_OGGFLAC_INVALID_OGG_SIGNATURE)
-            if major_version != 1:
-                from audiotools.text import ERR_OGGFLAC_INVALID_MAJOR_VERSION
-                raise InvalidFLAC(ERR_OGGFLAC_INVALID_MAJOR_VERSION)
-            if minor_version != 0:
-                from audiotools.text import ERR_OGGFLAC_INVALID_MINOR_VERSION
-                raise InvalidFLAC(ERR_OGGFLAC_INVALID_MINOR_VERSION)
-            if flac_signature != b'fLaC':
-                from audiotools.text import ERR_OGGFLAC_VALID_FLAC_SIGNATURE
-                raise InvalidFLAC(ERR_OGGFLAC_VALID_FLAC_SIGNATURE)
-
-            self.__channels__ += 1
-            self.__bitspersample__ += 1
-
-    def to_pcm(self):
-        """returns a PCMReader object containing the track's PCM data"""
-
-        from audiotools import BIN, PCMFileReader
-        import subprocess
-        import os
-        sub = subprocess.Popen(
-            [BIN["flac"], "-d", "-o", "-",
-             "--force-raw-format",
-             "--endian=little",
-             "--sign=signed",
-             self.filename],
-             stdout=subprocess.PIPE,
-             stderr=subprocess.DEVNULL if hasattr(subprocess, "DEVNULL") else
-             open(os.devnull, "wb"))
-        return PCMFileReader(sub.stdout,
-                             sample_rate=self.sample_rate(),
-                             channels=self.channels(),
-                             channel_mask=int(self.channel_mask()),
-                             bits_per_sample=self.bits_per_sample(),
-                             process=sub,
-                             signed=True,
-                             big_endian=False)
-
-    @classmethod
-    def from_pcm(cls, filename, pcmreader,
-                 compression=None,
-                 total_pcm_frames=None):
-        """encodes a new file from PCM data
-
-        takes a filename string, PCMReader object,
-        optional compression level string and
-        optional total_pcm_frames integer
-        encodes a new audio file from pcmreader's data
-        at the given filename with the specified compression level
-        and returns a new OggFlacAudio object"""
-
-        from audiotools import BIN
-        from audiotools import transfer_framelist_data
-        from audiotools import ignore_sigint
-        from audiotools import EncodingError
-        from audiotools import DecodingError
-        from audiotools import UnsupportedChannelCount
-        from audiotools import __default_quality__
-        from audiotools import CounterPCMReader
-        import subprocess
-        import os
-
-        SUBSTREAM_SAMPLE_RATES = {8000, 16000, 22050, 24000, 32000,
-                                  44100, 48000, 96000}
-        SUBSTREAM_BITS = {8, 12, 16, 20, 24}
-
-        if ((compression is None) or (compression not in
-                                      cls.COMPRESSION_MODES)):
-            compression = __default_quality__(cls.NAME)
-
-        if (((pcmreader.sample_rate in SUBSTREAM_SAMPLE_RATES) and
-             (pcmreader.bits_per_sample in SUBSTREAM_BITS))):
-            lax = []
-        else:
-            lax = ["--lax"]
-
-        if pcmreader.channels > 8:
-            raise UnsupportedChannelCount(filename, pcmreader.channels)
-
-        if pcmreader.channel_mask == 0:
-            if pcmreader.channels <= 6:
-                channel_mask = {1: 0x0004,
-                                2: 0x0003,
-                                3: 0x0007,
-                                4: 0x0033,
-                                5: 0x0037,
-                                6: 0x003F}[pcmreader.channels]
-            else:
-                channel_mask = 0
-        elif (pcmreader.channel_mask in
-              (0x0001,    # 1ch - mono
-               0x0004,    # 1ch - mono
-               0x0003,    # 2ch - left, right
-               0x0007,    # 3ch - left, right, center
-               0x0033,    # 4ch - left, right, back left, back right
-               0x0603,    # 4ch - left, right, side left, side right
-               0x0037,    # 5ch - L, R, C, back left, back right
-               0x0607,    # 5ch - L, R, C, side left, side right
-               0x003F,    # 6ch - L, R, C, LFE, back left, back right
-               0x060F)):  # 6ch - L, R, C, LFE, side left, side right
-            channel_mask = pcmreader.channel_mask
-        else:
-            from audiotools import UnsupportedChannelMask
-
-            raise UnsupportedChannelMask(filename, pcmreader.channel_mask)
-
-        if total_pcm_frames is not None:
-            pcmreader = CounterPCMReader(pcmreader)
-
-        devnull = open(os.devnull, 'wb')
-
-        sub = subprocess.Popen([BIN['flac']] + lax +
-                               ["-s", "-f", "-%s" % (compression),
-                                "-V", "--ogg",
-                                "--endian=little",
-                                "--channels=%d" % (pcmreader.channels),
-                                "--bps=%d" % (pcmreader.bits_per_sample),
-                                "--sample-rate=%d" % (pcmreader.sample_rate),
-                                "--sign=signed",
-                                "--force-raw-format",
-                                "-o", filename, "-"],
-                               stdin=subprocess.PIPE,
-                               stdout=devnull,
-                               stderr=devnull,
-                               preexec_fn=ignore_sigint)
-
-        try:
-            transfer_framelist_data(pcmreader, sub.stdin.write)
-        except (ValueError, IOError) as err:
-            try:
-                sub.stdin.close()
-            except:
-                pass
-            sub.wait()
-            cls.__unlink__(filename)
-            raise EncodingError(str(err))
-        except Exception:
-            try:
-                sub.stdin.close()
-            except:
-                pass
-            sub.wait()
-            cls.__unlink__(filename)
-            raise
-        finally:
-            devnull.close()
-
-        sub.stdin.close()
-
-        if ((total_pcm_frames is not None) and
-            (total_pcm_frames != pcmreader.frames_written)):
-            from audiotools.text import ERR_TOTAL_PCM_FRAMES_MISMATCH
-            cls.__unlink__(filename)
-            raise EncodingError(ERR_TOTAL_PCM_FRAMES_MISMATCH)
-
-        if sub.wait() == 0:
-            oggflac = OggFlacAudio(filename)
-            if ((((pcmreader.channels > 2) or
-                  (pcmreader.bits_per_sample > 16)) and
-                 (channel_mask != 0))):
-                metadata = oggflac.get_metadata()
-                vorbis = metadata.get_block(Flac_VORBISCOMMENT.BLOCK_ID)
-                vorbis[u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [
-                    u"0x{:04X}".format(channel_mask)]
-                oggflac.update_metadata(metadata)
-            return oggflac
-        else:
-            raise EncodingError(u"error encoding file with flac")
-
-    def clean(self, output_filename):
-        """cleans the file of known data and metadata problems
-
-        output_filename is an optional filename of the fixed file
-        if present, a new AudioFile is written to that path
-        otherwise, only a dry-run is performed and no new file is written
-
-        return list of fixes performed as Unicode strings
-
-        raises IOError if unable to write the file or its metadata
-        raises ValueError if the file has errors of some sort
-        """
-
-        import os.path
-
-        fixes_performed = []
-        with open(self.filename, "rb") as input_f:
-            # remove ID3 tags from before and after FLAC stream
-            stream_size = os.path.getsize(self.filename)
-
-            stream_offset = skip_id3v2_comment(input_f)
-            if stream_offset > 0:
-                from audiotools.text import CLEAN_FLAC_REMOVE_ID3V2
-                fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V2)
-                stream_size -= stream_offset
-
-            try:
-                input_f.seek(-128, 2)
-                if input_f.read(3) == b'TAG':
-                    from audiotools.text import CLEAN_FLAC_REMOVE_ID3V1
-                    fixes_performed.append(CLEAN_FLAC_REMOVE_ID3V1)
-                    stream_size -= 128
-            except IOError:
-                # file isn't 128 bytes long
-                pass
-
-            if output_filename is not None:
-                with open(output_filename, "wb") as output_f:
-                    input_f.seek(stream_offset, 0)
-                    while stream_size > 0:
-                        s = input_f.read(4096)
-                        if len(s) > stream_size:
-                            s = s[0:stream_size]
-                        output_f.write(s)
-                        stream_size -= len(s)
-
-                output_track = self.__class__(output_filename)
-
-            metadata = self.get_metadata()
-            metadata_size = metadata.size()
-
-            # fix empty MD5SUM
-            if self.__md5__ == b"\x00" * 16:
-                from hashlib import md5
-                from audiotools import transfer_framelist_data
-
-                md5sum = md5()
-                transfer_framelist_data(
-                    self.to_pcm(),
-                    md5sum.update,
-                    signed=True,
-                    big_endian=False)
-                metadata.get_block(
-                    Flac_STREAMINFO.BLOCK_ID).md5sum = md5sum.digest()
-                from audiotools.text import CLEAN_FLAC_POPULATE_MD5
-                fixes_performed.append(CLEAN_FLAC_POPULATE_MD5)
-
-            # fix missing WAVEFORMATEXTENSIBLE_CHANNEL_MASK
-            if (((self.channels() > 2) or
-                 (self.bits_per_sample() > 16))):
-                from audiotools.text import CLEAN_FLAC_ADD_CHANNELMASK
-
-                try:
-                    vorbis_comment = metadata.get_block(
-                        Flac_VORBISCOMMENT.BLOCK_ID)
-                except IndexError:
-                    from audiotools import VERSION
-
-                    vorbis_comment = Flac_VORBISCOMMENT(
-                        [], u"Python Audio Tools {}".format(VERSION))
-
-                if ((u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK" not in
-                     vorbis_comment.keys())):
-                    fixes_performed.append(CLEAN_FLAC_ADD_CHANNELMASK)
-                    vorbis_comment[
-                        u"WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
-                        [u"0x{:04X}".format(int(self.channel_mask()))]
-
-                    metadata.replace_blocks(
-                        Flac_VORBISCOMMENT.BLOCK_ID,
-                        [vorbis_comment])
-
-            # fix remaining metadata problems
-            # which automatically shifts STREAMINFO to the right place
-            # (the message indicating the fix has already been output)
-            (metadata, metadata_fixes) = metadata.clean()
-            if output_filename is not None:
-                output_track.update_metadata(metadata)
-
-            return fixes_performed + metadata_fixes
 
 
 def sizes_to_offsets(sizes):

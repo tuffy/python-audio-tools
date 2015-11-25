@@ -497,6 +497,11 @@ class M4AAudio_faac(M4ATaggedAudio, AudioFile):
                                       cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
+        if pcmreader.bits_per_sample not in {8, 16, 24}:
+            from audiotools import UnsupportedBitsPerSample
+            pcmreader.close()
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
+
         if pcmreader.channels > 2:
             pcmreader = PCMConverter(pcmreader,
                                      sample_rate=pcmreader.sample_rate,

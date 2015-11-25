@@ -67,32 +67,26 @@ def BLANK_PCM_Reader(length, sample_rate=44100, channels=2,
                       bits_per_sample=bits_per_sample)
 
 
-class EXACT_RANDOM_PCM_Reader(object):
+class EXACT_RANDOM_PCM_Reader(audiotools.PCMReader):
     def __init__(self, pcm_frames,
                  sample_rate=44100, channels=2, bits_per_sample=16,
                  channel_mask=None):
-        self.sample_rate = sample_rate
-        self.channels = channels
-        if channel_mask is None:
-            self.channel_mask = \
-                int(audiotools.ChannelMask.from_channels(channels))
-        else:
-            self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
+        audiotools.PCMReader.__init__(
+            self,
+            sample_rate=sample_rate,
+            channels=channels,
+            channel_mask=(channel_mask if channel_mask is not None else
+                          int(audiotools.ChannelMask.from_channels(channels))),
+            bits_per_sample=bits_per_sample)
 
+        self.closed = False
         self.total_frames = pcm_frames
         self.original_frames = self.total_frames
 
-        self.read = self.read_opened
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.close()
-
-    def read_opened(self, pcm_frames):
-        if self.total_frames > 0:
+    def read(self, pcm_frames):
+        if self.closed:
+            raise ValueError("cannot read from closed stream")
+        elif self.total_frames > 0:
             frames_to_read = min(pcm_frames, self.total_frames)
             frame = audiotools.pcm.FrameList(
                 os.urandom(frames_to_read *
@@ -108,14 +102,11 @@ class EXACT_RANDOM_PCM_Reader(object):
             return audiotools.pcm.empty_framelist(
                 self.channels, self.bits_per_sample)
 
-    def read_closed(self, pcm_frames):
-        raise ValueError("unable to read closed stream")
-
     def close(self):
-        self.read = self.read_closed
+        self.closed = True
 
     def reset(self):
-        self.read = self.read_opened
+        self.closed = False
         self.total_frames = self.original_frames
 
 

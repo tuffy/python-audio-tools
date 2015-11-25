@@ -432,6 +432,67 @@ class MetaDataTest(unittest.TestCase):
                 temp_file.close()
 
     @METADATA_METADATA
+    def test_repr(self):
+        from sys import version_info
+
+        for audio_class in self.supported_formats:
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix="." + audio_class.SUFFIX)
+            try:
+                track = audio_class.from_pcm(temp_file.name,
+                                             BLANK_PCM_Reader(10))
+
+                metadata = self.metadata_class.converted(
+                    audiotools.MetaData(
+                        track_name=u"a",
+                        track_number=1,
+                        track_total=2,
+                        album_name=u"b",
+                        artist_name=u"c",
+                        performer_name=u"d",
+                        composer_name=u"e",
+                        media=u"f",
+                        ISRC=u"g",
+                        catalog=u"h",
+                        copyright=u"i",
+                        publisher=u"j",
+                        year=u"k",
+                        date=u"l",
+                        album_number=3,
+                        album_total=4,
+                        comment=u"some comment",
+                        compilation=True,
+                        images=[audiotools.Image.new(TEST_COVER1,
+                              u"",
+                              audiotools.FRONT_COVER)]))
+
+                track.set_metadata(metadata)
+
+                if audio_class.supports_cuesheet():
+                    from audiotools import Sheet
+                    from audiotools import SheetTrack
+                    from audiotools import SheetIndex
+                    from fractions import Fraction
+
+                    track.set_cuesheet(
+                        Sheet([SheetTrack(1, [SheetIndex(1, Fraction(0, 1))]),
+                               SheetTrack(2, [SheetIndex(1, Fraction(5, 1))])]))
+
+                packed_metadata = track.get_metadata()
+            finally:
+                temp_file.close()
+
+            self.assertIsInstance(packed_metadata, self.metadata_class)
+
+            self.assertIs(type(repr(packed_metadata)), str)
+
+            if self.metadata_class.supports_images():
+                image = packed_metadata.images()[0]
+                self.assertIs(type(repr(image)), str)
+                self.assertIs(type(image.type_string()),
+                              str if (version_info[0] >= 3) else unicode)
+
+    @METADATA_METADATA
     def test_raw_info(self):
         import sys
 

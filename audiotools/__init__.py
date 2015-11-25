@@ -273,8 +273,8 @@ if config.has_option("System", "maximum_jobs"):
     MAX_JOBS = config.getint_default("System", "maximum_jobs", 1)
 else:
     try:
-        import multiprocessing
-        MAX_JOBS = multiprocessing.cpucount()
+        from multiprocessing import cpu_count
+        MAX_JOBS = cpu_count()
     except (ImportError, AttributeError):
         MAX_JOBS = 1
 
@@ -3683,16 +3683,16 @@ class Image(object):
                 "image/tiff": "tiff"}.get(self.mime_type, "bin")
 
     def type_string(self):
-        """returns the image's type as a human readable plain string
+        """returns the image's type as a human readable Unicode string
 
         for example, an image of type 0 returns "Front Cover"
         """
 
-        return {FRONT_COVER: "Front Cover",
-                BACK_COVER: "Back Cover",
-                LEAFLET_PAGE: "Leaflet Page",
-                MEDIA: "Media",
-                OTHER: "Other"}.get(self.type, "Other")
+        return {FRONT_COVER: u"Front Cover",
+                BACK_COVER: u"Back Cover",
+                LEAFLET_PAGE: u"Leaflet Page",
+                MEDIA: u"Media",
+                OTHER: u"Other"}.get(self.type, u"Other")
 
     def __repr__(self):
         fields = ["{}={}".format(attr, getattr(self, attr))

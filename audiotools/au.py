@@ -263,8 +263,7 @@ class AuAudio(AudioFile):
         from audiotools import CounterPCMReader
         from audiotools import transfer_framelist_data
 
-        if pcmreader.bits_per_sample not in (8, 16, 24):
-            from audiotools import Filename
+        if pcmreader.bits_per_sample not in {8, 16, 24}:
             from audiotools import UnsupportedBitsPerSample
             pcmreader.close()
             raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)

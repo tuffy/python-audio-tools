@@ -231,6 +231,11 @@ class OpusAudio(VorbisAudio):
              (compression not in cls.COMPRESSION_MODES))):
             compression = __default_quality__(cls.NAME)
 
+        if pcmreader.bits_per_sample not in {8, 16, 24}:
+            from audiotools import UnsupportedBitsPerSample
+            pcmreader.close()
+            raise UnsupportedBitsPerSample(filename, pcmreader.bits_per_sample)
+
         if (pcmreader.channels > 2) and (pcmreader.channels <= 8):
             if ((pcmreader.channel_mask != 0) and
                 (pcmreader.channel_mask not in

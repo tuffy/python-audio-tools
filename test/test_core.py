@@ -1985,7 +1985,7 @@ class __SimpleChunkReader__:
             self.i += 1
             return chunk
         except IndexError:
-            return ""
+            return b""
 
     def tell(self):
         return self.i
@@ -3155,9 +3155,6 @@ class Bitstream(unittest.TestCase):
 
         temp_file.close()
 
-    def __validate_edge_accumulator_be__(self, writer, temp_file):
-        self.assertEqual(writer.bits(), 48 * 8)
-
     def __get_edge_writer_le__(self):
         from audiotools.bitstream import BitstreamWriter
 
@@ -3202,9 +3199,6 @@ class Bitstream(unittest.TestCase):
                                255, 255, 255, 255, 255, 255, 255, 127]))
 
         temp_file.close()
-
-    def __validate_edge_accumulator_le__(self, writer, temp_file):
-        self.assertEqual(writer.bits(), 48 * 8)
 
     def __test_writer__(self, endianness):
         from audiotools.bitstream import BitstreamWriter
@@ -5521,21 +5515,6 @@ class TestMultiChannel(unittest.TestCase):
                         audiotools.ChannelMask(pcm.channel_mask),
                         temp_track.channel_mask()))
                 audiotools.transfer_framelist_data(pcm, lambda x: None)
-
-    def __test_error_mask_blank__(self, audio_class, channels,
-                                  channel_mask):
-        temp_file = tempfile.NamedTemporaryFile(
-            suffix="." + audio_class.SUFFIX)
-        try:
-            self.assertRaises(
-                audiotools.UnsupportedChannelMask,
-                audio_class.from_pcm,
-                temp_file.name,
-                Join_Reader([BLANK_PCM_Reader(2, channels=1)
-                             for i in range(channels)],
-                            int(channel_mask)))
-        finally:
-            temp_file.close()
 
     def __test_error_channel_count__(self, audio_class, channels,
                                      channel_mask):
