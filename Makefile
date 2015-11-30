@@ -4,28 +4,31 @@ PYTHON = python
 # which Python test coverage utility to use
 COVERAGE = coverage
 
-all:
+all: .FORCE
 	$(PYTHON) setup.py build
 
-install:
+install: .FORCE
 	$(PYTHON) setup.py install
 	cd docs && $(MAKE) install
 
-probe:
+probe: .FORCE
 	$(PYTHON) setup.py build_ext --dry-run
 
-check:
+check: .FORCE
 	cd test && $(PYTHON) test.py
 
-check_coverage:
+check_coverage: .FORCE
 	cd test && $(COVERAGE) run test.py
 
-coverage_report:
+coverage_report: .FORCE
 	cd test && $(COVERAGE) report -m
 
-clean:
+clean: .FORCE
 	rm -rfv build
 	rm -fv audiotools/*.pyc
 
 distclean: clean
 	cd docs && $(MAKE) clean
+
+.FORCE:
+	# do nothing
