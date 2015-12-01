@@ -3355,9 +3355,11 @@ class MetaData(object):
             MetaData.__setattr__(self, "__images__", list())
 
     def __repr__(self):
-        return "MetaData({})".format(
-                   ",".join(["{}={!r}".format(field, getattr(self, field))
-                             for field in MetaData.FIELDS]))
+        return "MetaData({}{})".format(
+                   ",".join(["{}={!r}".format(field, value)
+                             for field, value in self.filled_fields()]),
+                   "" if len(self.images()) == 0 else
+                   ",images={!r}".format(self.images()))
 
     def __delattr__(self, field):
         if field in self.FIELDS:
@@ -3695,7 +3697,7 @@ class Image(object):
                 OTHER: u"Other"}.get(self.type, u"Other")
 
     def __repr__(self):
-        fields = ["{}={}".format(attr, getattr(self, attr))
+        fields = ["{}={!r}".format(attr, getattr(self, attr))
                   for attr in ["mime_type",
                                "width",
                                "height",
@@ -3853,6 +3855,9 @@ class AudioFile(object):
         raises InvalidFile or subclass if the file is invalid in some way"""
 
         self.filename = filename
+
+    def __repr__(self):
+        return "{}({!r})".format(self.__class__.__name__, self.filename)
 
     # AudioFiles support a sorting rich compare
     # which prioritizes album_number, track_number and then filename
