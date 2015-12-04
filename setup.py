@@ -1022,9 +1022,9 @@ ext_modules = [audiotools_pcm(),
                audiotools_output(system_libraries)]
 
 scripts = ["audiotools-config",
+           "coverbrowse",
            "coverdump",
            "covertag",
-           "coverview",
            "track2cdda",
            "track2track",
            "trackcat",

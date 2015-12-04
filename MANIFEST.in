@@ -7,8 +7,8 @@ include cdda2track
 include cddainfo
 include cddaplay
 include COPYING
+include coverbrowse
 include coverdump
-include coverview
 include dvda2track
 include dvdainfo
 include INSTALL

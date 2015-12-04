@@ -6,9 +6,9 @@ audiotools.cfg.5 \
 cdda2track.1 \
 cddainfo.1 \
 cddaplay.1 \
+coverbrowse.1 \
 coverdump.1 \
 covertag.1 \
-coverview.1 \
 dvdainfo.1 \
 dvda2track.1 \
 track2cdda.1 \
@@ -30,9 +30,9 @@ audiotools.cfg.xml \
 cdda2track.xml \
 cddainfo.xml \
 cddaplay.xml \
+coverbrowse.xml \
 coverdump.xml \
 covertag.xml \
-coverview.xml \
 dvdainfo.xml \
 dvda2track.xml \
 track2cdda.xml \

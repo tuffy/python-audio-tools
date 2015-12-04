@@ -30,8 +30,8 @@ DESCRIPTION_AT_CONFIG = \
 DESCRIPTION_COVERDUMP = \
     "extract embedded images from file"
 
-DESCRIPTION_COVERVIEW = \
-    "display embedded images"
+DESCRIPTION_COVERBROWSE = \
+    "browse embedded cover art"
 
 DESCRIPTION_CD2TRACK = \
     "extract CD audio tracks to files"
@@ -101,6 +101,7 @@ OPT_TYPE_TRACKVERIFY = u"a type of audio to accept"
 OPT_QUALITY = u"the quality to store audio tracks at"
 OPT_QUALITY_AT_CONFIG = u"the default quality level for a given audio type"
 OPT_DIR = u"the directory to store new audio tracks"
+OPT_INITIAL_DIR = u"initial directory"
 OPT_DIR_IMAGES = u"the directory to store extracted images"
 OPT_FORMAT = u"the format string for new filenames"
 OPT_METADATA_LOOKUP = u"perform metadata lookup"

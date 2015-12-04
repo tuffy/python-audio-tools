@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Copyright (C) 2007-2015  Brian Langenberger
+This work is licensed under the
+Creative Commons Attribution-Share Alike 3.0 United States License.
+To view a copy of this license, visit
+http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+Creative Commons,
+171 Second Street, Suite 300,
+San Francisco, California, 94105, USA.
+-->
+<manpage>
+  <utility>coverbrowse</utility>
+  <author>Brian Langenberger</author>
+  <section>1</section>
+  <name>view embedded cover art interactively</name>
+  <title>Cover Art Browser</title>
+  <synopsis>[OPTIONS]</synopsis>
+  <description>
+    coverbrowse takes an optional starting directory
+    and browses embedded cover art from files
+    in the directory tree.
+  </description>
+  <options>
+    <option short="h" long="help">show a list of options and exit</option>
+    <option short="d" long="dir" arg="directory">
+      the initial directory to use
+    </option>
+  </options>
+</manpage>

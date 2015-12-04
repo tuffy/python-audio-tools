@@ -1310,17 +1310,6 @@ class covertag_errors(UtilTest):
                 big_bmp.close()
 
 
-class coverview(UtilTest):
-    @UTIL_COVERVIEW
-    def test_version(self):
-        self.assertEqual(self.__run_app__(["coverview",
-                                           "--version"]), 0)
-        if PY3:
-            self.__check_output__(audiotools.VERSION_STR)
-        else:
-            self.__check_info__(audiotools.VERSION_STR.decode("ascii"))
-
-
 class track2cdda(UtilTest):
     @UTIL_TRACK2CDDA
     def setUp(self):

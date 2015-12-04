@@ -1,0 +1,485 @@
+#!/usr/bin/python
+
+# Audio Tools, a module and set of tools for manipulating audio data
+# Copyright (C) 2007-2015  Brian Langenberger
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import audiotools
+
+try:
+    import tkinter as tk
+except ImportError:
+    #FIXME - indicate error if Tkinter cannot be loaded
+    import Tkinter as tk
+
+try:
+    import tkinter.ttk as ttk
+except ImportError:
+    #FIXME - indicate error if ttk cannot be loaded
+    import ttk
+
+#FIXME - indicate error if Image cannot be loaded
+from PIL import Image
+
+#FIXME - indicate error if ImageTk cannot be loaded
+from PIL import ImageTk
+
+
+def path_parts(path):
+    """given a path to a directory,
+    returns a list of its component directory parts"""
+
+    from os.path import isdir
+    from os.path import abspath
+    from os.path import split
+
+    path = abspath(path)
+    assert(isdir(path))
+
+    parts = []
+    path, tail = split(path)
+    while len(tail) > 0:
+        parts.append(tail)
+        path, tail = split(path)
+    parts.reverse()
+    return parts
+
+
+class FileSelector(ttk.Frame):
+    def __init__(self, parent, initial_directory, file_selected):
+        """parent is the selector's parent widget
+
+        initial_directory is a path to the starting point
+
+        file_selected(path) is a function to be called
+        when a file is selected where 'path' may be None
+        if a file is unselected"""
+
+        ttk.Frame.__init__(self, parent)
+
+        self.__file_selected__ = file_selected
+
+        # an item_id: path mapping to audio files
+        self.__audio_files__ = {}
+
+        # an item_id: path mapping to unopened directories
+        self.__unopened_dirs__ = {}
+
+        self.treeview = ttk.Treeview(self)
+        self.treeview.heading("#0", text="path")
+        self.treeview.pack(fill=tk.BOTH, expand=1, side=tk.LEFT)
+        self.treeview.bind(sequence="<<TreeviewSelect>>",
+                           func=self.path_selected)
+        self.treeview.bind(sequence="<<TreeviewOpen>>",
+                           func=self.dir_opened)
+        self.treeview.bind(sequence="<<TreeviewClose>>",
+                           func=self.dir_closed)
+
+        root = self.treeview.insert("", "end", text="/")
+        self.__unopened_dirs__[root] = "/"
+        dummy = self.treeview.insert(root, "end", text="")
+
+        # auto-open selected directory
+        self.open_directory(root)
+        self.treeview.item(root, open=True)
+        node = root
+        for path_part in path_parts(initial_directory):
+            sub_node = [c for c in self.treeview.get_children(node)
+                        if self.treeview.item(c)["text"] == path_part][0]
+            self.open_directory(sub_node)
+            self.treeview.item(sub_node, open=True)
+            node = sub_node
+        else:
+            #FIXME - scroll view to selected item
+            self.treeview.selection_set(node)
+            self.treeview.focus_set()
+            self.treeview.focus(node)
+            self.treeview.see(node)
+
+        self.scrollbar = ttk.Scrollbar(self, command=self.treeview.yview)
+        self.scrollbar.pack(fill=tk.Y, expand=0, side=tk.RIGHT)
+        self.treeview.configure(yscroll=self.scrollbar.set)
+
+    def path_selected(self, event):
+        """changes which path is selected
+        and calls file_selected() if necessary"""
+
+        path = self.__audio_files__.get(event.widget.focus(), None)
+        self.__file_selected__(path)
+
+    def dir_opened(self, event):
+        """called when a directory is opened"""
+
+        self.open_directory(event.widget.focus())
+
+    def dir_closed(self, event):
+        """called when a directory is closed"""
+
+        # do nothing
+        pass
+
+    def open_directory(self, node):
+        """given a node, reads the directory's sub-entries
+        adds them to __audio_files__ and __unopened_dirs__ as needed
+        and removes directory itself from set of __unopened_dirs__"""
+
+        from os import listdir
+        from os.path import join
+        from os.path import isdir
+        from os.path import isfile
+
+        directory = self.__unopened_dirs__.get(node, None)
+        if directory is not None:
+            # clean out dummy children
+            self.treeview.delete(*self.treeview.get_children(node))
+
+            # add new children
+            try:
+                files = [f for f in listdir(directory)
+                         if not f.startswith(".")]
+                files.sort()
+            except OSError:
+                files = []
+
+            for file in files:
+                file_path = join(directory, file)
+                if isdir(file_path):
+                    new_node = self.treeview.insert(node, "end", text=file)
+                    dummy = self.treeview.insert(new_node, "end", text="")
+                    self.__unopened_dirs__[new_node] = file_path
+                elif isfile(file_path):
+                    try:
+                        with open(file_path, "rb") as r:
+                            audio_type = audiotools.file_type(r)
+                            if audio_type is not None:
+                                new_node = self.treeview.insert(
+                                    node, "end", text=file)
+                                self.__audio_files__[new_node] = file_path
+                    except IOError:
+                        pass
+
+            # remove from set of unopened dirs
+            del(self.__unopened_dirs__[node])
+
+
+class ImageSelector(ttk.Frame):
+    def __init__(self, parent, height=3, image_selected=lambda image: None):
+        """height is the maximum number of images to display at once
+        image_selected(image) is a callback to call when
+        an image is selected, where 'image' may be None if an image
+        is un-selected"""
+
+        ttk.Frame.__init__(self, parent)
+        self.file_images = tk.Listbox(self, height=height)
+        self.file_images.pack(fill=tk.BOTH, expand=1, side=tk.LEFT)
+        self.file_images.bind(sequence="<ButtonRelease-1>",
+                              func=self.image_selected)
+        self.file_images.bind(sequence="<KeyRelease>",
+                              func=self.image_selected)
+
+        self.scrollbar = ttk.Scrollbar(self, command=self.file_images.yview)
+        self.scrollbar.pack(fill=tk.Y, expand=0, side=tk.RIGHT)
+        self.file_images.configure(yscroll=self.scrollbar.set)
+
+        self.__image_selected__ = image_selected
+
+    def set_images(self, images):
+        """given a list of audiotools.Image objects,
+        sets our contents to those images,
+        selects the initial image
+        and calls the image_selected callback"""
+
+        if len(images) > 0:
+            self.file_images.selection_clear(0, tk.END)
+            self.file_images.delete(0, tk.END)
+            self.image_objects = []
+            for image in images:
+                self.file_images.insert(tk.END, image.type_string())
+                self.image_objects.append(image)
+            else:
+                self.file_images.index(0)
+                self.file_images.selection_set(0)
+                self.__image_selected__(self.image_objects[0])
+        else:
+            self.clear_images()
+
+    def clear_images(self):
+        """clears our image contents
+        and calls the image_selected callback"""
+
+        self.file_images.selection_clear(0, tk.END)
+        self.file_images.delete(0, tk.END)
+        self.image_objects = []
+        self.__image_selected__(None)
+
+    def image_selected(self, event):
+        """called when an image is selected by the user"""
+
+        try:
+            selected = self.file_images.curselection()[0]
+            self.__image_selected__(self.image_objects[selected])
+        except IndexError:
+            return None
+
+
+def image_scale(canvas_width, canvas_height, image_width, image_height):
+    """returns (width, height) tuple of image scaled to fit canvas
+    while maintaing the image's aspect ratio as closely as possible"""
+
+    from fractions import Fraction
+
+    canvas_ratio = Fraction(canvas_width, canvas_height)
+    image_ratio = Fraction(image_width, image_height)
+
+    if image_ratio > canvas_ratio:
+        # image wider than canvas when scaled
+        # so match canvas width horizontally and shrink height to match
+        return (canvas_width, int(canvas_width / image_ratio))
+    else:
+        # image taller than canvas when scaled
+        # so match canvas height verticall and shrink width to match
+        return (int(canvas_height * image_ratio), canvas_height)
+
+
+class ImageCanvas(tk.Canvas):
+    def __init__(self, parent):
+        tk.Canvas.__init__(self, parent)
+
+        self.width = 100
+        self.height = 100
+        self.bind(sequence="<Configure>", func=self.resized)
+
+        # references to the set image
+        self.image_size = 0
+        self.image_digest = b"\00" * 16
+        self.pil_image = None
+        self.photo_image = None
+        self.photo_id = None
+
+    def set_image(self, image):
+        """sets viewed image from audiotools.Image object"""
+
+        # only update displayed image if the new one
+        # differs from any existing image
+
+        if len(image.data) != self.image_size:
+            from hashlib import md5
+            image_digest = md5(image.data)
+
+            if image_digest != self.image_digest:
+                from io import BytesIO
+                self.image_size = len(image.data)
+                self.image_digest = image_digest
+                self.pil_image = Image.open(BytesIO(image.data))
+                self.populate_canvas(self.pil_image)
+
+    def clear_image(self):
+        """clears viewed image"""
+
+        if self.photo_image is not None:
+            self.delete(self.photo_image)
+
+        self.image_size = 0
+        self.image_digest = b"\00" * 16
+        self.pil_image = None
+        self.photo_image = None
+        self.photo_id = None
+
+    def resized(self, event):
+        """called when canvas is resized"""
+
+        self.width = event.width
+        self.height = event.height
+        if self.pil_image is not None:
+            self.populate_canvas(self.pil_image)
+
+    def populate_canvas(self, pil_image):
+        """places PIL.Image object in center of canvas,
+        resized if necessary,
+        and caches placed image for faster redraws"""
+
+        # clean out old image
+        if self.photo_image is not None:
+            self.delete(self.photo_image)
+            self.photo_image = None
+            self.photo_id = None
+
+        # resize PIL to fit current canvas size
+        if ((self.width > pil_image.size[0]) and
+            (self.height > pil_image.size[1])):
+            resized_image = pil_image
+        else:
+            (resized_width,
+             resized_height) = image_scale(self.width,
+                                           self.height,
+                                           pil_image.size[0],
+                                           pil_image.size[1])
+            resized_image = pil_image.resize((resized_width,
+                                              resized_height),
+                                             Image.ANTIALIAS)
+
+        # generate PhotoImage from PIL image
+        self.photo_image = ImageTk.PhotoImage(resized_image)
+
+        # populate canvas with PhotoImage
+        self.photo_id = self.create_image(
+            (self.width - resized_image.size[0]) // 2,
+            (self.height - resized_image.size[1]) // 2,
+            image=self.photo_image,
+            anchor=tk.NW)
+
+
+class ImageMetadata(ttk.Frame):
+    def __init__(self, parent):
+        ttk.Frame.__init__(self, parent)
+
+        label1 = ttk.Label(self, text="width : ", anchor=tk.E)
+        label1.grid(row=0, column=0, sticky=tk.E)
+        self.width = ttk.Label(self, text="")
+        self.width.grid(row=0, column=1, sticky=tk.W)
+
+        label2 = ttk.Label(self, text="height : ", anchor=tk.E)
+        label2.grid(row=1, column=0, sticky=tk.E)
+        self.height = ttk.Label(self, text="")
+        self.height.grid(row=1, column=1, sticky=tk.W)
+
+        label3 = ttk.Label(self, text="size : ", anchor=tk.E)
+        label3.grid(row=2, column=0, sticky=tk.E)
+        self.size = ttk.Label(self, text="")
+        self.size.grid(row=2, column=1, sticky=tk.W)
+
+    def set_image(self, image):
+        """sets metadata fields from contents of Image object"""
+
+        self.width.config(text="{:d}".format(image.width))
+        self.height.config(text="{:d}".format(image.height))
+        self.size.config(text="{:,d} bytes".format(len(image.data)))
+
+    def clear_image(self):
+        """clears metadata fields"""
+
+        self.width.config(text="")
+        self.height.config(text="")
+        self.size.config(text="")
+
+
+class Coverbrowse(object):
+    def __init__(self, master, initial_directory):
+        self.image_objects = []
+
+        self.master = master
+
+        # the main window
+        self.frame = ttk.Frame(master, width=800, height=600)
+
+        self.frame.pack(fill=tk.BOTH, expand=1, side=tk.LEFT)
+
+        # a menu bar for the main window
+        self.menubar = tk.Menu(master)
+        file_menu = tk.Menu(self.menubar, tearoff=False)
+        file_menu.add_command(label="Quit", command=self.quit)
+        self.menubar.add_cascade(label="File", menu=file_menu)
+
+        # left and right halves for the main window
+        panedwindow = ttk.PanedWindow(self.frame, orient=tk.HORIZONTAL)
+        panedwindow.pack(fill=tk.BOTH, expand=1)
+
+        # a container for the directory tree and image selector
+        files = ttk.Frame(panedwindow)
+        files.pack(fill=tk.BOTH, expand=1)
+
+        # the directory tree and its scrollbar
+        self.dirtree = FileSelector(files,
+                                    initial_directory,
+                                    self.file_selected)
+        self.dirtree.pack(fill=tk.BOTH, expand=1, side=tk.TOP)
+
+        # the image selector
+        self.file_images = ImageSelector(files,
+                                         height=3,
+                                         image_selected=self.image_selected)
+        self.file_images.pack(fill=tk.BOTH, expand=0, side=tk.TOP)
+
+        # the image metadata
+        self.image_metadata = ImageMetadata(files)
+        self.image_metadata.pack(
+            fill=tk.X, expand=0, side=tk.TOP, padx=5, pady=5)
+
+        # the image viewer
+        self.canvas = ImageCanvas(panedwindow)
+        self.canvas.pack(fill=tk.BOTH, expand=1)
+
+        panedwindow.add(files)
+        panedwindow.add(self.canvas)
+
+        master.title("coverbrowse")
+        master.geometry("{:d}x{:d}".format(800, 600))
+        master.config(menu=self.menubar)
+
+    def quit(self, *args):
+        """exits cover browser"""
+
+        self.master.quit()
+
+    def file_selected(self, path):
+        """changes which file is selected
+        if path is None, removes selected audio file and its images"""
+
+        # if audio file selected, populate image selector with images
+        if path is not None:
+            try:
+                metadata = audiotools.open(path).get_metadata()
+                if metadata is not None:
+                    self.file_images.set_images(metadata.images())
+                else:
+                    self.file_images.clear_images()
+            except (IOError, ValueError, audiotools.InvalidFile):
+                self.file_images.clear_images()
+        else:
+            self.file_images.clear_images()
+
+    def image_selected(self, image):
+        """given an audiotools.Image object or None,
+        populates canvas and image metadata accordingly"""
+
+        if image is not None:
+            self.canvas.set_image(image)
+            self.image_metadata.set_image(image)
+        else:
+            self.canvas.clear_image()
+            self.image_metadata.clear_image()
+
+
+if (__name__ == "__main__"):
+    import argparse
+    import audiotools.text as _
+
+    parser = argparse.ArgumentParser(description=_.DESCRIPTION_COVERBROWSE)
+
+    parser.add_argument("--version",
+                        action="version",
+                        version=audiotools.VERSION_STR)
+
+    parser.add_argument("-d", "--dir",
+                        dest="dir", default=".",
+                        help=_.OPT_INITIAL_DIR)
+
+    options = parser.parse_args()
+
+    root = tk.Tk()
+    coverbrowse = Coverbrowse(master=root, initial_directory=options.dir)
+    root.mainloop()
