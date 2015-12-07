@@ -23,6 +23,10 @@ from audiotools.vorbiscomment import VorbisComment
 from audiotools.id3 import skip_id3v2_comment
 
 
+# the maximum padding size to use when rewriting metadata blocks
+MAX_PADDING_SIZE = 2 ** 20
+
+
 class InvalidFLAC(InvalidFile):
     pass
 
@@ -1628,7 +1632,8 @@ class FlacAudio(WaveContainer, AiffContainer):
         metadata_delta = metadata.size() - old_metadata.size()
 
         if (has_padding and padding_unchanged and
-            (metadata_delta <= total_padding_size)):
+            (metadata_delta <= total_padding_size) and
+            ((-metadata_delta + total_padding_size) <= MAX_PADDING_SIZE)):
             # if padding size is larger than change in metadata
             # shrink padding blocks so that new size matches old size
             # (if metadata_delta is negative,
@@ -1661,7 +1666,8 @@ class FlacAudio(WaveContainer, AiffContainer):
             writer.close()
         else:
             # if padding is smaller than change in metadata,
-            # or file has no padding,
+            # the padding would get excessively large,
+            # or file has no padding blocks,
             # rewrite entire file to fit new metadata
 
             from audiotools import TemporaryFile, transfer_data
@@ -1673,6 +1679,7 @@ class FlacAudio(WaveContainer, AiffContainer):
 
             new_file.write(old_file.read(self.__stream_offset__))
 
+            # skip existing file ID and metadata blocks
             if old_file.read(4) != b'fLaC':
                 from audiotools.text import ERR_FLAC_INVALID_FILE
                 raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
