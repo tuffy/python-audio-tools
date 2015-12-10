@@ -20,7 +20,6 @@ from audiotools import (AudioFile, MetaData, InvalidFile, Image,
                         WaveContainer, AiffContainer,
                         Sheet, SheetTrack, SheetIndex)
 from audiotools.vorbiscomment import VorbisComment
-from audiotools.id3 import skip_id3v2_comment
 
 
 # the maximum padding size to use when rewriting metadata blocks
@@ -1500,17 +1499,51 @@ class FlacAudio(WaveContainer, AiffContainer):
     def __init__(self, filename):
         """filename is a plain string"""
 
+        from audiotools.id3 import skip_id3v2_comment
+        from audiotools.bitstream import BitstreamReader
+
         AudioFile.__init__(self, filename)
+
+        # setup some dummy placeholder values
+        self.__stream_offset__ = 0
         self.__samplerate__ = 0
         self.__channels__ = 0
         self.__bitspersample__ = 0
         self.__total_frames__ = 0
-        self.__stream_offset__ = 0
-        self.__stream_suffix__ = 0
         self.__md5__ = b"\x00" * 16
 
         try:
-            self.__read_streaminfo__()
+            with open(self.filename, "rb") as f:
+                # check for leading ID3v3 tag
+                self.__stream_offset__ = skip_id3v2_comment(f)
+
+                # ensure stream marker is correct
+                if f.read(4) != b"fLaC":
+                    from audiotools.text import ERR_FLAC_INVALID_FILE
+                    raise InvalidFLAC(ERR_FLAC_INVALID_FILE)
+
+                reader = BitstreamReader(f, False)
+
+                # walk metadata blocks looking for STREAMINFO
+                # (should be first block)
+                stop = 0
+                while stop == 0:
+                    stop, header_type, length = reader.parse("1u 7u 24u")
+                    if header_type == 0:
+                        reader.skip(80)
+                        self.__samplerate__ = reader.read(20)
+                        self.__channels__ = reader.read(3) + 1
+                        self.__bitspersample__ = reader.read(5) + 1
+                        self.__total_frames__ = reader.read(36)
+                        self.__md5__ = reader.read_bytes(16)
+                        return
+                    elif header_type in {1, 2, 3, 4, 5, 6}:
+                        # be accepting of out-of-spec files
+                        # whose STREAMINFO blocks aren't first
+                        reader.skip_bytes(length)
+                    else:
+                        from audiotools.text import ERR_FLAC_INVALID_BLOCK
+                        raise InvalidFLAC(ERR_FLAC_INVALID_BLOCK)
         except IOError as msg:
             raise InvalidFLAC(str(msg))
 
@@ -2638,47 +2671,6 @@ class FlacAudio(WaveContainer, AiffContainer):
 
         return self.__samplerate__
 
-    def __read_streaminfo__(self):
-        valid_header_types = frozenset(range(0, 6 + 1))
-        with open(self.filename, "rb") as f:
-            try:
-                f.seek(-128, 2)
-                if f.read(3) == b"TAG":
-                    self.__stream_suffix__ = 128
-                else:
-                    self.__stream_suffix__ = 0
-            except IOError:
-                self.__stream_suffix__ = 0
-
-            f.seek(0, 0)
-            self.__stream_offset__ = skip_id3v2_comment(f)
-            f.read(4)
-
-            from audiotools.bitstream import BitstreamReader
-
-            reader = BitstreamReader(f, False)
-
-            stop = 0
-
-            while stop == 0:
-                (stop, header_type, length) = reader.parse("1u 7u 24u")
-                if header_type not in valid_header_types:
-                    from audiotools.text import ERR_FLAC_INVALID_BLOCK
-                    raise InvalidFLAC(ERR_FLAC_INVALID_BLOCK)
-                elif header_type == 0:
-                    (self.__samplerate__,
-                     self.__channels__,
-                     self.__bitspersample__,
-                     self.__total_frames__,
-                     self.__md5__) = reader.parse("80p 20u 3u 5u 36U 16b")
-                    self.__channels__ += 1
-                    self.__bitspersample__ += 1
-                    break
-                else:
-                    # though the STREAMINFO should always be first,
-                    # we'll be permissive and check them all if necessary
-                    reader.skip_bytes(length)
-
     @classmethod
     def supports_replay_gain(cls):
         """returns True if this class supports ReplayGain"""
@@ -2780,6 +2772,7 @@ class FlacAudio(WaveContainer, AiffContainer):
         """
 
         import os.path
+        from audiotools.id3 import skip_id3v2_comment
 
         def seektable_valid(seektable, metadata_offset, input_file):
             from audiotools.bitstream import BitstreamReader
