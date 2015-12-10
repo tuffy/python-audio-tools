@@ -268,7 +268,7 @@ class TrueAudio(ApeTaggedAudio, ApeGainedAudio, AudioFile):
                     return cue.read_cuesheet_string(
                         metadata[b'CUESHEET'].__unicode__())
                 else:
-                    return None;
+                    return None
             except SheetException:
                 # unlike FLAC, just because a cuesheet is embedded
                 # does not mean it is compliant

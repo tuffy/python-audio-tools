@@ -41,7 +41,7 @@ class CDTOC(Sheet):
 
     def __unicode__(self):
         return u"+".join([u"{:X}".format(
-                              len([t for t in self if t.is_audio()]))] +
+                         len([t for t in self if t.is_audio()]))] +
                          [t.__unicode__() for t in self] +
                          [u"{:X}".format(self.__lead_out__)])
 

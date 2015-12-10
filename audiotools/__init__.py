@@ -405,9 +405,9 @@ class Messenger(object):
         this appends a newline to that message"""
 
         self.error(u"[Errno {:d}] {}: '{}'".format(
-                        oserror.errno,
-                        oserror.strerror,
-                        Filename(oserror.filename)))
+                   oserror.errno,
+                   oserror.strerror,
+                   Filename(oserror.filename)))
 
     def warning(self, s):
         """displays a warning message unicode string to stderr
@@ -3356,10 +3356,10 @@ class MetaData(object):
 
     def __repr__(self):
         return "MetaData({}{})".format(
-                   ",".join(["{}={!r}".format(field, value)
-                             for field, value in self.filled_fields()]),
-                   "" if len(self.images()) == 0 else
-                   ",images={!r}".format(self.images()))
+            ",".join(["{}={!r}".format(field, value)
+                      for field, value in self.filled_fields()]),
+            "" if len(self.images()) == 0 else
+            ",images={!r}".format(self.images()))
 
     def __delattr__(self, field):
         if field in self.FIELDS:
@@ -4193,7 +4193,7 @@ class AudioFile(object):
 
         # populate remainder of format dictionary
         # with fields from MetaData, if any
-        for field in (f for f,t in
+        for field in (f for f, t in
                       MetaData.FIELD_TYPES.items() if t is type(u"")):
             if PY2:
                 field_name = field.decode("ascii")

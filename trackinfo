@@ -90,8 +90,8 @@ if (__name__ == '__main__'):
                         filename=audiotools.Filename(file.filename)))
             except ZeroDivisionError:
                 msg.output(_.LAB_TRACKINFO_PERCENTAGE.format(
-                               percentage=0.,
-                               filename=audiotools.Filename(file.filename)))
+                    percentage=0.,
+                    filename=audiotools.Filename(file.filename)))
         else:
             msg.output(
                 _.LAB_TRACKINFO_ATTRIBS.format(
@@ -174,9 +174,7 @@ if (__name__ == '__main__'):
                         row.add_column(u"")
                         length = int(lengths[t])
                         row.add_column(u"{:d}:{:02d}".format(
-                                           length // 60,
-                                           length % 60),
-                                       "right")
+                            length // 60, length % 60), "right")
                         track_indexes = indexes[t]
                         for i in index_numbers:
                             row.add_column(u"")

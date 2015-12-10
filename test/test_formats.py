@@ -1344,7 +1344,7 @@ class LosslessFileTest(AudioFileTest):
                                                track2.to_pcm()),
                             "error round-tripping {} to {}".format(
                                 self.audio_class.NAME,
-                                 audio_class.NAME))
+                                audio_class.NAME))
                     else:
                         pcm = track2.to_pcm()
                         counter = FrameCounter(pcm.channels,
@@ -1368,9 +1368,9 @@ class LosslessFileTest(AudioFileTest):
                                 audiotools.pcm_cmp(track.to_pcm(),
                                                    track2.to_pcm()),
                                 "error round-tripping {} to {} at {}".format(
-                                     self.audio_class.NAME,
-                                     audio_class.NAME,
-                                     compression))
+                                    self.audio_class.NAME,
+                                    audio_class.NAME,
+                                    compression))
                         else:
                             pcm = track2.to_pcm()
                             counter = FrameCounter(

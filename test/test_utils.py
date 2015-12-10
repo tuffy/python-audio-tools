@@ -2152,7 +2152,7 @@ class track2track(UtilTest):
             self.__check_error__(
                 ERR_UNSUPPORTED_CHANNEL_MASK.format(
                     target_filename=audiotools.Filename(
-                         os.path.join(self.output_dir, "00 - .flac")),
+                        os.path.join(self.output_dir, "00 - .flac")),
                     assignment=audiotools.ChannelMask(0x3F000)))
 
             self.assertEqual(self.__run_app__(["track2track",
@@ -2192,7 +2192,7 @@ class track2track(UtilTest):
                 ERR_UNSUPPORTED_BITS_PER_SAMPLE.format(
                     target_filename=audiotools.Filename(
                         unsupported_bps_file.name),
-                     bps=8))
+                    bps=8))
 
     @UTIL_TRACK2TRACK
     def test_replay_gain(self):
@@ -3106,8 +3106,8 @@ class trackcmp(UtilTest):
             1)
         self.__check_error__(
             LAB_TRACKCMP_CMP.format(
-                 file1=audiotools.Filename(self.match_dir1),
-                 file2=audiotools.Filename(self.match_file1.name)) +
+                file1=audiotools.Filename(self.match_dir1),
+                file2=audiotools.Filename(self.match_file1.name)) +
             u" : " + LAB_TRACKCMP_TYPE_MISMATCH)
 
         # check matching directory against matching directory
@@ -3362,11 +3362,11 @@ class trackinfo(UtilTest):
                     if "-b" in options:
                         self.assertIsNotNone(
                             re.match(r'\s*\d+ kbps: {}\n'.format(
-                                         track.filename), line))
+                                track.filename), line))
                     elif "-%" in options:
                         self.assertIsNotNone(
                             re.match(r'\s*\d+%: {}\n'.format(
-                                         track.filename), line))
+                                track.filename), line))
                     else:
                         self.assertIsNotNone(
                             re.match(
@@ -3705,117 +3705,117 @@ class tracklength(UtilTest):
         self.assertEqual(track3.seconds_length(), 60 * 60)
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac"]), 0)
         self.__check_output__(u"{:>6s} {:>5s} {:>7s} {:>4s}".format(
-                                  LAB_TRACKLENGTH_FILE_FORMAT,
-                                  LAB_TRACKLENGTH_FILE_COUNT,
-                                  LAB_TRACKLENGTH_FILE_LENGTH,
-                                  LAB_TRACKLENGTH_FILE_SIZE))
+            LAB_TRACKLENGTH_FILE_FORMAT,
+            LAB_TRACKLENGTH_FILE_COUNT,
+            LAB_TRACKLENGTH_FILE_LENGTH,
+            LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"{} {} {} {}".format(
-                                  DIV * 6,
-                                  DIV * 5,
-                                  DIV * 7,
-                                  DIV * 4))
+            DIV * 6,
+            DIV * 5,
+            DIV * 7,
+            DIV * 4))
         self.__check_output__(u"{:>6s} {:>5d} {:>7s} {:>4d}".format(
-                                  u"flac",
-                                  1,
-                                  LAB_TRACKLENGTH.format(
-                                      hours=0, minutes=0, seconds=1),
-                                  380))
+            u"flac",
+            1,
+            LAB_TRACKLENGTH.format(
+                hours=0, minutes=0, seconds=1),
+            380))
 
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
                                            "1s.flac"]), 0)
         self.__check_output__(u"{:>6s} {:>5s} {:>7s} {:>4s}".format(
-                                  LAB_TRACKLENGTH_FILE_FORMAT,
-                                  LAB_TRACKLENGTH_FILE_COUNT,
-                                  LAB_TRACKLENGTH_FILE_LENGTH,
-                                  LAB_TRACKLENGTH_FILE_SIZE))
+            LAB_TRACKLENGTH_FILE_FORMAT,
+            LAB_TRACKLENGTH_FILE_COUNT,
+            LAB_TRACKLENGTH_FILE_LENGTH,
+            LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"{} {} {} {}".format(
-                                  DIV * 6,
-                                  DIV * 5,
-                                  DIV * 7,
-                                  DIV * 4))
+            DIV * 6,
+            DIV * 5,
+            DIV * 7,
+            DIV * 4))
         self.__check_output__(u"{:>6s} {:>5d} {:>7s} {:>4d}".format(
-                                  u"flac",
-                                  2,
-                                  LAB_TRACKLENGTH.format(
-                                      hours=0, minutes=0, seconds=2),
-                                  760))
+            u"flac",
+            2,
+            LAB_TRACKLENGTH.format(
+                hours=0, minutes=0, seconds=2),
+            760))
 
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
                                            "1m.flac"]), 0)
         self.__check_output__(u"{:>6s} {:>5s} {:>7s} {:>4s}".format(
-                                  LAB_TRACKLENGTH_FILE_FORMAT,
-                                  LAB_TRACKLENGTH_FILE_COUNT,
-                                  LAB_TRACKLENGTH_FILE_LENGTH,
-                                  LAB_TRACKLENGTH_FILE_SIZE))
+            LAB_TRACKLENGTH_FILE_FORMAT,
+            LAB_TRACKLENGTH_FILE_COUNT,
+            LAB_TRACKLENGTH_FILE_LENGTH,
+            LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"{} {} {} {}".format(
-                                  DIV * 6,
-                                  DIV * 5,
-                                  DIV * 7,
-                                  DIV * 4))
+            DIV * 6,
+            DIV * 5,
+            DIV * 7,
+            DIV * 4))
         self.__check_output__(u"{:>6s} {:>5d} {:>7s} {:>4s}".format(
-                                  u"flac",
-                                  2,
-                                  LAB_TRACKLENGTH.format(
-                                      hours=0, minutes=1, seconds=1),
-                                  u"9.8K"))
+            u"flac",
+            2,
+            LAB_TRACKLENGTH.format(
+                hours=0, minutes=1, seconds=1),
+            u"9.8K"))
 
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
                                            "1m.flac", "1m.flac"]), 0)
         self.__check_output__(u"{:>6s} {:>5s} {:>7s} {:>5s}".format(
-                                  LAB_TRACKLENGTH_FILE_FORMAT,
-                                  LAB_TRACKLENGTH_FILE_COUNT,
-                                  LAB_TRACKLENGTH_FILE_LENGTH,
-                                  LAB_TRACKLENGTH_FILE_SIZE))
+            LAB_TRACKLENGTH_FILE_FORMAT,
+            LAB_TRACKLENGTH_FILE_COUNT,
+            LAB_TRACKLENGTH_FILE_LENGTH,
+            LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"{} {} {} {}".format(
-                                  DIV * 6,
-                                  DIV * 5,
-                                  DIV * 7,
-                                  DIV * 5))
+            DIV * 6,
+            DIV * 5,
+            DIV * 7,
+            DIV * 5))
         self.__check_output__(u"{:>6s} {:>5d} {:>7s} {:>5s}".format(
-                                  u"flac",
-                                  3,
-                                  LAB_TRACKLENGTH.format(
-                                      hours=0, minutes=2, seconds=1),
-                                  u"19.1K"))
+            u"flac",
+            3,
+            LAB_TRACKLENGTH.format(
+                hours=0, minutes=2, seconds=1),
+            u"19.1K"))
 
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
                                            "1m.flac", "1h.flac"]), 0)
         self.__check_output__(u"{:>6s} {:>5s} {:>7s} {:>5s}".format(
-                                  LAB_TRACKLENGTH_FILE_FORMAT,
-                                  LAB_TRACKLENGTH_FILE_COUNT,
-                                  LAB_TRACKLENGTH_FILE_LENGTH,
-                                  LAB_TRACKLENGTH_FILE_SIZE))
+            LAB_TRACKLENGTH_FILE_FORMAT,
+            LAB_TRACKLENGTH_FILE_COUNT,
+            LAB_TRACKLENGTH_FILE_LENGTH,
+            LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"{} {} {} {}".format(
-                                  DIV * 6,
-                                  DIV * 5,
-                                  DIV * 7,
-                                  DIV * 5))
+            DIV * 6,
+            DIV * 5,
+            DIV * 7,
+            DIV * 5))
         self.__check_output__(u"{:>6s} {:>5d} {:>7s} {:>5s}".format(
-                                  u"flac",
-                                  3,
-                                  LAB_TRACKLENGTH.format(
-                                      hours=1, minutes=1, seconds=1),
-                                  u"22.5K"))
+            u"flac",
+            3,
+            LAB_TRACKLENGTH.format(
+                hours=1, minutes=1, seconds=1),
+            u"22.5K"))
 
         self.assertEqual(self.__run_app__(["tracklength", "1s.flac",
                                            "1m.flac", "1h.flac",
                                            "1h.flac"]), 0)
         self.__check_output__(u"{:>6s} {:>5s} {:>7s} {:>5s}".format(
-                                  LAB_TRACKLENGTH_FILE_FORMAT,
-                                  LAB_TRACKLENGTH_FILE_COUNT,
-                                  LAB_TRACKLENGTH_FILE_LENGTH,
-                                  LAB_TRACKLENGTH_FILE_SIZE))
+            LAB_TRACKLENGTH_FILE_FORMAT,
+            LAB_TRACKLENGTH_FILE_COUNT,
+            LAB_TRACKLENGTH_FILE_LENGTH,
+            LAB_TRACKLENGTH_FILE_SIZE))
         self.__check_output__(u"{} {} {} {}".format(
-                                  DIV * 6,
-                                  DIV * 5,
-                                  DIV * 7,
-                                  DIV * 5))
+            DIV * 6,
+            DIV * 5,
+            DIV * 7,
+            DIV * 5))
         self.__check_output__(u"{:>6s} {:>5d} {:>7s} {:>5s}".format(
-                                  u"flac",
-                                  4,
-                                  LAB_TRACKLENGTH.format(
-                                      hours=2, minutes=1, seconds=1),
-                                  u"35.3K"))
+            u"flac",
+            4,
+            LAB_TRACKLENGTH.format(
+                hours=2, minutes=1, seconds=1),
+            u"35.3K"))
 
         tempdir = tempfile.mkdtemp()
         try:
@@ -3824,21 +3824,21 @@ class tracklength(UtilTest):
             shutil.copy(track3.filename, tempdir)
             self.assertEqual(self.__run_app__(["tracklength", tempdir]), 0)
             self.__check_output__(u"{:>6s} {:>5s} {:>7s} {:>5s}".format(
-                                      LAB_TRACKLENGTH_FILE_FORMAT,
-                                      LAB_TRACKLENGTH_FILE_COUNT,
-                                      LAB_TRACKLENGTH_FILE_LENGTH,
-                                      LAB_TRACKLENGTH_FILE_SIZE))
+                LAB_TRACKLENGTH_FILE_FORMAT,
+                LAB_TRACKLENGTH_FILE_COUNT,
+                LAB_TRACKLENGTH_FILE_LENGTH,
+                LAB_TRACKLENGTH_FILE_SIZE))
             self.__check_output__(u"{} {} {} {}".format(
-                                      DIV * 6,
-                                      DIV * 5,
-                                      DIV * 7,
-                                      DIV * 5))
+                DIV * 6,
+                DIV * 5,
+                DIV * 7,
+                DIV * 5))
             self.__check_output__(u"{:>6s} {:>5d} {:>7s} {:>5s}".format(
-                                      u"flac",
-                                      3,
-                                      LAB_TRACKLENGTH.format(
-                                          hours=1, minutes=1, seconds=1),
-                                      u"22.5K"))
+                u"flac",
+                3,
+                LAB_TRACKLENGTH.format(
+                    hours=1, minutes=1, seconds=1),
+                u"22.5K"))
         finally:
             from shutil import rmtree
             rmtree(tempdir)
@@ -5357,8 +5357,8 @@ class tracksplit_pre_gap(UtilTest):
 
         # ensure tracks in directory match expected lengths and data
         tracks = [audiotools.open(
-                      os.path.join(self.outdir, "{:02d}.wav".format(i)))
-                  for i in range(1, len(track_lengths) + 1)]
+            os.path.join(self.outdir, "{:02d}.wav".format(i)))
+            for i in range(1, len(track_lengths) + 1)]
 
         for (i, track, expected_length) in zip(range(len(tracks)),
                                                tracks,
@@ -5409,8 +5409,8 @@ class tracksplit_pre_gap(UtilTest):
 
         # ensure tracks in directory match expected lengths and data
         tracks = [audiotools.open(
-                      os.path.join(self.outdir, "{:02d}.wav".format(i)))
-                  for i in range(0, len(track_lengths) + 1)]
+            os.path.join(self.outdir, "{:02d}.wav".format(i)))
+            for i in range(0, len(track_lengths) + 1)]
 
         track = tracks[0]
         self.assertEqual(track.total_frames(), pre_gap_size)
@@ -5583,7 +5583,7 @@ class tracktag(UtilTest):
                 if "--artist" in options:
                     self.assertEqual(metadata.artist_name, u"Artist 3")
                 elif "-r" in options:
-                    self.assertIsNone(metadata.artist_name);
+                    self.assertIsNone(metadata.artist_name)
                 else:
                     self.assertEqual(metadata.artist_name, u"Artist 1")
 
@@ -6086,14 +6086,15 @@ class tracktag_misc(UtilTest):
                                 metadata_fields_values(metadata).issubset(
                                     deleted_number_fields_values(
                                         fields, metadata.__class__)),
-                                "{} not subset of {} for options {}, fields {}, type {}".format(
-                                     metadata_fields_values(metadata),
-                                     deleted_number_fields_values(
-                                         fields, metadata.__class__),
-                                     self.populate_delete_number_fields(
-                                         fields),
-                                     fields,
-                                     audio_type.NAME))
+                                ("{} not subset of {} for " +
+                                 "options {}, fields {}, type {}").format(
+                                    metadata_fields_values(metadata),
+                                    deleted_number_fields_values(
+                                        fields, metadata.__class__),
+                                    self.populate_delete_number_fields(
+                                        fields),
+                                    fields,
+                                    audio_type.NAME))
                 except NoMetaData:
                     pass
 

@@ -2015,7 +2015,7 @@ class M4A_HDLR_Atom(M4A_Leaf_Atom):
         not including its 64-bit size / name header"""
 
         writer.build("8u 24u 4b 4b 4b 32u 32u 8u {:d}b {:d}P".format(
-                         len(self.component_name), self.padding_size),
+                     len(self.component_name), self.padding_size),
                      (self.version,
                       self.flags,
                       self.qt_type,

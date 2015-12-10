@@ -104,7 +104,6 @@ try:
             else:
                 return urwid.CheckBox.keypress(self, size, key)
 
-
     class FocusFrame(urwid.Frame):
         """a special Frame widget which performs callbacks on focus changes"""
 
@@ -458,12 +457,12 @@ try:
             if len(metadata_choices) > 1:
                 # setup radio button for each possible match
                 matches = []
-                radios = [urwid.RadioButton(
-                    matches,
-                    choice_selection_unicode(choice[0]),
-                    on_state_change=self.select_match,
-                    user_data=i)
-                          for (i, choice) in enumerate(metadata_choices)]
+                radios = [
+                    urwid.RadioButton(matches,
+                                      choice_selection_unicode(choice[0]),
+                                      on_state_change=self.select_match,
+                                      user_data=i)
+                    for (i, choice) in enumerate(metadata_choices)]
                 for radio in radios:
                     radio._label.set_wrap_mode(urwid.CLIP)
 
@@ -613,7 +612,7 @@ try:
                     swivel_type=u"track",
                     left_top_widget=urwid.Text(('label', 'fields')),
                     left_alignment='fixed',
-                    left_width=4 + max(len(label) for _,label in field_labels),
+                    left_width=4 + max(len(label) for _, label in field_labels),
                     left_radios=field_radios,
                     left_ids=[field_id for (field_id, label) in field_labels],
                     right_top_widget=urwid.Text(('label', track_label),
@@ -2438,9 +2437,8 @@ try:
                      ("fixed",
                       6,
                       urwid.Text(u"{:2d}:{:02d}".format(
-                                     seconds_length // 60,
-                                     seconds_length % 60),
-                                 align="right"))])
+                          seconds_length // 60,
+                          seconds_length % 60), align="right"))])
                  for (track_label, seconds_length, user_data) in tracks])
 
             status = ((LAB_PLAY_STATUS if (len(tracks) > 1) else
@@ -2721,8 +2719,8 @@ def select_metadata(metadata_choices, msg, use_default=False):
                     selection=choice_selection_unicode(choice[0])))
             try:
                 choice = int(raw_input(u"{} (1-{:d}) : ".format(
-                                           LAB_SELECT_BEST_MATCH,
-                                           len(metadata_choices)))) - 1
+                    LAB_SELECT_BEST_MATCH,
+                    len(metadata_choices)))) - 1
             except ValueError:
                 choice = None
 

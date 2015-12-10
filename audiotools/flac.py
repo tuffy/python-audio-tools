@@ -421,17 +421,17 @@ class Flac_STREAMINFO(object):
             return True
 
     def __repr__(self):
-        return "Flac_STREAMINFO({})".format(
-                   ",".join(["{}={!r}".format(key, getattr(self, key))
-                             for key in ["minimum_block_size",
-                                         "maximum_block_size",
-                                         "minimum_frame_size",
-                                         "maximum_frame_size",
-                                         "sample_rate",
-                                         "channels",
-                                         "bits_per_sample",
-                                         "total_samples",
-                                         "md5sum"]]))
+        return "Flac_STREAMINFO({})".format(",".join(
+            ["{}={!r}".format(key, getattr(self, key))
+             for key in ["minimum_block_size",
+                         "maximum_block_size",
+                         "minimum_frame_size",
+                         "maximum_frame_size",
+                         "sample_rate",
+                         "channels",
+                         "bits_per_sample",
+                         "total_samples",
+                         "md5sum"]]))
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -803,13 +803,12 @@ class Flac_CUESHEET(Sheet):
             return Sheet.__eq__(self, cuesheet)
 
     def __repr__(self):
-        return "Flac_CUESHEET({})".format(
-                   ",".join(["{}={!r}".format(
-                                 key, getattr(self, "__" + key + "__"))
-                             for key in ["catalog_number",
-                                         "lead_in_samples",
-                                         "is_cdda",
-                                         "tracks"]]))
+        return "Flac_CUESHEET({})".format(",".join(
+            ["{}={!r}".format(key, getattr(self, "__" + key + "__"))
+             for key in ["catalog_number",
+                         "lead_in_samples",
+                         "is_cdda",
+                         "tracks"]]))
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -1019,15 +1018,14 @@ class Flac_CUESHEET_track(SheetTrack):
                                     self.__index_points__])
 
     def __repr__(self):
-        return "Flac_CUESHEET_track({})".format(
-                   ",".join(["{}={!r}".format(
-                                 key, getattr(self, "__" + key + "__"))
-                             for key in ["offset",
-                                         "number",
-                                         "ISRC",
-                                         "track_type",
-                                         "pre_emphasis",
-                                         "index_points"]]))
+        return "Flac_CUESHEET_track({})".format(",".join(
+            ["{}={!r}".format(key, getattr(self, "__" + key + "__"))
+             for key in ["offset",
+                         "number",
+                         "ISRC",
+                         "track_type",
+                         "pre_emphasis",
+                         "index_points"]]))
 
     def raw_info(self, indent):
         """returns a human-readable version of this track as unicode"""
@@ -1037,12 +1035,11 @@ class Flac_CUESHEET_track(SheetTrack):
         lines = [(u"track  : {number:3d}  " +
                   u"offset : {offset:9d}  " +
                   u"ISRC : {ISRC}").format(
-                       number=self.__number__,
-                       offset=self.__offset__,
-                       type=self.__track_type__,
-                       pre_emphasis=self.__pre_emphasis__,
-                       ISRC=self.__ISRC__.strip(b"\x00").decode('ascii',
-                                                                'replace'))
+                 number=self.__number__,
+                 offset=self.__offset__,
+                 type=self.__track_type__,
+                 pre_emphasis=self.__pre_emphasis__,
+                 ISRC=self.__ISRC__.strip(b"\x00").decode('ascii', 'replace'))
                  ] + [i.raw_info(1) for i in self.__index_points__]
 
         return linesep.join(
@@ -1332,15 +1329,15 @@ class Flac_PICTURE(Image):
             Image.__setattr__(self, attr, value)
 
     def __repr__(self):
-        return "Flac_PICTURE({})".format(
-                   ",".join(["{}={!r}".format(attr, getattr(self, attr))
-                             for attr in ["picture_type",
-                                          "mime_type",
-                                          "description",
-                                          "width",
-                                          "height",
-                                          "color_depth",
-                                          "color_count"]]))
+        return "Flac_PICTURE({})".format(",".join(
+            ["{}={!r}".format(attr, getattr(self, attr))
+             for attr in ["picture_type",
+                          "mime_type",
+                          "description",
+                          "width",
+                          "height",
+                          "color_depth",
+                          "color_count"]]))
 
     def raw_info(self):
         """returns a human-readable version of this metadata block
@@ -2055,16 +2052,16 @@ class FlacAudio(WaveContainer, AiffContainer):
             raise UnsupportedChannelCount(filename, pcmreader.channels)
 
         if (pcmreader.channel_mask not in
-                {0x0001, # 1ch - mono
-                 0x0004, # 1ch - mono
-                 0x0003, # 2ch - left, right
-                 0x0007, # 3ch - left, right, center
-                 0x0033, # 4ch - left, right, back left, back right
-                 0x0603, # 4ch - left, right, side left, side right
-                 0x0037, # 5ch - L, R, C, back left, back right
-                 0x0607, # 5ch - L, R, C, side left, side right
-                 0x003F, # 6ch - L, R, C, LFE, back left, back right
-                 0x060F, # 6ch - L, R, C, LFE, side left, side right
+                {0x0001,  # 1ch - mono
+                 0x0004,  # 1ch - mono
+                 0x0003,  # 2ch - left, right
+                 0x0007,  # 3ch - left, right, center
+                 0x0033,  # 4ch - left, right, back left, back right
+                 0x0603,  # 4ch - left, right, side left, side right
+                 0x0037,  # 5ch - L, R, C, back left, back right
+                 0x0607,  # 5ch - L, R, C, side left, side right
+                 0x003F,  # 6ch - L, R, C, LFE, back left, back right
+                 0x060F,  # 6ch - L, R, C, LFE, side left, side right
                  0}):
             from audiotools import UnsupportedChannelMask
             pcmreader.close()

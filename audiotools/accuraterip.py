@@ -255,11 +255,11 @@ class DiscID(object):
     def __repr__(self):
         return "AccurateRipDiscID({})".format(
             ", ".join(["{}={!r}".format(key, getattr(self, attr))
-                        for (key, attr) in
-                        [("track_numbers", "__track_numbers__"),
-                         ("track_offsets", "__track_offsets__"),
-                         ("lead_out_offset", "__lead_out_offset__"),
-                         ("freedb_disc_id", "__freedb_disc_id__")]]))
+                       for (key, attr) in
+                       [("track_numbers", "__track_numbers__"),
+                        ("track_offsets", "__track_offsets__"),
+                        ("lead_out_offset", "__lead_out_offset__"),
+                        ("freedb_disc_id", "__freedb_disc_id__")]]))
 
 
 def perform_lookup(disc_id,

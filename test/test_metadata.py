@@ -7201,10 +7201,10 @@ class M4AMetaDataTest(MetaDataTest):
             META_Atom(
                 0,
                 0,
-               [Tree_Atom(b'ilst',
-                          [Leaf_Atom(b"\xa9nam", [Data_Atom(0, 1, b"Name")]),
-                           Leaf_Atom(b"trkn", [TRKN_Atom(2, 3)]),
-                           Leaf_Atom(b"fooz", [Data_Atom(0, 1, b"Bar")])])]))
+                [Tree_Atom(b'ilst',
+                           [Leaf_Atom(b"\xa9nam", [Data_Atom(0, 1, b"Name")]),
+                            Leaf_Atom(b"trkn", [TRKN_Atom(2, 3)]),
+                            Leaf_Atom(b"fooz", [Data_Atom(0, 1, b"Bar")])])]))
 
 
 class VorbisCommentTest(MetaDataTest):

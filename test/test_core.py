@@ -448,6 +448,7 @@ class Sines(unittest.TestCase):
                                      441.0, 0.50, 441.0, 0.49),
             test_streams.Sine24_Stereo(200000, 48000,
                                        441.0, 0.50, 441.0, 0.49, 1.0),
+
             test_streams.Simple_Sine(200000, 44100, 0x3F, 16,
                                      (6400, 10000),
                                      (11520, 15000),
@@ -1939,12 +1940,18 @@ class TestFloatFrameList(unittest.TestCase):
             l = list(range(0, 1 << bps, 4))
             self.assertEqual(
                 [i - (1 << (bps - 1)) for i in l],
-                list(audiotools.pcm.from_list(l, 1, bps, False).to_float().to_int(bps)))
+                list(audiotools.pcm.from_list(l,
+                                              1,
+                                              bps,
+                                              False).to_float().to_int(bps)))
 
             l = list(range(-(1 << (bps - 1)), (1 << (bps - 1)) - 1, 4))
             self.assertEqual(
                 l,
-                list(audiotools.pcm.from_list(l, 1, bps, True).to_float().to_int(bps)))
+                list(audiotools.pcm.from_list(l,
+                                              1,
+                                              bps,
+                                              True).to_float().to_int(bps)))
 
     @LIB_CORE
     def test_errors(self):
@@ -4577,14 +4584,15 @@ class testsheet(unittest.TestCase):
                        for i in range(7)]
         try:
             # build a lot of blank test tracks
-            tracks = [audiotools.FlacAudio.from_pcm(
-                          file.name,
-                          EXACT_BLANK_PCM_Reader(pcm_frames),
-                          total_pcm_frames=pcm_frames)
-                      for (file, pcm_frames) in
-                      zip(test_tracks,
-                          [15945972, 8390172, 5201448, 3831408,
-                           18602556, 4631088, 6714372])]
+            tracks = [
+                audiotools.FlacAudio.from_pcm(
+                    file.name,
+                    EXACT_BLANK_PCM_Reader(pcm_frames),
+                    total_pcm_frames=pcm_frames)
+                for (file, pcm_frames) in
+                zip(test_tracks,
+                    [15945972, 8390172, 5201448, 3831408,
+                     18602556, 4631088, 6714372])]
 
             for track_number, track in enumerate(tracks, 1):
                 track.set_metadata(
@@ -4599,30 +4607,30 @@ class testsheet(unittest.TestCase):
                     number=1,
                     track_indexes=[SheetIndex(number=1,
                                               offset=Fraction(0, 1))]),
-                SheetTrack(
-                    number=2,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(27119, 75))]),
-                SheetTrack(
-                    number=3,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(13796, 25))]),
-                SheetTrack(
-                    number=4,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(50234, 75))]),
-                SheetTrack(
-                    number=5,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(2270, 3))]),
-                SheetTrack(
-                    number=6,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(88387, 75))]),
-                SheetTrack(
-                    number=7,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(96263, 75))])])
+                 SheetTrack(
+                     number=2,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(27119, 75))]),
+                 SheetTrack(
+                     number=3,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(13796, 25))]),
+                 SheetTrack(
+                     number=4,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(50234, 75))]),
+                 SheetTrack(
+                     number=5,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(2270, 3))]),
+                 SheetTrack(
+                     number=6,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(88387, 75))]),
+                 SheetTrack(
+                     number=7,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(96263, 75))])])
 
             for track1, track2 in zip(track_sheet, reference_sheet):
                 for index1, index2 in zip(track1, track2):
@@ -4643,16 +4651,17 @@ class testsheet(unittest.TestCase):
 
         try:
             # build a lot of blank test tracks
-            tracks = [audiotools.FlacAudio.from_pcm(
-                          file.name,
-                          EXACT_BLANK_PCM_Reader(pcm_frames),
-                          total_pcm_frames=pcm_frames)
-                      for (file, pcm_frames) in
-                      zip(test_tracks,
-                          [19404,
-                           21741300, 13847400, 22402800, 14420700,
-                           10760400, 17904600, 13715100, 17022600,
-                           30781800, 28312200])]
+            tracks = [
+                audiotools.FlacAudio.from_pcm(
+                    file.name,
+                    EXACT_BLANK_PCM_Reader(pcm_frames),
+                    total_pcm_frames=pcm_frames)
+                for (file, pcm_frames) in
+                zip(test_tracks,
+                    [19404,
+                     21741300, 13847400, 22402800, 14420700,
+                     10760400, 17904600, 13715100, 17022600,
+                     30781800, 28312200])]
 
             for track_number, track in enumerate(tracks, 0):
                 track.set_metadata(
@@ -4670,41 +4679,41 @@ class testsheet(unittest.TestCase):
                                    SheetIndex(number=1,
                                               offset=Fraction(11, 25))]),
                  SheetTrack(
-                    number=2,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(12336, 25))]),
+                     number=2,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(12336, 25))]),
                  SheetTrack(
-                    number=3,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(20186, 25))]),
+                     number=3,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(20186, 25))]),
                  SheetTrack(
-                    number=4,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(32886, 25))]),
+                     number=4,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(32886, 25))]),
                  SheetTrack(
-                    number=5,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(41061, 25))]),
+                     number=5,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(41061, 25))]),
                  SheetTrack(
-                    number=6,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(47161, 25))]),
+                     number=6,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(47161, 25))]),
                  SheetTrack(
-                    number=7,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(57311, 25))]),
+                     number=7,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(57311, 25))]),
                  SheetTrack(
-                    number=8,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(65086, 25))]),
+                     number=8,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(65086, 25))]),
                  SheetTrack(
-                    number=9,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(74736, 25))]),
+                     number=9,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(74736, 25))]),
                  SheetTrack(
-                    number=10,
-                    track_indexes=[SheetIndex(number=1,
-                                              offset=Fraction(92186, 25))])])
+                     number=10,
+                     track_indexes=[SheetIndex(number=1,
+                                               offset=Fraction(92186, 25))])])
 
             for track1, track2 in zip(track_sheet, reference_sheet):
                 for index1, index2 in zip(track1, track2):
@@ -5419,8 +5428,9 @@ class TestCDTOC(unittest.TestCase):
             self.assertEqual(cuesheet.track_length(3), 7)
 
             # set_cuesheet overwrites block and wipes out tag
-            new_sheet2 = Sheet([SheetTrack(1, [SheetIndex(1, Fraction(0, 1))]),
-                                SheetTrack(2, [SheetIndex(1, Fraction(5, 1))])])
+            new_sheet2 = Sheet(
+                [SheetTrack(1, [SheetIndex(1, Fraction(0, 1))]),
+                 SheetTrack(2, [SheetIndex(1, Fraction(5, 1))])])
             temp_track.set_cuesheet(new_sheet2)
             metadata = temp_track.get_metadata()
             self.assertEqual(len(metadata.get_blocks(5)), 1)
@@ -5928,7 +5938,7 @@ class Test_FreeDB(unittest.TestCase):
 
             # ensure DiscID works from CDDAReader
             discid = DiscID.from_cddareader(
-               CDDAReader(os.path.join(testdir, "CDImage.cue")))
+                CDDAReader(os.path.join(testdir, "CDImage.cue")))
 
             self.assertEqual(discid.__unicode__(), u"03015501")
             self.assertEqual(discid.track_count, 1)
@@ -6064,7 +6074,6 @@ class Test_FreeDB(unittest.TestCase):
                 disc_id)
         finally:
             rmtree(dir)
-
 
     @LIB_FREEDB
     def test_populated_pre_gap(self):

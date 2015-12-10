@@ -449,7 +449,7 @@ if (__name__ == '__main__'):
                         function=convert_to_wave,
                         progress_text=filename.__unicode__(),
                         completion_output=
-                            _.LAB_TRACK2CD_CONVERTED.format(filename),
+                        _.LAB_TRACK2CD_CONVERTED.format(filename),
                         audiofile=audiofile,
                         wave_filename=f[1])
 

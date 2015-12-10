@@ -264,9 +264,9 @@ def freedb_command(freedb_server, freedb_port, cmd, *args):
     POST.append(
         (u"hello",
          u"user {} {} {}".format(
-            getfqdn() if PY3 else getfqdn().decode("UTF-8", "replace"),
-            u"audiotools",
-            VERSION if PY3 else VERSION.decode("ascii"))))
+             getfqdn() if PY3 else getfqdn().decode("UTF-8", "replace"),
+             u"audiotools",
+             VERSION if PY3 else VERSION.decode("ascii"))))
 
     POST.append((u"proto", u"6"))
 

@@ -106,12 +106,12 @@ class DiscID(object):
         from base64 import b64encode
 
         raw_id = u"{:02X}{:02X}{}".format(
-                  self.first_track_number,
-                  self.last_track_number,
-                  u"".join([u"{:08X}".format(offset) for offset in
-                            [self.lead_out_offset] +
-                           self.offsets +
-                           [0] * (99 - len(self.offsets))]))
+            self.first_track_number,
+            self.last_track_number,
+            u"".join([u"{:08X}".format(offset) for offset in
+                      [self.lead_out_offset] +
+                     self.offsets +
+                     [0] * (99 - len(self.offsets))]))
 
         return b64encode(sha1(raw_id.encode("ascii")).digest(),
                          b"._").replace(b"=", b"-").decode('ascii')
@@ -141,10 +141,10 @@ def perform_lookup(disc_id, musicbrainz_server, musicbrainz_port):
 
     # query MusicBrainz web service (version 2) for <metadata>
     m = urlopen("http://{}:{:d}/ws/2/discid/{}?{}".format(
-                    musicbrainz_server,
-                    musicbrainz_port,
-                    disc_id,
-                    urlencode({"inc": "artists labels recordings"})))
+        musicbrainz_server,
+        musicbrainz_port,
+        disc_id,
+        urlencode({"inc": "artists labels recordings"})))
     xml = xml.dom.minidom.parse(m)
     m.close()
 

@@ -300,9 +300,9 @@ if (__name__ == '__main__'):
                 filename=output_filename.__unicode__())
 
             preserving_pre_gap = \
-               ((len(audiofiles) > 1) and
-                (audiofiles[0].get_metadata() is not None) and
-                (audiofiles[0].get_metadata().track_number == 0))
+                ((len(audiofiles) > 1) and
+                 (audiofiles[0].get_metadata() is not None) and
+                 (audiofiles[0].get_metadata().track_number == 0))
         else:
             msg.error(_.ERR_TOO_MANY_CUESHEET_FILES)
             sys.exit(1)

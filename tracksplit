@@ -431,7 +431,8 @@ if (__name__ == '__main__'):
                 m.album_total = options.album_total
 
     input_filenames = \
-        [input_filename] * (output_track_count + (1 if preserve_pre_gap else 0))
+        [input_filename] * (output_track_count +
+                            (1 if preserve_pre_gap else 0))
 
     # decide which metadata and output options to use when splitting tracks
     if options.interactive:

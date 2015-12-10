@@ -95,10 +95,10 @@ if (__name__ == '__main__'):
                          os.path.join(
                              options.dir,
                              FILE_TEMPLATE.format(
-                                prefix=options.prefix,
-                                filename=FILENAME_TYPES[image.type],
-                                filenum=i + 1,
-                                suffix=image.suffix())))))
+                                 prefix=options.prefix,
+                                 filename=FILENAME_TYPES[image.type],
+                                 filenum=i + 1,
+                                 suffix=image.suffix())))))
 
         # ensure our input file isn't the same
         # as any of the proposed files to extract

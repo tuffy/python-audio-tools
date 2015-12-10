@@ -38,8 +38,8 @@ class TOCFile(Sheet):
 
     def __repr__(self):
         return "TOCFile({})".format(
-            ", ".join(["{}={!r}".format(
-                           attr, getattr(self, "__" + attr + "__"))
+            ", ".join(["{}={!r}".format(attr,
+                                        getattr(self, "__" + attr + "__"))
                        for attr in ["type",
                                     "tracks",
                                     "catalog",
@@ -83,9 +83,8 @@ class TOCFile(Sheet):
 
         output = [self.__type__, u""]
         if self.__catalog__ is not None:
-            output.extend([u"CATALOG {}".format(
-                               format_string(self.__catalog__)),
-                           u""])
+            output.extend([
+                u"CATALOG {}".format(format_string(self.__catalog__)), u""])
         if self.__cd_text__ is not None:
             output.append(self.__cd_text__.build())
         output.extend([track.build() for track in self.__tracks__])
@@ -223,8 +222,8 @@ class TOCTrack(SheetTrack):
 
     def __repr__(self):
         return "TOCTrack({})".format(
-            ", ".join(["{}={!r}".format(
-                           attr, getattr(self, "__" + attr + "__"))
+            ", ".join(["{}={!r}".format(attr,
+                                        getattr(self, "__" + attr + "__"))
                        for attr in ["number",
                                     "mode",
                                     "sub_channel_mode",
@@ -310,8 +309,8 @@ class TOCFlag(object):
     def __repr__(self):
         return "{}({})".format(
             self.__class__.__name__,
-            ", ".join(["{}={!r}".format(
-                           attr, getattr(self, "__" + attr + "__"))
+            ", ".join(["{}={!r}".format(attr,
+                                        getattr(self, "__" + attr + "__"))
                        for attr in self.__attrs__]))
 
     def build(self):

@@ -42,9 +42,9 @@ def perform_lookup(mbid,
     # query server for JSON data about MBID release
     try:
         j = urlopen("http://{server}:{port}/release/{release}/".format(
-                         server=coverartarchive_server,
-                         port=coverartarchive_port,
-                         release=mbid))
+                    server=coverartarchive_server,
+                    port=coverartarchive_port,
+                    release=mbid))
     except URLError:
         return []
 

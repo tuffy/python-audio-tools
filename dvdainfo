@@ -89,8 +89,8 @@ if (__name__ == '__main__'):
             row.add_column(u"{:d}".format(track.number), "right")
             row.add_column(u" ")
             row.add_column(u"{:d}:{:02d}".format(
-                               track.pts_length // 90000 // 60,
-                               track.pts_length // 90000 % 60), "right")
+                track.pts_length // 90000 // 60,
+                track.pts_length // 90000 % 60), "right")
 
             try:
                 reader = track.reader()

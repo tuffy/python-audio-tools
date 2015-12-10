@@ -421,7 +421,8 @@ class VorbisComment(MetaData):
                 # remove TRACKTOTAL/DISCTOTAL fields
                 self[key] = []
 
-                # preserve the non-slashed side of TRACKNUMBER/DISCNUMBER fields
+                # preserve the non-slashed side of
+                # TRACKNUMBER/DISCNUMBER fields
                 try:
                     self[slashed_key] = [slash_filter(s) for s in
                                          self[slashed_key]]

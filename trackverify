@@ -589,8 +589,8 @@ if (__name__ == '__main__'):
             else:
                 for track in tracks:
                     msg.error(u"\"{path}\" {result}".format(
-                                  path=audiotools.Filename(track.filename),
-                                  result=_.ERR_TRACKVERIFY))
+                        path=audiotools.Filename(track.filename),
+                        result=_.ERR_TRACKVERIFY))
 
         msg.ansi_clearline()
 

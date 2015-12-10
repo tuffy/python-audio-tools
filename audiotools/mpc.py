@@ -231,7 +231,7 @@ class MPCAudio(ApeTaggedAudio, AudioFile):
                              sample_rate=sample_rate,
                              channels=min(pcmreader.channels, 2),
                              channel_mask=int(ChannelMask.from_channels(
-                                min(pcmreader.channels, 2))),
+                                 min(pcmreader.channels, 2))),
                              bits_per_sample=16),
                 float(compression),
                 total_pcm_frames if (total_pcm_frames is not None) else 0)

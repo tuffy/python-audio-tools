@@ -361,9 +361,9 @@ if (__name__ == '__main__'):
                               enumerate(choices, 0 if preserve_pre_gap else 1)
                                if i in tracks_to_rip]
                               for choices in metadata_choices],
-            input_filenames=[audiotools.Filename(
-                                 "track{:02d}.cdda.wav".format(i))
-                             for i in tracks_to_rip],
+            input_filenames=[
+                audiotools.Filename("track{:02d}.cdda.wav".format(i))
+                for i in tracks_to_rip],
             output_directory=options.dir,
             format_string=(options.format if
                            (options.format is not None) else
@@ -399,8 +399,8 @@ if (__name__ == '__main__'):
                     metadata_choices=[
                         [c for i, c in
                          enumerate(choices, 0 if preserve_pre_gap else 1)
-                          if i in tracks_to_rip]
-                         for choices in metadata_choices],
+                         if i in tracks_to_rip]
+                        for choices in metadata_choices],
                     input_filenames=[
                         audiotools.Filename("track{:02d}.cdda.wav".format(i))
                         for i in tracks_to_rip],

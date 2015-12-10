@@ -757,8 +757,8 @@ if (__name__ == '__main__'):
                     [("fixed",
                       len(audiotools.output_text(
                           _.LAB_AT_CONFIG_ID3V2_VERSION)) + 3,
-                      urwid.Text(("label", u"{} : ".format(
-                                     _.LAB_AT_CONFIG_ID3V2_VERSION))))] +
+                      urwid.Text("label", u"{} : ".format(
+                          _.LAB_AT_CONFIG_ID3V2_VERSION)))] +
                     [("weight",
                       1,
                       urwid.RadioButton(
@@ -781,8 +781,8 @@ if (__name__ == '__main__'):
                     [("fixed",
                       len(audiotools.output_text(
                           _.LAB_AT_CONFIG_ID3V1_VERSION)) + 3,
-                      urwid.Text(("label", u"{} : ".format(
-                                     _.LAB_AT_CONFIG_ID3V1_VERSION))))] +
+                      urwid.Text("label", u"{} : ".format(
+                          _.LAB_AT_CONFIG_ID3V1_VERSION)))] +
                     [("weight",
                       1,
                       urwid.RadioButton(
@@ -803,8 +803,8 @@ if (__name__ == '__main__'):
                     [("fixed",
                       len(audiotools.output_text(
                           _.LAB_AT_CONFIG_ID3V2_PADDING)) + 3,
-                      urwid.Text(("label", u"{} : ".format(
-                                      _.LAB_AT_CONFIG_ID3V2_PADDING))))] +
+                      urwid.Text("label", u"{} : ".format(
+                          _.LAB_AT_CONFIG_ID3V2_PADDING)))] +
                     [("weight",
                       1,
                       urwid.RadioButton(
@@ -915,8 +915,8 @@ if (__name__ == '__main__'):
                     [("fixed",
                       len(audiotools.output_text(
                           _.LAB_AT_CONFIG_VERBOSITY)) + 3,
-                      urwid.Text(("label", u"{} : ".format(
-                                      _.LAB_AT_CONFIG_VERBOSITY))))] +
+                      urwid.Text("label", u"{} : ".format(
+                          _.LAB_AT_CONFIG_VERBOSITY)))] +
                     [("weight", 1,
                       urwid.RadioButton(
                           group=verbosity,
@@ -1194,7 +1194,7 @@ if (__name__ == '__main__'):
                     audiotools.config.write(configfile)
                     configfile.close()
                     msg.info(_.LAB_AT_CONFIG_FILE_WRITTEN.format(
-                                 audiotools.Filename(configpath)))
+                        audiotools.Filename(configpath)))
                 except IOError as err:
                     msg.error(
                         _.ERR_OPEN_IOERROR.format(
@@ -1254,7 +1254,7 @@ if (__name__ == '__main__'):
             audiotools.config.write(configfile)
             configfile.close()
             msg.info(_.LAB_AT_CONFIG_FILE_WRITTEN.format(
-                         audiotools.Filename(configpath)))
+                audiotools.Filename(configpath)))
         except IOError as err:
             msg.error(
                 _.ERR_OPEN_IOERROR.format(

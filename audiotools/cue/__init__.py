@@ -178,7 +178,8 @@ class File(object):
 
     def __repr__(self):
         return "File({})".format(
-            ", ".join(["{}={!r}".format(attr, getattr(self, "__" + attr + "__"))
+            ", ".join(["{}={!r}".format(attr,
+                                        getattr(self, "__" + attr + "__"))
                        for attr in ["filename", "file_type", "tracks"]]))
 
     def filename(self):
@@ -233,8 +234,8 @@ class Track(SheetTrack):
 
     def __repr__(self):
         return "Track({})".format(
-            ", ".join(["{}={!r}".format(
-                           attr, getattr(self, "__" + attr + "__"))
+            ", ".join(["{}={!r}".format(attr,
+                                        getattr(self, "__" + attr + "__"))
                        for attr in ["number",
                                     "track_type",
                                     "indexes",
@@ -338,34 +339,36 @@ class Track(SheetTrack):
         items = []
 
         if self.__title__ is not None:
-            items.append(u"    TITLE {}".format(
-                             format_string(self.__title__)))
+            items.append(
+                u"    TITLE {}".format(format_string(self.__title__)))
 
         if self.__performer__ is not None:
-            items.append(u"    PERFORMER {}".format(
-                             format_string(self.__performer__)))
+            items.append(
+                u"    PERFORMER {}".format(format_string(self.__performer__)))
 
         if self.__songwriter__ is not None:
-            items.append(u"    SONGWRITER {}".format(
-                             format_string(self.__songwriter__)))
+            items.append(
+                u"    SONGWRITER {}".format(
+                    format_string(self.__songwriter__)))
 
         if self.__flags__ is not None:
-            items.append(u"    FLAGS {}".format(
-                             " ".join(self.__flags__)))
+            items.append(
+                u"    FLAGS {}".format(" ".join(self.__flags__)))
 
         if self.__isrc__ is not None:
-            items.append(u"    ISRC {}".format(self.__isrc__))
+            items.append(
+                u"    ISRC {}".format(self.__isrc__))
 
         if self.__pregap__ is not None:
-            items.append(u"    PREGAP {}".format(
-                             format_timestamp(self.__pregap__)))
+            items.append(
+                u"    PREGAP {}".format(format_timestamp(self.__pregap__)))
 
         for index in self.__indexes__:
             items.append(index.build())
 
         if self.__postgap__ is not None:
-            items.append(u"    POSTGAP {}".format(
-                             format_timestamp(self.__postgap__)))
+            items.append(
+                u"    POSTGAP {}".format(format_timestamp(self.__postgap__)))
 
         return u"  TRACK {:02d} {}\r\n{}".format(self.__number__,
                                                  self.__track_type__,

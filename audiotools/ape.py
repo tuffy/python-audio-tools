@@ -745,10 +745,10 @@ class ApeTag(MetaData):
             return ApeTag(
                 [tag.copy() for tag in self.tags
                  if tag.key in matching_keys],
-                contains_header=self.contains_header or
-                                metadata.contains_header,
-                contains_footer=self.contains_footer or
-                                metadata.contains_footer)
+                contains_header=
+                self.contains_header or metadata.contains_header,
+                contains_footer=
+                self.contains_footer or metadata.contains_footer)
         else:
             return MetaData.intersection(self, metadata)
 
@@ -846,7 +846,8 @@ class ApeTaggedAudio(object):
             if len(tag_footer) < 32:
                 # no existing ApeTag can fit, so append fresh tag
                 f.close()
-                with BitstreamWriter(open(self.filename, "ab"), True) as writer:
+                with BitstreamWriter(open(self.filename, "ab"),
+                                     True) as writer:
                     metadata.build(writer)
                 return
 
@@ -898,7 +899,8 @@ class ApeTaggedAudio(object):
             else:
                 # no existing metadata, so simply append a fresh tag
                 f.close()
-                with BitstreamWriter(open(self.filename, "ab"), True) as writer:
+                with BitstreamWriter(open(self.filename, "ab"),
+                                     True) as writer:
                     metadata.build(writer)
 
     def set_metadata(self, metadata):
@@ -955,7 +957,8 @@ class ApeTaggedAudio(object):
 
             if len(new_metadata.keys()) > 0:
                 # no existing metadata, so simply append a fresh tag
-                with BitstreamWriter(open(self.filename, "ab"), True) as writer:
+                with BitstreamWriter(open(self.filename, "ab"),
+                                     True) as writer:
                     new_metadata.build(writer)
 
     def delete_metadata(self):

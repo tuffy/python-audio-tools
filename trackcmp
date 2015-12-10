@@ -64,30 +64,26 @@ def cmp_result(result, is_tty=False):
     assert((mismatch is None) or isinstance(mismatch, int))
 
     if mismatch is None:
-        return (_.LAB_TRACKCMP_CMP.format(
-                    file1=audiotools.Filename(path1),
-                    file2=audiotools.Filename(path2)) +
+        return (_.LAB_TRACKCMP_CMP.format(file1=audiotools.Filename(path1),
+                                          file2=audiotools.Filename(path2)) +
                 u" : " + audiotools.output_text(
                     _.LAB_TRACKCMP_OK,
                     fg_color="green").format(is_tty))
     elif mismatch >= 0:
-        return (_.LAB_TRACKCMP_CMP.format(
-                    file1=audiotools.Filename(path1),
-                    file2=audiotools.Filename(path2)) +
+        return (_.LAB_TRACKCMP_CMP.format(file1=audiotools.Filename(path1),
+                                          file2=audiotools.Filename(path2)) +
                 u" : " + audiotools.output_text(
                     _.LAB_TRACKCMP_MISMATCH.format(mismatch + 1),
                     fg_color="red").format(is_tty))
     elif mismatch == -1:
-        return (_.LAB_TRACKCMP_CMP.format(
-                    file1=audiotools.Filename(path1),
-                    file2=audiotools.Filename(path2)) +
+        return (_.LAB_TRACKCMP_CMP.format(file1=audiotools.Filename(path1),
+                                          file2=audiotools.Filename(path2)) +
                 u" : " + audiotools.output_text(
                     _.LAB_TRACKCMP_PARAM_MISMATCH,
                     fg_color="red").format(is_tty))
     else:
-        return (_.LAB_TRACKCMP_CMP.format(
-                    file1=audiotools.Filename(path1),
-                    file2=audiotools.Filename(path2)) +
+        return (_.LAB_TRACKCMP_CMP.format(file1=audiotools.Filename(path1),
+                                          file2=audiotools.Filename(path2)) +
                 u" : " + audiotools.output_text(
                     _.LAB_TRACKCMP_ERROR,
                     fg_color="red").format(is_tty))
@@ -148,16 +144,15 @@ def image_compare_raw(progress, source_filename,
 
 def image_compare_results(result, is_tty=False):
     (mismatch, image_name, track_name) = result
-    return u"{} : {}".format(_.LAB_TRACKCMP_CMP.format(
-                                 file1=audiotools.Filename(image_name),
-                                 file2=audiotools.Filename(track_name)),
-                             (audiotools.output_text(
-                                 _.LAB_TRACKCMP_OK,
-                                 fg_color="green").format(is_tty) if
-                              mismatch is None else
-                              audiotools.output_text(
-                                  _.LAB_TRACKCMP_MISMATCH.format(mismatch + 1),
-                                  fg_color="red").format(is_tty)))
+    return u"{} : {}".format(
+        _.LAB_TRACKCMP_CMP.format(file1=audiotools.Filename(image_name),
+                                  file2=audiotools.Filename(track_name)),
+        (audiotools.output_text(_.LAB_TRACKCMP_OK,
+                                fg_color="green").format(is_tty)
+         if mismatch is None else
+         audiotools.output_text(
+             _.LAB_TRACKCMP_MISMATCH.format(mismatch + 1),
+             fg_color="red").format(is_tty)))
 
 
 def image_compare_results_tty(result):
@@ -407,12 +402,12 @@ if (__name__ == '__main__'):
         else:
             # comparison mismatch
             msg.error(_.LAB_TRACKCMP_CMP.format(
-                           file1=audiotools.Filename(args[0]),
-                           file2=audiotools.Filename(args[1])) +
-                      u" : " +
-                      audiotools.output_text(
-                          _.LAB_TRACKCMP_TYPE_MISMATCH,
-                          fg_color="red").format(msg.error_isatty()))
+                file1=audiotools.Filename(args[0]),
+                file2=audiotools.Filename(args[1])) +
+                u" : " +
+                audiotools.output_text(
+                    _.LAB_TRACKCMP_TYPE_MISMATCH,
+                    fg_color="red").format(msg.error_isatty()))
             sys.exit(1)
     elif len(args) > 2:
         # possibly comparing disk image against tracks
