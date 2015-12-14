@@ -1,6 +1,3 @@
-# -----------------------------------------------------------------------------
-# ply: __init__.py
-#
 # Copyright (C) 2001-2011,
 # David M. Beazley (Dabeaz LLC)
 # All rights reserved.
@@ -31,4 +28,5 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # -----------------------------------------------------------------------------
 
+__version__ = '3.7'
 __all__ = ['lex','yacc']
