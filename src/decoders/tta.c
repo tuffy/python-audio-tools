@@ -437,13 +437,12 @@ read_header(BitstreamReader *frame, struct tta_header *header)
     checksum_init(frame, &checksum);
 
     if (!setjmp(*br_try(frame))) {
-        frame->parse(frame, "4b 3*16u 2*32u",
-                     signature,
-                     &format,
-                     &(header->channels),
-                     &(header->bits_per_sample),
-                     &(header->sample_rate),
-                     &(header->total_pcm_frames));
+        frame->read_bytes(frame, signature, 4);
+        format = frame->read(frame, 16);
+        header->channels = frame->read(frame, 16);
+        header->bits_per_sample = frame->read(frame, 16);
+        header->sample_rate = frame->read(frame, 32);
+        header->total_pcm_frames = frame->read(frame, 32);
 
         header->default_block_size = (header->sample_rate * 256) / 245;
         header->total_tta_frames = div_ceil(header->total_pcm_frames,

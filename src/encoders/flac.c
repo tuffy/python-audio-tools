@@ -776,7 +776,9 @@ write_block_header(BitstreamWriter *output,
                    unsigned block_type,
                    unsigned block_length)
 {
-    output->build(output, "1u 7u 24u", is_last, block_type, block_length);
+    output->write(output, 1, is_last);
+    output->write(output, 7, block_type);
+    output->write(output, 24, block_length);
 }
 
 static void
@@ -794,17 +796,18 @@ write_STREAMINFO(BitstreamWriter *output,
 {
     write_block_header(output, is_last, 0, 34);
 
-    output->build(output,
-                  "16u 16u 24u 24u 20u 3u 5u 36U 16b",
-                  minimum_block_size,
-                  maximum_block_size,
-                  minimum_frame_size,
-                  maximum_frame_size,
-                  sample_rate,
-                  channel_count - 1,
-                  bits_per_sample - 1,
-                  total_samples,
-                  md5sum);
+    assert(channel_count > 0);
+    assert(bits_per_sample > 0);
+
+    output->write(output, 16, minimum_block_size);
+    output->write(output, 16, maximum_block_size);
+    output->write(output, 24, minimum_frame_size);
+    output->write(output, 24, maximum_frame_size);
+    output->write(output, 20, sample_rate);
+    output->write(output, 3, channel_count - 1);
+    output->write(output, 5, bits_per_sample - 1);
+    output->write_64(output, 36, total_samples);
+    output->write_bytes(output, md5sum, 16);
 }
 
 static void
@@ -1254,16 +1257,14 @@ write_frame_header(BitstreamWriter *output,
 
     output->add_callback(output, (bs_callback_f)flac_crc8, &crc8);
 
-    output->build(output,
-                  "14u 1u 1u 4u 4u 4u 3u 1u",
-                  0x3FFE,
-                  0,
-                  0,
-                  encoded_block_size,
-                  encoded_sample_rate,
-                  channel_assignment,
-                  encoded_bps,
-                  0);
+    output->write(output, 14, 0x3FFE);            /*sync code*/
+    output->write(output, 1, 0);                  /*reserved*/
+    output->write(output, 1, 0);                  /*blocking*/
+    output->write(output, 4, encoded_block_size);
+    output->write(output, 4, encoded_sample_rate);
+    output->write(output, 4, channel_assignment);
+    output->write(output, 3, encoded_bps);
+    output->write(output, 1, 0);                  /*reserved*/
 
     write_utf8(output, frame_number);
 

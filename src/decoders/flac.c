@@ -141,27 +141,27 @@ static void
 read_CONSTANT_subframe(BitstreamReader *r,
                        unsigned block_size,
                        unsigned bits_per_sample,
-                       int samples[]);
+                       int channel_data[]);
 
 static void
 read_VERBATIM_subframe(BitstreamReader *r,
                        unsigned block_size,
                        unsigned bits_per_sample,
-                       int samples[]);
+                       int channel_data[]);
 
 static status_t
 read_FIXED_subframe(BitstreamReader *r,
                     unsigned block_size,
                     unsigned bits_per_sample,
                     unsigned predictor_order,
-                    int samples[]);
+                    int channel_data[]);
 
 static status_t
 read_LPC_subframe(BitstreamReader *r,
                   unsigned block_size,
                   unsigned bits_per_sample,
                   unsigned predictor_order,
-                  int samples[]);
+                  int channel_data[]);
 
 static status_t
 read_residual_block(BitstreamReader *r,
@@ -800,7 +800,9 @@ read_block_header(BitstreamReader *r,
                   unsigned *type,
                   unsigned *size)
 {
-    r->parse(r, "1u 7u 24u", last, type, size);
+    *last = r->read(r, 1);
+    *type = r->read(r, 7);
+    *size = r->read(r, 24);
 }
 
 static void
@@ -829,10 +831,9 @@ read_SEEKTABLE(BitstreamReader *r,
     seektable->seek_points =
         malloc(sizeof(struct SEEKPOINT) * seektable->total_points);
     for (i = 0; i < seektable->total_points; i++) {
-        r->parse(r, "64U 64U 16u",
-                 &(seektable->seek_points[i].sample_number),
-                 &(seektable->seek_points[i].frame_offset),
-                 &(seektable->seek_points[i].frame_samples));
+        seektable->seek_points[i].sample_number = r->read_64(r, 64);
+        seektable->seek_points[i].frame_offset = r->read_64(r, 64);
+        seektable->seek_points[i].frame_samples = r->read(r, 16);
     }
 }
 
@@ -1297,12 +1298,12 @@ static void
 read_CONSTANT_subframe(BitstreamReader *r,
                        unsigned block_size,
                        unsigned bits_per_sample,
-                       int samples[])
+                       int channel_data[])
 {
     const int constant = r->read_signed(r, bits_per_sample);
     for (; block_size; block_size--) {
-        samples[0] = constant;
-        samples += 1;
+        channel_data[0] = constant;
+        channel_data += 1;
     }
 }
 
@@ -1310,11 +1311,11 @@ static void
 read_VERBATIM_subframe(BitstreamReader *r,
                        unsigned block_size,
                        unsigned bits_per_sample,
-                       int samples[])
+                       int channel_data[])
 {
     for (; block_size; block_size--) {
-        samples[0] = r->read_signed(r, bits_per_sample);
-        samples += 1;
+        channel_data[0] = r->read_signed(r, bits_per_sample);
+        channel_data += 1;
     }
 }
 
@@ -1323,7 +1324,7 @@ read_FIXED_subframe(BitstreamReader *r,
                     unsigned block_size,
                     unsigned bits_per_sample,
                     unsigned predictor_order,
-                    int samples[])
+                    int channel_data[])
 {
     if ((predictor_order > 4) || (predictor_order > block_size)) {
         return INVALID_FIXED_ORDER;
@@ -1334,7 +1335,7 @@ read_FIXED_subframe(BitstreamReader *r,
 
         /*warm-up samples*/
         for (i = 0; i < predictor_order; i++) {
-            samples[i] = r->read_signed(r, bits_per_sample);
+            channel_data[i] = r->read_signed(r, bits_per_sample);
         }
 
         /*residuals*/
@@ -1348,36 +1349,36 @@ read_FIXED_subframe(BitstreamReader *r,
         switch (predictor_order) {
         case 0:
             for (i = 0; i < block_size; i++) {
-                samples[i] = residuals[i];
+                channel_data[i] = residuals[i];
             }
             return OK;
         case 1:
             for (i = 1; i < block_size; i++) {
-                samples[i] = samples[i - 1] + residuals[i - 1];
+                channel_data[i] = channel_data[i - 1] + residuals[i - 1];
             }
             return OK;
         case 2:
             for (i = 2; i < block_size; i++) {
-                samples[i] = (2 * samples[i - 1]) -
-                             samples[i - 2] +
-                             residuals[i - 2];
+                channel_data[i] = (2 * channel_data[i - 1]) -
+                                  channel_data[i - 2] +
+                                  residuals[i - 2];
             }
             return OK;
         case 3:
             for (i = 3; i < block_size; i++) {
-                samples[i] = (3 * samples[i - 1]) -
-                             (3 * samples[i - 2]) +
-                             samples[i - 3] +
-                             residuals[i - 3];
+                channel_data[i] = (3 * channel_data[i - 1]) -
+                                  (3 * channel_data[i - 2]) +
+                                  channel_data[i - 3] +
+                                  residuals[i - 3];
             }
             return OK;
         case 4:
             for (i = 4; i < block_size; i++) {
-                samples[i] = (4 * samples[i - 1]) -
-                             (6 * samples[i - 2]) +
-                             (4 * samples[i - 3]) -
-                             samples[i - 4] +
-                             residuals[i - 4];
+                channel_data[i] = (4 * channel_data[i - 1]) -
+                                  (6 * channel_data[i - 2]) +
+                                  (4 * channel_data[i - 3]) -
+                                  channel_data[i - 4] +
+                                  residuals[i - 4];
             }
             return OK;
         default:
@@ -1391,7 +1392,7 @@ read_LPC_subframe(BitstreamReader *r,
                   unsigned block_size,
                   unsigned bits_per_sample,
                   unsigned predictor_order,
-                  int samples[])
+                  int channel_data[])
 {
     if (predictor_order > block_size) {
         return INVALID_LPC_ORDER;
@@ -1405,7 +1406,7 @@ read_LPC_subframe(BitstreamReader *r,
 
         /*warm-up samples*/
         for (i = 0; i < predictor_order; i++) {
-            samples[i] = r->read_signed(r, bits_per_sample);
+            channel_data[i] = r->read_signed(r, bits_per_sample);
         }
 
         precision = r->read(r, 4) + 1;
@@ -1430,10 +1431,11 @@ read_LPC_subframe(BitstreamReader *r,
             register int64_t sum = 0;
             unsigned j;
             for (j = 0; j < predictor_order; j++) {
-                sum += (int64_t)coefficient[j] * (int64_t)samples[i - j - 1];
+                sum += (int64_t)coefficient[j] *
+                       (int64_t)channel_data[i - j - 1];
             }
             sum >>= shift;
-            samples[i] = (int)sum + residuals[i - predictor_order];
+            channel_data[i] = (int)sum + residuals[i - predictor_order];
         }
 
         return OK;
