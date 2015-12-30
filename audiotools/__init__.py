@@ -1715,13 +1715,15 @@ def file_type(file):
             # so the file is unknown
             return None
     elif header[0:4] == b"OggS":
-        # possibly Ogg FLAC, Ogg Vorbis or Ogg Opus
+        # possibly Ogg FLAC, Ogg Vorbis, Ogg Opus or Ogg Speex
         #if header[0x1C:0x21] == b"\x7FFLAC":
         #    return OggFlacAudio
         if header[0x1C:0x23] == b"\x01vorbis":
             return VorbisAudio
         elif header[0x1C:0x26] == b"OpusHead\x01":
             return OpusAudio
+        elif header[0x1C:0x24] == b"Speex   ":
+            return SpeexAudio
         else:
             return None
     elif header[0:4] == b"wvpk":
@@ -5881,6 +5883,7 @@ from audiotools.wavpack import WavPackAudio
 from audiotools.mp3 import MP3Audio
 from audiotools.mp3 import MP2Audio
 from audiotools.vorbis import VorbisAudio
+from audiotools.speex import SpeexAudio
 from audiotools.m4a import M4AAudio
 from audiotools.m4a import ALACAudio
 from audiotools.opus import OpusAudio
@@ -5902,6 +5905,7 @@ AVAILABLE_TYPES = (FlacAudio,
                    MP2Audio,
                    WaveAudio,
                    VorbisAudio,
+                   SpeexAudio,
                    AiffAudio,
                    AuAudio,
                    M4AAudio,

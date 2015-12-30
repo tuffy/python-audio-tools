@@ -3876,7 +3876,8 @@ class tracklint(UtilTest):
 
     @UTIL_TRACKLINT
     def test_vorbis(self):
-        for audio_class in [audiotools.VorbisAudio]:
+        for audio_class in [audiotools.VorbisAudio,
+                            audiotools.SpeexAudio]:
             bad_vorbiscomment = audiotools.VorbisComment(
                 [u"TITLE=Track Name  ",
                  u"TRACKNUMBER=02",

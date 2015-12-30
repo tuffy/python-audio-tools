@@ -486,6 +486,8 @@ COMP_VORBIS_0 = u"very low quality, corresponds to oggenc -q 0"
 COMP_VORBIS_10 = u"very high quality, corresponds to oggenc -q 10"
 COMP_WAVPACK_FAST = u"fastest encode/decode, worst compression"
 COMP_WAVPACK_VERYHIGH = u"slowest encode/decode, best compression"
+COMP_SPEEX_0 = u"corresponds to speexenc --quality 0"
+COMP_SPEEX_10 = u"corresponds to speexenc --quality 10"
 
 # Errors
 ERR_1_FILE_REQUIRED = u"you must specify exactly 1 supported audio file"

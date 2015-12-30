@@ -1491,7 +1491,9 @@ class LossyFileTest(AudioFileTest):
                             reader,
                             compression,
                             total_pcm_frames=total_pcm_frames)
-                    counter = FrameCounter(2, 16, 44100)
+                    counter = FrameCounter(track.channels(),
+                                           track.bits_per_sample(),
+                                           track.sample_rate())
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        counter.update)
                     self.assertEqual(
@@ -1512,7 +1514,9 @@ class LossyFileTest(AudioFileTest):
                             reader,
                             compression,
                             total_pcm_frames=total_pcm_frames)
-                    counter = FrameCounter(2, 16, 44100)
+                    counter = FrameCounter(track.channels(),
+                                           track.bits_per_sample(),
+                                           track.sample_rate())
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        counter.update)
                     self.assertEqual(
@@ -1534,7 +1538,9 @@ class LossyFileTest(AudioFileTest):
                             compression,
                             total_pcm_frames=total_pcm_frames)
 
-                    counter = FrameCounter(2, 16, 44100)
+                    counter = FrameCounter(track.channels(),
+                                           track.bits_per_sample(),
+                                           track.sample_rate())
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        counter.update)
                     self.assertEqual(
@@ -1556,7 +1562,9 @@ class LossyFileTest(AudioFileTest):
                             compression,
                             total_pcm_frames=total_pcm_frames)
 
-                    counter = FrameCounter(2, 16, 44100)
+                    counter = FrameCounter(track.channels(),
+                                           track.bits_per_sample(),
+                                           track.sample_rate())
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        counter.update)
                     self.assertEqual(
@@ -1619,7 +1627,9 @@ class LossyFileTest(AudioFileTest):
                             compression,
                             total_pcm_frames=total_pcm_frames)
 
-                    counter = FrameCounter(2, 16, 44100)
+                    counter = FrameCounter(track.channels(),
+                                           track.bits_per_sample(),
+                                           track.sample_rate())
                     audiotools.transfer_framelist_data(track.to_pcm(),
                                                        counter.update)
                     self.assertEqual(
@@ -1650,7 +1660,9 @@ class LossyFileTest(AudioFileTest):
                 suffix="." + audio_class.SUFFIX)
             track2 = track.convert(temp2.name, audio_class)
 
-            counter = FrameCounter(2, 16, 44100)
+            counter = FrameCounter(track2.channels(),
+                                   track2.bits_per_sample(),
+                                   track2.sample_rate())
             audiotools.transfer_framelist_data(track2.to_pcm(),
                                                counter.update)
             self.assertEqual(
@@ -1668,7 +1680,9 @@ class LossyFileTest(AudioFileTest):
                                        audio_class,
                                        compression)
 
-                counter = FrameCounter(2, 16, 44100)
+                counter = FrameCounter(track2.channels(),
+                                       track2.bits_per_sample(),
+                                       track2.sample_rate())
                 audiotools.transfer_framelist_data(track2.to_pcm(),
                                                    counter.update)
                 self.assertEqual(
@@ -4648,6 +4662,12 @@ class OpusFileTest(OggVerify, LossyFileTest):
 
             self.assertEqual(original_pcm_sum.hexdigest(),
                              new_pcm_sum.hexdigest())
+
+
+class SpeexFileTest(LossyFileTest):
+    def setUp(self):
+        self.audio_class = audiotools.SpeexAudio
+        self.suffix = "." + self.audio_class.SUFFIX
 
 
 class WaveFileTest(TestForeignWaveChunks,

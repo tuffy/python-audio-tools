@@ -346,6 +346,7 @@ class VorbisAudio(AudioFile):
         # transfer remaining pages after re-sequencing
         page = original_ogg.read_page()
         page.sequence_number = sequence_number
+        page.bitstream_serial_number = self.__serial_number__
         sequence_number += 1
         new_ogg.write(page)
         while not page.stream_end:
