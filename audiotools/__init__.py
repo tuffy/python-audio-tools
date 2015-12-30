@@ -2058,7 +2058,7 @@ class AmbiguousAudioType(UnknownAudioType):
         messenger.error(ERR_AMBIGUOUS_AUDIO_TYPE.format(self.suffix))
         messenger.info(
             LAB_T_OPTIONS.format(
-                (u" or ".join([u"\"{}\"".format(t.NAME.decode('ascii'))
+                (u" or ".join([u"\"{}\"".format(t.NAME)
                                for t in self.type_list]))))
 
 
