@@ -4,7 +4,7 @@
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
- Copyright (C) 2007-2015  Brian Langenberger
+ Copyright (C) 2007-2016  Brian Langenberger
  further modified by Brian Langenberger for use in Python Audio Tools
 
  This program is free software; you can redistribute it and/or modify
