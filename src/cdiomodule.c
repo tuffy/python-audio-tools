@@ -484,7 +484,6 @@ CDDAReader_read(cdio_CDDAReader* self, PyObject *args)
     if (sectors_read >= 0) {
         /*reduce length of framelist if fewer samples are read*/
         framelist->frames = sectors_read * (44100 / 75);
-        framelist->samples_length = sectors_read * (44100 / 75) * 2;
         return (PyObject*)framelist;
     } else {
         Py_DECREF((PyObject*)framelist);

@@ -414,7 +414,6 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
     /*constrain FrameList to actual amount of PCM frames read
       which may be less than block size at the end of stream*/
     framelist->frames = pcm_frames_read;
-    framelist->samples_length = pcm_frames_read * self->channels;
 
     /*reorder FrameList to .wav order*/
     reorder_channels(pcm_frames_read,

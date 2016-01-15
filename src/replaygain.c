@@ -941,7 +941,6 @@ ReplayGainReader_read(replaygain_ReplayGainReader* self, PyObject *args) {
             return NULL;
         } else {
             framelist->frames = frames_read;
-            framelist->samples_length = total_samples;
         }
 
         /*apply our multiplier to framelist's integer samples

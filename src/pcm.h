@@ -39,11 +39,16 @@ typedef struct {
     unsigned int bits_per_sample; /*the maximum size of each sample, in bits*/
 
     int* samples;            /*the actual sample data itself,
-                               stored raw as 32-bit signed integers*/
-    unsigned samples_length; /*the total number of samples
-                               which must be evenly distributable
-                               between channels and bits-per-sample*/
+                               stored raw as 32-bit signed integers
+                               whose total length is frames * channels*/
 } pcm_FrameList;
+
+/*returns total length of framelist's "samples" field*/
+static inline unsigned
+FrameList_samples_length(const pcm_FrameList *framelist)
+{
+    return framelist->frames * framelist->channels;
+}
 
 #ifdef PCM_MODULE
 void
@@ -111,12 +116,6 @@ PyObject*
 FrameList_repeat(pcm_FrameList *a, Py_ssize_t i);
 
 PyObject*
-FrameList_inplace_concat(pcm_FrameList *a, PyObject *bb);
-
-PyObject*
-FrameList_inplace_repeat(pcm_FrameList *a, Py_ssize_t i);
-
-PyObject*
 FrameList_from_list(PyObject *dummy, PyObject *args);
 
 PyObject*
@@ -148,6 +147,12 @@ typedef struct {
                                 which must be evenly distributable
                                 between channels*/
 } pcm_FloatFrameList;
+
+static inline unsigned
+FloatFrameList_samples_length(const pcm_FloatFrameList *framelist)
+{
+    return framelist->frames * framelist->channels;
+}
 
 #ifdef PCM_MODULE
 void
@@ -206,12 +211,6 @@ FloatFrameList_concat(pcm_FloatFrameList *a, PyObject *bb);
 
 PyObject*
 FloatFrameList_repeat(pcm_FloatFrameList *a, Py_ssize_t i);
-
-PyObject*
-FloatFrameList_inplace_concat(pcm_FloatFrameList *a, PyObject *bb);
-
-PyObject*
-FloatFrameList_inplace_repeat(pcm_FloatFrameList *a, Py_ssize_t i);
 
 PyObject*
 FloatFrameList_from_frames(PyObject *dummy, PyObject *args);

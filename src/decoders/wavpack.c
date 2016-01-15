@@ -177,7 +177,6 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args)
 
     /*reduce FrameList's size accordingly*/
     framelist->frames = frames_read;
-    framelist->samples_length = framelist->frames * framelist->channels;
 
     if (self->verifying_md5_sum) {
         if (frames_read) {

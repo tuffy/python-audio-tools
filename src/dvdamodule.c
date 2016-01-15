@@ -465,7 +465,6 @@ TrackReader_read(dvda_TrackReader *self, PyObject *args)
 
     /*fill in remaining FrameList parameters*/
     framelist->frames = received_pcm_frames;
-    framelist->samples_length = received_pcm_frames * channel_count;
 
     /*return FrameList*/
     return (PyObject*)framelist;

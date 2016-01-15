@@ -451,7 +451,7 @@ Resampler_read(pcmconverter_Resampler *self, PyObject *args)
                               bits_per_sample,
                               (unsigned)(self->src_data.output_frames_gen));
     float_to_int_converter(
-        bits_per_sample)(framelist->samples_length,
+        bits_per_sample)(FrameList_samples_length(framelist),
                          self->src_data.data_out,
                          framelist->samples);
 
@@ -612,22 +612,23 @@ BPSConverter_read(pcmconverter_BPSConverter *self, PyObject *args)
     }
 
     framelist->frames = frames_read;
-    framelist->samples_length = frames_read * framelist->channels;
 
     if (shift > 0) {
         /*going from fewer bits-per-sample to more, like 16 to 24 bps
           so perform left shift on each sample*/
-        for (i = 0; i < framelist->samples_length; i++) {
+        const unsigned samples_length = FrameList_samples_length(framelist);
+        for (i = 0; i < samples_length; i++) {
             framelist->samples[i] <<= shift;
         }
     } else if (shift < 0) {
         /*going from more bits-per-sample to fewer, like 24bps to 16
           so perform right shift on each sample and add dither*/
+        const unsigned samples_length = FrameList_samples_length(framelist);
         BitstreamReader *white_noise = self->white_noise;
         br_read_f read = white_noise->read;
 
         shift = abs(shift);
-        for (i = 0; i < framelist->samples_length; i++) {
+        for (i = 0; i < samples_length; i++) {
             framelist->samples[i] >>= shift;
             framelist->samples[i] |= read(white_noise, 1);
         }
@@ -750,7 +751,6 @@ BufferedPCMReader_read(pcmconverter_BufferedPCMReader *self, PyObject *args)
     /*adjust size of FrameList if necessary*/
     if (frames_read != pcm_frames) {
         framelist->frames = frames_read;
-        framelist->samples_length = framelist->frames * framelist->channels;
     }
 
     /*return fresh FrameList object*/
@@ -905,7 +905,6 @@ FadeInReader_read(pcmconverter_FadeInReader *self, PyObject *args)
     /*adjust size of FrameList if necessary*/
     if (frames_read != pcm_frames) {
         framelist->frames = frames_read;
-        framelist->samples_length = framelist->frames * framelist->channels;
     }
 
     /*perform fade in on samples in-place*/
@@ -1054,7 +1053,6 @@ FadeOutReader_read(pcmconverter_FadeOutReader *self, PyObject *args)
     /*adjust size of FrameList if necessary*/
     if (frames_read != pcm_frames) {
         framelist->frames = frames_read;
-        framelist->samples_length = framelist->frames * framelist->channels;
     }
 
     /*perform fade out on samples in-place*/

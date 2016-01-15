@@ -40,9 +40,9 @@ new_FrameList(PyObject* audiotools_pcm,
 
     /*then resize it to hold the requested amount of data*/
     framelist->frames = pcm_frames;
-    framelist->samples_length = pcm_frames * framelist->channels;
-    framelist->samples = realloc(framelist->samples,
-                                 sizeof(int) * framelist->samples_length);
+    framelist->samples =
+        realloc(framelist->samples,
+                sizeof(int) * FrameList_samples_length(framelist));
 
     return framelist;
 }
