@@ -623,7 +623,7 @@ if (__name__ == '__main__'):
         row.add_column(_.LAB_TRACKVERIFY_AR_CHECKSUM)
 
         if sys.stdout.isatty():
-            filename_max = (msg.terminal_size(sys.stdout)[1] -
+            filename_max = (msg.terminal_size(sys.stdout.fileno())[1] -
                             sum(c.minimum_width() for c in
                                 table.__rows__[1].__columns__[1:]))
         else:

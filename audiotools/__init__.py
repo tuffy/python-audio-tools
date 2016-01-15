@@ -457,12 +457,18 @@ class Messenger(object):
     def terminal_size(self, fd):
         """returns the current terminal size as (height, width)"""
 
-        import fcntl
-        import termios
-        import struct
+        try:
+            from os import get_terminal_size
+            size = get_terminal_size(fd)
+            return (size.lines, size.columns)
+        except ImportError:
+            import fcntl
+            import termios
+            import struct
 
-        # this isn't all that portable, but will have to do
-        return struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
+            # this isn't all that portable, but will have to do
+            return struct.unpack('hh',
+                                 fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
 
 
 class SilentMessenger(Messenger):
@@ -1318,7 +1324,7 @@ class ProgressDisplay(object):
 
         if sys.stdout.isatty():
             (screen_height,
-             screen_width) = self.messenger.terminal_size(sys.stdout)
+             screen_width) = self.messenger.terminal_size(sys.stdout.fileno())
 
             for row in self.progress_rows:
                 if (((row is not None) and

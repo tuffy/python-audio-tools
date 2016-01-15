@@ -36,7 +36,7 @@ typedef enum {
 } pcm_status_t;
 
 struct PCMReader {
-    struct {
+    union {
         #ifdef STANDALONE
         struct {
             FILE *file;
