@@ -282,18 +282,19 @@ static int
 play_8_bps(output_ALSAAudio *self, pcm_FrameList *framelist)
 {
     unsigned i;
+    const unsigned samples_length = FrameList_samples_length(framelist);
     snd_pcm_uframes_t to_write = framelist->frames;
     snd_pcm_sframes_t frames_written;
 
     /*resize internal buffer if needed*/
-    if (self->buffer_size < framelist->samples_length) {
-        self->buffer_size = framelist->samples_length;
+    if (self->buffer_size < samples_length) {
+        self->buffer_size = samples_length;
         self->buffer.int8 = realloc(self->buffer.int8,
                                     self->buffer_size * sizeof(int8_t));
     }
 
     /*transfer framelist data to buffer*/
-    for (i = 0; i < framelist->samples_length; i++) {
+    for (i = 0; i < samples_length; i++) {
         self->buffer.int8[i] = framelist->samples[i];
     }
 
@@ -321,19 +322,20 @@ play_8_bps(output_ALSAAudio *self, pcm_FrameList *framelist)
 static int
 play_16_bps(output_ALSAAudio *self, pcm_FrameList *framelist)
 {
+    const unsigned samples_length = FrameList_samples_length(framelist);
     unsigned i;
     snd_pcm_uframes_t to_write = framelist->frames;
     snd_pcm_sframes_t frames_written;
 
     /*resize internal buffer if needed*/
-    if (self->buffer_size < framelist->samples_length) {
-        self->buffer_size = framelist->samples_length;
+    if (self->buffer_size < samples_length) {
+        self->buffer_size = samples_length;
         self->buffer.int16 = realloc(self->buffer.int16,
                                      self->buffer_size * sizeof(int16_t));
     }
 
     /*transfer framelist data to buffer*/
-    for (i = 0; i < framelist->samples_length; i++) {
+    for (i = 0; i < samples_length; i++) {
         self->buffer.int16[i] = framelist->samples[i];
     }
 
@@ -361,19 +363,20 @@ play_16_bps(output_ALSAAudio *self, pcm_FrameList *framelist)
 static int
 play_24_bps(output_ALSAAudio *self, pcm_FrameList *framelist)
 {
+    const unsigned samples_length = FrameList_samples_length(framelist);
     unsigned i;
     snd_pcm_uframes_t to_write = framelist->frames;
     snd_pcm_sframes_t frames_written;
 
     /*resize internal buffer if needed*/
-    if (self->buffer_size < framelist->samples_length) {
-        self->buffer_size = framelist->samples_length;
+    if (self->buffer_size < samples_length) {
+        self->buffer_size = samples_length;
         self->buffer.int32 = realloc(self->buffer.int32,
                                      self->buffer_size * sizeof(int32_t));
     }
 
     /*transfer framelist data to buffer*/
-    for (i = 0; i < framelist->samples_length; i++) {
+    for (i = 0; i < samples_length; i++) {
         self->buffer.int32[i] = (framelist->samples[i] << 8);
     }
 
