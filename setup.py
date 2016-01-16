@@ -504,9 +504,15 @@ class audiotools_cdio(Extension):
                 extra_link_args.extend(
                     system_libraries.extra_link_args("libcdio_paranoia"))
 
-                if system_libraries.lib_version("libcdio") < (0, 90):
-                    paranoia_version = [("OLD_PARANOIA", None)]
-                else:
+                try:
+                    paranoia_ver = system_libraries.lib_version("libcdio")
+                    if paranoia_ver < (0, 90):
+                        paranoia_version = [("PARANOIA_LT_0_90", None)]
+                    elif paranoia_va < (0, 93):
+                        paranoia_version = [("PARANOIA_LT_0_93", None)]
+                    else:
+                        paranoia_version = []
+                except (KeyError, ValueError):
                     paranoia_version = []
 
             sources.extend(["src/cdiomodule.c",
