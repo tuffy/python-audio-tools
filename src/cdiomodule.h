@@ -1,10 +1,13 @@
 #include <Python.h>
-#ifdef OLD_PARANOIA
+#ifdef PARANOIA_LT_0_90
 #include <cdio/cdda.h>
 #include <cdio/paranoia.h>
-#else
+#elif PARANOIA_LT_0_93
 #include <cdio/cdparanoia/cdda.h>
 #include <cdio/cdparanoia/paranoia.h>
+#else
+#include <cdio/paranoia/cdda.h>
+#include <cdio/paranoia/paranoia.h>
 #endif
 
 /********************************************************
