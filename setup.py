@@ -508,7 +508,7 @@ class audiotools_cdio(Extension):
                     paranoia_ver = system_libraries.lib_version("libcdio")
                     if paranoia_ver < (0, 90):
                         paranoia_version = [("PARANOIA_LT_0_90", None)]
-                    elif paranoia_va < (0, 93):
+                    elif paranoia_ver < (0, 93):
                         paranoia_version = [("PARANOIA_LT_0_93", None)]
                     else:
                         paranoia_version = []
