@@ -749,7 +749,7 @@ BufferedPCMReader_read(pcmconverter_BufferedPCMReader *self, PyObject *args)
     }
 
     /*adjust size of FrameList if necessary*/
-    if (frames_read != pcm_frames) {
+    if (frames_read != (unsigned)pcm_frames) {
         framelist->frames = frames_read;
     }
 
@@ -903,7 +903,7 @@ FadeInReader_read(pcmconverter_FadeInReader *self, PyObject *args)
     }
 
     /*adjust size of FrameList if necessary*/
-    if (frames_read != pcm_frames) {
+    if (frames_read != (unsigned)pcm_frames) {
         framelist->frames = frames_read;
     }
 
@@ -1051,7 +1051,7 @@ FadeOutReader_read(pcmconverter_FadeOutReader *self, PyObject *args)
     }
 
     /*adjust size of FrameList if necessary*/
-    if (frames_read != pcm_frames) {
+    if (frames_read != (unsigned)pcm_frames) {
         framelist->frames = frames_read;
     }
 

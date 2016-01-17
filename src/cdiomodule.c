@@ -588,14 +588,14 @@ static unsigned
 CDDAReader_seek_image(cdio_CDDAReader *self, unsigned sector)
 {
     self->_.image.current_sector =
-        MIN(sector, self->_.image.final_sector - 1);
+        MIN(sector, self->_.image.final_sector - 1u);
     return self->_.image.current_sector;
 }
 
 static unsigned
 CDDAReader_seek_device(cdio_CDDAReader *self, unsigned sector)
 {
-    const unsigned desired_sector = MIN(sector, self->_.drive.final_sector - 1);
+    const unsigned desired_sector = MIN(sector, self->_.drive.final_sector - 1u);
     /*not sure what this returns, but it isn't the sector seeked to*/
     cdio_paranoia_seek(self->_.drive.paranoia,
                        (int32_t)desired_sector,

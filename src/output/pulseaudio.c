@@ -78,7 +78,7 @@ static PyObject* PulseAudio_play(output_PulseAudio *self, PyObject *args)
             pa_threaded_mainloop_wait(self->mainloop);
         }
 
-        if (writeable_len > data_len)
+        if (writeable_len > (size_t)data_len)
             writeable_len = data_len;
 
         pa_stream_write(self->stream,

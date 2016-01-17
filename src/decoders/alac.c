@@ -983,7 +983,7 @@ read_residual_block(BitstreamReader *br,
     const unsigned history_multiplier = params->history_multiplier;
     int history = params->initial_history;
     unsigned sign_modifier = 0;
-    int i = 0;
+    unsigned i = 0;
 
     while (i < block_size) {
         /*get an unsigned residual based on "history"
@@ -1017,7 +1017,7 @@ read_residual_block(BitstreamReader *br,
         if ((history < 128) && (i < block_size)) {
             unsigned zero_block_size = read_residual(
                 br,
-                MIN(7 - LOG2(history) + ((history + 16) / 64), maximum_k),
+                MIN(7 - LOG2(history) + ((history + 16) / 64), (int)maximum_k),
                 16);
 
             if (zero_block_size > 0) {

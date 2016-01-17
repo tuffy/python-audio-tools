@@ -578,9 +578,9 @@ init_residual_params(struct residual_params *params)
 static inline int
 adjustment(unsigned sum, unsigned k)
 {
-    if ((k > 0) && (1 << (k + 4) > sum)) {
+    if ((k > 0) && (1u << (k + 4) > sum)) {
         return -1;
-    } else if (sum > (1 << (k + 5))) {
+    } else if (sum > (1u << (k + 5))) {
         return 1;
     } else {
         return 0;

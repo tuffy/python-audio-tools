@@ -736,7 +736,7 @@ FlacDecoder_seek(decoders_FlacDecoder* self, PyObject *args)
     /*find latest seekpoint whose first sample is <= seeked_offset
       or 0 if there are no seekpoints in the seektable*/
     for (i = 0; i < seektable->total_points; i++) {
-        if (seektable->seek_points[i].sample_number <= seeked_offset) {
+        if (seektable->seek_points[i].sample_number <= (uint64_t)seeked_offset) {
             pcm_frames_offset = seektable->seek_points[i].sample_number;
             byte_offset = seektable->seek_points[i].frame_offset;
         } else {

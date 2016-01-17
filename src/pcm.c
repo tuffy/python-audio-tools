@@ -367,7 +367,7 @@ FrameList_frame(pcm_FrameList *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "i", &frame_number))
         return NULL;
-    if ((frame_number < 0) || (frame_number >= self->frames)) {
+    if ((frame_number < 0) || ((unsigned)frame_number >= self->frames)) {
         PyErr_SetString(PyExc_IndexError, "frame number out of range");
         return NULL;
     }
@@ -392,7 +392,7 @@ FrameList_channel(pcm_FrameList *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "i", &channel_number))
         return NULL;
-    if ((channel_number < 0) || (channel_number >= self->channels)) {
+    if ((channel_number < 0) || ((unsigned)channel_number >= self->channels)) {
         PyErr_SetString(PyExc_IndexError, "channel number out of range");
         return NULL;
     }
@@ -453,7 +453,7 @@ FrameList_split(pcm_FrameList *self, PyObject *args)
     if (split_point < 0) {
         PyErr_SetString(PyExc_IndexError, "split point must be >= 0");
         return NULL;
-    } else if (split_point >= self->frames) {
+    } else if ((unsigned)split_point >= self->frames) {
         head = self;
         Py_INCREF(head);
         tail = FrameList_create();
@@ -1167,7 +1167,7 @@ FloatFrameList_frame(pcm_FloatFrameList *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "i", &frame_number))
         return NULL;
-    if ((frame_number < 0) || (frame_number >= self->frames)) {
+    if ((frame_number < 0) || ((unsigned)frame_number >= self->frames)) {
         PyErr_SetString(PyExc_IndexError, "frame number out of range");
         return NULL;
     }
@@ -1193,7 +1193,7 @@ FloatFrameList_channel(pcm_FloatFrameList *self, PyObject *args)
 
     if (!PyArg_ParseTuple(args, "i", &channel_number))
         return NULL;
-    if ((channel_number < 0) || (channel_number >= self->channels)) {
+    if ((channel_number < 0) || ((unsigned)channel_number >= self->channels)) {
         PyErr_SetString(PyExc_IndexError, "channel number out of range");
         return NULL;
     }
@@ -1258,7 +1258,7 @@ FloatFrameList_split(pcm_FloatFrameList *self, PyObject *args)
     if (split_point < 0) {
         PyErr_SetString(PyExc_IndexError, "split point must be >= 0");
         return NULL;
-    } else if (split_point >= self->frames) {
+    } else if ((unsigned)split_point >= self->frames) {
         head = self;
         Py_INCREF(head);
         tail = FloatFrameList_create();

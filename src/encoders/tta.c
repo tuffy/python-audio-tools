@@ -430,9 +430,9 @@ init_residual_params(struct residual_params *params)
 static inline int
 adjustment(unsigned sum, unsigned k)
 {
-    if ((k > 0) && (1 << (k + 4) > sum)) {
+    if ((k > 0) && (1u << (k + 4) > sum)) {
         return -1;
-    } else if (sum > (1 << (k + 5))) {
+    } else if (sum > (1u << (k + 5))) {
         return 1;
     } else {
         return 0;
@@ -446,7 +446,7 @@ write_residual(struct residual_params *params,
 {
     const unsigned unsigned_ =
         residual > 0 ? (residual * 2) - 1 : -(residual * 2);
-    if (unsigned_ < (1 << params->k0)) {
+    if (unsigned_ < (1u << params->k0)) {
         output->write_unary(output, 0, 0);
         output->write(output, params->k0, unsigned_);
     } else {

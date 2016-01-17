@@ -300,7 +300,7 @@ compile_huffman_tree(br_huffman_table_t** table,
         new_table[0][1].value = tree->v.leaf;
 
         for (size = 1; size < (8 + 1); size++)
-            for (value = 0; value < (1 << size); value++) {
+            for (value = 0; value < (1u << size); value++) {
                 bank.size = size;
                 bank.value = value;
                 bank_int = bank_to_int(bank);
@@ -338,7 +338,7 @@ populate_huffman_tree(struct huffman_node* tree,
         tree->v.tree.jump_table[1].value = 0;
 
         for (size = 1; size < (8 + 1); size++)
-            for (value = 0; value < (1 << size); value++) {
+            for (value = 0; value < (1u << size); value++) {
                 bank.size = size;
                 bank.value = value;
 

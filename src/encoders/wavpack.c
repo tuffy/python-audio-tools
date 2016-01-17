@@ -212,7 +212,7 @@ encode_wavpack(BitstreamWriter *output,
 
     if (!WavpackSetConfiguration(context,
                                  &config,
-                                 total_pcm_frames ? total_pcm_frames : -1)) {
+                                 total_pcm_frames ? total_pcm_frames : (uint32_t)-1)) {
         goto error;
     }
 

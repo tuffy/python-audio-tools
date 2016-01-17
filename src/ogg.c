@@ -24,7 +24,7 @@
 ogg_status
 read_ogg_page_header(BitstreamReader *ogg_stream,
                      struct ogg_page_header *header) {
-    int i;
+    unsigned i;
     struct bs_callback callback;
 
     if ((header->magic_number =

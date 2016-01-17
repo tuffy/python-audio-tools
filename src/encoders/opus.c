@@ -216,7 +216,7 @@ encode_opus_file(char *filename,
         BitstreamRecorder *comment =
             bw_open_bytes_recorder(BS_LITTLE_ENDIAN);
         BitstreamWriter *comment_w = (BitstreamWriter*)comment;
-        int i;
+        unsigned i;
 
         /*write header packet to Ogg stream*/
         const char opushead[] = "OpusHead";
