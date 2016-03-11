@@ -18,7 +18,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import re
-import time
 from sys import version_info
 
 PY3 = version_info[0] >= 3
@@ -180,13 +179,16 @@ class Manpage:
                    elements=elements,
                    examples=examples)
 
-    def to_man(self, stream):
+    def to_man(self, stream, page_time=None):
+        from time import localtime
+        from time import strftime
+
         write_u(stream,
                 (u".TH \"%(utility)s\" %(section)d " +
                  u"\"%(date)s\" \"\" \"%(title)s\"\n") %
                 {"utility": self.utility.upper(),
                  "section": self.section,
-                 "date": time.strftime("%B %Y", time.localtime()),
+                 "date": strftime("%B %Y", localtime(page_time)),
                  "title": self.title})
         write_u(stream, u".SH NAME\n")
         write_u(stream, u"%(utility)s \\- %(name)s\n" %
@@ -829,6 +831,7 @@ if (__name__ == '__main__'):
     import sys
     import xml.dom.minidom
     import argparse
+    from os import stat
 
     parser = argparse.ArgumentParser(description="manual page generator")
 
@@ -857,6 +860,6 @@ if (__name__ == '__main__'):
                               if (page.utility != main_page.utility)]
 
         if options.type == "man":
-            main_page.to_man(sys.stdout)
+            main_page.to_man(sys.stdout, stat(options.input).st_mtime)
         elif options.type == "html":
             main_page.to_html(sys.stdout)
