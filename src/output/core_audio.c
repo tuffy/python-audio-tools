@@ -84,9 +84,7 @@ CoreAudio_init(output_CoreAudio *self, PyObject *args, PyObject *kwds) {
                         "error initializing CoreAudio");
         return -1;
     } else {
-        PyObject* os_module_obj;
-        PyObject* devnull_obj;
-        char* devnull;
+        const char devnull[] = "/dev/null";
         int current_stdout;
         int devnull_stdout;
         int returnval;
@@ -95,31 +93,10 @@ CoreAudio_init(output_CoreAudio *self, PyObject *args, PyObject *kwds) {
           at init-time, we'll need to temporarily redirect
           stdout to /dev/null*/
 
-        /*first, determine the location of /dev/null from os.devnull*/
-        if ((os_module_obj = PyImport_ImportModule("os")) == NULL) {
-            return -1;
-        }
-        if ((devnull_obj =
-             PyObject_GetAttrString(os_module_obj, "devnull")) == NULL) {
-            Py_DECREF(os_module_obj);
-            return -1;
-        }
-        if ((devnull = PyString_AsString(devnull_obj)) == NULL) {
-            Py_DECREF(os_module_obj);
-            Py_DECREF(devnull_obj);
-            return -1;
-        }
-
         /*open /dev/null*/
         if ((devnull_stdout = open(devnull, O_WRONLY | O_TRUNC)) == -1) {
-            Py_DECREF(os_module_obj);
-            Py_DECREF(devnull_obj);
             PyErr_SetFromErrno(PyExc_IOError);
             return -1;
-        } else {
-            /*close unneeded Python objects once descriptor is open*/
-            Py_DECREF(os_module_obj);
-            Py_DECREF(devnull_obj);
         }
 
         /*swap file descriptors*/
