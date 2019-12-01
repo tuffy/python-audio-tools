@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import io
 import unittest
 import audiotools
 import tempfile
@@ -26,6 +27,7 @@ from hashlib import md5
 import random
 import decimal
 import test_streams
+import sys
 import subprocess
 try:
     from configparser import SafeConfigParser
@@ -34,6 +36,8 @@ except ImportError:
 
 parser = SafeConfigParser()
 parser.read("test.cfg")
+
+TEST_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 def do_nothing(self):
@@ -315,20 +319,20 @@ SHORT_PCM_COMBINATIONS = \
                          back_left=True,
                          back_right=True)), 24))
 
-with open("test_cover1.jpg", "rb") as c:
+with io.open(os.path.join(TEST_DIR, "test_cover1.jpg"), "rb") as c:
     TEST_COVER1 = c.read()
 
-with open("test_cover2.png", "rb") as c:
+with io.open(os.path.join(TEST_DIR, "test_cover2.png"), "rb") as c:
     TEST_COVER2 = c.read()
 
-with open("test_cover3.jpg", "rb") as c:
+with io.open(os.path.join(TEST_DIR, "test_cover3.jpg"), "rb") as c:
     TEST_COVER3 = c.read()
 
-with open("test_cover4.png", "rb") as c:
+with io.open(os.path.join(TEST_DIR, "test_cover4.png"), "rb") as c:
     TEST_COVER4 = c.read()
 
 # this is a very large, plain BMP encoded as bz2
-with open("huge.bmp.bz2", "rb") as c:
+with io.open(os.path.join(TEST_DIR, "huge.bmp.bz2"), "rb") as c:
     HUGE_BMP = c.read()
 
 
