@@ -44,6 +44,13 @@ class DiscID(object):
         self.total_length = total_length
         self.track_count = track_count
         self.playable_length = playable_length
+        self._disc_id = self.get_disc_id()
+
+    def get_disc_id(self):
+        digit_sum_ = sum([digit_sum(o // 75) for o in self.offsets])
+        return hex((((digit_sum_ % 255) << 24) |
+                ((struct.unpack('>l', struct.pack('>f', self.total_length))[0] & 0xFFFF) << 8) |
+                (self.track_count & 0xFF)))
 
     @classmethod
     def from_cddareader(cls, cddareader):
