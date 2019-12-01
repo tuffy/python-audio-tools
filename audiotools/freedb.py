@@ -161,7 +161,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
                            *([disc_id.__unicode__(),
                               u"{:d}".format(disc_id.track_count)] +
                              [u"{:d}".format(o) for o in disc_id.offsets] +
-                             [u"{:d}".format(disc_id.playable_length)]))
+                             [u"{:f}".format(disc_id.playable_length)]))
 
     line = next(query)
     response = RESPONSE.match(line)
