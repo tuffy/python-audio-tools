@@ -53,24 +53,6 @@ def title_to_musicbrainz_id(title):
                   offsets=offsets[0:-1])
 
 
-def title_to_freedb_id(title):
-    from audiotools.freedb import DiscID
-
-    offsets = [150]
-    total_length = 0
-    track_count = 0
-
-    for track in title_tracks(title):
-        offsets.append(offsets[-1] + (track.pts_length * 75 // 90000))
-        total_length += track.pts_length
-        track_count += 1
-
-    return DiscID(offsets=offsets[0:-1],
-                  total_length=total_length // 90000,
-                  track_count=track_count,
-                  playable_length=total_length // 90000)
-
-
 if (__name__ == '__main__'):
     import argparse
 
@@ -150,23 +132,6 @@ if (__name__ == '__main__'):
                         default=audiotools.MUSICBRAINZ_SERVICE,
                         help=_.OPT_NO_MUSICBRAINZ)
 
-    lookup.add_argument("--freedb-server",
-                        dest="freedb_server",
-                        default=audiotools.FREEDB_SERVER,
-                        metavar="HOSTNAME")
-
-    lookup.add_argument("--freedb-port",
-                        type=int,
-                        dest="freedb_port",
-                        default=audiotools.FREEDB_PORT,
-                        metavar="PORT")
-
-    lookup.add_argument("--no-freedb",
-                        action="store_false",
-                        dest="use_freedb",
-                        default=audiotools.FREEDB_SERVICE,
-                        help=_.OPT_NO_FREEDB)
-
     lookup.add_argument("-D", "--default",
                         dest="use_default",
                         action="store_true",
@@ -244,13 +209,9 @@ if (__name__ == '__main__'):
     try:
         metadata_choices = audiotools.metadata_lookup(
             musicbrainz_disc_id=title_to_musicbrainz_id(title),
-            freedb_disc_id=title_to_freedb_id(title),
             musicbrainz_server=options.musicbrainz_server,
             musicbrainz_port=options.musicbrainz_port,
-            freedb_server=options.freedb_server,
-            freedb_port=options.freedb_port,
-            use_musicbrainz=options.use_musicbrainz,
-            use_freedb=options.use_freedb)
+            use_musicbrainz=options.use_musicbrainz)
     except KeyboardInterrupt:
         msg.ansi_clearline()
         msg.error(_.ERR_CANCELLED)

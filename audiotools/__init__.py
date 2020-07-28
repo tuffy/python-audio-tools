@@ -1,5 +1,5 @@
 # Audio Tools, a module and set of tools for manipulating audio data
-# Copyright (C) 2007-2016  Brian Langenberger
+# Copyright (C) 2007-2020  Brian Langenberger
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -135,10 +135,6 @@ class __system_binaries__(object):
 BIN = __system_binaries__(config)
 
 DEFAULT_CDROM = config.get_default("System", "cdrom", "/dev/cdrom")
-
-FREEDB_SERVICE = config.getboolean_default("FreeDB", "service", True)
-FREEDB_SERVER = config.get_default("FreeDB", "server", "us.freedb.org")
-FREEDB_PORT = config.getint_default("FreeDB", "port", 80)
 
 MUSICBRAINZ_SERVICE = config.getboolean_default("MusicBrainz", "service", True)
 MUSICBRAINZ_SERVER = config.get_default("MusicBrainz", "server",
@@ -5181,13 +5177,9 @@ def most_numerous(item_list, empty_list=None, all_differ=None):
 
 
 def metadata_lookup(musicbrainz_disc_id,
-                    freedb_disc_id,
                     musicbrainz_server="musicbrainz.org",
                     musicbrainz_port=80,
-                    freedb_server="us.freedb.org",
-                    freedb_port=80,
-                    use_musicbrainz=True,
-                    use_freedb=True):
+                    use_musicbrainz=True):
     """generates set of MetaData objects from a pair of disc IDs
 
     returns a metadata[c][t] list of lists
@@ -5199,11 +5191,8 @@ def metadata_lookup(musicbrainz_disc_id,
     if no match can be found for the disc IDs
     """
 
-    assert(musicbrainz_disc_id.offsets == freedb_disc_id.offsets)
-
     matches = []
 
-    # MusicBrainz takes precedence over FreeDB
     if use_musicbrainz:
         import audiotools.musicbrainz as musicbrainz
         try:
@@ -5220,21 +5209,6 @@ def metadata_lookup(musicbrainz_disc_id,
         except (HTTPError, ExpatError):
             pass
 
-    if use_freedb:
-        import audiotools.freedb as freedb
-        try:
-            from urllib.request import HTTPError
-        except ImportError:
-            from urllib2 import HTTPError
-        try:
-            matches.extend(
-                freedb.perform_lookup(
-                    disc_id=freedb_disc_id,
-                    freedb_server=freedb_server,
-                    freedb_port=freedb_port))
-        except (HTTPError, ValueError):
-            pass
-
     if len(matches) == 0:
         # no matches, so build a set of dummy metadata
         track_count = len(musicbrainz_disc_id.offsets)
@@ -5247,10 +5221,7 @@ def metadata_lookup(musicbrainz_disc_id,
 def cddareader_metadata_lookup(cddareader,
                                musicbrainz_server="musicbrainz.org",
                                musicbrainz_port=80,
-                               freedb_server="us.freedb.org",
-                               freedb_port=80,
-                               use_musicbrainz=True,
-                               use_freedb=True):
+                               use_musicbrainz=True):
     """given a CDDAReader object
     returns a metadata[c][t] list of lists
     where 'c' is a possible choice
@@ -5261,27 +5232,19 @@ def cddareader_metadata_lookup(cddareader,
     if no match can be found for the CD
     """
 
-    from audiotools.freedb import DiscID as FDiscID
     from audiotools.musicbrainz import DiscID as MDiscID
 
     return metadata_lookup(
-        freedb_disc_id=FDiscID.from_cddareader(cddareader),
         musicbrainz_disc_id=MDiscID.from_cddareader(cddareader),
         musicbrainz_server=musicbrainz_server,
         musicbrainz_port=musicbrainz_port,
-        freedb_server=freedb_server,
-        freedb_port=freedb_port,
-        use_musicbrainz=use_musicbrainz,
-        use_freedb=use_freedb)
+        use_musicbrainz=use_musicbrainz)
 
 
 def track_metadata_lookup(audiofiles,
                           musicbrainz_server="musicbrainz.org",
                           musicbrainz_port=80,
-                          freedb_server="us.freedb.org",
-                          freedb_port=80,
-                          use_musicbrainz=True,
-                          use_freedb=True):
+                          use_musicbrainz=True):
     """given a list of AudioFile objects,
     this treats them as a single CD
     and generates a set of MetaData objects pulled from lookup services
@@ -5295,19 +5258,14 @@ def track_metadata_lookup(audiofiles,
     if no match can be found for the CD
     """
 
-    from audiotools.freedb import DiscID as FDiscID
     from audiotools.musicbrainz import DiscID as MDiscID
 
     if not has_pre_gap_track(audiofiles):
         return metadata_lookup(
-            freedb_disc_id=FDiscID.from_tracks(audiofiles),
             musicbrainz_disc_id=MDiscID.from_tracks(audiofiles),
             musicbrainz_server=musicbrainz_server,
             musicbrainz_port=musicbrainz_port,
-            freedb_server=freedb_server,
-            freedb_port=freedb_port,
-            use_musicbrainz=use_musicbrainz,
-            use_freedb=use_freedb)
+            use_musicbrainz=use_musicbrainz)
     else:
         def merge_metadatas(metadatas):
             if len(metadatas) == 0:
@@ -5324,14 +5282,10 @@ def track_metadata_lookup(audiofiles,
         choices = []
 
         for choice in metadata_lookup(
-            freedb_disc_id=FDiscID.from_tracks(audiofiles),
             musicbrainz_disc_id=MDiscID.from_tracks(audiofiles),
             musicbrainz_server=musicbrainz_server,
             musicbrainz_port=musicbrainz_port,
-            freedb_server=freedb_server,
-            freedb_port=freedb_port,
-            use_musicbrainz=use_musicbrainz,
-            use_freedb=use_freedb):
+            use_musicbrainz=use_musicbrainz):
 
             track_0 = merge_metadatas(choice)
             track_0.track_number = 0
@@ -5345,10 +5299,7 @@ def sheet_metadata_lookup(sheet,
                           sample_rate,
                           musicbrainz_server="musicbrainz.org",
                           musicbrainz_port=80,
-                          freedb_server="us.freedb.org",
-                          freedb_port=80,
-                          use_musicbrainz=True,
-                          use_freedb=True):
+                          use_musicbrainz=True):
     """given a Sheet object,
     length of the album in PCM frames
     and sample rate of the disc,
@@ -5362,22 +5313,15 @@ def sheet_metadata_lookup(sheet,
     if no match can be found for the CD
     """
 
-    from audiotools.freedb import DiscID as FDiscID
     from audiotools.musicbrainz import DiscID as MDiscID
 
     return metadata_lookup(
-        freedb_disc_id=FDiscID.from_sheet(sheet,
-                                          total_pcm_frames,
-                                          sample_rate),
         musicbrainz_disc_id=MDiscID.from_sheet(sheet,
                                                total_pcm_frames,
                                                sample_rate),
         musicbrainz_server=musicbrainz_server,
         musicbrainz_port=musicbrainz_port,
-        freedb_server=freedb_server,
-        freedb_port=freedb_port,
-        use_musicbrainz=use_musicbrainz,
-        use_freedb=use_freedb)
+        use_musicbrainz=use_musicbrainz)
 
 
 def accuraterip_lookup(sorted_tracks,

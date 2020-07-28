@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # Audio Tools, a module and set of tools for manipulating audio data
-# Copyright (C) 2007-2016  Brian Langenberger
+# Copyright (C) 2007-2020  Brian Langenberger
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -211,21 +211,6 @@ def display_defaults(config, msg):
 
     table.blank_row()
 
-    display_boolean_option(table,
-                           _.LAB_AT_CONFIG_USE_FREEDB,
-                           config.getboolean_default("FreeDB",
-                                                     "service",
-                                                     True))
-    display_option(table,
-                   _.LAB_AT_CONFIG_FREEDB_SERVER,
-                   config.get_default("FreeDB",
-                                      "server",
-                                      "us.freedb.org"))
-
-    display_int_option(table,
-                       _.LAB_AT_CONFIG_FREEDB_PORT,
-                       config.getint_default("FreeDB", "port", 80))
-
     for row in table.format(msg.output_isatty()):
         msg.output(row)
 
@@ -314,17 +299,6 @@ def apply_options(options, config):
 
     if options.musicbrainz_port is not None:
         config.set_default("MusicBrainz", "port", options.musicbrainz_port)
-
-    if options.use_freedb is not None:
-        config.set_default("FreeDB", "service",
-                           True if (options.use_freedb == "yes")
-                           else False)
-
-    if options.freedb_server is not None:
-        config.set_default("FreeDB", "server", options.freedb_server)
-
-    if options.freedb_port is not None:
-        config.set_default("FreeDB", "port", options.freedb_port)
 
     # apply ID3 options
     if options.id3v2_version is not None:
@@ -677,54 +651,10 @@ if (__name__ == '__main__'):
                                       "MusicBrainz",
                                       "port"))
 
-                use_freedb = urwid.CheckBox(
-                    label=("label", _.LAB_AT_CONFIG_USE_FREEDB),
-                    state=config.getboolean_default(
-                        "FreeDB",
-                        "service",
-                        True),
-                    on_state_change=self.change_boolean,
-                    user_data=(config,
-                               "FreeDB",
-                               "service"))
-
-                server = config.get_default("FreeDB",
-                                            "server",
-                                            "us.freedb.org")
-
-                freedb_server = urwid.Edit(
-                    caption=("label",
-                             u"{} : ".format(_.LAB_AT_CONFIG_FREEDB_SERVER)),
-                    edit_text=server if PY3 else server.decode("UTF-8"))
-                urwid.connect_signal(freedb_server,
-                                     "change",
-                                     self.change_text,
-                                     (config,
-                                      "FreeDB",
-                                      "server"))
-
-                freedb_port = urwid.IntEdit(
-                    caption=("label",
-                             u"{} : ".format(_.LAB_AT_CONFIG_FREEDB_PORT)),
-                    default=config.getint_default(
-                        "FreeDB",
-                        "port",
-                        80))
-                urwid.connect_signal(freedb_port,
-                                     "change",
-                                     self.change_int,
-                                     (config,
-                                      "FreeDB",
-                                      "port"))
-
                 urwid.ListBox.__init__(self,
                                        [use_musicbrainz,
                                         musicbrainz_server,
-                                        musicbrainz_port,
-                                        urwid.Divider(u" "),
-                                        use_freedb,
-                                        freedb_server,
-                                        freedb_port])
+                                        musicbrainz_port])
 
             def change_boolean(self, checkbox, new_state, user_data):
                 (config, section, option) = user_data
@@ -1095,21 +1025,6 @@ if (__name__ == '__main__'):
                         metavar="PORT",
                         type=int,
                         dest="musicbrainz_port")
-
-    lookup.add_argument("--use-freedb",
-                        choices=("yes", "no"),
-                        dest="use_freedb")
-
-    lookup.add_argument("--freedb-server",
-                        action="store",
-                        metavar="HOSTNAME",
-                        dest="freedb_server")
-
-    lookup.add_argument("--freedb-port",
-                        action="store",
-                        metavar="PORT",
-                        type=int,
-                        dest="freedb_port")
 
     system = parser.add_argument_group(_.OPT_CAT_SYSTEM)
 

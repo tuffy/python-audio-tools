@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # Audio Tools, a module and set of tools for manipulating audio data
-# Copyright (C) 2007-2016  Brian Langenberger
+# Copyright (C) 2007-2020  Brian Langenberger
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -165,23 +165,6 @@ if (__name__ == '__main__'):
                         default=audiotools.MUSICBRAINZ_SERVICE,
                         help=_.OPT_NO_MUSICBRAINZ)
 
-    lookup.add_argument("--freedb-server",
-                        dest="freedb_server",
-                        default=audiotools.FREEDB_SERVER,
-                        metavar="HOSTNAME")
-
-    lookup.add_argument("--freedb-port",
-                        type=int,
-                        dest="freedb_port",
-                        default=audiotools.FREEDB_PORT,
-                        metavar="PORT")
-
-    lookup.add_argument("--no-freedb",
-                        action="store_false",
-                        dest="use_freedb",
-                        default=audiotools.FREEDB_SERVICE,
-                        help=_.OPT_NO_FREEDB)
-
     lookup.add_argument("-D", "--default",
                         dest="use_default",
                         action="store_true",
@@ -303,10 +286,7 @@ if (__name__ == '__main__'):
             cddareader=cddareader,
             musicbrainz_server=options.musicbrainz_server,
             musicbrainz_port=options.musicbrainz_port,
-            freedb_server=options.freedb_server,
-            freedb_port=options.freedb_port,
-            use_musicbrainz=options.use_musicbrainz,
-            use_freedb=options.use_freedb)
+            use_musicbrainz=options.use_musicbrainz)
     except KeyboardInterrupt:
         msg.ansi_clearscreen()
         msg.error(_.ERR_CANCELLED)
