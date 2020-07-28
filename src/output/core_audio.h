@@ -1,3 +1,4 @@
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <CoreServices/CoreServices.h>
 #include <AudioUnit/AudioUnit.h>

@@ -265,9 +265,9 @@ encode_wavpack(BitstreamWriter *output,
         }
     }
 
-    if (!WavpackFlushSamples(context)) {
+    /*if (!WavpackFlushSamples(context)) {
         goto error;
-    }
+    }*/
 
     /*close Wavpack and deallocate temporary space*/
     WavpackCloseFile(context);

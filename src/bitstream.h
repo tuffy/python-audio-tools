@@ -32,6 +32,7 @@
 #define __BITSTREAMLIB_H__
 
 #ifdef HAS_PYTHON
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #endif
 #include <stdio.h>

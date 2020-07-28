@@ -1,3 +1,4 @@
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #ifdef PARANOIA_LT_0_90
 #include <cdio/cdda.h>

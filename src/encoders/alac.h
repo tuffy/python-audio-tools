@@ -1,6 +1,7 @@
 #ifndef A_ALAC_ENCODE
 #define A_ALAC_ENCODE
 #ifndef STANDALONE
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #endif
 

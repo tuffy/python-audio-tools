@@ -1,4 +1,5 @@
 #ifndef STANDALONE
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #endif
 #include "pcm.h"

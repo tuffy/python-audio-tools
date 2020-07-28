@@ -308,11 +308,7 @@ static PyObject*
 Page_append(ogg_Page *self, PyObject *args)
 {
     uint8_t *buffer;
-#ifdef PY_SSIZE_T_CLEAN
     Py_ssize_t buffer_len;
-#else
-    int buffer_len;
-#endif
 
     if (self->page.header.segment_count == 255) {
         PyErr_SetString(PyExc_ValueError,

@@ -1,4 +1,5 @@
 #ifndef STANDALONE
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "mod_defs.h"
 #endif
@@ -189,11 +190,7 @@ int
 FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds)
 {
     unsigned char *data;
-#ifdef PY_SSIZE_T_CLEAN
     Py_ssize_t data_size;
-#else
-    int data_size;
-#endif
     int is_big_endian;
     int is_signed;
 

@@ -1,3 +1,4 @@
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "mod_defs.h"
 #include "bitstream.h"
@@ -1854,11 +1855,7 @@ BitstreamWriter_write_bytes(bitstream_BitstreamWriter *self,
                             PyObject *args)
 {
     const char* bytes;
-#ifdef PY_SSIZE_T_CLEAN
     Py_ssize_t bytes_len;
-#else
-    int bytes_len;
-#endif
 
     if (!PyArg_ParseTuple(args, "s#", &bytes, &bytes_len))
         return NULL;
@@ -2235,11 +2232,7 @@ BitstreamRecorder_write_bytes(bitstream_BitstreamRecorder *self,
 {
     BitstreamWriter* writer = (BitstreamWriter*)self->bitstream;
     const char* bytes;
-#ifdef PY_SSIZE_T_CLEAN
     Py_ssize_t bytes_len;
-#else
-    int bytes_len;
-#endif
 
     if (!PyArg_ParseTuple(args, "s#", &bytes, &bytes_len))
         return NULL;
@@ -2665,11 +2658,7 @@ bitstream_parse_func(PyObject *dummy, PyObject *args)
     char *format;
     int is_little_endian;
     char *data;
-#ifdef PY_SSIZE_T_CLEAN
     Py_ssize_t data_length;
-#else
-    int data_length;
-#endif
 
     if (!PyArg_ParseTuple(args, "sis#",
                           &format, &is_little_endian, &data, &data_length)) {
