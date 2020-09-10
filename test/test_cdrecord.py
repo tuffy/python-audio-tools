@@ -20,7 +20,11 @@
 import sys
 import audiotools
 import test_streams
-import cPickle
+
+try:
+    import cPickle
+except ModuleNotFoundError:
+    import pickle as cPickle
 
 if (__name__ == "__main__"):
     write_offset = audiotools.config.getint_default("System",

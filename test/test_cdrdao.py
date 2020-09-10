@@ -22,7 +22,11 @@ import sys
 import audiotools
 import test_streams
 import re
-import cPickle
+
+try:
+    import cPickle
+except ModuleNotFoundError:
+    import pickle as cPickle
 
 if (__name__ == "__main__"):
     print(repr(sys.argv))

@@ -16,6 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
+import struct
 import sys
 
 
@@ -43,6 +44,13 @@ class DiscID(object):
         self.total_length = total_length
         self.track_count = track_count
         self.playable_length = playable_length
+        self._disc_id = self.get_disc_id()
+
+    def get_disc_id(self):
+        digit_sum_ = sum([digit_sum(o // 75) for o in self.offsets])
+        return hex((((digit_sum_ % 255) << 24) |
+                ((struct.unpack('>l', struct.pack('>f', self.total_length))[0] & 0xFFFF) << 8) |
+                (self.track_count & 0xFF)))
 
     @classmethod
     def from_cddareader(cls, cddareader):
@@ -113,12 +121,11 @@ class DiscID(object):
                                     sample_rate))
 
     def __repr__(self):
-        return "DiscID({})".format(
-            ", ".join(["{}={}".format(attr, getattr(self, attr))
-                       for attr in ["offsets",
-                                    "total_length",
-                                    "track_count",
-                                    "playable_length"]]))
+        attr_str = ', '.join([
+            f'"{attr}={getattr(self, attr)}"'
+            for attr in ['offsets', 'total_length', 'track_count', 'playable_length']
+        ])
+        return f'DiscID({attr_str})'
 
     if sys.version_info[0] >= 3:
         def __str__(self):
@@ -133,7 +140,7 @@ class DiscID(object):
     def __int__(self):
         digit_sum_ = sum([digit_sum(o // 75) for o in self.offsets])
         return (((digit_sum_ % 255) << 24) |
-                ((self.total_length & 0xFFFF) << 8) |
+                ((struct.unpack('>l', struct.pack('>f', self.total_length))[0] & 0xFFFF) << 8) |
                 (self.track_count & 0xFF))
 
 
@@ -161,7 +168,7 @@ def perform_lookup(disc_id, freedb_server, freedb_port):
                            *([disc_id.__unicode__(),
                               u"{:d}".format(disc_id.track_count)] +
                              [u"{:d}".format(o) for o in disc_id.offsets] +
-                             [u"{:d}".format(disc_id.playable_length)]))
+                             [u"{:f}".format(disc_id.playable_length)]))
 
     line = next(query)
     response = RESPONSE.match(line)
