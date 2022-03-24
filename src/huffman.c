@@ -312,6 +312,9 @@ compile_huffman_tree(br_huffman_table_t** table,
             }
 
         total_rows = 1;
+
+        /*transfer new table back to parent*/
+        *table = new_table;
     } else {
         *table = malloc(0);
         return HUFFMAN_EMPTY_TREE;
