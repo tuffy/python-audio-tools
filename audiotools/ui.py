@@ -52,7 +52,7 @@ def choice_selection_unicode(metadata):
 try:
     import urwid
 
-    if urwid.version.VERSION < (1, 0, 0):
+    if urwid.VERSION < (1, 0, 0):
         raise ImportError()
 
     def Screen():
