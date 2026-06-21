@@ -2643,7 +2643,7 @@
    the extracted Vorbis packets could be processed with smaller substreams -
    including substreams that span one or more pages.
    It's also potentially helpful for MP3, Ogg FLAC, DVD-A and any other format
-   with nontrivial wrappers that need to be parsed seperately
+   with nontrivial wrappers that need to be parsed separately
    from the main bitstream.
 *** DONE Implement substream reader methods
 **** DONE bs_read_bits_s_be
@@ -4037,7 +4037,7 @@
     h->close(h);                /*closes substream and deallocates handle*/
 
     But we also need two additional methods
-    for working with the handle and its substream seperately.
+    for working with the handle and its substream separately.
 
     | method            | substream      | handle      |
     |-------------------+----------------+-------------|
